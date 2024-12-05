@@ -15,6 +15,13 @@
 
 (function() {
     'use strict';
+    
+    // 檢查是否從 unrollnow.com 來的
+    if (document.referrer.includes('unrollnow.com') ||
+        document.referrer.includes('twitter.com')) {
+        console.log('Already redirected from unrollnow.com, skip redirect');
+        return;
+    }
 
     // 擷取目前網址中的數字 ID
     const urlPattern = /\/status\/(\d+)/;
