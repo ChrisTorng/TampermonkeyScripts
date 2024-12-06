@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         X/Twitter to Unrollnow
 // @namespace    http://tampermonkey.net/
-// @version      2024-11-26_1.0
+// @version      2024-12-06_1.1
 // @description  Redirect X/Twitter links to Unrollnow
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
