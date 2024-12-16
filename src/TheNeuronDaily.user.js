@@ -35,6 +35,15 @@
             }
             parent = parent.parentElement;
         }
+
+        if (parent.matches('main')) {
+            let sibling = parent.previousElementSibling;
+            while (sibling) {
+                sibling.style.display = 'none';
+                sibling = sibling.previousElementSibling;
+            }
+            parent = parent.parentElement;
+        }
     }
 
     // Run on page load
