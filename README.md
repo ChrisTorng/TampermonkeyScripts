@@ -20,6 +20,19 @@ Automatically redirect paywall articles to [Archive Today](https://archive.is) f
 - **Redirected URL:**
   https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear
 
+# ArXiv User Script: [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
+
+Automatically redirect to the "HTML (experimental)" version of [ArXiv](https://arxiv.org/) papers.
+
+- **Original URL:**  
+  https://arxiv.org/abs/1234.56789
+- **Redirected URL:**  
+  https://arxiv.org/html/1234.56789
+
+# The Neuron Daily User Script: [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
+
+Hide unnecessary elements on [The Neuron Daily](https://www.theneurondaily.com/) site to focus on the main content.
+
 ## Installation
 
 ### Prerequisites:
@@ -28,7 +41,7 @@ Automatically redirect paywall articles to [Archive Today](https://archive.is) f
 
 ### Steps:
 
-1. Click [Unrollnow.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js) / [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
+1. Click [Unrollnow.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js) / [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js) / [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js) / [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
 3. Tampermonkey Install page opened, click [Install] button to install.
 4. Reload the target page.
 
