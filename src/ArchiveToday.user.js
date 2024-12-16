@@ -1,15 +1,18 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2024-12-15_1.0
-// @description  Automatically redirect paywall articles to archive.is for archiving
+// @version      2024-12-16_1.1
+// @description  Automatically redirect paywall articles to Archive Today for archiving
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=tampermonkey.net
-// @match        https://www.bloomberg.com/*
 // @match        https://archive.is/*
+// @match        https://archive.ph/*
+// @match        https://www.bloomberg.com/*
+// @match        https://www.bbc.com/*
+// @match        https://www.thetimes.com/*
 // @grant        none
 // ==/UserScript==
 
@@ -18,8 +21,9 @@
     
     const hostname = window.location.hostname;
     
-    if (hostname === 'archive.is') {
-        // 當前網址為 archive.is，執行相關操作
+    if (hostname === 'archive.is' ||
+        hostname === 'archive.ph') {
+        // 當前網址為 Archive Today，執行相關操作
         window.addEventListener('load', () => {
             // 檢查並隱藏 DIVALREADY 元素
             const divAlready = document.getElementById('DIVALREADY');
@@ -49,6 +53,6 @@
     
     console.log(`重定向至 archive.is: ${archiveUrl}`);
     
-    // 重定向到 archive.is 的提交頁面
+    // 重定向到 Archive Today 頁面
     window.location.replace(archiveUrl);
 })();
