@@ -13,6 +13,9 @@
 // @match        https://www.bloomberg.com/*
 // @match        https://www.bbc.com/*
 // @match        https://www.thetimes.com/*
+// @match        https://www.scientificamerican.com/*
+// @match        https://www.economist.com/*
+// @match        https://www.cnbc.com/*
 // @grant        none
 // ==/UserScript==
 
