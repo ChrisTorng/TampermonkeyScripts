@@ -7,7 +7,7 @@
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=tampermonkey.net
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=archive.is
 // @match        https://archive.is/*
 // @match        https://archive.ph/*
 // @match        https://www.bbc.com/*

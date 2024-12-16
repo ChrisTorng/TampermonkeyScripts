@@ -7,7 +7,7 @@
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=tampermonkey.net
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=x.com
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
 // @grant        none
