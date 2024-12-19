@@ -1,6 +1,6 @@
-# Tampermonkey Scripts
+# [Tampermonkey Scripts](https://github.com/ChrisTorng/TampermonkeyScripts)
 
-Some useful Tampermonkey scripts for browser tasks.
+Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
 ## [Unrollnow User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js)
 
