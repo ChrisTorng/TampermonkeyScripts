@@ -6,22 +6,22 @@ Some useful Tampermonkey scripts for browser tasks.
 
 Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Unrollnow](https://unrollnow.com/) for easy read long Twitter threads. Supports going back to original X/Twitter page.
 
-- **From** https://x.com/cocktailpeanut/status/1860756706357022812
-- **Redirected to** https://unrollnow.com/status/1860756706357022812
+- **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
+- **Redirected to** [https://unrollnow.com/status/1860756706357022812](https://unrollnow.com/status/1860756706357022812)
 
 ## [ArchiveToday User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
 
 Automatically redirect paywall articles to [Archive Today](https://archive.is) for archiving. And hide the prompt, scroll into content page.
 
-- **From** https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear
-- **Redirected to** https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear
+- **From** [https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear](https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear)
+- **Redirected to** [https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear](https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear)
 
 ## [ArXiv User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
 
 Automatically redirect to the HTML version of [ArXiv](https://arxiv.org/) papers.
 
-- **From** https://arxiv.org/abs/1234.56789
-- **Redirected to** https://arxiv.org/html/1234.56789
+- **From** [https://arxiv.org/abs/2402.07939v1](https://arxiv.org/abs/2402.07939v1)
+- **Redirected to** [https://arxiv.org/html/2402.07939v1](https://arxiv.org/html/2402.07939v1)
 
 ## [The Neuron Daily User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
 
