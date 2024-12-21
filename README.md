@@ -27,6 +27,13 @@ Automatically redirect to the HTML version of [ArXiv](https://arxiv.org/) papers
 
 Hide unnecessary elements on [The Neuron Daily](https://www.theneurondaily.com/) site to focus on the main content.
 
+## [Hide Banner User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
+
+Hide distracting elements on specific sites for better reading experience:
+
+- [InfoQ China](https://www.infoq.cn/)
+- [PanSci](https://pansci.asia/)
+
 ## Installation
 
 ### Prerequisites:
@@ -41,6 +48,7 @@ Hide unnecessary elements on [The Neuron Daily](https://www.theneurondaily.com/)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
   - [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
+  - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
 
 2. Tampermonkey Install page opened, click [Install] button to install.
 3. Reload the target page.
