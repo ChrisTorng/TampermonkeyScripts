@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2023-12-21_1.0
+// @version      2023-12-24_1.0.1
 // @description  Hide specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -25,7 +25,7 @@
         ],
         'pansci.asia': [
             '#main_navbar',
-            '#scroll_progress_bar'
+            '#s-progress-wrap'
         ]
     };
 
