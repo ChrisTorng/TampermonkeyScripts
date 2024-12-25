@@ -29,10 +29,11 @@ Hide unnecessary elements on [The Neuron Daily](https://www.theneurondaily.com/)
 
 ## [Hide Banner User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
 
-Hide distracting elements on specific sites for better reading experience:
+Hide/click/scrollTo elements on specific sites for better reading experience:
 
 - [InfoQ China](https://www.infoq.cn/)
 - [PanSci](https://pansci.asia/)
+- [INSIDE](https://www.inside.com.tw/)
 
 ## Installation
 
