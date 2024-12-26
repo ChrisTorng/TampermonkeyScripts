@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2023-12-25_1.1.0
+// @version      2023-12-26_1.2.0
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -39,7 +39,7 @@
         'www.inside.com.tw': {
             hide: [],
             click: [
-                '.article-header'
+                '#article_content'
             ],
             scrollTo: 'picture'
         }
@@ -74,7 +74,12 @@
         if (!currentConfig.scrollTo) return;
 
         const element = document.querySelector(currentConfig.scrollTo);
-        if (element) {
+        if (!element) return;
+
+        const elementRect = element.getBoundingClientRect();
+        
+        // 只有當目標元素位置在目前視窗之下方時才捲動
+        if (elementRect.top > 0) {
             console.log('Scrolling to element:', element);
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
