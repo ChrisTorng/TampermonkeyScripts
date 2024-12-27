@@ -9,9 +9,16 @@ Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links 
 - **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
 - **Redirected to** [https://unrollnow.com/status/1860756706357022812](https://unrollnow.com/status/1860756706357022812)
 
-## [ArchiveToday User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
+## [Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
 
-Automatically redirect paywall articles to [Archive Today](https://archive.is) for archiving. And hide the prompt, scroll into content page.
+Automatically redirect most paywall articles to [Internet Archive](https://web.archive.org) for archiving. And make title scrollable, supports go to source url.
+
+- **From** [https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c](https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c)
+- **Redirected to** [https://web.archive.org/web/20241226140621/https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c](https://web.archive.org/web/20241226140621/https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c)
+
+## [Archive Today User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
+
+Automatically redirect some other paywall articles to [Archive Today](https://archive.is) for archiving. And hide the prompt, scroll into content page.
 
 - **From** [https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear](https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear)
 - **Redirected to** [https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear](https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear)
@@ -46,6 +53,7 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 1. Click anyone you need:
 
   - [Unrollnow.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js)
+  - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
   - [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
