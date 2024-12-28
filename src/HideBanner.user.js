@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2023-12-26_1.2.0
+// @version      2023-12-28_1.2.1
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -31,7 +31,8 @@
             hide: [
                 'div.audioPlayer.AudioPlayer_main_HiF3z',
                 'div.header.common-header-pc.layout-header',
-                'div.sub-nav-wrap'
+                'div.sub-nav-wrap',
+                '.geo-banner.fixed'
             ],
             click: [],
             scrollTo: null
