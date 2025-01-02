@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-02_1.1.1
+// @version      2025-01-02_1.1.2
 // @description  Automatically redirect paywall articles to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -16,6 +16,7 @@
 // @match        https://www.cnbc.com/*
 // @match        https://www.economist.com/*
 // @match        https://www.ft.com/*
+// @match        https://www.newyorker.com/*
 // @match        https://www.nytimes.com/*
 // @match        https://www.scientificamerican.com/*
 // @match        https://www.rawstory.com/*
