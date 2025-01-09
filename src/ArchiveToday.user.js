@@ -11,6 +11,7 @@
 // @match        https://archive.is/*
 // @match        https://archive.ph/*
 // @match        https://www.bloomberg.com/*
+// @match        https://www.ft.com/*
 // @grant        none
 // ==/UserScript==
 
