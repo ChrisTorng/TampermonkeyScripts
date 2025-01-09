@@ -15,7 +15,7 @@
 // @match        https://www.bbc.com/*
 // @match        https://www.cnbc.com/*
 // @match        https://www.economist.com/*
-// @match        https://www.ft.com/*
+/// @match        https://www.ft.com/*
 // @match        https://www.newyorker.com/*
 // @match        https://www.nytimes.com/*
 // @match        https://www.scientificamerican.com/*
