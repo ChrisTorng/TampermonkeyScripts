@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-14_1.2.0
+// @version      2025-01-15_1.3.0
 // @description  Automatically redirect paywall articles to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -25,7 +25,7 @@
 // @match        https://www.thetimes.com/*
 // @match        https://www.theverge.com/*
 // @match        https://www.washingtonpost.com/*
-//  / @match        https://www.wsj.com/*
+/// @match        https://www.wsj.com/*
 // @grant        none
 // ==/UserScript==
 
@@ -33,40 +33,82 @@
     'use strict';
     
     if (window.location.hostname === 'web.archive.org') {
-        function handleWmIppBase() {
-            const wmIppBase = document.getElementById('wm-ipp-base');
-            if (wmIppBase) {
-                wmIppBase.style = 'display: none !important';
-                console.log('已成功隱藏標題列元素');
-                return true;
-            }
-            console.log('尚未找到標題列元素，繼續等待...');
-            return false;
-        }
+        // 等待 DOM 完全載入後再執行
+        window.addEventListener('load', function() {
+            try {
+                let timer;
 
-        // 設定 MutationObserver 監控 DOM 變化
-        const observer = new MutationObserver((mutations, obs) => {
-            if (handleWmIppBase()) {
-                obs.disconnect(); // 成功後停止觀察
+                function handleWmIppBase() {
+                    const wmIppBase = document.getElementById('wm-ipp-base');
+                    if (wmIppBase) {
+                        wmIppBase.style = 'display: none !important';
+                        console.log('已成功隱藏標題列元素');
+                        return true;
+                    }
+                    console.log('尚未找到標題列元素，繼續等待...');
+                    return false;
+                }
+
+                console.log('開始建立 Go 按鈕...');
+                // 創建並添加 Go 按鈕
+                const goButton = document.createElement('button');
+                goButton.textContent = 'Go';
+                goButton.style.cssText = `
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
+                    z-index: 99999999;
+                    padding: 5px 10px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                `;
+                document.body.appendChild(goButton);
+                console.log('Go 按鈕已建立');
+
+                // 添加按鈕點擊事件
+                goButton.addEventListener('click', () => {
+                    const currentUrl = window.location.href;
+                    const match = currentUrl.match(/\/web\/\d+\/(.*)/);
+                    if (match) {
+                        const targetUrl = match[1];
+                        const archiveIsUrl = `https://archive.is/${targetUrl}`;
+                        window.location.href = archiveIsUrl;
+                    }
+                });
+
+                // 設定 MutationObserver 監控 DOM 變化
+                const observer = new MutationObserver((mutations, obs) => {
+                    if (handleWmIppBase()) {
+                        console.log('成功：停止監控 DOM 變化');
+                        obs.disconnect(); // 成功後停止觀察
+                        clearTimeout(timer);
+                    }
+                });
+
+                observer.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+
+                // 設定 10 秒後停止觀察
+                timer = setTimeout(() => {
+                    observer.disconnect();
+                    console.log('觀察超時：停止監控 DOM 變化');
+                }, 10000);
+
+            } catch (error) {
+                console.error('執行腳本時發生錯誤:', error);
             }
         });
-
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true
-        });
-
-        // 設定 10 秒後停止觀察
-        setTimeout(() => {
-            observer.disconnect();
-            console.log('觀察超時：停止監控 DOM 變化');
-        }, 10000);
-
         return;
     }
 
     // 其他網站的重定向邏輯
-    const archiveUrl = `https://web.archive.org/${window.location.href}`;
+    const archiveUrl = `https://web.archive.org/submit/?url=${window.location.href}`;
     
     console.log(`重定向至 web.archive.org: ${archiveUrl}`);
     

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-10_1.2.1
+// @version      2025-01-15_1.2.2
 // @description  Automatically redirect paywall articles to Archive Today
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -49,9 +49,7 @@
     }
     
     // 其他網站的重定向邏輯
-    const currentUrl = window.location.href;
-    const encodedUrl = encodeURIComponent(currentUrl);
-    const archiveUrl = `https://archive.is/submit/?url=${encodedUrl}`;
+    const archiveUrl = `https://archive.is/submit/?url=${window.location.href}`;
     
     console.log(`重定向至 archive.is: ${archiveUrl}`);
     
