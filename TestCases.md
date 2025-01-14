@@ -6,3 +6,4 @@ https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-div
 
 # Internet Archive
 https://www.rawstory.com/laura-loomer-vs-elon-musk/
+https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091/

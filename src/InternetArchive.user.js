@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-10_1.1.3
+// @version      2025-01-14_1.2.0
 // @description  Automatically redirect paywall articles to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -33,39 +33,38 @@
     'use strict';
     
     if (window.location.hostname === 'web.archive.org') {
-        window.addEventListener('load', () => {
-            // 設定標題列可捲動
-            const wmIppBase = document.getElementById('wm-ipp');
+        function handleWmIppBase() {
+            const wmIppBase = document.getElementById('wm-ipp-base');
             if (wmIppBase) {
-                wmIppBase.style = '';
-                console.log('已設定標題列元素可捲動');
-            } else {
-                console.log('未找到標題列元素');
+                wmIppBase.style = 'display: none !important';
+                console.log('已成功隱藏標題列元素');
+                return true;
             }
+            console.log('尚未找到標題列元素，繼續等待...');
+            return false;
+        }
 
-            // 修改提交按鈕並加入點擊事件
-            const submitButton = document.querySelector('#wmtb > input[type=submit]');
-            if (submitButton) {
-                submitButton.type = 'button';
-                submitButton.addEventListener('click', () => {
-                    const urlInput = document.getElementById('wmtbURL');
-                    if (urlInput) {
-                        const targetUrl = urlInput.value;
-                        if (targetUrl) {
-                            console.log('導航至:', targetUrl);
-                            window.location.href = targetUrl;
-                        }
-                    }
-                });
-                console.log('已設定提交按鈕點擊事件');
-            } else {
-                console.log('未找到提交按鈕');
+        // 設定 MutationObserver 監控 DOM 變化
+        const observer = new MutationObserver((mutations, obs) => {
+            if (handleWmIppBase()) {
+                obs.disconnect(); // 成功後停止觀察
             }
         });
-        
-        return; // 結束腳本執行，避免繼續執行下方的重定向邏輯
+
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+
+        // 設定 10 秒後停止觀察
+        setTimeout(() => {
+            observer.disconnect();
+            console.log('觀察超時：停止監控 DOM 變化');
+        }, 10000);
+
+        return;
     }
-    
+
     // 其他網站的重定向邏輯
     const archiveUrl = `https://web.archive.org/${window.location.href}`;
     
