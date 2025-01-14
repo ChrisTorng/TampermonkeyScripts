@@ -11,7 +11,7 @@ Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links 
 
 ## [Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
 
-Automatically redirect most paywall articles to [Internet Archive](https://web.archive.org) for archiving. And make title scrollable, supports go to source url.
+Automatically redirect most paywall articles to [Internet Archive](https://web.archive.org) for archiving. And hide the fixed title. Supports go to the same page on [Archive Today](https://archive.is).
 
 - **From** [https://www.rawstory.com/laura-loomer-vs-elon-musk/](https://www.rawstory.com/laura-loomer-vs-elon-musk/)
 - **Redirected to** [https://web.archive.org/web/20250106005830/https://www.rawstory.com/laura-loomer-vs-elon-musk/](https://web.archive.org/web/20250106005830/https://www.rawstory.com/laura-loomer-vs-elon-musk/)
