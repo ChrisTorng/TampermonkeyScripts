@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-15_1.3.0
+// @version      2025-01-16_1.3.1
 // @description  Automatically redirect paywall articles to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -108,7 +108,7 @@
     }
 
     // 其他網站的重定向邏輯
-    const archiveUrl = `https://web.archive.org/submit/?url=${window.location.href}`;
+    const archiveUrl = `https://web.archive.org/${window.location.href}`;
     
     console.log(`重定向至 web.archive.org: ${archiveUrl}`);
     
