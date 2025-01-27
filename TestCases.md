@@ -5,6 +5,7 @@ https://www.newscientist.com/article/2458385-ai-uses-throat-vibrations-to-work-o
 https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c
 
 # Internet Archive
+https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary
 https://www.rawstory.com/laura-loomer-vs-elon-musk/
 https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091/
 https://www.theverge.com/2025/1/15/24343794/google-workspace-ai-features-free
