@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ArXiv site
 // @namespace    http://tampermonkey.net/
-// @version      2024-12-16_1.0
+// @version      2025-01-24_1.1
 // @description  ArXiv site
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -18,8 +18,7 @@
     // Wait for the DOM to fully load
     window.addEventListener('load', function() {
         // Find the "HTML (experimental)" link
-        const htmlLink = Array.from(document.querySelectorAll('a'))
-            .find(link => link.textContent.trim() === 'HTML (experimental)');
+        const htmlLink = this.document.getElementById('latexml-download-link');
 
         // If the link exists, redirect to it
         if (htmlLink) {

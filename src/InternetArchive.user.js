@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-16_1.3.1
+// @version      2025-01-25_1.4.0
 // @description  Automatically redirect paywall articles to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -16,6 +16,7 @@
 // @match        https://www.cnbc.com/*
 /// @match        https://www.economist.com/*
 /// @match        https://www.ft.com/*
+// @match        https://www.lrb.co.uk/*
 // @match        https://www.newyorker.com/*
 // @match        https://www.nytimes.com/*
 // @match        https://www.scientificamerican.com/*
@@ -29,12 +30,43 @@
 // @grant        none
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
-    
+
     if (window.location.hostname === 'web.archive.org') {
+        const currentUrl = window.location.href;
+        const match = currentUrl.match(/\/web\/\d+\*?\/(.*)/);
+        if (match) {
+            console.log('開始建立 Go 按鈕...');
+            // 創建並添加 Go 按鈕
+            const goButton = document.createElement('button');
+            goButton.textContent = 'Go';
+            goButton.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 2147483647;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        `;
+            document.body.appendChild(goButton);
+            console.log('Go 按鈕已建立');
+
+            // 添加按鈕點擊事件
+            goButton.addEventListener('click', () => {
+                const targetUrl = match[1];
+                const archiveIsUrl = `https://archive.is/submit/?url=${targetUrl}`;
+                window.location.href = archiveIsUrl;
+            });
+        }
+
         // 等待 DOM 完全載入後再執行
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             try {
                 let timer;
 
@@ -48,37 +80,6 @@
                     console.log('尚未找到標題列元素，繼續等待...');
                     return false;
                 }
-
-                console.log('開始建立 Go 按鈕...');
-                // 創建並添加 Go 按鈕
-                const goButton = document.createElement('button');
-                goButton.textContent = 'Go';
-                goButton.style.cssText = `
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    z-index: 99999999;
-                    padding: 5px 10px;
-                    background-color: #4CAF50;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 14px;
-                `;
-                document.body.appendChild(goButton);
-                console.log('Go 按鈕已建立');
-
-                // 添加按鈕點擊事件
-                goButton.addEventListener('click', () => {
-                    const currentUrl = window.location.href;
-                    const match = currentUrl.match(/\/web\/\d+\/(.*)/);
-                    if (match) {
-                        const targetUrl = match[1];
-                        const archiveIsUrl = `https://archive.is/${targetUrl}`;
-                        window.location.href = archiveIsUrl;
-                    }
-                });
 
                 // 設定 MutationObserver 監控 DOM 變化
                 const observer = new MutationObserver((mutations, obs) => {
@@ -109,9 +110,9 @@
 
     // 其他網站的重定向邏輯
     const archiveUrl = `https://web.archive.org/${window.location.href}`;
-    
+
     console.log(`重定向至 web.archive.org: ${archiveUrl}`);
-    
+
     // 重定向到 Internet Archive 頁面
     window.location.replace(archiveUrl);
 })();

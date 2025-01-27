@@ -9,6 +9,10 @@ Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links 
 - **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
 - **Redirected to** [https://unrollnow.com/status/1860756706357022812](https://unrollnow.com/status/1860756706357022812)
 
+## [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
+
+Provide all sites [Go] button to go to [Internet Archive](https://web.archive.org) for testing.
+
 ## [Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
 
 Automatically redirect most paywall articles to [Internet Archive](https://web.archive.org) for archiving. And hide the fixed title. Supports go to the same page on [Archive Today](https://archive.is).
