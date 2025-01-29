@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-29_1.1.0
+// @version      2025-01-29_1.1.1
 // @description  Provide all sites go to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -21,7 +21,7 @@
     }
 
     const hostname = window.location.hostname;
-    
+
     if (hostname !== 'web.archive.org' &&
         hostname !== 'archive.is' &&
         hostname !== 'archive.ph') {
@@ -33,8 +33,8 @@
             right: 0px;
             z-index: 2147483647;
             padding: 5px 10px;
-            background-color: rgba(76, 175, 80, 0.3);
-            color: white;
+            background-color: rgba(0, 0, 0, 0.3);
+            color: darkgray;
             border: none;
             border-radius: 4px;
             cursor: move;
@@ -62,7 +62,7 @@
             if (e.target === goButton) {
                 isDragging = true;
                 hasMoved = false;
-                
+
                 if (e.type === 'touchstart') {
                     initialX = e.touches[0].clientX - goButton.offsetLeft;
                     initialY = e.touches[0].clientY - goButton.offsetTop;
