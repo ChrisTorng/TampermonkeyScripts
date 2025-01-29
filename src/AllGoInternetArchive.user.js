@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-25_1.0.0
+// @version      2025-01-29_1.1.0
 // @description  Provide all sites go to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -29,8 +29,8 @@
         goButton.textContent = 'Go';
         goButton.style.cssText = `
             position: fixed;
-            top: 10px;
-            right: 10px;
+            top: 70px;
+            right: 0px;
             z-index: 2147483647;
             padding: 5px 10px;
             background-color: rgba(76, 175, 80, 0.3);
@@ -52,15 +52,24 @@
         let initialY;
 
         goButton.addEventListener('mousedown', dragStart);
+        goButton.addEventListener('touchstart', dragStart);
         document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
         document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('touchend', dragEnd);
 
         function dragStart(e) {
             if (e.target === goButton) {
                 isDragging = true;
                 hasMoved = false;
-                initialX = e.clientX - goButton.offsetLeft;
-                initialY = e.clientY - goButton.offsetTop;
+                
+                if (e.type === 'touchstart') {
+                    initialX = e.touches[0].clientX - goButton.offsetLeft;
+                    initialY = e.touches[0].clientY - goButton.offsetTop;
+                } else {
+                    initialX = e.clientX - goButton.offsetLeft;
+                    initialY = e.clientY - goButton.offsetTop;
+                }
             }
         }
 
@@ -68,8 +77,14 @@
             if (isDragging) {
                 e.preventDefault();
                 hasMoved = true;
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
+
+                if (e.type === 'touchmove') {
+                    currentX = e.touches[0].clientX - initialX;
+                    currentY = e.touches[0].clientY - initialY;
+                } else {
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                }
 
                 // 防止按鈕拖出視窗
                 currentX = Math.min(Math.max(currentX, 0), window.innerWidth - goButton.offsetWidth);
@@ -88,7 +103,7 @@
         goButton.addEventListener('click', (e) => {
             if (!hasMoved) {
                 const targetUrl = window.location.href;
-                window.location.href = `https://web.archive.org/web/*/${targetUrl}`;
+                window.location.href = `https://web.archive.org/${targetUrl}`;
             }
         });
     }
