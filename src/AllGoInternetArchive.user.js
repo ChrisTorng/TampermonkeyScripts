@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-29_1.1.1
+// @version      2025-02-02_1.1.2
 // @description  Provide all sites go to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -26,7 +26,7 @@
         hostname !== 'archive.is' &&
         hostname !== 'archive.ph') {
         const goButton = document.createElement('button');
-        goButton.textContent = 'Go';
+        goButton.textContent = '→';
         goButton.style.cssText = `
             position: fixed;
             top: 70px;

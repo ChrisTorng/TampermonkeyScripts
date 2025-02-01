@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-25_1.4.0
+// @version      2025-02-02_1.4.1
 // @description  Automatically redirect paywall articles to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -40,21 +40,23 @@
             console.log('開始建立 Go 按鈕...');
             // 創建並添加 Go 按鈕
             const goButton = document.createElement('button');
-            goButton.textContent = 'Go';
+            goButton.textContent = '→';
             goButton.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 2147483647;
-            padding: 5px 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        `;
-            document.body.appendChild(goButton);
+                position: fixed;
+                top: 70px;
+                right: 0px;
+                z-index: 2147483647;
+                padding: 5px 10px;
+                background-color: rgba(0, 0, 0, 0.3);
+                color: darkgray;
+                border: none;
+                border-radius: 4px;
+                cursor: move;
+                font-size: 14px;
+                user-select: none;
+                touch-action: none;
+            `;
+                document.body.appendChild(goButton);
             console.log('Go 按鈕已建立');
 
             // 添加按鈕點擊事件
