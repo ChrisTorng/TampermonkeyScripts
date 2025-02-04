@@ -58,7 +58,7 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 1. Click anyone you need:
 
   - [Unrollnow.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js)
-  - [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
+  - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
   - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
   - [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
