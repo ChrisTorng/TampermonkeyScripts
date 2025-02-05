@@ -4,6 +4,7 @@ https://www.ft.com/content/a3eeb268-5daa-4525-858b-eab93b28d3c7
 https://www.newscientist.com/article/2458385-ai-uses-throat-vibrations-to-work-out-what-someone-is-trying-to-say/
 https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c
 https://www.wired.com/story/elon-musk-government-young-engineers/
+https://www.nytimes.com/2024/12/23/health/mpox-spread-congo-kinshasa.html
 
 # Internet Archive
 https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary
