@@ -5,6 +5,7 @@ https://www.newscientist.com/article/2458385-ai-uses-throat-vibrations-to-work-o
 https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c
 https://www.wired.com/story/elon-musk-government-young-engineers/
 https://www.nytimes.com/2024/12/23/health/mpox-spread-congo-kinshasa.html
+https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/
 
 # Internet Archive
 https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary

@@ -10,6 +10,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=archive.is
 // @match        https://archive.is/*
 // @match        https://archive.ph/*
+// @match        https://www.404media.co/*
 // @match        https://www.bloomberg.com/*
 // @match        https://www.economist.com/*
 // @match        https://www.ft.com/*
