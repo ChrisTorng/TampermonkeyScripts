@@ -12,3 +12,6 @@ https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-div
 https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary
 https://www.rawstory.com/laura-loomer-vs-elon-musk/
 https://www.theverge.com/2025/1/15/24343794/google-workspace-ai-features-free
+
+# Previous Internet Archive, now Archive Today, waiting for next sample
+https://www.newyorker.com/news/the-lede/geothermal-power-is-a-climate-moon-shot-beneath-our-feet
