@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-02-05_1.2.4
+// @version      2025-02-20_1.2.5
 // @description  Automatically redirect paywall articles to Archive Today
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,11 +10,13 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=archive.is
 // @match        https://archive.is/*
 // @match        https://archive.ph/*
+// @match        https://www.404media.co/*
 // @match        https://www.bloomberg.com/*
 // @match        https://www.economist.com/*
 // @match        https://www.ft.com/*
 // @match        https://www.newscientist.com/*
 // @match        https://www.nytimes.com/*
+// @match        https://www.theatlantic.com/*
 // @match        https://www.wired.com/*
 // @match        https://www.wsj.com/*
 // @grant        none
