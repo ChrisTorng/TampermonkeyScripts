@@ -11,3 +11,6 @@ https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary
 https://www.rawstory.com/laura-loomer-vs-elon-musk/
 https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091/
 https://www.theverge.com/2025/1/15/24343794/google-workspace-ai-features-free
+
+# None
+https://www.nature.com/articles/d41586-025-00264-3
