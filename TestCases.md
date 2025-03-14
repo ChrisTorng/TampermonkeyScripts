@@ -2,6 +2,7 @@
 https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/
 https://www.economist.com/interactive/christmas-specials/2024/12/21/the-chart-of-everything
 https://www.ft.com/content/a3eeb268-5daa-4525-858b-eab93b28d3c7
+https://www.nature.com/articles/d41586-025-00648-5
 https://www.newscientist.com/article/2458385-ai-uses-throat-vibrations-to-work-out-what-someone-is-trying-to-say/
 https://www.nytimes.com/2024/12/23/health/mpox-spread-congo-kinshasa.html
 https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091/
