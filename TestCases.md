@@ -12,6 +12,7 @@ https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-div
 # Internet Archive
 https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary
 https://www.rawstory.com/laura-loomer-vs-elon-musk/
+https://www.smh.com.au/business/the-economy/trump-is-changing-the-narratives-on-both-sides-of-the-atlantic-20250310-p5liav.html
 https://www.theverge.com/2025/1/15/24343794/google-workspace-ai-features-free
 
 # Previous Internet Archive, now Archive Today, waiting for next sample
