@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-03-14_1.2.6
+// @version      2025-03-18_1.2.7
 // @description  Automatically redirect paywall articles to Archive Today
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -16,6 +16,7 @@
 // @match        https://www.ft.com/*
 // @match        https://www.nature.com/*
 // @match        https://www.newscientist.com/*
+// @match        https://www.newyorker.com/*
 // @match        https://www.nytimes.com/*
 // @match        https://www.theatlantic.com/*
 // @match        https://www.wired.com/*
