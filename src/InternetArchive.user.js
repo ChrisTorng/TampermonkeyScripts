@@ -28,6 +28,20 @@
 // @match        https://www.theverge.com/*
 // @match        https://www.washingtonpost.com/*
 /// @match        https://www.wsj.com/*
+
+/// from ArchiveToday.user.js, because of human check may loses target URL
+// @match        https://www.404media.co/*
+// @match        https://www.bloomberg.com/*
+// @match        https://www.economist.com/*
+// @match        https://www.ft.com/*
+// @match        https://www.nature.com/*
+// @match        https://www.newscientist.com/*
+// @match        https://www.newyorker.com/*
+// @match        https://www.nytimes.com/*
+// @match        https://www.theatlantic.com/*
+// @match        https://www.wired.com/*
+// @match        https://www.wsj.com/*
+
 // @grant        none
 // ==/UserScript==
 
