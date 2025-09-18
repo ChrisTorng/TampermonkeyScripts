@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-02-02_1.1.2
+// @version      2025-09-17_1.2.0
 // @description  Provide all sites go to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -20,11 +20,178 @@
         return;
     }
 
-    const hostname = window.location.hostname;
+    const hostname = window.location.hostname.toLowerCase();
+    const archiveTodayHosts = new Set([
+        'archive.is',
+        'archive.ph',
+        'www.404media.co',
+        'www.bloomberg.com',
+        'www.economist.com',
+        'www.ft.com',
+        'www.nature.com',
+        'www.newscientist.com',
+        'www.newyorker.com',
+        'www.nytimes.com',
+        'www.theatlantic.com',
+        'www.wired.com',
+        'www.wsj.com',
+    ]);
+    const isArchiveTodayHost = archiveTodayHosts.has(hostname);
+    const excludedHosts = new Set(['web.archive.org', 'archive.is', 'archive.ph']);
 
-    if (hostname !== 'web.archive.org' &&
-        hostname !== 'archive.is' &&
-        hostname !== 'archive.ph') {
+    if (excludedHosts.has(hostname)) {
+        return;
+    }
+
+    const archiveTodayIconUrl = 'https://www.google.com/s2/favicons?sz=64&domain=archive.is';
+    const archiveTodayIconSymbol = Symbol('archiveTodayIconElement');
+
+    function createArchiveTodayIconWrapper() {
+        const wrapper = document.createElement('span');
+        wrapper.className = 'agi-archive-today-icon';
+        wrapper.style.display = 'inline-flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.marginRight = '4px';
+
+        const icon = document.createElement('img');
+        icon.src = archiveTodayIconUrl;
+        icon.alt = 'Archive Today';
+        icon.style.width = '16px';
+        icon.style.height = '16px';
+        icon.style.borderRadius = '2px';
+        icon.style.display = 'block';
+
+        wrapper.appendChild(icon);
+        return wrapper;
+    }
+
+    function removeArchiveTodayIcon(link) {
+        const existing = link[archiveTodayIconSymbol];
+        if (existing) {
+            if (typeof existing.remove === 'function') {
+                existing.remove();
+            } else if (existing.parentNode) {
+                existing.parentNode.removeChild(existing);
+            }
+            delete link[archiveTodayIconSymbol];
+        }
+    }
+
+    function addArchiveTodayIcon(link) {
+        if (link[archiveTodayIconSymbol]) {
+            return;
+        }
+
+        const wrapper = createArchiveTodayIconWrapper();
+        link.insertBefore(wrapper, link.firstChild);
+        link[archiveTodayIconSymbol] = wrapper;
+    }
+
+    function updateArchiveTodayIcon(link) {
+        if (!(link instanceof HTMLAnchorElement)) {
+            return;
+        }
+
+        const href = link.getAttribute('href');
+        if (!href) {
+            removeArchiveTodayIcon(link);
+            return;
+        }
+
+        let url;
+        try {
+            url = new URL(href, document.baseURI);
+        } catch (error) {
+            removeArchiveTodayIcon(link);
+            return;
+        }
+
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            removeArchiveTodayIcon(link);
+            return;
+        }
+
+        const linkHost = url.hostname.toLowerCase();
+        if (archiveTodayHosts.has(linkHost)) {
+            addArchiveTodayIcon(link);
+        } else {
+            removeArchiveTodayIcon(link);
+        }
+    }
+
+    function updateArchiveTodayIconsInRoot(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') {
+            return;
+        }
+
+        const links = root.querySelectorAll('a[href]');
+        for (let i = 0; i < links.length; i += 1) {
+            updateArchiveTodayIcon(links[i]);
+        }
+    }
+
+    function processAddedNode(node) {
+        if (!node || node.nodeType !== Node.ELEMENT_NODE) {
+            return;
+        }
+
+        const element = node;
+        const tagName = element.tagName ? element.tagName.toUpperCase() : '';
+        if (tagName === 'A' && element.hasAttribute('href')) {
+            updateArchiveTodayIcon(element);
+        }
+
+        updateArchiveTodayIconsInRoot(element);
+    }
+
+    function initializeArchiveTodayLinkIcons() {
+        if (!document.body) {
+            return;
+        }
+
+        updateArchiveTodayIconsInRoot(document);
+
+        const observer = new MutationObserver((mutationsList) => {
+            for (let i = 0; i < mutationsList.length; i += 1) {
+                const mutation = mutationsList[i];
+                if (mutation.type === 'childList') {
+                    const addedNodes = mutation.addedNodes;
+                    for (let j = 0; j < addedNodes.length; j += 1) {
+                        processAddedNode(addedNodes[j]);
+                    }
+                } else if (mutation.type === 'attributes' &&
+                           mutation.attributeName === 'href' &&
+                           mutation.target &&
+                           mutation.target.tagName &&
+                           mutation.target.tagName.toUpperCase() === 'A') {
+                    updateArchiveTodayIcon(mutation.target);
+                }
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['href'],
+        });
+    }
+
+    function onDocumentReady(callback) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', callback, { once: true });
+        } else {
+            callback();
+        }
+    }
+
+    onDocumentReady(initializeArchiveTodayLinkIcons);
+
+    function createFloatingGoButton() {
+        if (!document.body) {
+            return;
+        }
+
         const goButton = document.createElement('button');
         goButton.textContent = '→';
         goButton.style.cssText = `
@@ -50,13 +217,6 @@
         let currentY;
         let initialX;
         let initialY;
-
-        goButton.addEventListener('mousedown', dragStart);
-        goButton.addEventListener('touchstart', dragStart);
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag);
-        document.addEventListener('mouseup', dragEnd);
-        document.addEventListener('touchend', dragEnd);
 
         function dragStart(e) {
             if (e.target === goButton) {
@@ -100,11 +260,24 @@
             isDragging = false;
         }
 
-        goButton.addEventListener('click', (e) => {
+        goButton.addEventListener('mousedown', dragStart);
+        goButton.addEventListener('touchstart', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('touchend', dragEnd);
+
+        goButton.addEventListener('click', () => {
             if (!hasMoved) {
                 const targetUrl = window.location.href;
-                window.location.href = `https://web.archive.org/${targetUrl}`;
+                if (isArchiveTodayHost) {
+                    window.location.href = `https://archive.is/submit/?url=${targetUrl}`;
+                } else {
+                    window.location.href = `https://web.archive.org/${targetUrl}`;
+                }
             }
         });
     }
+
+    onDocumentReady(createFloatingGoButton);
 })();
