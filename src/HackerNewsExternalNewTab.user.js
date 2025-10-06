@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Hacker News External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2024-06-30_1.0.0
-// @description  Open Hacker News external story links in new tabs and append an icon indicator.
+// @version      2025-01-10_1.1.0
+// @description  Open Hacker News external story links in new tabs, append an icon indicator, and keep focus on the current tab.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsExternalNewTab.user.js
@@ -10,7 +10,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=news.ycombinator.com
 // @match        https://news.ycombinator.com/*
 // @match        https://hackernews.betacat.io/*
-// @grant        none
+// @grant        GM_openInTab
 // ==/UserScript==
 
 (function () {
@@ -22,6 +22,7 @@
     ]);
     const ICON_CLASS_NAME = 'hn-new-tab-icon';
     const PROCESSED_FLAG = 'hnNewTabProcessed';
+    const LISTENER_FLAG = 'hnNewTabListenerAttached';
 
     function ensureStyles() {
         if (document.getElementById('tampermonkey-hn-new-tab-style')) {
@@ -37,14 +38,9 @@
                 justify-content: center;
                 margin-left: 0.35em;
                 font-size: 0.8em;
+                line-height: 1;
                 text-decoration: none;
                 color: inherit;
-            }
-
-            .${ICON_CLASS_NAME} svg {
-                width: 0.9em;
-                height: 0.9em;
-                fill: currentColor;
             }
         `;
         document.head.appendChild(style);
@@ -54,12 +50,7 @@
         const span = document.createElement('span');
         span.className = ICON_CLASS_NAME;
         span.setAttribute('aria-hidden', 'true');
-        span.innerHTML = `
-            <svg viewBox="0 0 24 24" role="presentation">
-                <path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z"></path>
-                <path d="M5 5h5V3H3v7h2V5zm0 14v-5H3v7h7v-2H5zm14 0h-5v2h7v-7h-2v5z"></path>
-            </svg>
-        `;
+        span.textContent = '↗︎';
         return span;
     }
 
@@ -86,7 +77,42 @@
 
     function ensureTargetAttributes(link) {
         link.target = '_blank';
-        link.relList.add('noopener', 'noreferrer');
+
+        if (link.relList && typeof link.relList.add === 'function') {
+            link.relList.add('noopener', 'noreferrer');
+        } else {
+            link.rel = 'noopener noreferrer';
+        }
+    }
+
+    function openInBackgroundTab(url) {
+        if (typeof GM_openInTab === 'function') {
+            GM_openInTab(url, { active: false, insert: true });
+            return;
+        }
+
+        window.open(url, '_blank', 'noopener');
+    }
+
+    function attachClickListener(link) {
+        if (link.dataset[LISTENER_FLAG] === 'true') {
+            return;
+        }
+
+        link.addEventListener('click', (event) => {
+            if (event.defaultPrevented) {
+                return;
+            }
+
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
+            openInBackgroundTab(link.href);
+        });
+
+        link.dataset[LISTENER_FLAG] = 'true';
     }
 
     function processLink(link) {
@@ -95,6 +121,7 @@
         }
 
         ensureTargetAttributes(link);
+        attachClickListener(link);
 
         const icon = createIconElement();
         link.insertAdjacentElement('afterend', icon);
