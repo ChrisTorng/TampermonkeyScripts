@@ -26,5 +26,11 @@
 # ArticlesExternalNewTab
 - https://news.ycombinator.com/
 - https://www.theneurondaily.com/
+- https://www.theneurondaily.com/p/you-can-now-build-agents-and-apps-inside-chatgpt
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913&sms=2CF1F5E2E0B96411
+
+# Coding Diff Mobile Optimizer
+- https://chatgpt.com/codex/tasks/task_e_68e41a320a388322a04ba2f35d096cd7
+- https://github.com/ChrisTorng/TampermonkeyScripts/pull/7/files
+- https://github.com/ChrisTorng/TampermonkeyScripts/commit/267c2b3f52c428e3b68b9560ed165cb21dfa4602

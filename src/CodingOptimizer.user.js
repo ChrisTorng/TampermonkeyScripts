@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Coding Diff Mobile Optimizer
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-07_1.0.0
+// @version      2025-10-07_1.0.1
 // @description  Expand diff code columns on mobile portrait layouts to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
-// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Coding.user.js
-// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Coding.user.js
+// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js
+// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js
 // @match        https://chatgpt.com/codex/*
 // @match        https://github.com/*
 // @grant        none
