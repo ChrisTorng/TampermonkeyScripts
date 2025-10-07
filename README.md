@@ -50,9 +50,9 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 
 Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator.
 
-## Retired Scripts
+## [Coding Diff Mobile Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Coding.user.js)
 
-- `HackerNewsExternalNewTab.user.js` (functionality has been merged into `ArticlesExternalNewTab.user.js`).
+Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/) by stretching file containers edge-to-edge and slimming line number columns.
 
 ## Installation
 
@@ -73,6 +73,8 @@ Ensure external story links on [Hacker News](https://news.ycombinator.com/), [ha
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
+  - [Coding.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Coding.user.js)
+
 
 2. Tampermonkey Install page opened, click [Install] button to install.
 3. Reload the target page.
