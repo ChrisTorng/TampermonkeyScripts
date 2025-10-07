@@ -5,8 +5,8 @@
 // @description  Expand diff code columns on mobile portrait layouts to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
-// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/coding.user.js
-// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/coding.user.js
+// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Coding.user.js
+// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Coding.user.js
 // @match        https://chatgpt.com/codex/*
 // @match        https://github.com/*
 // @grant        none
