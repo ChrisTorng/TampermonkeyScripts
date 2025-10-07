@@ -46,6 +46,14 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 - [PanSci](https://pansci.asia/)
 - [INSIDE](https://www.inside.com.tw/)
 
+## [Articles External New Tab User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
+
+Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator.
+
+## Retired Scripts
+
+- `HackerNewsExternalNewTab.user.js` (functionality has been merged into `ArticlesExternalNewTab.user.js`).
+
 ## Installation
 
 ### Prerequisites:
@@ -64,6 +72,7 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
   - [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
+  - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
 
 2. Tampermonkey Install page opened, click [Install] button to install.
 3. Reload the target page.
