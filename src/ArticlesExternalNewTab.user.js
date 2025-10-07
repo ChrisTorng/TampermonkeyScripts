@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-07_2.0.1
+// @version      2025-10-07_2.0.2
 // @description  Keep article links on supported news hubs opening in background tabs with a ↗︎ indicator.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -87,6 +87,12 @@
         }
 
         if (pageHost === 'www.theneurondaily.com') {
+            const isArticlePage = pagePath.startsWith('/p/');
+
+            if (isArticlePage) {
+                return url.hostname !== 'www.theneurondaily.com';
+            }
+
             return (
                 url.hostname === 'www.theneurondaily.com' &&
                 url.pathname.startsWith('/p/')
