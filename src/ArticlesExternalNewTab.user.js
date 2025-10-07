@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-07_2.0.2
+// @version      2025-10-07_2.0.3
 // @description  Keep article links on supported news hubs opening in background tabs with a ↗︎ indicator.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -124,6 +124,36 @@
         }
     }
 
+    function sanitizeTrackingParameters(link) {
+        const pageHost = window.location.hostname;
+        const pagePath = window.location.pathname || '';
+
+        if (pageHost !== 'www.theneurondaily.com' || !pagePath.startsWith('/p/')) {
+            return;
+        }
+
+        let url;
+        try {
+            url = new URL(link.href, window.location.href);
+        } catch (error) {
+            return;
+        }
+
+        let didModify = false;
+        ['utm_source', 'utm_medium', 'utm_campaign'].forEach((key) => {
+            if (url.searchParams.has(key)) {
+                url.searchParams.delete(key);
+                didModify = true;
+            }
+        });
+
+        if (!didModify) {
+            return;
+        }
+
+        link.href = url.toString();
+    }
+
     function openInBackgroundTab(url) {
         if (typeof GM_openInTab === 'function') {
             GM_openInTab(url, { active: false, insert: true });
@@ -168,6 +198,7 @@
             return;
         }
 
+        sanitizeTrackingParameters(link);
         ensureTargetAttributes(link);
         attachClickListener(link);
         appendIcon(link);
