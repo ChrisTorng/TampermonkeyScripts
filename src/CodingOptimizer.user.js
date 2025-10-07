@@ -17,7 +17,7 @@
 
     const STYLE_ID = 'tm-git-diff-mobile-style';
     const ROOT_CLASS = 'tm-git-diff-mobile';
-    const MOBILE_USER_AGENT_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    const MOBILE_USER_AGENT_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk/i;
     const DIFF_SELECTORS = [
         '.js-diff-table',
         '.diff-view',
@@ -33,7 +33,24 @@
     const orientationQuery = window.matchMedia ? window.matchMedia('(orientation: portrait)') : null;
 
     function isMobileDevice() {
-        return MOBILE_USER_AGENT_REGEX.test(navigator.userAgent);
+        const { userAgent = '', maxTouchPoints = 0, userAgentData } = navigator;
+
+        if (userAgentData && typeof userAgentData.mobile === 'boolean') {
+            if (userAgentData.mobile) {
+                return true;
+            }
+        }
+
+        if (MOBILE_USER_AGENT_REGEX.test(userAgent)) {
+            return true;
+        }
+
+        const maybeTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || maxTouchPoints > 1);
+        if (maybeTouchDevice) {
+            return window.innerWidth <= WIDTH_THRESHOLD || window.innerHeight <= WIDTH_THRESHOLD;
+        }
+
+        return false;
     }
 
     function isPortrait() {
@@ -60,9 +77,17 @@
         styleElement = document.createElement('style');
         styleElement.id = STYLE_ID;
         styleElement.textContent = `
+            .${ROOT_CLASS},
             .${ROOT_CLASS} body {
-                margin-left: 0;
-                margin-right: 0;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+            }
+
+            .${ROOT_CLASS} body {
+                padding-left: max(0px, env(safe-area-inset-left, 0px));
+                padding-right: max(0px, env(safe-area-inset-right, 0px));
             }
 
             .${ROOT_CLASS} .application-main,
@@ -70,52 +95,61 @@
             .${ROOT_CLASS} .container-xl,
             .${ROOT_CLASS} .container-lg,
             .${ROOT_CLASS} .container-md,
+            .${ROOT_CLASS} .container,
+            .${ROOT_CLASS} .Layout,
+            .${ROOT_CLASS} .Layout-main,
+            .${ROOT_CLASS} .Layout-main .container-xl,
             .${ROOT_CLASS} main[role="main"],
             .${ROOT_CLASS} main[data-testid="diff-view"],
             .${ROOT_CLASS} main[data-hpc="diff-view"],
             .${ROOT_CLASS} #diff-view,
             .${ROOT_CLASS} .diff-view,
+            .${ROOT_CLASS} .diff-viewer-component,
+            .${ROOT_CLASS} .diff-viewer,
             .${ROOT_CLASS} .diff-container,
-            .${ROOT_CLASS} .js-diff-progressive-container {
+            .${ROOT_CLASS} .js-diff-progressive-container,
+            .${ROOT_CLASS} .react-diff-viewer {
                 max-width: none !important;
                 width: 100% !important;
-                padding-left: 8px !important;
-                padding-right: 8px !important;
-                box-sizing: border-box;
-            }
-
-            .${ROOT_CLASS} .Layout-main,
-            .${ROOT_CLASS} .Layout-main .container-xl,
-            .${ROOT_CLASS} .Layout-main .container-lg,
-            .${ROOT_CLASS} .Layout-main .container-md {
-                padding-left: 0 !important;
-                padding-right: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
+                padding-right: max(4px, env(safe-area-inset-right, 0px)) !important;
+                box-sizing: border-box !important;
             }
 
             .${ROOT_CLASS} .file,
             .${ROOT_CLASS} .file[data-file-type],
             .${ROOT_CLASS} .diff-table-container,
+            .${ROOT_CLASS} .file .js-file-content,
             .${ROOT_CLASS} .diff-view .diff-file,
-            .${ROOT_CLASS} .diff-viewer-component .diff-file {
+            .${ROOT_CLASS} .diff-viewer-component .diff-file,
+            .${ROOT_CLASS} [data-testid="diff-viewer"] .diff-file,
+            .${ROOT_CLASS} [data-testid="diff-viewer"] [data-testid="diff-container"],
+            .${ROOT_CLASS} .diff-grid,
+            .${ROOT_CLASS} .diff-file,
+            .${ROOT_CLASS} .diff-content {
                 margin-left: 0 !important;
                 margin-right: 0 !important;
                 width: 100% !important;
-                border-radius: 8px !important;
-                overflow: hidden;
+                border-radius: 0 !important;
+                box-shadow: none !important;
             }
 
             .${ROOT_CLASS} .blob-wrapper,
             .${ROOT_CLASS} .file .data,
             .${ROOT_CLASS} .file .js-file-content,
             .${ROOT_CLASS} .diff-view .diff-table,
-            .${ROOT_CLASS} .diff-table {
+            .${ROOT_CLASS} .diff-table,
+            .${ROOT_CLASS} .diff-grid,
+            .${ROOT_CLASS} [data-testid="diff-viewer"] table {
                 width: 100% !important;
             }
 
             .${ROOT_CLASS} table.diff-table,
             .${ROOT_CLASS} .diff-table,
             .${ROOT_CLASS} .js-file-line-container,
-            .${ROOT_CLASS} .diff-grid {
+            .${ROOT_CLASS} [data-testid="diff-viewer"] table {
                 table-layout: fixed !important;
             }
 
@@ -125,23 +159,28 @@
             .${ROOT_CLASS} td.blob-num-context,
             .${ROOT_CLASS} td.blob-num-hunk,
             .${ROOT_CLASS} .diff-line-number,
-            .${ROOT_CLASS} [class*="line-number"] {
-                width: 2.6rem !important;
-                min-width: 2.6rem !important;
+            .${ROOT_CLASS} [class*="line-number"],
+            .${ROOT_CLASS} [data-testid="diff-line-number"],
+            .${ROOT_CLASS} [data-testid="diff-gutter"] {
+                width: max(2rem, calc(3.6ch + 6px)) !important;
+                min-width: max(2rem, calc(3.6ch + 6px)) !important;
                 padding-left: 2px !important;
                 padding-right: 2px !important;
-                box-sizing: border-box;
+                box-sizing: border-box !important;
                 text-align: right !important;
             }
 
             .${ROOT_CLASS} td.blob-code,
             .${ROOT_CLASS} .diff-line-content,
             .${ROOT_CLASS} [class*="line-content"],
+            .${ROOT_CLASS} [data-testid="diff-line"] pre,
             .${ROOT_CLASS} pre code,
-            .${ROOT_CLASS} code[class*="diff"] {
+            .${ROOT_CLASS} code[class*="diff"],
+            .${ROOT_CLASS} [data-testid="diff-line-content"] {
                 padding-left: 8px !important;
                 padding-right: 8px !important;
-                box-sizing: border-box;
+                box-sizing: border-box !important;
+                white-space: pre !important;
             }
 
             .${ROOT_CLASS} .diff-table tr,
@@ -149,9 +188,11 @@
                 display: table-row;
             }
 
-            .${ROOT_CLASS} .diff-view pre,
-            .${ROOT_CLASS} .diff-view code {
-                white-space: pre;
+            .${ROOT_CLASS} .file-header,
+            .${ROOT_CLASS} .file-actions,
+            .${ROOT_CLASS} .file-info {
+                padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
+                padding-right: max(4px, env(safe-area-inset-right, 0px)) !important;
             }
         `;
 
