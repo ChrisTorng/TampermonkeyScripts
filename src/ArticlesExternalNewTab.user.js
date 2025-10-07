@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-07_2.0.0
+// @version      2025-10-07_2.0.1
 // @description  Keep article links on supported news hubs opening in background tabs with a ↗︎ indicator.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -22,8 +22,6 @@
     const INTERNAL_HOSTS = new Set([
         'news.ycombinator.com',
         'hackernews.betacat.io',
-        'www.theneurondaily.com',
-        'tam.gov.taipei',
     ]);
     const STYLE_ID = 'tampermonkey-articles-new-tab-style';
     const ICON_CLASS_NAME = 'articles-new-tab-icon';
@@ -69,17 +67,45 @@
         return link.dataset[PROCESSED_FLAG] === 'true';
     }
 
-    function isExternalLink(link) {
+    function isLinkEligible(link) {
         if (!link || !link.href) {
             return false;
         }
 
+        let url;
         try {
-            const url = new URL(link.href, window.location.href);
-            return !INTERNAL_HOSTS.has(url.hostname);
+            url = new URL(link.href, window.location.href);
         } catch (error) {
             return false;
         }
+
+        const pageHost = window.location.hostname;
+        const pagePath = window.location.pathname || '';
+
+        if (pageHost === 'news.ycombinator.com' || pageHost === 'hackernews.betacat.io') {
+            return !INTERNAL_HOSTS.has(url.hostname);
+        }
+
+        if (pageHost === 'www.theneurondaily.com') {
+            return (
+                url.hostname === 'www.theneurondaily.com' &&
+                url.pathname.startsWith('/p/')
+            );
+        }
+
+        if (pageHost === 'tam.gov.taipei') {
+            const isPhotoPage = pagePath.startsWith('/News_Photo.aspx');
+            const isLinkPicPage = pagePath.startsWith('/News_Link_pic.aspx');
+
+            if (isPhotoPage || isLinkPicPage) {
+                return (
+                    url.hostname === 'tam.gov.taipei' &&
+                    url.pathname.startsWith('/News_Content.aspx')
+                );
+            }
+        }
+
+        return false;
     }
 
     function ensureTargetAttributes(link) {
@@ -132,7 +158,7 @@
     }
 
     function processLink(link) {
-        if (hasBeenProcessed(link) || !isExternalLink(link)) {
+        if (hasBeenProcessed(link) || !isLinkEligible(link)) {
             return;
         }
 

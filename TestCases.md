@@ -22,3 +22,9 @@
 
 # None
 - https://www.nature.com/articles/d41586-025-00264-3
+
+# ArticlesExternalNewTab
+- https://news.ycombinator.com/
+- https://www.theneurondaily.com/
+- https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801
+- https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913&sms=2CF1F5E2E0B96411
