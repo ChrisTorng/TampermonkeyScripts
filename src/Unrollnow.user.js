@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         X/Twitter to Unrollnow
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-17_1.2.0
+// @version      2025-10-17_1.2.1
 // @description  Redirect X/Twitter links to Unrollnow
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -39,7 +39,13 @@
 
         sessionStorage.setItem(storageKey, tweetId);
 
-        // 使用 assign 以保留前一頁的歷史紀錄，便於使用者返回
+        try {
+            // 先推入一個 history state，避免即時導向造成無法返回上一頁
+            history.pushState({ redirectedByUnrollnow: true }, '', window.location.href);
+        } catch (error) {
+            console.warn('Unable to push history state before redirect', error);
+        }
+
         window.location.assign(unrollnowUrl);
     }
 })();
