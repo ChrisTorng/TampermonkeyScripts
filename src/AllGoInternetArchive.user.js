@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-09-17_1.2.0
+// @version      2025-11-02_1.2.1
 // @description  Provide all sites go to Internet Archive
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -195,7 +195,7 @@
         const goButton = document.createElement('button');
         goButton.textContent = '→';
         goButton.style.cssText = `
-            position: fixed;
+            position: absolute;
             top: 70px;
             right: 0px;
             z-index: 2147483647;
@@ -247,8 +247,11 @@
                 }
 
                 // 防止按鈕拖出視窗
-                currentX = Math.min(Math.max(currentX, 0), window.innerWidth - goButton.offsetWidth);
-                currentY = Math.min(Math.max(currentY, 0), window.innerHeight - goButton.offsetHeight);
+                const maxX = Math.max(document.documentElement.scrollWidth, window.innerWidth) - goButton.offsetWidth;
+                const maxY = Math.max(document.documentElement.scrollHeight, window.innerHeight) - goButton.offsetHeight;
+
+                currentX = Math.min(Math.max(currentX, 0), maxX);
+                currentY = Math.min(Math.max(currentY, 0), maxY);
 
                 goButton.style.left = currentX + 'px';
                 goButton.style.top = currentY + 'px';
