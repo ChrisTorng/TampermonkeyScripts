@@ -30,19 +30,55 @@
         }
     }
 
-    // 檢查 DOM 中是否有 Medium 的特徵標記（快速檢查）
-    function hasMediumDOMFeatures() {
-        // 檢查是否有 Medium 特有的 meta tags
-        const mediumMetaTags = [
-            'meta[property="al:android:app_name"][content="Medium"]',
+    // 檢查 DOM 中是否有 Medium 的特徵標記
+    function isMediumSite() {
+        // 1. 檢查 App Links meta tags (Medium 特有)
+        const appLinkChecks = [
             'meta[property="al:ios:app_name"][content="Medium"]',
-            'meta[property="al:android:url"]',
-            'meta[property="al:ios:url"]'
+            'meta[property="al:android:app_name"][content="Medium"]',
+            'meta[name="twitter:app:name:iphone"][content="Medium"]',
+            'meta[name="twitter:app:name:ipad"][content="Medium"]'
         ];
 
-        for (const selector of mediumMetaTags) {
+        for (const selector of appLinkChecks) {
+            if (document.querySelector(selector)) {
+                return true;
+            }
+        }
+
+        // 2. 檢查 App URL schemes (必須包含 medium://)
+        const appUrlChecks = [
+            'meta[property="al:ios:url"]',
+            'meta[property="al:android:url"]',
+            'meta[name="twitter:app:url:iphone"]'
+        ];
+
+        for (const selector of appUrlChecks) {
             const element = document.querySelector(selector);
-            if (element && element.getAttribute('content')?.includes('medium')) {
+            const content = element?.getAttribute('content') || '';
+            if (content.startsWith('medium://')) {
+                return true;
+            }
+        }
+
+        // 3. 檢查 Twitter App ID (Medium 的 iOS app ID)
+        const twitterAppId = document.querySelector('meta[name="twitter:app:id:iphone"]');
+        if (twitterAppId?.getAttribute('content') === '828256236') {
+            return true;
+        }
+
+        // 4. 檢查是否有 Medium 特有的 data attributes
+        if (document.querySelector('[data-post-id]') &&
+            document.querySelector('[data-collection-id]')) {
+            return true;
+        }
+
+        // 5. 檢查頁面中是否有 Medium 的 script bundles
+        const scripts = document.querySelectorAll('script[src]');
+        for (const script of scripts) {
+            const src = script.getAttribute('src') || '';
+            if (src.includes('medium.com/_/stat') ||
+                src.includes('cdn-client.medium.com')) {
                 return true;
             }
         }
@@ -50,26 +86,8 @@
         return false;
     }
 
-    // 檢查 HTTP header 是否有 medium-missing-time（自訂網域的 Medium 網站）
-    async function hasMediumMissingTimeHeader() {
-        try {
-            // 發送 HEAD 請求來檢查 headers（避免下載整個頁面）
-            const response = await fetch(window.location.href, {
-                method: 'HEAD',
-                cache: 'no-cache'
-            });
-
-            // 檢查是否有 medium-missing-time header
-            return response.headers.has('medium-missing-time');
-        } catch (error) {
-            // 如果 fetch 失敗（例如 CORS 問題），回退到 DOM 檢查
-            console.log('Failed to check headers:', error);
-            return false;
-        }
-    }
-
     // 檢查是否應該執行自動捲動
-    async function shouldAutoScroll() {
+    function shouldAutoScroll() {
         const hostname = window.location.hostname;
         const pathname = window.location.pathname;
 
@@ -89,13 +107,8 @@
             return true;
         }
 
-        // 3. 快速檢查 DOM 中是否有 Medium 特徵
-        if (hasMediumDOMFeatures()) {
-            return true;
-        }
-
-        // 4. 檢查 HTTP header 是否有 medium-missing-time（自訂網域的 Medium 網站）
-        if (await hasMediumMissingTimeHeader()) {
+        // 3. 檢查 DOM 中是否有 Medium 特徵標記（自訂網域的 Medium 網站）
+        if (isMediumSite()) {
             return true;
         }
 
@@ -103,8 +116,8 @@
     }
 
     // 確保在頁面完全載入後執行
-    async function init() {
-        if (await shouldAutoScroll()) {
+    function init() {
+        if (shouldAutoScroll()) {
             autoScroll();
         }
     }
