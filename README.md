@@ -54,6 +54,15 @@ Ensure external story links on [Hacker News](https://news.ycombinator.com/), [ha
 
 Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/) by stretching file containers edge-to-edge and slimming line number columns.
 
+## [Medium Auto Scroll User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
+
+Automatically scroll to bottom then back to top on [Medium](https://medium.com/) sites to trigger full article content loading. Also supports sites redirected from Medium's global-identity-2 redirect URLs.
+
+- **Test Case 1 - Direct Medium**: [https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b](https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b)
+- **Test Case 2 - Medium Redirect**: [https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950](https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950)
+
+See [Test Cases](README/TestCases.md) for more details.
+
 ## Installation
 
 ### Prerequisites:
@@ -74,6 +83,7 @@ Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT 
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
+  - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 
 2. Tampermonkey Install page opened, click [Install] button to install.
