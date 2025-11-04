@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Medium Auto Scroll
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-04_1.0
+// @version      2025-11-04_1.1
 // @description  Auto scroll to bottom then back to top on Medium sites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,6 +10,14 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=medium.com
 // @match        *://*.medium.com/*
 // @match        *://medium.com/*
+// @match        *://uxdesign.cc/*
+// @match        *://towardsdatascience.com/*
+// @match        *://betterprogramming.pub/*
+// @match        *://levelup.gitconnected.com/*
+// @match        *://javascript.plainenglish.io/*
+// @match        *://hackernoon.com/*
+// @match        *://blog.angular.io/*
+// @match        *://blog.logrocket.com/*
 // @grant        none
 // ==/UserScript==
 

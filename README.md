@@ -50,6 +50,13 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 
 Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator.
 
+## [Medium Auto Scroll User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
+
+Automatically scroll to the bottom and back to the top when loading [Medium](https://medium.com/) articles to trigger lazy-loaded content.
+
+- **Test on** [https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b](https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b)
+- **Also works on** Medium custom domains like [uxdesign.cc](https://uxdesign.cc/)
+
 ## [Coding Diff Mobile Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
 Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/) by stretching file containers edge-to-edge and slimming line number columns.
@@ -73,6 +80,7 @@ Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT 
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
+  - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
 
