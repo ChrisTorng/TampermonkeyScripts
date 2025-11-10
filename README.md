@@ -46,6 +46,10 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 - [PanSci](https://pansci.asia/)
 - [INSIDE](https://www.inside.com.tw/)
 
+## [Fix Floating Elements User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
+
+Automatically convert floating toolbars and sticky overlays into scrolling elements so they no longer block the reading area. Currently optimized for [What is Intelligence?](https://whatisintelligence.antikythera.org/), with an easy configuration structure for future sites.
+
 ## [Articles External New Tab User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
 
 Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator.
@@ -81,6 +85,7 @@ See [Test Cases](README/TestCases.md) for more details.
   - [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
+  - [FixFloating.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
