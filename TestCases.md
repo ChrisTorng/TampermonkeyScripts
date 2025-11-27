@@ -1,3 +1,6 @@
+# RedirectX
+- https://x.com/cocktailpeanut/status/1860756706357022812
+
 # Archive Today
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/
 - https://www.economist.com/interactive/christmas-specials/2024/12/21/the-chart-of-everything
