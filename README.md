@@ -2,12 +2,12 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
-## [Unrollnow User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js)
+## [RedirectX User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
 
-Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Unrollnow](https://unrollnow.com/) for easy read long Twitter threads. Supports going back to original X/Twitter page.
+Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Nitter](https://nitter.net/) for lightweight viewing, while still allowing you to go back to the original X/Twitter page.
 
 - **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
-- **Redirected to** [https://unrollnow.com/status/1860756706357022812](https://unrollnow.com/status/1860756706357022812)
+- **Redirected to** [https://nitter.net/cocktailpeanut/status/1860756706357022812](https://nitter.net/cocktailpeanut/status/1860756706357022812)
 
 ## [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
@@ -65,7 +65,7 @@ Automatically scroll to bottom then back to top on [Medium](https://medium.com/)
 - **Test Case 1 - Direct Medium**: [https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b](https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b)
 - **Test Case 2 - Medium Redirect**: [https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950](https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950)
 
-See [Test Cases](README/TestCases.md) for more details.
+See [Test Cases](TestCases.md) for more details.
 
 ## Installation
 
@@ -78,7 +78,7 @@ See [Test Cases](README/TestCases.md) for more details.
 
 1. Click anyone you need:
 
-  - [Unrollnow.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Unrollnow.user.js)
+  - [RedirectX.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
   - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
   - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
