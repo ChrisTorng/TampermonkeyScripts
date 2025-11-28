@@ -49,8 +49,9 @@
     function createArchiveTodayIconWrapper() {
         const wrapper = document.createElement('span');
         wrapper.className = 'agi-archive-today-icon';
-        wrapper.style.display = 'inline-flex';
-        wrapper.style.alignItems = 'center';
+        wrapper.style.display = 'inline-block';
+        wrapper.style.verticalAlign = 'middle';
+        wrapper.style.lineHeight = '1';
         wrapper.style.marginRight = '4px';
 
         const icon = document.createElement('img');
