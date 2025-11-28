@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Medium Auto Scroll
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-04_3.0
+// @version      2025-11-28_3.1
 // @description  Auto scroll to bottom then back to top on Medium sites, custom domain Medium sites, and sites redirected from Medium
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
