@@ -52,8 +52,8 @@
         wrapper.style.display = 'inline-block';
         wrapper.style.verticalAlign = 'middle';
         wrapper.style.lineHeight = '1';
-        wrapper.style.marginRight = '4px';
-
+        wrapper.style.margin = '0 4px';
+        
         const icon = document.createElement('img');
         icon.src = archiveTodayIconUrl;
         icon.alt = 'Archive Today';
@@ -61,6 +61,7 @@
         icon.style.height = '16px';
         icon.style.borderRadius = '2px';
         icon.style.display = 'block';
+        icon.style.margin = '0';
 
         wrapper.appendChild(icon);
         return wrapper;
