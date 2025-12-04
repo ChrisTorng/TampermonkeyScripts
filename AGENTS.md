@@ -1,26 +1,14 @@
-# 專案開發指南 (AGENTS.md)
+# Project Agent Guide (AGENTS.md)
 
-本專案匯集了各類 TamperMonkey 腳本。為了維護專案品質與一致性，請 AI 代理人 (Agents) 與開發者務必遵守以下作業規範。
+This repository hosts various Tampermonkey user scripts. Follow these rules to keep them consistent.
 
-## 1. 腳本版本控管
+## 1. Script versioning
+- Whenever any `.user.js` script changes, **update its metadata `@version`**.
+- **Format**: `YYYY-MM-DD_Major.Minor.Patch` (e.g., `2025-11-30_1.0.0`). Fetch the current date programmatically; do not guess.
 
-當任何 `.user.js` 腳本內容有異動時，**必須**更新其 Metadata 區塊中的 `@version`。
+## 2. Documentation sync
+- For every script addition, update, or removal, review and adjust **[README.md](README.md)** so the script list and descriptions stay accurate.
+- Update **[TestCases.md](TestCases.md)** when site-specific scripts change so their test URLs remain aligned. **Site-agnostic scripts do not require TestCases entries.**
 
-*   **版本號格式**：`YYYY-MM-DD_Major.Minor.Patch`
-    *   `YYYY-MM-DD`: 西元年份-月份-日期 (必須使用指令或程式碼確實抓取當日日期，不可手動猜測)
-    *   `Major.Minor.Patch`: 語意化版本號 (例如 `1.2.0`)
-*   **範例**：若今日為 2025 年 11 月 30 日，版本號應為 `2025-11-30_1.0.0`。
-
-## 2. 文件同步更新
-
-凡涉及腳本的 **新增**、**修改** 或 **刪除**，必須同步檢查並更新以下文件：
-
-*   **[README.md](README.md)**
-    *   確保腳本清單與描述是最新的。
-    *   若為新腳本，請加入列表與簡介。
-    *   若為刪除腳本，請從列表中移除。
-*   **[TestCases.md](TestCases.md)**
-    *   對應腳本的測試案例需同步增刪修。
-    *   確保測試網址 (Test URLs) 有效且符合腳本作用範圍。
-
-請嚴格遵守以上事項，以確保使用者能獲得正確的版本與資訊。
+## 3. Language
+- All code, comments, and documentation in this repository must be written in **English**.
