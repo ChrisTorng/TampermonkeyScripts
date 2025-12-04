@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-04_1.1.0
-// @description  Display a fixed horizontal indicator at the top of every page that highlights current horizontal scroll position and viewport width with a minimum visible width, optimized for touch-friendly layouts.
+// @version      2025-12-04_1.2.0
+// @description  Display a fixed horizontal indicator at the top of every page that highlights current vertical scroll position and visible height with a minimum visible width, optimized for touch-friendly layouts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -17,9 +17,9 @@
 
     const STYLE_ID = 'tm-scroll-indicator-style';
     const BAR_CONTAINER_ID = 'tm-scroll-indicator';
-    const BAR_HEIGHT = 8;
-    const MIN_VIEWPORT_WIDTH_PX = 28;
-    const UPDATE_INTERVAL_MS = 100;
+    const BAR_HEIGHT = 6;
+    const MIN_VIEWPORT_WIDTH_PX = 24;
+    const UPDATE_INTERVAL_MS = 80;
 
     let styleElement = null;
     let containerElement = null;
@@ -43,19 +43,19 @@
                 left: 0;
                 right: 0;
                 z-index: 2147483647;
-                padding: 4px calc(8px + env(safe-area-inset-right, 0px)) 0 calc(8px + env(safe-area-inset-left, 0px));
+                padding: env(safe-area-inset-top, 0px) calc(8px + env(safe-area-inset-right, 0px)) 0 calc(8px + env(safe-area-inset-left, 0px));
                 box-sizing: border-box;
                 pointer-events: none;
-                mix-blend-mode: normal;
             }
 
             #${BAR_CONTAINER_ID} .tm-track {
                 position: relative;
                 width: 100%;
                 height: ${BAR_HEIGHT}px;
-                background: rgba(0, 0, 0, 0.14);
+                background: rgba(0, 0, 0, 0.22);
                 border-radius: ${BAR_HEIGHT / 2}px;
                 overflow: hidden;
+                box-shadow: 0 0 2px rgba(0, 0, 0, 0.15);
             }
 
             #${BAR_CONTAINER_ID} .tm-progress {
@@ -72,9 +72,9 @@
                 top: 1px;
                 height: ${BAR_HEIGHT - 2}px;
                 width: ${MIN_VIEWPORT_WIDTH_PX}px;
-                background: linear-gradient(90deg, rgba(255, 193, 7, 0.82), rgba(255, 160, 0, 0.9));
+                background: linear-gradient(90deg, rgba(255, 193, 7, 0.86), rgba(255, 160, 0, 0.92));
                 border-radius: ${(BAR_HEIGHT - 2) / 2}px;
-                box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+                box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
             }
         `;
 
@@ -127,11 +127,13 @@
         }
 
         const docEl = document.documentElement;
+        const body = document.body;
         const trackWidth = trackElement.clientWidth;
-        const fullWidth = docEl.scrollWidth || trackWidth || 1;
-        const maxScrollLeft = Math.max(0, fullWidth - window.innerWidth);
-        const scrollRatio = maxScrollLeft > 0 ? docEl.scrollLeft / maxScrollLeft : 0;
-        const viewportRatio = fullWidth > 0 ? window.innerWidth / fullWidth : 1;
+        const fullHeight = Math.max(docEl.scrollHeight, body ? body.scrollHeight : 0, docEl.clientHeight);
+        const maxScrollTop = Math.max(0, fullHeight - window.innerHeight);
+        const currentScrollTop = window.pageYOffset || docEl.scrollTop || (body ? body.scrollTop : 0);
+        const scrollRatio = maxScrollTop > 0 ? currentScrollTop / maxScrollTop : 0;
+        const viewportRatio = fullHeight > 0 ? window.innerHeight / fullHeight : 1;
         const viewportWidthPx = Math.max(MIN_VIEWPORT_WIDTH_PX, Math.min(trackWidth, Math.round(viewportRatio * trackWidth)));
         const availableSpace = Math.max(0, trackWidth - viewportWidthPx);
         const viewportLeft = Math.min(availableSpace, Math.round(scrollRatio * availableSpace));
