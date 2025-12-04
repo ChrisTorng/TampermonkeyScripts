@@ -60,7 +60,7 @@ Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT 
 
 ## [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
 
-Show a subtle, fixed indicator at the top of every page to visualize your current vertical scroll position and visible height. The bar hugs the top edge with a minimum visible width so it remains noticeable without blocking content, even on small mobile viewports.
+Show a thin, fixed horizontal indicator at the top of every page to visualize your current vertical scroll position and viewport height. A minimum visible width keeps the indicator noticeable even on very long pages, the layout stays touch-friendly for mobile users, and the bar tracks the visual viewport so it remains visible when browser UI chrome expands or collapses on mobile.
 
 ## [Medium Auto Scroll User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
