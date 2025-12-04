@@ -58,6 +58,10 @@ Ensure external story links on [Hacker News](https://news.ycombinator.com/), [ha
 
 Maximize the readable area of Git diffs on mobile portrait layouts for [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/) by stretching file containers edge-to-edge and slimming line number columns.
 
+## [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
+
+Show a subtle, fixed indicator at the top of every page to visualize your current vertical scroll position and visible height. The bar hugs the top edge with a minimum visible width so it remains noticeable without blocking content, even on small mobile viewports.
+
 ## [Medium Auto Scroll User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 Automatically scroll to bottom then back to top on [Medium](https://medium.com/) sites to trigger full article content loading. Also supports sites redirected from Medium's global-identity-2 redirect URLs.
@@ -88,6 +92,7 @@ See [Test Cases](TestCases.md) for more details.
   - [FixFloating.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
+  - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 
