@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Coding Diff Mobile Optimizer
+// @name         Coding Diff Optimizer
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-07_1.0.1
-// @description  Expand diff code columns on mobile portrait layouts to maximize reading space on ChatGPT Codex and GitHub.
+// @version      2025-12-05_1.0.2
+// @description  Expand diff code columns to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js
@@ -15,9 +15,8 @@
 (function () {
     'use strict';
 
-    const STYLE_ID = 'tm-git-diff-mobile-style';
-    const ROOT_CLASS = 'tm-git-diff-mobile';
-    const MOBILE_USER_AGENT_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Silk/i;
+    const STYLE_ID = 'tm-git-diff-optimizer-style';
+    const ROOT_CLASS = 'tm-git-diff-optimizer';
     const DIFF_SELECTORS = [
         '.js-diff-table',
         '.diff-view',
@@ -26,44 +25,9 @@
         '[data-testid="diff-viewer"]',
         '[data-hpc="diff-viewer"]'
     ];
-    const WIDTH_THRESHOLD = 920;
 
     let styleElement = null;
     let rafToken = null;
-    const orientationQuery = window.matchMedia ? window.matchMedia('(orientation: portrait)') : null;
-
-    function isMobileDevice() {
-        const { userAgent = '', maxTouchPoints = 0, userAgentData } = navigator;
-
-        if (userAgentData && typeof userAgentData.mobile === 'boolean') {
-            if (userAgentData.mobile) {
-                return true;
-            }
-        }
-
-        if (MOBILE_USER_AGENT_REGEX.test(userAgent)) {
-            return true;
-        }
-
-        const maybeTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || maxTouchPoints > 1);
-        if (maybeTouchDevice) {
-            return window.innerWidth <= WIDTH_THRESHOLD || window.innerHeight <= WIDTH_THRESHOLD;
-        }
-
-        return false;
-    }
-
-    function isPortrait() {
-        if (orientationQuery && typeof orientationQuery.matches === 'boolean') {
-            return orientationQuery.matches;
-        }
-
-        return window.innerHeight >= window.innerWidth;
-    }
-
-    function hasNarrowViewport() {
-        return window.innerWidth <= WIDTH_THRESHOLD;
-    }
 
     function hasDiffContent() {
         return DIFF_SELECTORS.some((selector) => document.querySelector(selector));
@@ -203,7 +167,7 @@
     function updateState() {
         rafToken = null;
 
-        const shouldEnable = isMobileDevice() && (isPortrait() || hasNarrowViewport()) && hasDiffContent();
+        const shouldEnable = hasDiffContent();
         const root = document.documentElement;
 
         if (shouldEnable) {
@@ -237,17 +201,6 @@
 
     function init() {
         scheduleUpdate();
-        window.addEventListener('resize', scheduleUpdate, { passive: true });
-
-        if (orientationQuery) {
-            const handler = scheduleUpdate;
-            if (typeof orientationQuery.addEventListener === 'function') {
-                orientationQuery.addEventListener('change', handler);
-            } else if (typeof orientationQuery.addListener === 'function') {
-                orientationQuery.addListener(handler);
-            }
-        }
-
         observeDiffChanges();
     }
 
