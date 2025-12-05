@@ -28,6 +28,7 @@
 
 # ArticlesExternalNewTab
 - https://news.ycombinator.com/
+- https://hackernews.betacat.io/
 - https://www.theneurondaily.com/
 - https://www.theneurondaily.com/p/you-can-now-build-agents-and-apps-inside-chatgpt
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801

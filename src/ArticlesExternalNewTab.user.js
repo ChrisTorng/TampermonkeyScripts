@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2025-10-07_2.0.3
+// @version      2025-12-05_2.1.0
 // @description  Keep article links on supported news hubs opening in background tabs with a ↗︎ indicator.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -82,8 +82,22 @@
         const pageHost = window.location.hostname;
         const pagePath = window.location.pathname || '';
 
-        if (pageHost === 'news.ycombinator.com' || pageHost === 'hackernews.betacat.io') {
+        if (pageHost === 'news.ycombinator.com') {
             return !INTERNAL_HOSTS.has(url.hostname);
+        }
+
+        if (pageHost === 'hackernews.betacat.io') {
+            // External links (articles) should open in new tab
+            if (!INTERNAL_HOSTS.has(url.hostname) && url.hostname !== 'hackernews.betacat.io') {
+                return true;
+            }
+            // Author links and comment links on news.ycombinator.com should open in new tab
+            if (url.hostname === 'news.ycombinator.com') {
+                const isAuthorLink = url.pathname.startsWith('/user');
+                const isCommentLink = url.pathname.startsWith('/item');
+                return isAuthorLink || isCommentLink;
+            }
+            return false;
         }
 
         if (pageHost === 'www.theneurondaily.com') {

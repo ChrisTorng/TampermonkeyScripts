@@ -52,7 +52,7 @@ Automatically convert floating toolbars and sticky overlays into scrolling eleme
 
 ## [Articles External New Tab User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
 
-Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator.
+Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator. On hackernews.betacat.io, author and comment links to Hacker News are also supported.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
