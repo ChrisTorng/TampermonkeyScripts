@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.3.0
-// @description  Display a fixed horizontal indicator at the top of every page that highlights current vertical scroll position and viewport height with a minimum visible width, optimized for touch-friendly layouts.
+// @version      2025-12-05_1.3.1
+// @description  Display a fixed vertical indicator at the right of every page that highlights current vertical scroll position and viewport height with a minimum visible height, optimized for touch-friendly layouts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -17,8 +17,8 @@
 
     const STYLE_ID = 'tm-scroll-indicator-style';
     const BAR_CONTAINER_ID = 'tm-scroll-indicator';
-    const BAR_HEIGHT = 3;
-    const MIN_VIEWPORT_WIDTH_PX = 32;
+    const BAR_WIDTH = 3;
+    const MIN_VIEWPORT_HEIGHT_PX = 12;
     const UPDATE_INTERVAL_MS = 100;
 
     let styleElement = null;
@@ -28,8 +28,9 @@
     let viewportElement = null;
     let rafToken = null;
     let scheduled = false;
-    let viewportOffset = 0;
+    let viewportTop = 0;
     let viewportLeft = 0;
+    let viewportHeight = 0;
     let viewportWidth = 0;
 
     function ensureStyle() {
@@ -42,26 +43,28 @@
         styleElement.textContent = `
             #${BAR_CONTAINER_ID} {
                 position: fixed !important;
-                top: 0;
-                left: var(--tm-scroll-indicator-left, 0px);
+                top: var(--tm-scroll-indicator-top, 0px);
+                left: var(--tm-scroll-indicator-right-edge, 100%);
                 right: auto;
-                width: var(--tm-scroll-indicator-width, 100%);
+                bottom: auto;
+                width: auto;
+                height: var(--tm-scroll-indicator-height, 100%);
                 z-index: 2147483647;
-                padding: calc(env(safe-area-inset-top, 0px) + 1px) calc(8px + env(safe-area-inset-right, 0px)) 0 calc(8px + env(safe-area-inset-left, 0px));
+                padding: calc(8px + env(safe-area-inset-top, 0px)) calc(env(safe-area-inset-right, 0px) + 1px) calc(8px + env(safe-area-inset-bottom, 0px)) 0;
                 box-sizing: border-box;
                 pointer-events: none !important;
                 mix-blend-mode: normal;
-                transform: translateY(var(--tm-scroll-indicator-offset, 0px));
+                transform: translateX(-100%);
                 will-change: transform;
                 backface-visibility: hidden;
             }
 
             #${BAR_CONTAINER_ID} .tm-track {
                 position: relative;
-                width: 100%;
-                height: ${BAR_HEIGHT}px;
+                height: 100%;
+                width: ${BAR_WIDTH}px;
                 background: rgba(0, 0, 0, 0.14);
-                border-radius: ${BAR_HEIGHT / 2}px;
+                border-radius: ${BAR_WIDTH / 2}px;
                 overflow: hidden;
             }
 
@@ -69,18 +72,18 @@
                 position: absolute;
                 top: 0;
                 left: 0;
-                height: 100%;
-                width: 0;
-                background: linear-gradient(90deg, rgba(0, 122, 255, 0.38), rgba(0, 122, 255, 0.55));
+                width: 100%;
+                height: 0;
+                background: linear-gradient(180deg, rgba(0, 122, 255, 0.38), rgba(0, 122, 255, 0.55));
             }
 
             #${BAR_CONTAINER_ID} .tm-viewport {
                 position: absolute;
-                top: 1px;
-                height: ${BAR_HEIGHT - 2}px;
-                width: ${MIN_VIEWPORT_WIDTH_PX}px;
-                background: linear-gradient(90deg, rgba(255, 193, 7, 0.82), rgba(255, 160, 0, 0.9));
-                border-radius: ${(BAR_HEIGHT - 2) / 2}px;
+                left: 1px;
+                width: ${BAR_WIDTH - 2}px;
+                height: ${MIN_VIEWPORT_HEIGHT_PX}px;
+                background: linear-gradient(180deg, rgba(255, 193, 7, 0.82), rgba(255, 160, 0, 0.9));
+                border-radius: ${(BAR_WIDTH - 2) / 2}px;
                 box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
             }
         `;
@@ -120,22 +123,27 @@
         }
 
         const visualViewport = window.visualViewport;
-        const offset = visualViewport ? Math.max(0, Math.round(visualViewport.offsetTop)) : 0;
-        const leftOffset = visualViewport ? Math.round(visualViewport.offsetLeft) : 0;
+        const offsetTop = visualViewport ? Math.max(0, Math.round(visualViewport.offsetTop)) : 0;
+        const offsetLeft = visualViewport ? Math.round(visualViewport.offsetLeft) : 0;
+        const height = visualViewport
+            ? Math.max(1, Math.round(visualViewport.height))
+            : Math.max(1, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
         const width = visualViewport
             ? Math.max(1, Math.round(visualViewport.width))
             : Math.max(1, Math.round(window.innerWidth || document.documentElement.clientWidth || 0));
 
-        if (offset === viewportOffset && leftOffset === viewportLeft && width === viewportWidth) {
+        if (offsetTop === viewportTop && offsetLeft === viewportLeft && height === viewportHeight && width === viewportWidth) {
             return;
         }
 
-        viewportOffset = offset;
-        viewportLeft = leftOffset;
+        viewportTop = offsetTop;
+        viewportLeft = offsetLeft;
+        viewportHeight = height;
         viewportWidth = width;
-        containerElement.style.setProperty('--tm-scroll-indicator-offset', `${viewportOffset}px`);
-        containerElement.style.setProperty('--tm-scroll-indicator-left', `${viewportLeft}px`);
-        containerElement.style.setProperty('--tm-scroll-indicator-width', `${viewportWidth}px`);
+        
+        containerElement.style.setProperty('--tm-scroll-indicator-top', `${viewportTop}px`);
+        containerElement.style.setProperty('--tm-scroll-indicator-height', `${viewportHeight}px`);
+        containerElement.style.setProperty('--tm-scroll-indicator-right-edge', `${viewportLeft + viewportWidth}px`);
     }
 
     function scheduleUpdate(forceImmediate = false) {
@@ -162,8 +170,8 @@
         refreshViewportMetrics();
 
         const scroller = document.scrollingElement || document.documentElement;
-        const trackWidth = trackElement.clientWidth;
-        if (!trackWidth) {
+        const trackHeight = trackElement.clientHeight;
+        if (!trackHeight) {
             return;
         }
         const visualViewport = window.visualViewport;
@@ -174,16 +182,16 @@
         const maxScrollTop = Math.max(0, fullHeight - viewportHeight);
         const scrollRatio = maxScrollTop > 0 ? scroller.scrollTop / maxScrollTop : 0;
         const viewportRatio = fullHeight > 0 ? viewportHeight / fullHeight : 1;
-        const viewportWidthPx = Math.max(
-            MIN_VIEWPORT_WIDTH_PX,
-            Math.min(trackWidth, Math.round(viewportRatio * trackWidth))
+        const viewportHeightPx = Math.max(
+            MIN_VIEWPORT_HEIGHT_PX,
+            Math.min(trackHeight, Math.round(viewportRatio * trackHeight))
         );
-        const availableSpace = Math.max(0, trackWidth - viewportWidthPx);
-        const viewportLeft = Math.min(availableSpace, Math.round(scrollRatio * availableSpace));
+        const availableSpace = Math.max(0, trackHeight - viewportHeightPx);
+        const viewportTop = Math.min(availableSpace, Math.round(scrollRatio * availableSpace));
 
-        progressElement.style.width = `${viewportLeft}px`;
-        viewportElement.style.width = `${viewportWidthPx}px`;
-        viewportElement.style.transform = `translateX(${viewportLeft}px)`;
+        progressElement.style.height = `${viewportTop}px`;
+        viewportElement.style.height = `${viewportHeightPx}px`;
+        viewportElement.style.transform = `translateY(${viewportTop}px)`;
     }
 
     function handleVisualViewportChange() {
