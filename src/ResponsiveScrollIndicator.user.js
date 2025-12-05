@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.3.3
+// @version      2025-12-05_1.3.4
 // @description  Display a fixed vertical indicator at the right of every page that highlights current vertical scroll position and viewport height with a minimum visible height, optimized for touch-friendly layouts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -31,6 +31,7 @@
     let viewportLeft = 0;
     let viewportHeight = 0;
     let viewportWidth = 0;
+    let viewportScale = 1;
 
     function ensureStyle() {
         if (styleElement && styleElement.isConnected) {
@@ -61,18 +62,18 @@
             #${BAR_CONTAINER_ID} .tm-track {
                 position: relative;
                 height: 100%;
-                width: ${BAR_WIDTH}px;
-                border-radius: ${BAR_WIDTH / 2}px;
+                width: calc(${BAR_WIDTH}px / var(--tm-scroll-scale, 1));
+                border-radius: calc(${BAR_WIDTH / 2}px / var(--tm-scroll-scale, 1));
                 overflow: hidden;
             }
 
             #${BAR_CONTAINER_ID} .tm-viewport {
                 position: absolute;
-                left: 1px;
-                width: ${BAR_WIDTH - 2}px;
+                left: calc(1px / var(--tm-scroll-scale, 1));
+                width: calc(${BAR_WIDTH - 2}px / var(--tm-scroll-scale, 1));
                 height: ${MIN_VIEWPORT_HEIGHT_PX}px;
                 background: linear-gradient(180deg, rgba(255, 193, 7, 0.82), rgba(255, 160, 0, 0.9));
-                border-radius: ${(BAR_WIDTH - 2) / 2}px;
+                border-radius: calc(${(BAR_WIDTH - 2) / 2}px / var(--tm-scroll-scale, 1));
                 box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
             }
         `;
@@ -116,8 +117,9 @@
         const width = visualViewport
             ? Math.max(1, Math.round(visualViewport.width))
             : Math.max(1, Math.round(window.innerWidth || document.documentElement.clientWidth || 0));
+        const scale = visualViewport ? visualViewport.scale : 1;
 
-        if (offsetTop === viewportTop && offsetLeft === viewportLeft && height === viewportHeight && width === viewportWidth) {
+        if (offsetTop === viewportTop && offsetLeft === viewportLeft && height === viewportHeight && width === viewportWidth && scale === viewportScale) {
             return;
         }
 
@@ -125,10 +127,12 @@
         viewportLeft = offsetLeft;
         viewportHeight = height;
         viewportWidth = width;
+        viewportScale = scale;
         
         containerElement.style.setProperty('--tm-scroll-indicator-top', `${viewportTop}px`);
         containerElement.style.setProperty('--tm-scroll-indicator-height', `${viewportHeight}px`);
         containerElement.style.setProperty('--tm-scroll-indicator-right-edge', `${viewportLeft + viewportWidth}px`);
+        containerElement.style.setProperty('--tm-scroll-scale', `${viewportScale}`);
     }
 
     function scheduleUpdate(forceImmediate = false) {
@@ -168,11 +172,11 @@
         const scrollRatio = maxScrollTop > 0 ? scroller.scrollTop / maxScrollTop : 0;
         const viewportRatio = fullHeight > 0 ? viewportHeight / fullHeight : 1;
 
-        const scale = (visualViewport && visualViewport.scale) || 1;
+        const scale = viewportScale;
         let rawHeight = Math.min(trackHeight, Math.round(viewportRatio * trackHeight));
         
         const viewportHeightPx = Math.max(
-            MIN_VIEWPORT_HEIGHT_PX,
+            MIN_VIEWPORT_HEIGHT_PX / scale,
             rawHeight
         );
 
