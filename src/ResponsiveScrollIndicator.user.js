@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.3.4
+// @version      2025-12-05_1.3.5
 // @description  Display a fixed vertical indicator at the right of every page that highlights current vertical scroll position and viewport height with a minimum visible height, optimized for touch-friendly layouts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -17,7 +17,7 @@
 
     const STYLE_ID = 'tm-scroll-indicator-style';
     const BAR_CONTAINER_ID = 'tm-scroll-indicator';
-    const BAR_WIDTH = 3;
+    const BAR_WIDTH = 6;
     const MIN_VIEWPORT_HEIGHT_PX = 12;
     const UPDATE_INTERVAL_MS = 100;
 
