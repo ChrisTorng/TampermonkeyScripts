@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Coding Diff Optimizer
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.0.4
+// @version      2025-12-05_1.0.5
 // @description  Expand diff code columns to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -149,7 +149,6 @@
                 padding-left: 8px !important;
                 padding-right: 8px !important;
                 box-sizing: border-box !important;
-                white-space: pre !important;
             }
 
             .${ROOT_CLASS} .diff-table tr,
