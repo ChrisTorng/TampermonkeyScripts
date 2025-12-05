@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Coding Diff Optimizer
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.0.2
+// @version      2025-12-05_1.0.4
 // @description  Expand diff code columns to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -21,9 +21,11 @@
         '.js-diff-table',
         '.diff-view',
         '.diff-table',
+        '.diff-line-row',
         '.js-diff-progressive-container',
         '[data-testid="diff-viewer"]',
-        '[data-hpc="diff-viewer"]'
+        '[data-hpc="diff-viewer"]',
+        '[class*="DiffLines"]'
     ];
 
     let styleElement = null;
@@ -108,13 +110,16 @@
             .${ROOT_CLASS} .diff-grid,
             .${ROOT_CLASS} [data-testid="diff-viewer"] table {
                 width: 100% !important;
+                table-layout: auto !important;
             }
 
             .${ROOT_CLASS} table.diff-table,
             .${ROOT_CLASS} .diff-table,
             .${ROOT_CLASS} .js-file-line-container,
-            .${ROOT_CLASS} [data-testid="diff-viewer"] table {
-                table-layout: fixed !important;
+            .${ROOT_CLASS} [data-testid="diff-viewer"] table,
+            .${ROOT_CLASS} table[class*="DiffLines"],
+            .${ROOT_CLASS} table.tab-size {
+                table-layout: auto !important;
             }
 
             .${ROOT_CLASS} td.blob-num,
@@ -126,12 +131,13 @@
             .${ROOT_CLASS} [class*="line-number"],
             .${ROOT_CLASS} [data-testid="diff-line-number"],
             .${ROOT_CLASS} [data-testid="diff-gutter"] {
-                width: max(2rem, calc(3.6ch + 6px)) !important;
-                min-width: max(2rem, calc(3.6ch + 6px)) !important;
+                width: 1% !important;
+                min-width: 0 !important;
                 padding-left: 2px !important;
                 padding-right: 2px !important;
                 box-sizing: border-box !important;
                 text-align: right !important;
+                white-space: nowrap !important;
             }
 
             .${ROOT_CLASS} td.blob-code,
@@ -139,7 +145,6 @@
             .${ROOT_CLASS} [class*="line-content"],
             .${ROOT_CLASS} [data-testid="diff-line"] pre,
             .${ROOT_CLASS} pre code,
-            .${ROOT_CLASS} code[class*="diff"],
             .${ROOT_CLASS} [data-testid="diff-line-content"] {
                 padding-left: 8px !important;
                 padding-right: 8px !important;
