@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.3.2
+// @version      2025-12-05_1.3.3
 // @description  Display a fixed vertical indicator at the right of every page that highlights current vertical scroll position and viewport height with a minimum visible height, optimized for touch-friendly layouts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -24,7 +24,6 @@
     let styleElement = null;
     let containerElement = null;
     let trackElement = null;
-    let progressElement = null;
     let viewportElement = null;
     let rafToken = null;
     let scheduled = false;
@@ -63,18 +62,8 @@
                 position: relative;
                 height: 100%;
                 width: ${BAR_WIDTH}px;
-                background: rgba(0, 0, 0, 0.14);
                 border-radius: ${BAR_WIDTH / 2}px;
                 overflow: hidden;
-            }
-
-            #${BAR_CONTAINER_ID} .tm-progress {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 0;
-                background: linear-gradient(180deg, rgba(0, 122, 255, 0.38), rgba(0, 122, 255, 0.55));
             }
 
             #${BAR_CONTAINER_ID} .tm-viewport {
@@ -102,13 +91,9 @@
         trackElement = document.createElement('div');
         trackElement.className = 'tm-track';
 
-        progressElement = document.createElement('div');
-        progressElement.className = 'tm-progress';
-
         viewportElement = document.createElement('div');
         viewportElement.className = 'tm-viewport';
 
-        trackElement.appendChild(progressElement);
         trackElement.appendChild(viewportElement);
         containerElement.appendChild(trackElement);
 
@@ -163,7 +148,7 @@
     }
 
     function updateBar() {
-        if (!trackElement || !viewportElement || !progressElement) {
+        if (!trackElement || !viewportElement) {
             return;
         }
 
@@ -185,18 +170,15 @@
 
         const scale = (visualViewport && visualViewport.scale) || 1;
         let rawHeight = Math.min(trackHeight, Math.round(viewportRatio * trackHeight));
-        if (scale > 1) {
-            rawHeight /= scale;
-        }
+        
         const viewportHeightPx = Math.max(
-            MIN_VIEWPORT_HEIGHT_PX / scale,
+            MIN_VIEWPORT_HEIGHT_PX,
             rawHeight
         );
 
         const availableSpace = Math.max(0, trackHeight - viewportHeightPx);
         const viewportTop = Math.min(availableSpace, Math.round(scrollRatio * availableSpace));
 
-        progressElement.style.height = `${viewportTop}px`;
         viewportElement.style.height = `${viewportHeightPx}px`;
         viewportElement.style.transform = `translateY(${viewportTop}px)`;
     }
