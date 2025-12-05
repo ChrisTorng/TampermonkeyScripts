@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.3.1
+// @version      2025-12-05_1.3.2
 // @description  Display a fixed vertical indicator at the right of every page that highlights current vertical scroll position and viewport height with a minimum visible height, optimized for touch-friendly layouts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -182,10 +182,17 @@
         const maxScrollTop = Math.max(0, fullHeight - viewportHeight);
         const scrollRatio = maxScrollTop > 0 ? scroller.scrollTop / maxScrollTop : 0;
         const viewportRatio = fullHeight > 0 ? viewportHeight / fullHeight : 1;
+
+        const scale = (visualViewport && visualViewport.scale) || 1;
+        let rawHeight = Math.min(trackHeight, Math.round(viewportRatio * trackHeight));
+        if (scale > 1) {
+            rawHeight /= scale;
+        }
         const viewportHeightPx = Math.max(
-            MIN_VIEWPORT_HEIGHT_PX,
-            Math.min(trackHeight, Math.round(viewportRatio * trackHeight))
+            MIN_VIEWPORT_HEIGHT_PX / scale,
+            rawHeight
         );
+
         const availableSpace = Math.max(0, trackHeight - viewportHeightPx);
         const viewportTop = Math.min(availableSpace, Math.round(scrollRatio * availableSpace));
 
