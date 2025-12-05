@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Coding Diff Optimizer
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.0.5
+// @version      2025-07-15_1.0.6
 // @description  Expand diff code columns to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -18,6 +18,7 @@
     const STYLE_ID = 'tm-git-diff-optimizer-style';
     const ROOT_CLASS = 'tm-git-diff-optimizer';
     const DIFF_SELECTORS = [
+        // GitHub selectors
         '.js-diff-table',
         '.diff-view',
         '.diff-table',
@@ -25,7 +26,12 @@
         '.js-diff-progressive-container',
         '[data-testid="diff-viewer"]',
         '[data-hpc="diff-viewer"]',
-        '[class*="DiffLines"]'
+        '[class*="DiffLines"]',
+        // ChatGPT Codex selectors
+        '.diff-tailwindcss-wrapper',
+        '.unified-diff-view',
+        '.diff-style-root',
+        '.diff-view-wrapper'
     ];
 
     let styleElement = null;
@@ -161,6 +167,32 @@
             .${ROOT_CLASS} .file-info {
                 padding-left: max(4px, env(safe-area-inset-left, 0px)) !important;
                 padding-right: max(4px, env(safe-area-inset-right, 0px)) !important;
+            }
+
+            /* ChatGPT Codex diff view optimization */
+            .${ROOT_CLASS} .diff-tailwindcss-wrapper .diff-table-scroll-container {
+                --diff-aside-width--: 10px !important;
+            }
+
+            .${ROOT_CLASS} .diff-tailwindcss-wrapper td.diff-line-num,
+            .${ROOT_CLASS} .diff-tailwindcss-wrapper .unified-diff-table td.diff-line-num {
+                width: 1% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                padding-left: 2px !important;
+                padding-right: 2px !important;
+            }
+
+            .${ROOT_CLASS} .diff-tailwindcss-wrapper .unified-diff-table {
+                table-layout: auto !important;
+            }
+
+            .${ROOT_CLASS} .diff-tailwindcss-wrapper .unified-diff-table-num-col {
+                width: 1% !important;
+            }
+
+            .${ROOT_CLASS} .diff-tailwindcss-wrapper td.diff-line-content {
+                width: auto !important;
             }
         `;
 
