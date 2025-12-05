@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Coding Diff Optimizer
 // @namespace    http://tampermonkey.net/
-// @version      2025-07-15_1.0.6
+// @version      2025-12-05_1.0.6
 // @description  Expand diff code columns to maximize reading space on ChatGPT Codex and GitHub.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
