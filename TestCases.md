@@ -45,3 +45,4 @@
 # Medium Auto Reload Once
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b
 - https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950
+  - Expect a single reload even if Medium rewrites the redirectUrl query parameters on subsequent visits.
