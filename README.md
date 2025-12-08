@@ -64,7 +64,7 @@ Show a thinner, fixed vertical indicator at the right of every page to visualize
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
-Automatically reload [Medium](https://medium.com/) sites and Medium-powered custom domains once per browser session to trigger full article content loading without creating reload loops. Redirected pages coming from Medium's global-identity-2 URLs are also supported.
+Automatically reload [Medium](https://medium.com/) sites and Medium-powered custom domains once per browser session to trigger full article content loading without creating reload loops. Redirected pages coming from Medium's global-identity-2 URLs are also supported, and the reload flag is scoped to the origin and path to avoid repeated reloads when Medium appends different query parameters.
 
 - **Test Case 1 - Direct Medium**: [https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b](https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b)
 - **Test Case 2 - Medium Redirect**: [https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950](https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950)

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Medium Auto Reload Once
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-08_3.2.0
+// @version      2025-12-08_3.2.1
 // @description  Reload Medium and Medium-powered pages once per browser session to trigger full content loading without infinite loops.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -92,8 +92,8 @@
     }
 
     function reloadOncePerSession() {
-        const currentUrl = window.location.href;
-        const reloadFlagKey = `${RELOAD_FLAG_PREFIX}${currentUrl}`;
+        const { origin, pathname } = window.location;
+        const reloadFlagKey = `${RELOAD_FLAG_PREFIX}${origin}${pathname}`;
 
         if (sessionStorage.getItem(reloadFlagKey) === 'true') {
             return;
