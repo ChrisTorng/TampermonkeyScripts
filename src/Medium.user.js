@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Medium Auto Scroll
+// @name         Medium Auto Reload Once
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-28_3.1
-// @description  Auto scroll to bottom then back to top on Medium sites, custom domain Medium sites, and sites redirected from Medium
+// @version      2025-12-08_3.2.1
+// @description  Reload Medium and Medium-powered pages once per browser session to trigger full content loading without infinite loops.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js
@@ -17,24 +17,9 @@
 (function() {
     'use strict';
 
-    function autoScroll() {
-        // 等待頁面內容完全載入
-        if (document.body) {
-            // 等待 1 秒後跳到最下端
-            setTimeout(() => {
-                window.scrollTo(0, document.body.scrollHeight);
+    const RELOAD_FLAG_PREFIX = 'medium-auto-reload:';
 
-                // 再等待 1 秒後跳回最上端
-                setTimeout(() => {
-                    window.scrollTo(0, 0);
-                }, 1000);
-            }, 1000);
-        }
-    }
-
-    // 檢查 DOM 中是否有 Medium 的特徵標記
     function isMediumSite() {
-        // 1. 檢查 App Links meta tags (Medium 特有)
         const appLinkChecks = [
             'meta[property="al:ios:app_name"][content="Medium"]',
             'meta[property="al:android:app_name"][content="Medium"]',
@@ -48,7 +33,6 @@
             }
         }
 
-        // 2. 檢查 App URL schemes (必須包含 medium://)
         const appUrlChecks = [
             'meta[property="al:ios:url"]',
             'meta[property="al:android:url"]',
@@ -63,24 +47,19 @@
             }
         }
 
-        // 3. 檢查 Twitter App ID (Medium 的 iOS app ID)
         const twitterAppId = document.querySelector('meta[name="twitter:app:id:iphone"]');
         if (twitterAppId?.getAttribute('content') === '828256236') {
             return true;
         }
 
-        // 4. 檢查是否有 Medium 特有的 data attributes
-        if (document.querySelector('[data-post-id]') &&
-            document.querySelector('[data-collection-id]')) {
+        if (document.querySelector('[data-post-id]') && document.querySelector('[data-collection-id]')) {
             return true;
         }
 
-        // 5. 檢查頁面中是否有 Medium 的 script bundles
         const scripts = document.querySelectorAll('script[src]');
         for (const script of scripts) {
             const src = script.getAttribute('src') || '';
-            if (src.includes('medium.com/_/stat') ||
-                src.includes('cdn-client.medium.com')) {
+            if (src.includes('medium.com/_/stat') || src.includes('cdn-client.medium.com')) {
                 return true;
             }
         }
@@ -88,28 +67,23 @@
         return false;
     }
 
-    // 檢查是否應該執行自動捲動
-    function shouldAutoScroll() {
+    function shouldReload() {
         const hostname = window.location.hostname;
         const pathname = window.location.pathname;
 
-        // 0. 排除 global-identity-2 頁面本身（它只是重導向頁面）
         if (hostname.includes('medium.com') && pathname.includes('/m/global-identity-2')) {
             return false;
         }
 
-        // 1. 如果是 Medium 網站（但不是 global-identity-2），執行捲動
         if (hostname.includes('medium.com')) {
             return true;
         }
 
-        // 2. 檢查是否來自 Medium 的 global-identity-2 重導向
         const referrer = document.referrer;
         if (referrer && referrer.includes('medium.com/m/global-identity-2')) {
             return true;
         }
 
-        // 3. 檢查 DOM 中是否有 Medium 特徵標記（自訂網域的 Medium 網站）
         if (isMediumSite()) {
             return true;
         }
@@ -117,10 +91,21 @@
         return false;
     }
 
-    // 確保在頁面完全載入後執行
+    function reloadOncePerSession() {
+        const { origin, pathname } = window.location;
+        const reloadFlagKey = `${RELOAD_FLAG_PREFIX}${origin}${pathname}`;
+
+        if (sessionStorage.getItem(reloadFlagKey) === 'true') {
+            return;
+        }
+
+        sessionStorage.setItem(reloadFlagKey, 'true');
+        window.location.reload();
+    }
+
     function init() {
-        if (shouldAutoScroll()) {
-            autoScroll();
+        if (shouldReload()) {
+            reloadOncePerSession();
         }
     }
 
