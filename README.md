@@ -62,9 +62,9 @@ Maximize the readable area of Git diffs for [ChatGPT Codex tasks](https://chatgp
 
 Show a thinner, fixed vertical indicator at the right of every page to visualize your current vertical scroll position and viewport height. A minimum visible height keeps the indicator noticeable even on very long pages, the layout stays touch-friendly for mobile users, and the bar tracks the visual viewport so it remains aligned with the zoomed-in on-screen region while shrinking the viewport marker to match the reduced visible height.
 
-## [Medium Auto Scroll User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
+## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
-Automatically scroll to bottom then back to top on [Medium](https://medium.com/) sites to trigger full article content loading. Also supports sites redirected from Medium's global-identity-2 redirect URLs.
+Automatically reload [Medium](https://medium.com/) sites and Medium-powered custom domains once per browser session to trigger full article content loading without creating reload loops. Redirected pages coming from Medium's global-identity-2 URLs are also supported.
 
 - **Test Case 1 - Direct Medium**: [https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b](https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b)
 - **Test Case 2 - Medium Redirect**: [https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950](https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950)
