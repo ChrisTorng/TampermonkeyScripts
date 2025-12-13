@@ -9,6 +9,7 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 ## 2. Documentation sync
 - For every script addition, update, or removal, review and adjust **[README.md](README.md)** so the script list and descriptions stay accurate.
 - Update **[TestCases.md](TestCases.md)** when site-specific scripts change so their test URLs remain aligned. **Site-agnostic scripts do not require TestCases entries.**
+- Keep **[index.html](index.html)** aligned with README links whenever any `.user.js` is added, updated, or removed.
 
 ## 3. Language
 - All code, comments, and documentation in this repository must be written in **English**.
