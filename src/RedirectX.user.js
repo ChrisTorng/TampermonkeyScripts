@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         X/Twitter to Nitter RedirectX
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-27_1.0.0
+// @version      2025-12-13_1.1.0
 // @description  Redirect X/Twitter links to Nitter
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,13 +10,14 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=nitter.net
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
+// @run-at       document-start
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // 擷取目前網址中的用戶名稱與數字 ID
+    // Extract username and tweet ID from the current URL
     const urlPattern = /https?:\/\/(?:x\.com|twitter\.com)\/([^/]+)\/status\/(\d+)/;
     const match = window.location.href.match(urlPattern);
 
@@ -31,17 +32,17 @@
             document.referrer.includes('twitter.com') ||
             document.referrer.includes('x.com')) {
             sessionStorage.removeItem(storageKey);
-            console.log('Skip redirect to keep current page in history');
+            console.log('[RedirectX] Skip redirect to keep current page in history');
             return;
         }
 
-        // 組合 Nitter 的網址
+        // Build the Nitter URL
         const nitterUrl = `https://nitter.net/${username}/status/${tweetId}`;
 
         sessionStorage.setItem(storageKey, tweetId);
 
         try {
-            // 先推入一個 history state，避免即時導向造成無法返回上一頁
+            // Push a history state first so the Back button returns to the source page
             history.pushState({ redirectedByNitter: true }, '', window.location.href);
         } catch (error) {
             console.warn('Unable to push history state before redirect', error);
