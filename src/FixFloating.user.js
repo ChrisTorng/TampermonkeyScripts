@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fix Floating Elements
 // @namespace    http://tampermonkey.net/
-// @version      2025-11-10_1.0.0
+// @version      2025-12-13_1.0.2
 // @description  Force floating UI elements to scroll with the page for distraction-free reading
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -22,7 +22,8 @@
     const domainRules = [
         {
             test: hostname => hostname === 'whatisintelligence.antikythera.org',
-            ignoreSelectors: ['html', 'body', 'head', 'script', 'style', 'link', 'meta']
+            ignoreSelectors: ['html', 'body', 'head', 'script', 'style', 'link', 'meta'],
+            treatAbsoluteAsFloating: true
         }
     ];
 
@@ -45,7 +46,10 @@
     }
 
     const IGNORE_MATCHERS = currentRule.ignoreSelectors || [];
+    const treatAbsoluteAsFloating = currentRule.treatAbsoluteAsFloating === true;
     const PROCESSED_FLAG = 'data-fix-floating-processed';
+    const observedTargets = new WeakSet();
+    let observer = null;
 
     const STYLE_OVERRIDES = [
         ['position', 'static'],
@@ -83,7 +87,10 @@
         }
 
         const computedPosition = window.getComputedStyle(element).position;
-        if (computedPosition !== 'fixed' && computedPosition !== 'sticky') {
+        const isFloatingPosition = computedPosition === 'fixed' || computedPosition === 'sticky';
+        const isAbsoluteFloating = treatAbsoluteAsFloating && computedPosition === 'absolute';
+
+        if (!isFloatingPosition && !isAbsoluteFloating) {
             return;
         }
 
@@ -94,42 +101,75 @@
         });
     }
 
-    function processNode(node) {
-        if (!node) {
+    function observeTarget(target) {
+        if (!observer || !target || observedTargets.has(target)) {
             return;
         }
 
-        if (isHTMLElement(node)) {
-            neutralizeFloating(node);
+        observer.observe(target, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+
+        observedTargets.add(target);
+    }
+
+    function processRoot(root) {
+        if (!root) {
+            return;
         }
 
-        if (node.querySelectorAll) {
-            node.querySelectorAll('*').forEach(neutralizeFloating);
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+
+        if (isHTMLElement(root)) {
+            neutralizeFloating(root);
+        }
+
+        if (root instanceof ShadowRoot) {
+            observeTarget(root);
+        }
+
+        let node = walker.nextNode();
+        while (node) {
+            const element = node;
+
+            neutralizeFloating(element);
+
+            if (element.shadowRoot) {
+                processRoot(element.shadowRoot);
+            }
+
+            node = walker.nextNode();
         }
     }
 
     function handleMutations(mutationList) {
         mutationList.forEach(mutation => {
             if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(processNode);
+                mutation.addedNodes.forEach(processRoot);
             }
+
             if (mutation.type === 'attributes' && isHTMLElement(mutation.target)) {
                 neutralizeFloating(mutation.target);
+
+                if (mutation.target.shadowRoot) {
+                    processRoot(mutation.target.shadowRoot);
+                }
             }
         });
     }
 
     function init() {
-        const rootNode = document.body || document.documentElement;
-        processNode(rootNode);
+        observer = new MutationObserver(handleMutations);
 
-        const observer = new MutationObserver(handleMutations);
-        observer.observe(document.documentElement, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['style', 'class']
-        });
+        const rootNode = document.documentElement || document.body;
+
+        observeTarget(rootNode);
+        processRoot(rootNode);
+
+        observeTarget(document.documentElement);
 
         window.addEventListener('resize', () => {
             document.querySelectorAll(`[${PROCESSED_FLAG}]`).forEach(neutralizeFloating);

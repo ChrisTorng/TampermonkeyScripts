@@ -26,6 +26,15 @@
 # None
 - https://www.nature.com/articles/d41586-025-00264-3
 
+# HideBanner
+- https://www.infoq.cn/article/mjPeD7eDL2XKNNd6zs3M
+- https://pansci.asia/archives/380040
+- https://www.inside.com.tw/article/40278-is-taiwan-the-worlds-best-use-case-for-stablecoins
+- https://whatisintelligence.antikythera.org/chapter-02/
+
+# Fix Floating Elements
+- https://whatisintelligence.antikythera.org/chapter-02/
+
 # ArticlesExternalNewTab
 - https://news.ycombinator.com/
 - https://hackernews.betacat.io/
@@ -38,9 +47,6 @@
 - https://chatgpt.com/codex/tasks/task_e_68e41a320a388322a04ba2f35d096cd7
 - https://github.com/ChrisTorng/TampermonkeyScripts/pull/7/files
 - https://github.com/ChrisTorng/TampermonkeyScripts/commit/267c2b3f52c428e3b68b9560ed165cb21dfa4602
-
-# Fix Floating Elements
-- https://whatisintelligence.antikythera.org/chapter-02/
 
 # Medium Auto Reload Once
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b
