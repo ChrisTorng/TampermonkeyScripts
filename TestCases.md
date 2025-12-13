@@ -1,3 +1,6 @@
+# RedirectUrl
+- https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file (redirects to repository home and Back returns here without re-triggering)
+
 # RedirectX
 - https://x.com/cocktailpeanut/status/1860756706357022812
 

@@ -2,6 +2,13 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
+## [RedirectUrl User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js)
+
+Apply rule-based URL redirects so site-specific patterns can be routed to their canonical destinations. Each site is explicitly matched in the metadata, while regex-based rules inside the script define what to detect and how to rewrite the URL. Current rule: redirect GitHub repository URLs that are forced into the `readme-ov-file` tab back to the main repository page while keeping the original URL in history so Back returns to the source.
+
+- **From** [https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file](https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file)
+- **Redirected to** [https://github.com/ChrisTorng/TampermonkeyScripts](https://github.com/ChrisTorng/TampermonkeyScripts)
+
 ## [RedirectX User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
 
 Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Nitter](https://nitter.net/) for lightweight viewing, while still allowing you to go back to the original X/Twitter page.
@@ -86,6 +93,7 @@ See [Test Cases](TestCases.md) for more details.
 
 1. Click anyone you need:
 
+  - [RedirectUrl.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js)
   - [RedirectX.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
   - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
   - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
