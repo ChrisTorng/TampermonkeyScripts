@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RedirectUrl
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-13_1.2.0
+// @version      2025-12-13_1.2.1
 // @description  Apply rule-based URL redirects so that site-specific patterns are sent to their canonical destinations while keeping the source page in history.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -9,6 +9,7 @@
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=github.com
 // @match        https://github.com/*
+// @run-at       document-start
 // @grant        none
 // ==/UserScript==
 
