@@ -72,6 +72,10 @@ Maximize the readable area of Git diffs for [ChatGPT Codex tasks](https://chatgp
 
 Show a thinner, fixed vertical indicator at the right of every page to visualize your current vertical scroll position and viewport height. A minimum visible height keeps the indicator noticeable even on very long pages, the layout stays touch-friendly for mobile users, and the bar tracks the visual viewport so it remains aligned with the zoomed-in on-screen region while shrinking the viewport marker to match the reduced visible height.
 
+## [Force Width View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js)
+
+Force every page to stay within the viewport width to eliminate horizontal scrolling, keeping images and media responsive while wrapping long code blocks or URLs that would otherwise overflow on small screens.
+
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 Automatically reload [Medium](https://medium.com/) sites and Medium-powered custom domains once per browser session to fix page hang problem.
@@ -105,6 +109,7 @@ See [Test Cases](TestCases.md) for more details.
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
+  - [ForceWidthView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 

@@ -51,6 +51,9 @@
 - https://github.com/ChrisTorng/TampermonkeyScripts/pull/7/files
 - https://github.com/ChrisTorng/TampermonkeyScripts/commit/267c2b3f52c428e3b68b9560ed165cb21dfa4602
 
+# Force Width View
+- https://news.ycombinator.com/item?id=46255285
+
 # Medium Auto Reload Once
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b
 - https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950
