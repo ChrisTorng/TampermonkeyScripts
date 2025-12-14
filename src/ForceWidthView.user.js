@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Width View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-14_1.1.0
+// @version      2025-12-14_1.1.1
 // @description  Prevent pages from exceeding the viewport width so horizontal scrolling is eliminated, especially on mobile screens.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -44,9 +44,9 @@
             `    height: auto !important;\n` +
             `}\n` +
             `table {\n` +
-            `    width: 100vw !important;\n` +
+            `    width: 100% !important;\n` +
             `    max-width: 100vw !important;\n` +
-            `    table-layout: fixed !important;\n` +
+            `    table-layout: auto !important;\n` +
             `    border-collapse: collapse !important;\n` +
             `    border-spacing: 0 !important;\n` +
             `}\n` +

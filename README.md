@@ -74,7 +74,7 @@ Show a thinner, fixed vertical indicator at the right of every page to visualize
 
 ## [Force Width View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js)
 
-Force every page to stay within the viewport width to eliminate horizontal scrolling, keeping images and media responsive while wrapping long code blocks or URLs that would otherwise overflow on small screens.
+Force every page to stay within the viewport width to eliminate horizontal scrolling, keeping images and media responsive while wrapping long code blocks or URLs that would otherwise overflow on small screens. Tables keep their natural column proportions while still fitting the viewport to avoid wasted gutter space on mobile.
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
