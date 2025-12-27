@@ -73,9 +73,9 @@ Maximize the readable area of Git diffs for [ChatGPT Codex tasks](https://chatgp
 
 Show a thinner, fixed vertical indicator at the right of every page to visualize your current vertical scroll position and viewport height. A minimum visible height keeps the indicator noticeable even on very long pages, the layout stays touch-friendly for mobile users, and the bar tracks the visual viewport so it remains aligned with the zoomed-in on-screen region while shrinking the viewport marker to match the reduced visible height.
 
-## [Force Width View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js)
+## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Force every page to stay within the viewport width to minimize horizontal scrolling while keeping native scrollbars available when truly needed. Images and media stay responsive, long code blocks or URLs wrap cleanly on small screens, and tables keep their natural column proportions without wasting mobile gutter space. A draggable bottom-right `↔` toggle button leaves the feature off by default so you can enable or disable it per page.
+Force every page to stay within the viewport width to minimize horizontal scrolling while keeping native scrollbars available when truly needed. Images and media stay responsive, long code blocks or URLs wrap cleanly on small screens, and tables keep their natural column proportions without wasting mobile gutter space. When enabled on mobile-sized screens, the script also enforces a minimum readable font size so text stays legible without pinch-zooming. A draggable bottom-right `↔` toggle button leaves the feature off by default so you can enable or disable it per page.
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
@@ -110,7 +110,7 @@ See [Test Cases](TestCases.md) for more details.
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
-  - [ForceWidthView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js)
+  - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 

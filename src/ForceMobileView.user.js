@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name         Force Width View
+// @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.3
-// @description  Prevent pages from exceeding the viewport width to minimize horizontal scrolling while keeping native scrollbars available.
+// @version      2025-12-27_1.3.0
+// @description  Keep pages within the viewport width and enforce a readable mobile font size to minimize horizontal scrolling and zooming.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
-// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js
-// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceWidthView.user.js
+// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
+// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.tampermonkey.net
 // @match        *://*/*
 // @grant        none
@@ -17,6 +17,10 @@
     'use strict';
 
     const STYLE_ID = 'tm-force-width-style';
+    const MIN_FONT_SIZE_PX = 16;
+    const MIN_FONT_FLAG_ATTR = 'data-tm-force-width-min-font';
+    const MIN_FONT_VALUE_ATTR = 'data-tm-force-width-font-value';
+    const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
@@ -35,6 +39,13 @@
             `}\n` +
             `body, body * {\n` +
             `    box-sizing: border-box !important;\n` +
+            `}\n` +
+            `@media (max-width: 768px), (pointer: coarse) {\n` +
+            `    :root, body {\n` +
+            `        font-size: 16px !important;\n` +
+            `        -webkit-text-size-adjust: 100% !important;\n` +
+            `        text-size-adjust: 100% !important;\n` +
+            `    }\n` +
             `}\n` +
             `body * {\n` +
             `    max-width: 100% !important;\n` +
@@ -59,6 +70,11 @@
             `}\n` +
             `pre, code, kbd, samp {\n` +
             `    white-space: pre-wrap !important;\n` +
+            `}\n` +
+            `textarea, input, select {\n` +
+            `    max-width: 100% !important;\n` +
+            `    width: 100% !important;\n` +
+            `    box-sizing: border-box !important;\n` +
             `}`;
     }
 
@@ -84,14 +100,23 @@
 
     function ensureObserver() {
         if (!styleObserver) {
-            styleObserver = new MutationObserver(() => {
+            styleObserver = new MutationObserver((mutations) => {
                 if (isEnabled && !document.getElementById(STYLE_ID)) {
                     insertStyle();
+                }
+                if (isEnabled && shouldEnforceMinFontSize()) {
+                    mutations.forEach((mutation) => {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                applyMinimumFontSize(node);
+                            }
+                        });
+                    });
                 }
             });
         }
         if (!isObserving) {
-            styleObserver.observe(document.documentElement, { childList: true });
+            styleObserver.observe(document.documentElement, { childList: true, subtree: true });
             isObserving = true;
         }
     }
@@ -110,6 +135,7 @@
         isEnabled = true;
         insertStyle();
         ensureObserver();
+        applyMinimumFontSizeIfNeeded();
     }
 
     function disableForceWidth() {
@@ -119,6 +145,7 @@
         isEnabled = false;
         removeStyle();
         stopObserver();
+        clearMinimumFontSize();
     }
 
     function toggleForceWidth() {
@@ -137,6 +164,65 @@
         }
     }
 
+    function shouldEnforceMinFontSize() {
+        return window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+    }
+
+    function applyMinimumFontSizeIfNeeded() {
+        if (!shouldEnforceMinFontSize()) {
+            return;
+        }
+        if (!document.body) {
+            onDocumentReady(() => {
+                applyMinimumFontSize(document.body);
+            });
+            return;
+        }
+        applyMinimumFontSize(document.body);
+    }
+
+    function applyMinimumFontSize(root) {
+        if (!root) {
+            return;
+        }
+        const elements = [];
+        if (root.nodeType === Node.ELEMENT_NODE) {
+            elements.push(root);
+        }
+        elements.push(...root.querySelectorAll('*'));
+        elements.forEach((element) => {
+            if (element.hasAttribute(MIN_FONT_FLAG_ATTR)) {
+                return;
+            }
+            const computedSize = Number.parseFloat(window.getComputedStyle(element).fontSize);
+            if (!Number.isFinite(computedSize) || computedSize >= MIN_FONT_SIZE_PX) {
+                return;
+            }
+            const inlineValue = element.style.getPropertyValue('font-size');
+            const inlinePriority = element.style.getPropertyPriority('font-size');
+            element.setAttribute(MIN_FONT_FLAG_ATTR, 'true');
+            element.setAttribute(MIN_FONT_VALUE_ATTR, inlineValue);
+            element.setAttribute(MIN_FONT_PRIORITY_ATTR, inlinePriority);
+            element.style.setProperty('font-size', `${MIN_FONT_SIZE_PX}px`, 'important');
+        });
+    }
+
+    function clearMinimumFontSize() {
+        const elements = document.querySelectorAll(`[${MIN_FONT_FLAG_ATTR}="true"]`);
+        elements.forEach((element) => {
+            const inlineValue = element.getAttribute(MIN_FONT_VALUE_ATTR) || '';
+            const inlinePriority = element.getAttribute(MIN_FONT_PRIORITY_ATTR) || '';
+            if (inlineValue) {
+                element.style.setProperty('font-size', inlineValue, inlinePriority);
+            } else {
+                element.style.removeProperty('font-size');
+            }
+            element.removeAttribute(MIN_FONT_FLAG_ATTR);
+            element.removeAttribute(MIN_FONT_VALUE_ATTR);
+            element.removeAttribute(MIN_FONT_PRIORITY_ATTR);
+        });
+    }
+
     function createFloatingToggleButton() {
         if (!document.body) {
             return;
@@ -145,7 +231,7 @@
         const toggleButton = document.createElement('button');
         toggleButton.type = 'button';
         toggleButton.textContent = '↔';
-        toggleButton.title = 'Toggle Force Width View';
+        toggleButton.title = 'Toggle Force Mobile View';
         toggleButton.style.cssText = `
             position: absolute;
             z-index: 2147483647;
@@ -183,12 +269,12 @@
                 toggleButton.style.backgroundColor = 'rgba(34, 139, 34, 0.85)';
                 toggleButton.style.color = '#ffffff';
                 toggleButton.setAttribute('aria-pressed', 'true');
-                toggleButton.title = 'Force Width View is ON (click to disable)';
+                toggleButton.title = 'Force Mobile View is ON (click to disable)';
             } else {
                 toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.55)';
                 toggleButton.style.color = '#f0f0f0';
                 toggleButton.setAttribute('aria-pressed', 'false');
-                toggleButton.title = 'Force Width View is OFF (click to enable)';
+                toggleButton.title = 'Force Mobile View is OFF (click to enable)';
             }
         }
 
