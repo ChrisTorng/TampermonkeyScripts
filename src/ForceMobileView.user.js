@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.3.1
+// @version      2025-12-27_1.3.2
 // @description  Keep pages within the viewport width and enforce a readable mobile font size to minimize horizontal scrolling and zooming.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -19,13 +19,17 @@
     'use strict';
 
     const STYLE_ID = 'tm-force-width-style';
-    const MIN_FONT_SIZE_PX = 12;
+    const DEFAULT_MIN_FONT_SIZE_PX = 12;
+    const PORTRAIT_MAX_CHARS = 30;
+    const LANDSCAPE_MAX_CHARS = 60;
     const MIN_FONT_FLAG_ATTR = 'data-tm-force-width-min-font';
     const MIN_FONT_VALUE_ATTR = 'data-tm-force-width-font-value';
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
+    let currentMinFontSizePx = null;
+    let resizeTimer;
 
     function buildStyleContent() {
         return `:root, body {\n` +
@@ -107,10 +111,11 @@
                     insertStyle();
                 }
                 if (isEnabled && shouldEnforceMinFontSize()) {
+                    const minFontSizePx = getActiveMinFontSizePx();
                     mutations.forEach((mutation) => {
                         mutation.addedNodes.forEach((node) => {
                             if (node.nodeType === Node.ELEMENT_NODE) {
-                                applyMinimumFontSize(node);
+                                applyMinimumFontSize(node, minFontSizePx);
                             }
                         });
                     });
@@ -148,6 +153,7 @@
         removeStyle();
         stopObserver();
         clearMinimumFontSize();
+        currentMinFontSizePx = null;
     }
 
     function toggleForceWidth() {
@@ -168,6 +174,82 @@
 
     function shouldEnforceMinFontSize() {
         return window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+    }
+
+    function getMaxCharsPerLine() {
+        const isPortrait = window.matchMedia('(orientation: portrait)').matches || window.innerHeight >= window.innerWidth;
+        return isPortrait ? PORTRAIT_MAX_CHARS : LANDSCAPE_MAX_CHARS;
+    }
+
+    function getContentWidthPx() {
+        const widths = [];
+        if (window.visualViewport && Number.isFinite(window.visualViewport.width)) {
+            widths.push(window.visualViewport.width);
+        }
+        if (document.documentElement && Number.isFinite(document.documentElement.clientWidth)) {
+            widths.push(document.documentElement.clientWidth);
+        }
+        if (document.body && Number.isFinite(document.body.clientWidth)) {
+            widths.push(document.body.clientWidth);
+        }
+        if (Number.isFinite(window.innerWidth)) {
+            widths.push(window.innerWidth);
+        }
+        return Math.max(0, ...widths);
+    }
+
+    function calculateMinimumFontSizePx() {
+        const contentWidth = getContentWidthPx();
+        if (!Number.isFinite(contentWidth) || contentWidth <= 0) {
+            return DEFAULT_MIN_FONT_SIZE_PX;
+        }
+        const maxChars = getMaxCharsPerLine();
+        return Math.max(1, Math.floor(contentWidth / maxChars));
+    }
+
+    function getActiveMinFontSizePx() {
+        if (currentMinFontSizePx === null) {
+            currentMinFontSizePx = calculateMinimumFontSizePx();
+        }
+        return currentMinFontSizePx;
+    }
+
+    function refreshMinimumFontSize() {
+        if (!shouldEnforceMinFontSize()) {
+            if (currentMinFontSizePx !== null) {
+                clearMinimumFontSize();
+                currentMinFontSizePx = null;
+            }
+            return;
+        }
+        const nextMinFontSizePx = calculateMinimumFontSizePx();
+        if (currentMinFontSizePx === nextMinFontSizePx) {
+            return;
+        }
+        if (currentMinFontSizePx !== null) {
+            clearMinimumFontSize();
+        }
+        currentMinFontSizePx = nextMinFontSizePx;
+        if (!document.body) {
+            onDocumentReady(() => {
+                applyMinimumFontSize(document.body, currentMinFontSizePx);
+            });
+            return;
+        }
+        applyMinimumFontSize(document.body, currentMinFontSizePx);
+    }
+
+    function scheduleMinimumFontRefresh() {
+        if (!isEnabled) {
+            return;
+        }
+        if (resizeTimer) {
+            clearTimeout(resizeTimer);
+        }
+        resizeTimer = setTimeout(() => {
+            resizeTimer = null;
+            refreshMinimumFontSize();
+        }, 150);
     }
 
     function getUserScriptMatches() {
@@ -197,20 +279,11 @@
     }
 
     function applyMinimumFontSizeIfNeeded() {
-        if (!shouldEnforceMinFontSize()) {
-            return;
-        }
-        if (!document.body) {
-            onDocumentReady(() => {
-                applyMinimumFontSize(document.body);
-            });
-            return;
-        }
-        applyMinimumFontSize(document.body);
+        refreshMinimumFontSize();
     }
 
-    function applyMinimumFontSize(root) {
-        if (!root) {
+    function applyMinimumFontSize(root, minFontSizePx) {
+        if (!root || !Number.isFinite(minFontSizePx)) {
             return;
         }
         const elements = [];
@@ -223,7 +296,7 @@
                 return;
             }
             const computedSize = Number.parseFloat(window.getComputedStyle(element).fontSize);
-            if (!Number.isFinite(computedSize) || computedSize >= MIN_FONT_SIZE_PX) {
+            if (!Number.isFinite(computedSize) || computedSize >= minFontSizePx) {
                 return;
             }
             const inlineValue = element.style.getPropertyValue('font-size');
@@ -231,7 +304,7 @@
             element.setAttribute(MIN_FONT_FLAG_ATTR, 'true');
             element.setAttribute(MIN_FONT_VALUE_ATTR, inlineValue);
             element.setAttribute(MIN_FONT_PRIORITY_ATTR, inlinePriority);
-            element.style.setProperty('font-size', `${MIN_FONT_SIZE_PX}px`, 'important');
+            element.style.setProperty('font-size', `${minFontSizePx}px`, 'important');
         });
     }
 
@@ -392,6 +465,12 @@
 
     if (shouldAutoEnableForUrl()) {
         enableForceWidth();
+    }
+
+    window.addEventListener('resize', scheduleMinimumFontRefresh);
+    window.addEventListener('orientationchange', scheduleMinimumFontRefresh);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleMinimumFontRefresh);
     }
 
     onDocumentReady(createFloatingToggleButton);
