@@ -1,0 +1,12 @@
+{
+  "name": "tampermonkey-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Utility scripts for the TampermonkeyScripts repository.",
+  "scripts": {
+    "generate:index": "node scripts/generate-index.js"
+  },
+  "dependencies": {
+    "marked": "^12.0.2"
+  }
+}
