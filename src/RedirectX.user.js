@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         X/Twitter/Reddit RedirectX
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.1
+// @version      2025-12-27_1.2.3
 // @description  Redirect X/Twitter to Nitter and Reddit threads to rdx.overdevs.com
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -11,6 +11,7 @@
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
 // @match        https://www.reddit.com/*
+// @match        https://old.reddit.com/*
 // @run-at       document-start
 // @grant        none
 // ==/UserScript==
@@ -38,9 +39,9 @@
         },
         {
             name: 'reddit.com',
-            match: /https?:\/\/www\.reddit\.com\/.+/,
+            match: /https?:\/\/(?:www|old)\.reddit\.com\/.+/,
             buildTarget: (_match, url) => `https://rdx.overdevs.com/comments.html?url=${url}`,
-            sessionKey: 'redirectx-last-redirect-reddit',
+            sessionKey: 'redirectx-last-redirect-old-reddit',
             skipReferrers: ['rdx.overdevs.com'],
             getRedirectId: (_match, url) => url
         }
