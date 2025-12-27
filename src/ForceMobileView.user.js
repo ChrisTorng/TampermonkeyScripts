@@ -1,15 +1,17 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.3.0
+// @version      2025-12-27_1.3.1
 // @description  Keep pages within the viewport width and enforce a readable mobile font size to minimize horizontal scrolling and zooming.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.tampermonkey.net
+// @match        https://news.ycombinator.com/item?*
+// @match        https://archive.is/*
 // @match        *://*/*
-// @grant        none
+// @grant        GM_info
 // @run-at       document-start
 // ==/UserScript==
 
@@ -17,7 +19,7 @@
     'use strict';
 
     const STYLE_ID = 'tm-force-width-style';
-    const MIN_FONT_SIZE_PX = 16;
+    const MIN_FONT_SIZE_PX = 12;
     const MIN_FONT_FLAG_ATTR = 'data-tm-force-width-min-font';
     const MIN_FONT_VALUE_ATTR = 'data-tm-force-width-font-value';
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
@@ -166,6 +168,32 @@
 
     function shouldEnforceMinFontSize() {
         return window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
+    }
+
+    function getUserScriptMatches() {
+        if (typeof GM_info !== 'undefined' && GM_info && GM_info.script && Array.isArray(GM_info.script.matches)) {
+            return GM_info.script.matches;
+        }
+        return [];
+    }
+
+    function isCatchAllMatch(matchPattern) {
+        return matchPattern === '*://*/*';
+    }
+
+    function matchPatternToRegExp(matchPattern) {
+        const escapedPattern = matchPattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+        const regexPattern = escapedPattern.replace(/\*/g, '.*');
+        return new RegExp(`^${regexPattern}$`);
+    }
+
+    function shouldAutoEnableForUrl() {
+        const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
+        if (matches.length === 0) {
+            return false;
+        }
+        const currentUrl = window.location.href;
+        return matches.some((matchPattern) => matchPatternToRegExp(matchPattern).test(currentUrl));
     }
 
     function applyMinimumFontSizeIfNeeded() {
@@ -360,6 +388,10 @@
         });
 
         updateButtonAppearance();
+    }
+
+    if (shouldAutoEnableForUrl()) {
+        enableForceWidth();
     }
 
     onDocumentReady(createFloatingToggleButton);

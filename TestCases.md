@@ -54,6 +54,7 @@
 
 # Force Mobile View
 - https://news.ycombinator.com/item?id=46255285
+- https://archive.is/75aY9
 
 # Medium Auto Reload Once
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b
