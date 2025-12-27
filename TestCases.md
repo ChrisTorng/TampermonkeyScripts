@@ -3,6 +3,7 @@
 
 # RedirectX
 - https://x.com/cocktailpeanut/status/1860756706357022812
+- https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/
 
 # Archive Today
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/
