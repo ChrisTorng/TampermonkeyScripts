@@ -11,7 +11,10 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - For every script addition, update, or removal, review and adjust **README.md** so the script list stays accurate while remaining concise.
 - Keep each script’s Tampermonkey `@description` in sync with its **README.md** entry; update the metadata whenever README descriptions change.
 - Update **[TestCases.md](TestCases.md)** when site-specific scripts change so their test URLs remain aligned. **Site-agnostic scripts do not require TestCases entries.**
-- Whenever **README.md** changes, run `npm run generate:index` (powered by `scripts/generate-index.js`) to rebuild **[index.html](index.html)** from the full README content and convert every link that starts with `https://github.com/ChrisTorng/TampermonkeyScripts/raw/main` to a relative path (e.g., `/src/TheNeuronDaily.user.js`).
+- **index.html** is build output and must not be committed (it is gitignored). CI and Vercel run `npm run generate:index` (via `scripts/generate-index.js`) to rebuild it from **README.md** and convert raw GitHub links to relative paths. Run the command locally only for testing; ensure the file stays untracked.
 
 ## 3. Language
 - All code, comments, and documentation in this repository must be written in **English**.
+
+## 4. Communication
+- Communicate with users in Traditional Chinese using Taiwan phrasing unless they explicitly request another language.
