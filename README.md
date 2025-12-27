@@ -75,7 +75,7 @@ Show a thinner, fixed vertical indicator at the right of every page to visualize
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Force every page to stay within the viewport width to minimize horizontal scrolling while keeping native scrollbars available when truly needed. Images and media stay responsive, long code blocks or URLs wrap cleanly on small screens, and tables keep their natural column proportions without wasting mobile gutter space. When enabled on mobile-sized screens, the script also enforces a minimum readable font size so text stays legible without pinch-zooming. A draggable bottom-right `↔` toggle button keeps the feature off by default, except for URLs that match specific `@match` entries, where it auto-enables.
+Force every page to stay within the viewport width to minimize horizontal scrolling while keeping native scrollbars available when truly needed. Images and media stay responsive, long code blocks or URLs wrap cleanly on small screens, and tables keep their natural column proportions without wasting mobile gutter space. When enabled on mobile-sized screens, the script dynamically computes a minimum readable font size based on the content width so roughly 30 characters fit per line in portrait and 60 in landscape. A draggable bottom-right `↔` toggle button keeps the feature off by default, except for URLs that match specific `@match` entries, where it auto-enables.
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
@@ -124,3 +124,4 @@ Feel free to open an issue or submit a pull request if you encounter any bugs or
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
