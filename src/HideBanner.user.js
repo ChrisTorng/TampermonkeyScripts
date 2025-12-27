@@ -52,7 +52,9 @@
                 '.modality-content'
             ],
             click: [
-                'shadow:modality-custom-element .met-button'
+                // Trigger 403 error
+                // 'shadow:modality-custom-element .met-button'
+                'shadow:modality-custom-element .met-flyout-close'
             ],
             scrollTo: '.head-line'
         },
