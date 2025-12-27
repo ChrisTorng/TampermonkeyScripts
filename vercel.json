@@ -1,0 +1,7 @@
+{
+  "version": 2,
+  "framework": "static",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run generate:index",
+  "outputDirectory": "."
+}
