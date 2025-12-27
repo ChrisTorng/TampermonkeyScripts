@@ -11,10 +11,12 @@ Apply rule-based URL redirects so site-specific patterns can be routed to their 
 
 ## [RedirectX User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
 
-Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Nitter](https://nitter.net/) for lightweight viewing, while still allowing you to go back to the original X/Twitter page.
+Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Nitter](https://nitter.net/) for lightweight viewing, while still allowing you to go back to the original X/Twitter page. It also redirects [Reddit](https://www.reddit.com/) threads to the rdx.overdevs.com comments view.
 
 - **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
 - **Redirected to** [https://nitter.net/cocktailpeanut/status/1860756706357022812](https://nitter.net/cocktailpeanut/status/1860756706357022812)
+- **From** [https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/](https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/)
+- **Redirected to** [https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/](https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/)
 
 ## [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
