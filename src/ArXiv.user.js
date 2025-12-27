@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ArXiv site
 // @namespace    http://tampermonkey.net/
-// @version      2025-01-24_1.1
-// @description  ArXiv site
+// @version      2025-12-27_1.1.1
+// @description  Open arXiv papers in the HTML view instead of the abstract page.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js

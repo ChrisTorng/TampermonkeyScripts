@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-03-18_1.2.7
-// @description  Automatically redirect paywall articles to Archive Today
+// @version      2025-12-27_1.2.8
+// @description  Redirect selected paywall pages to Archive Today, hide prompts, and jump into the content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js

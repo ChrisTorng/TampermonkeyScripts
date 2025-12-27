@@ -4,50 +4,48 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ## [RedirectUrl User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js)
 
-Apply rule-based URL redirects so site-specific patterns can be routed to their canonical destinations. Each site is explicitly matched in the metadata, while regex-based rules inside the script define what to detect and how to rewrite the URL. Current rule: redirect GitHub repository URLs that are forced into the `readme-ov-file` tab back to the main repository page while keeping the original URL in history so Back returns to the source.
+Redirect site-specific patterns to their canonical destinations, e.g., move GitHub `readme-ov-file` tabs back to the main repository page while keeping history intact.
 
 - **From** [https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file](https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file)
 - **Redirected to** [https://github.com/ChrisTorng/TampermonkeyScripts](https://github.com/ChrisTorng/TampermonkeyScripts)
 
 ## [RedirectX User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
 
-Automatically redirect [X](https://x.com/)/[Twitter](https://twitter.com) links into [Nitter](https://nitter.net/) for lightweight viewing, while still allowing you to go back to the original X/Twitter page. It also redirects [Reddit](https://www.reddit.com/) (including old.reddit.com) threads to the rdx.overdevs.com comments view.
+Redirect [X](https://x.com/)/[Twitter](https://twitter.com) links to [Nitter](https://nitter.net/) and [Reddit](https://www.reddit.com/) threads to rdx.overdevs.com, preserving back navigation.
 
 - **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
 - **Redirected to** [https://nitter.net/cocktailpeanut/status/1860756706357022812](https://nitter.net/cocktailpeanut/status/1860756706357022812)
 - **From** [https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/](https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/)
 - **Redirected to** [https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/](https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/)
-- **From** [https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/](https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/)
-- **Redirected to** [https://rdx.overdevs.com/comments.html?url=https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/](https://rdx.overdevs.com/comments.html?url=https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/)
 
 ## [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
-Provide all sites [→] button to go to [Internet Archive](https://web.archive.org) for testing.
+Add a quick Internet Archive link on any site for testing snapshots.
 
 ## [Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
 
-Automatically redirect most paywall articles to [Internet Archive](https://web.archive.org) for archiving. And hide the fixed title. Supports go to the same page on [Archive Today](https://archive.is).
+Send most paywall articles to [Internet Archive](https://web.archive.org) for archiving, hide fixed titles, and offer an [Archive Today](https://archive.is) fallback.
 
 - **From** [https://www.rawstory.com/laura-loomer-vs-elon-musk/](https://www.rawstory.com/laura-loomer-vs-elon-musk/)
 - **Redirected to** [https://web.archive.org/web/20250106005830/https://www.rawstory.com/laura-loomer-vs-elon-musk/](https://web.archive.org/web/20250106005830/https://www.rawstory.com/laura-loomer-vs-elon-musk/)
 
 ## [Archive Today User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
 
-Automatically redirect some other paywall articles to [Archive Today](https://archive.is) for archiving. And hide the prompt, scroll into content page.
+Redirect selected paywall pages to [Archive Today](https://archive.is), hide prompts, and jump into the content.
 
 - **From** [https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear](https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear)
 - **Redirected to** [https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear](https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear)
 
 ## [ArXiv User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
 
-Automatically redirect to the HTML version of [ArXiv](https://arxiv.org/) papers.
+Open [arXiv](https://arxiv.org/) papers in the HTML view instead of the abstract page.
 
 - **From** [https://arxiv.org/abs/2402.07939v1](https://arxiv.org/abs/2402.07939v1)
 - **Redirected to** [https://arxiv.org/html/2402.07939v1](https://arxiv.org/html/2402.07939v1)
 
 ## [The Neuron Daily User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
 
-Hide unnecessary elements on [The Neuron Daily](https://www.theneurondaily.com/) site to focus on the main content.
+Hide non-essential elements on [The Neuron Daily](https://www.theneurondaily.com/) to keep focus on the main content.
 
 ## [Hide Banner User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
 
@@ -61,35 +59,38 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 
 ## [Fix Floating Elements User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
 
-Automatically convert floating toolbars and sticky overlays into scrolling elements so they no longer block the reading area:
+Turn floating toolbars and sticky overlays into scrollable elements on:
 
 - [What is Intelligence?](https://whatisintelligence.antikythera.org/)
 
 ## [Articles External New Tab User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
 
-Ensure external story links on [Hacker News](https://news.ycombinator.com/), [hackernews.betacat.io](https://hackernews.betacat.io/), [The Neuron Daily](https://www.theneurondaily.com/), and [Taipei City Government news galleries](https://tam.gov.taipei/) open in background tabs and display a ↗︎ icon indicator. On hackernews.betacat.io, author and comment links to Hacker News are also supported.
+Open external links in background tabs with a ↗︎ indicator on:
+
+- [Hacker News](https://news.ycombinator.com/)
+- [Hacker News Summary](https://hackernews.betacat.io/)
+- [The Neuron Daily](https://www.theneurondaily.com/)
+- [Taipei Astronomical Museum News](https://tam.gov.taipei/)
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
-Maximize the readable area of Git diffs for [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/) by stretching file containers edge-to-edge and slimming line number columns.
+Stretch Git diffs edge-to-edge and slim line numbers on [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/).
 
 ## [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
 
-Show a thinner, fixed vertical indicator at the right of every page to visualize your current vertical scroll position and viewport height. A minimum visible height keeps the indicator noticeable even on very long pages, the layout stays touch-friendly for mobile users, and the bar tracks the visual viewport so it remains aligned with the zoomed-in on-screen region while shrinking the viewport marker to match the reduced visible height.
+Show a thin, fixed vertical marker that tracks viewport scroll position on every page.
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Force every page to stay within the viewport width to minimize horizontal scrolling while keeping native scrollbars available when truly needed. Images and media stay responsive, long code blocks or URLs wrap cleanly on small screens, and tables keep their natural column proportions without wasting mobile gutter space. When enabled on mobile-sized screens, the script dynamically computes a minimum readable font size based on the content width so roughly 30 characters fit per line in portrait and 60 in landscape. A draggable bottom-right `↔` toggle button keeps the feature off by default, except for URLs that match specific `@match` entries, where it auto-enables.
+Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
-Automatically reload [Medium](https://medium.com/) sites and Medium-powered custom domains once per browser session to fix page hang problem.
+Reload [Medium](https://medium.com/) and Medium-powered domains once per session to avoid hangups.
 
-- **Direct Medium**: [https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b](https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b)
-- **Medium Redirect**: [https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950](https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950)
-- **Custom domain**: [https://uxdesign.cc/fear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950](https://uxdesign.cc/fear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950)  
+## Test Cases
 
-See [Test Cases](TestCases.md) for more details.
+See [TestCases.md](TestCases.md) for sample URLs across the scripts.
 
 ## Installation
 
@@ -128,4 +129,3 @@ Feel free to open an issue or submit a pull request if you encounter any bugs or
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-

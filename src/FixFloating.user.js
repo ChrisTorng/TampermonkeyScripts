@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fix Floating Elements
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-13_1.0.2
-// @description  Force floating UI elements to scroll with the page for distraction-free reading
+// @version      2025-12-27_1.0.3
+// @description  Turn floating toolbars and sticky overlays into scrollable elements on supported pages.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js

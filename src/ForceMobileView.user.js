@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.3.2
-// @description  Keep pages within the viewport width and enforce a readable mobile font size to minimize horizontal scrolling and zooming.
+// @version      2025-12-27_1.3.5
+// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js

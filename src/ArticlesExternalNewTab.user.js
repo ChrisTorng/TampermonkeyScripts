@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_2.1.0
-// @description  Keep article links on supported news hubs opening in background tabs with a ↗︎ indicator.
+// @version      2025-12-27_2.1.2
+// @description  Open external links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, and Taipei Astronomical Museum News.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js

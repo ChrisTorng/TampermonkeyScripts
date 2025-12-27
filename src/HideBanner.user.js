@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.5.1
-// @description  Hide/click/scroll to specified elements on multiple websites
+// @version      2025-12-27_1.5.2
+// @description  Hide/click/scrollTo elements on specific sites for better reading experience.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js

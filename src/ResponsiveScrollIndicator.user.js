@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-05_1.3.5
-// @description  Display a fixed vertical indicator at the right of every page that highlights current vertical scroll position and viewport height with a minimum visible height, optimized for touch-friendly layouts.
+// @version      2025-12-27_1.3.6
+// @description  Show a thin, fixed vertical marker that tracks viewport scroll position on every page.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js

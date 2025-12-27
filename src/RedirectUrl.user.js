@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         RedirectUrl
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-13_1.2.1
-// @description  Apply rule-based URL redirects so that site-specific patterns are sent to their canonical destinations while keeping the source page in history.
+// @version      2025-12-27_1.2.2
+// @description  Redirect site-specific patterns to their canonical destinations (e.g., GitHub readme-ov-file back to the repo) while keeping history intact.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js
