@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Width View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.0
+// @version      2025-12-27_1.2.3
 // @description  Prevent pages from exceeding the viewport width to minimize horizontal scrolling while keeping native scrollbars available.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -147,7 +147,7 @@
         toggleButton.textContent = '↔';
         toggleButton.title = 'Toggle Force Width View';
         toggleButton.style.cssText = `
-            position: fixed;
+            position: absolute;
             z-index: 2147483647;
             padding: 6px 10px;
             background-color: rgba(0, 0, 0, 0.55);
@@ -162,19 +162,21 @@
         `;
         document.body.appendChild(toggleButton);
 
-        const initialLeft = Math.max(window.innerWidth - toggleButton.offsetWidth - 16, 0);
-        const initialTop = Math.max(window.innerHeight - toggleButton.offsetHeight - 16, 0);
-        toggleButton.style.left = `${initialLeft}px`;
-        toggleButton.style.top = `${initialTop}px`;
-        toggleButton.style.right = 'auto';
+        toggleButton.style.top = '104px';
+        toggleButton.style.right = '0px';
+        toggleButton.style.left = 'auto';
         toggleButton.style.bottom = 'auto';
 
+        const dragThreshold = 3;
         let isDragging = false;
         let hasMoved = false;
         let currentX;
         let currentY;
         let initialX;
         let initialY;
+        let startClientX;
+        let startClientY;
+        let hasSwitchedToLeft = false;
 
         function updateButtonAppearance() {
             if (isEnabled) {
@@ -199,24 +201,23 @@
             hasMoved = false;
 
             if (e.type === 'touchstart') {
-                initialX = e.touches[0].clientX - toggleButton.offsetLeft;
-                initialY = e.touches[0].clientY - toggleButton.offsetTop;
+                startClientX = e.touches[0].clientX;
+                startClientY = e.touches[0].clientY;
+                initialX = startClientX - toggleButton.offsetLeft;
+                initialY = startClientY - toggleButton.offsetTop;
             } else {
-                initialX = e.clientX - toggleButton.offsetLeft;
-                initialY = e.clientY - toggleButton.offsetTop;
+                startClientX = e.clientX;
+                startClientY = e.clientY;
+                initialX = startClientX - toggleButton.offsetLeft;
+                initialY = startClientY - toggleButton.offsetTop;
             }
-
-            toggleButton.style.right = 'auto';
-            toggleButton.style.bottom = 'auto';
+            hasSwitchedToLeft = false;
         }
 
         function drag(e) {
             if (!isDragging) {
                 return;
             }
-            e.preventDefault();
-            hasMoved = true;
-
             if (e.type === 'touchmove') {
                 currentX = e.touches[0].clientX - initialX;
                 currentY = e.touches[0].clientY - initialY;
@@ -224,6 +225,22 @@
                 currentX = e.clientX - initialX;
                 currentY = e.clientY - initialY;
             }
+
+            const deltaX = Math.abs((e.type === 'touchmove' ? e.touches[0].clientX : e.clientX) - startClientX);
+            const deltaY = Math.abs((e.type === 'touchmove' ? e.touches[0].clientY : e.clientY) - startClientY);
+            if (!hasMoved && deltaX < dragThreshold && deltaY < dragThreshold) {
+                return;
+            }
+
+            if (!hasMoved) {
+                hasMoved = true;
+            }
+            if (!hasSwitchedToLeft) {
+                toggleButton.style.right = 'auto';
+                toggleButton.style.bottom = 'auto';
+                hasSwitchedToLeft = true;
+            }
+            e.preventDefault();
 
             const maxX = Math.max(document.documentElement.clientWidth, window.innerWidth) - toggleButton.offsetWidth;
             const maxY = Math.max(document.documentElement.clientHeight, window.innerHeight) - toggleButton.offsetHeight;
