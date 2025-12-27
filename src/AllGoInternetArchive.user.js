@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-13_1.2.4
-// @description  Provide all sites go to Internet Archive
+// @version      2025-12-27_1.2.5
+// @description  Add a quick Internet Archive link on any site for testing snapshots.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js

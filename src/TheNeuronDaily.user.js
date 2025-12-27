@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         The Neuron Daily script
 // @namespace    http://tampermonkey.net/
-// @version      2023-12-16_1.0
-// @description  The Neuron Daily site
+// @version      2025-12-27_1.0.1
+// @description  Hide non-essential elements on The Neuron Daily to keep focus on the main content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js

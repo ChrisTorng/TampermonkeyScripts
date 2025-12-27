@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Medium Auto Reload Once
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-08_3.2.1
-// @description  Reload Medium and Medium-powered pages once per browser session to trigger full content loading without infinite loops.
+// @version      2025-12-27_3.2.2
+// @description  Reload Medium and Medium-powered domains once per session to avoid hangups.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js

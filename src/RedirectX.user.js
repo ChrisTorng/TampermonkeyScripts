@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         X/Twitter/Reddit RedirectX
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.3
-// @description  Redirect X/Twitter to Nitter and Reddit threads to rdx.overdevs.com
+// @version      2025-12-27_1.2.4
+// @description  Redirect X/Twitter links to Nitter and Reddit threads to rdx.overdevs.com while preserving back navigation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js
