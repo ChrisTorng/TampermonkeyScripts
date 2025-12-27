@@ -33,6 +33,7 @@
 - https://www.infoq.cn/article/mjPeD7eDL2XKNNd6zs3M
 - https://pansci.asia/archives/380040
 - https://www.inside.com.tw/article/40278-is-taiwan-the-worlds-best-use-case-for-stablecoins
+- https://www.latimes.com/environment/story/2025-12-18/state-regulators-vote-to-keep-utility-profits-high-angering-customers
 - https://whatisintelligence.antikythera.org/chapter-02/
 
 # Fix Floating Elements

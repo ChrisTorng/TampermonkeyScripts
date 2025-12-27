@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-13_1.2.3
+// @version      2025-12-27_1.5.1
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -11,6 +11,7 @@
 // @match        https://pansci.asia/*
 // @match        https://www.infoq.cn/*
 // @match        https://www.inside.com.tw/*
+// @match        https://www.latimes.com/*
 // @match        https://whatisintelligence.antikythera.org/*
 // @grant        none
 // ==/UserScript==
@@ -36,7 +37,7 @@
                 '.geo-banner.fixed'
             ],
             click: [],
-            scrollTo: null
+            scrollTo: 'article-title'
         },
         'www.inside.com.tw': {
             hide: [],
@@ -44,6 +45,16 @@
                 '#article_content'
             ],
             scrollTo: 'picture'
+        },
+        'www.latimes.com': {
+            hide: [
+                'nav',
+                '.modality-content'
+            ],
+            click: [
+                'shadow:modality-custom-element .met-button'
+            ],
+            scrollTo: '.head-line'
         },
         'whatisintelligence.antikythera.org': {
             hide: [
@@ -58,6 +69,9 @@
 
     // Get selectors for current domain
     const currentConfig = domainSelectors[window.location.hostname] || { hide: [], click: [], scrollTo: null };
+
+    // Track clicked elements to avoid repeated clicks
+    const clickedElements = new WeakSet();
 
     // Support selectors inside a single shadow host via the syntax "shadow:<host-selector> <descendant>"
     function queryAll(selector) {
@@ -88,7 +102,11 @@
         currentConfig.click.forEach(selector => {
             const elements = queryAll(selector);
             elements.forEach(element => {
-                element.click();
+                if (!clickedElements.has(element)) {
+                    console.log('Clicking element:', element);
+                    element.click();
+                    clickedElements.add(element);
+                }
             });
         });
     }
@@ -101,7 +119,7 @@
 
         const elementRect = element.getBoundingClientRect();
 
-        // 只有當目標元素位置在目前視窗之下方時才捲動
+        // Only scroll when the target element is below the current viewport
         if (elementRect.top > 0) {
             console.log('Scrolling to element:', element);
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
