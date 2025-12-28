@@ -78,7 +78,7 @@ Stretch Git diffs edge-to-edge and slim line numbers on [ChatGPT Codex tasks](ht
 
 ## [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
 
-Show a thin, fixed vertical marker that tracks viewport scroll position on every page.
+Show thin, fixed vertical markers that track scroll position for every scrollable area on the page.
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 

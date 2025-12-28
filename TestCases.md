@@ -54,6 +54,9 @@
 - https://github.com/ChrisTorng/TampermonkeyScripts/pull/7/files
 - https://github.com/ChrisTorng/TampermonkeyScripts/commit/267c2b3f52c428e3b68b9560ed165cb21dfa4602
 
+# Responsive Scroll Position Indicator
+- https://mastodon.social/@firefoxwebdevs/115740500373677782
+
 # Force Mobile View
 - https://news.ycombinator.com/item?id=46255285
 - https://archive.is/75aY9
