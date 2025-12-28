@@ -2,21 +2,15 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
-## [RedirectUrl User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js)
+## [RedirectUrls User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
 
-Redirect site-specific patterns to their canonical destinations, e.g., move GitHub `readme-ov-file` tabs back to the main repository page while keeping history intact.
+Redirect supported pages to more readable destinations while preserving back navigation.
 
-- **From** [https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file](https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file)
-- **Redirected to** [https://github.com/ChrisTorng/TampermonkeyScripts](https://github.com/ChrisTorng/TampermonkeyScripts)
-
-## [RedirectX User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
-
-Redirect [X](https://x.com/)/[Twitter](https://twitter.com) links to [Nitter](https://nitter.net/) and [Reddit](https://www.reddit.com/) threads to rdx.overdevs.com, preserving back navigation.
-
-- **From** [https://x.com/cocktailpeanut/status/1860756706357022812](https://x.com/cocktailpeanut/status/1860756706357022812)
-- **Redirected to** [https://nitter.net/cocktailpeanut/status/1860756706357022812](https://nitter.net/cocktailpeanut/status/1860756706357022812)
-- **From** [https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/](https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/)
-- **Redirected to** [https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/](https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/)
+Supported sites:
+- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Nitter](https://nitter.net/) status pages for a lighter viewer
+- [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
+- [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
+- [arXiv](https://arxiv.org/) abs/pdf pages → arXiv HTML view
 
 ## [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
@@ -35,13 +29,6 @@ Redirect selected paywall pages to [Archive Today](https://archive.is), hide pro
 
 - **From** [https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear](https://www.bloomberg.com/opinion/articles/2024-12-12/exxon-s-ai-power-play-aims-to-beat-nuclear)
 - **Redirected to** [https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear](https://archive.is/submit/?url=https%3A%2F%2Fwww.bloomberg.com%2Fopinion%2Farticles%2F2024-12-12%2Fexxon-s-ai-power-play-aims-to-beat-nuclear)
-
-## [ArXiv User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
-
-Open [arXiv](https://arxiv.org/) papers in the HTML view instead of the abstract page.
-
-- **From** [https://arxiv.org/abs/2402.07939v1](https://arxiv.org/abs/2402.07939v1)
-- **Redirected to** [https://arxiv.org/html/2402.07939v1](https://arxiv.org/html/2402.07939v1)
 
 ## [The Neuron Daily User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
 
@@ -103,12 +90,10 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
 
 1. Click anyone you need:
 
-  - [RedirectUrl.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrl.user.js)
-  - [RedirectX.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectX.user.js)
+  - [RedirectUrls.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
   - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
   - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
-  - [ArXiv.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArXiv.user.js)
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
   - [FixFloating.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
