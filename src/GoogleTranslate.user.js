@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Google Translate Page Toggle
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-28_1.0.3
+// @version      2025-12-28_1.0.5
 // @description  Toggle the current page between original and Google Translate with Alt+S.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -9,7 +9,8 @@
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=translate.google.com
 // @match        *://*/*
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_setValue
 // ==/UserScript==
 
 (function() {
@@ -23,8 +24,9 @@
     const targetLanguage = 'zh-TW';
     const uiLanguage = 'en';
     const translateHostSuffix = 'translate.goog';
-    const forwardTranslateKey = 'gt-toggle-forward-translate-url';
-    let isNavigatingToTranslate = false;
+    const historyIndexKey = 'gt-toggle-history-index';
+    const historyMapKey = 'gt-toggle-history-map';
+    const translateMapKey = 'gt-toggle-translate-original-map';
 
     function isTranslatePage() {
         return window.location.hostname.endsWith(translateHostSuffix) &&
@@ -43,23 +45,141 @@
         return translatedUrl.toString();
     }
 
+    function buildOriginalUrl(currentUrl) {
+        const url = new URL(currentUrl);
+        const suffix = `.${translateHostSuffix}`;
+        if (url.hostname.endsWith(suffix)) {
+            url.hostname = url.hostname.slice(0, -suffix.length).replace(/-/g, '.');
+        }
+        url.searchParams.delete('_x_tr_sl');
+        url.searchParams.delete('_x_tr_tl');
+        url.searchParams.delete('_x_tr_hl');
+        url.searchParams.delete('_x_tr_pto');
+        return url.toString();
+    }
+
+    function loadJson(key, fallbackValue) {
+        const raw = GM_getValue(key, null);
+        if (!raw) {
+            return fallbackValue;
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (error) {
+            return fallbackValue;
+        }
+    }
+
+    function saveJson(key, value) {
+        GM_setValue(key, JSON.stringify(value));
+    }
+
+    function getNavigationType() {
+        const entries = performance.getEntriesByType('navigation');
+        if (entries && entries.length) {
+            return entries[0].type;
+        }
+        return 'navigate';
+    }
+
+    function findNearestIndexForUrl(map, url, baseIndex) {
+        const indices = Object.keys(map)
+            .map((key) => Number(key))
+            .filter((key) => Number.isFinite(key) && map[key] === url);
+
+        if (!indices.length) {
+            return null;
+        }
+
+        if (baseIndex == null) {
+            return Math.max(...indices);
+        }
+
+        let bestIndex = indices[0];
+        let bestDistance = Math.abs(indices[0] - baseIndex);
+        for (let i = 1; i < indices.length; i += 1) {
+            const index = indices[i];
+            const distance = Math.abs(index - baseIndex);
+            if (distance < bestDistance) {
+                bestIndex = index;
+                bestDistance = distance;
+            }
+        }
+        return bestIndex;
+    }
+
+    function updateHistoryTracking() {
+        const map = loadJson(historyMapKey, {});
+        const lastIndexRaw = GM_getValue(historyIndexKey, null);
+        const lastIndex = Number.isFinite(Number(lastIndexRaw)) ? Number(lastIndexRaw) : null;
+        const navigationType = getNavigationType();
+        let index = null;
+
+        if (navigationType === 'back_forward' || navigationType === 'reload') {
+            index = findNearestIndexForUrl(map, window.location.href, lastIndex);
+            if (index === null && lastIndex !== null) {
+                index = lastIndex;
+            }
+        } else {
+            index = (lastIndex || 0) + 1;
+        }
+
+        if (index === null) {
+            index = 1;
+        }
+
+        map[index] = window.location.href;
+        saveJson(historyMapKey, map);
+        GM_setValue(historyIndexKey, index);
+        return { index, map };
+    }
+
+    function rememberTranslateMapping(translateUrl, originalUrl) {
+        const map = loadJson(translateMapKey, {});
+        map[translateUrl] = originalUrl;
+        saveJson(translateMapKey, map);
+    }
+
+    function getOriginalUrlForTranslate(translateUrl) {
+        const map = loadJson(translateMapKey, {});
+        return map[translateUrl] || buildOriginalUrl(translateUrl);
+    }
+
+    const historyState = updateHistoryTracking();
+
+    function getAdjacentUrls() {
+        if (!historyState || !historyState.index) {
+            return { previousUrl: null, nextUrl: null };
+        }
+        return {
+            previousUrl: historyState.map[historyState.index - 1] || null,
+            nextUrl: historyState.map[historyState.index + 1] || null,
+        };
+    }
+
+    function navigateToExpectedUrl(expectedUrl) {
+        const { previousUrl, nextUrl } = getAdjacentUrls();
+        if (previousUrl === expectedUrl) {
+            window.history.back();
+            return;
+        }
+        if (nextUrl === expectedUrl) {
+            window.history.forward();
+            return;
+        }
+        window.location.assign(expectedUrl);
+    }
+
     function handleToggle() {
         if (isTranslatePage()) {
-            window.history.back();
+            const originalUrl = getOriginalUrlForTranslate(window.location.href);
+            navigateToExpectedUrl(originalUrl);
             return;
         }
 
         const translatedUrl = buildTranslateUrl(window.location.href);
-        const forwardTranslateUrl = sessionStorage.getItem(forwardTranslateKey);
-        if (forwardTranslateUrl === translatedUrl) {
-            isNavigatingToTranslate = true;
-            window.history.forward();
-            return;
-        }
-
-        sessionStorage.setItem(forwardTranslateKey, translatedUrl);
-        isNavigatingToTranslate = true;
-        window.location.assign(translatedUrl);
+        rememberTranslateMapping(translatedUrl, window.location.href);
+        navigateToExpectedUrl(translatedUrl);
     }
 
     function hideTranslateBannerFrame() {
@@ -110,14 +230,6 @@
     }
 
     window.addEventListener('keydown', onKeyDown, true);
-    window.addEventListener('pageshow', () => {
-        isNavigatingToTranslate = false;
-    });
-    window.addEventListener('pagehide', () => {
-        if (!isNavigatingToTranslate) {
-            sessionStorage.removeItem(forwardTranslateKey);
-        }
-    });
 
     if (isTranslatePage()) {
         if (document.readyState === 'loading') {
