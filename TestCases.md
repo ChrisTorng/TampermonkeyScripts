@@ -57,6 +57,9 @@
 # Responsive Scroll Position Indicator
 - https://mastodon.social/@firefoxwebdevs/115740500373677782
 
+# YouTube Tools
+- https://www.youtube.com/watch?v=nCg3aXn5F3M
+
 # Force Mobile View
 - https://news.ycombinator.com/item?id=46255285
 - https://archive.is/75aY9
