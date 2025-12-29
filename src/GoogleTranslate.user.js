@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Google Translate Page Toggle
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-28_1.0.5
-// @description  Toggle the current page between original and Google Translate with Alt+S.
+// @version      2025-12-29_1.0.6
+// @description  Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js
@@ -215,7 +215,7 @@
     }
 
     function onKeyDown(event) {
-        if (!event.altKey) {
+        if (!event.altKey || !event.ctrlKey) {
             return;
         }
 

@@ -69,7 +69,7 @@ Show thin, fixed vertical markers that track scroll position for every scrollabl
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
-Toggle the current page between original and Google Translate with Alt+S.
+Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ## [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
