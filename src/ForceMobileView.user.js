@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.3.5
+// @version      2025-12-30_1.3.6
 // @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -20,8 +20,8 @@
 
     const STYLE_ID = 'tm-force-width-style';
     const DEFAULT_MIN_FONT_SIZE_PX = 12;
-    const PORTRAIT_MAX_CHARS = 30;
-    const LANDSCAPE_MAX_CHARS = 60;
+    const PORTRAIT_MAX_CHARS = 20;
+    const LANDSCAPE_MAX_CHARS = 40;
     const MIN_FONT_FLAG_ATTR = 'data-tm-force-width-min-font';
     const MIN_FONT_VALUE_ATTR = 'data-tm-force-width-font-value';
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
