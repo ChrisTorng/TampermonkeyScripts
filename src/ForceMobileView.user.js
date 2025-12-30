@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-30_1.3.6
+// @version      2025-12-30_1.3.7
 // @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -22,9 +22,12 @@
     const DEFAULT_MIN_FONT_SIZE_PX = 12;
     const PORTRAIT_MAX_CHARS = 20;
     const LANDSCAPE_MAX_CHARS = 40;
+    const MIN_LINE_HEIGHT_RATIO = 1.4;
     const MIN_FONT_FLAG_ATTR = 'data-tm-force-width-min-font';
     const MIN_FONT_VALUE_ATTR = 'data-tm-force-width-font-value';
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
+    const MIN_LINE_HEIGHT_VALUE_ATTR = 'data-tm-force-width-line-height-value';
+    const MIN_LINE_HEIGHT_PRIORITY_ATTR = 'data-tm-force-width-line-height-priority';
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
@@ -301,10 +304,15 @@
             }
             const inlineValue = element.style.getPropertyValue('font-size');
             const inlinePriority = element.style.getPropertyPriority('font-size');
+            const lineHeightValue = element.style.getPropertyValue('line-height');
+            const lineHeightPriority = element.style.getPropertyPriority('line-height');
             element.setAttribute(MIN_FONT_FLAG_ATTR, 'true');
             element.setAttribute(MIN_FONT_VALUE_ATTR, inlineValue);
             element.setAttribute(MIN_FONT_PRIORITY_ATTR, inlinePriority);
+            element.setAttribute(MIN_LINE_HEIGHT_VALUE_ATTR, lineHeightValue);
+            element.setAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR, lineHeightPriority);
             element.style.setProperty('font-size', `${minFontSizePx}px`, 'important');
+            element.style.setProperty('line-height', String(MIN_LINE_HEIGHT_RATIO), 'important');
         });
     }
 
@@ -313,14 +321,23 @@
         elements.forEach((element) => {
             const inlineValue = element.getAttribute(MIN_FONT_VALUE_ATTR) || '';
             const inlinePriority = element.getAttribute(MIN_FONT_PRIORITY_ATTR) || '';
+            const lineHeightValue = element.getAttribute(MIN_LINE_HEIGHT_VALUE_ATTR) || '';
+            const lineHeightPriority = element.getAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR) || '';
             if (inlineValue) {
                 element.style.setProperty('font-size', inlineValue, inlinePriority);
             } else {
                 element.style.removeProperty('font-size');
             }
+            if (lineHeightValue) {
+                element.style.setProperty('line-height', lineHeightValue, lineHeightPriority);
+            } else {
+                element.style.removeProperty('line-height');
+            }
             element.removeAttribute(MIN_FONT_FLAG_ATTR);
             element.removeAttribute(MIN_FONT_VALUE_ATTR);
             element.removeAttribute(MIN_FONT_PRIORITY_ATTR);
+            element.removeAttribute(MIN_LINE_HEIGHT_VALUE_ATTR);
+            element.removeAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR);
         });
     }
 
