@@ -16,7 +16,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Generate index.html
+      - name: Generate index.html and TestCases.html
         run: npm run generate:index
-      - name: Verify index.html was produced
-        run: test -f index.html
+      - name: Verify HTML outputs were produced
+        run: test -f index.html && test -f TestCases.html
