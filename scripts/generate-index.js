@@ -17,7 +17,7 @@ const PAGES = [
     source: path.join(ROOT, 'TestCases.md'),
     output: path.join(ROOT, 'TestCases.html'),
     title: 'Tampermonkey Script Test Cases',
-    transforms: [stripRawBase]
+    transforms: [stripRawBase, linkifyPlainUrls]
   }
 ];
 
@@ -44,9 +44,20 @@ function stripRawBase(markdown) {
 }
 
 function rewriteTestCasesLink(markdown) {
-  return markdown.replace(
+  const updatedLabel = markdown.replace(
+    /\[TestCases\.md\]\((?:\.\/)?TestCases\.md(#[^)]+)?\)/g,
+    '[TestCases.html](TestCases.html$1)'
+  );
+  return updatedLabel.replace(
     /\]\((?:\.\/)?TestCases\.md(#[^)]+)?\)/g,
     '](TestCases.html$1)'
+  );
+}
+
+function linkifyPlainUrls(markdown) {
+  return markdown.replace(
+    /(?<!\]\()https?:\/\/[^\s)]+/g,
+    (url) => `<a href="${url}">${url}</a>`
   );
 }
 
