@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-28_1.3.9
+// @version      2026-01-04_1.3.10
 // @description  Show thin, fixed vertical markers that track scroll position for every scrollable area on the page.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -309,6 +309,19 @@
         indicator.container.style.display = '';
     }
 
+    function isElementHidden(element) {
+        if (element.hidden) {
+            return true;
+        }
+
+        const style = getComputedStyle(element);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') {
+            return true;
+        }
+
+        return element.getClientRects().length === 0;
+    }
+
     function updateViewportMarker(indicator, scrollRatio, viewportRatio) {
         const trackHeight = indicator.track.clientHeight;
         if (!trackHeight) {
@@ -361,6 +374,11 @@
         }
 
         if (!element.isConnected) {
+            hideIndicator(indicator);
+            return;
+        }
+
+        if (isElementHidden(element)) {
             hideIndicator(indicator);
             return;
         }
