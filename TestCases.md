@@ -56,6 +56,7 @@
 
 # Responsive Scroll Position Indicator
 - https://mastodon.social/@firefoxwebdevs/115740500373677782
+- https://indieweb.org/POSSE
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M
