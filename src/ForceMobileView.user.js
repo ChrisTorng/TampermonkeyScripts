@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-30_1.3.7
+// @version      2026-01-04_1.3.8
 // @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -192,13 +192,14 @@
         if (document.documentElement && Number.isFinite(document.documentElement.clientWidth)) {
             widths.push(document.documentElement.clientWidth);
         }
-        if (document.body && Number.isFinite(document.body.clientWidth)) {
-            widths.push(document.body.clientWidth);
-        }
         if (Number.isFinite(window.innerWidth)) {
             widths.push(window.innerWidth);
         }
-        return Math.max(0, ...widths);
+        const validWidths = widths.filter((width) => Number.isFinite(width) && width > 0);
+        if (validWidths.length === 0) {
+            return 0;
+        }
+        return Math.min(...validWidths);
     }
 
     function calculateMinimumFontSizePx() {
