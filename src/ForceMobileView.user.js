@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-30_1.3.7
+// @version      2026-01-14_1.3.9
 // @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -23,6 +23,12 @@
     const PORTRAIT_MAX_CHARS = 20;
     const LANDSCAPE_MAX_CHARS = 40;
     const MIN_LINE_HEIGHT_RATIO = 1.4;
+    const AUTO_ENABLE_EXCLUDED_URL_PREFIXES = [
+        'https://github.com/nicolasahar/morphic-programming',
+    ];
+    const MIN_FONT_EXCLUDED_HOSTS = [
+        'github.com',
+    ];
     const MIN_FONT_FLAG_ATTR = 'data-tm-force-width-min-font';
     const MIN_FONT_VALUE_ATTR = 'data-tm-force-width-font-value';
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
@@ -176,6 +182,9 @@
     }
 
     function shouldEnforceMinFontSize() {
+        if (isMinFontExcludedForUrl(window.location.href)) {
+            return false;
+        }
         return window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
     }
 
@@ -273,12 +282,48 @@
     }
 
     function shouldAutoEnableForUrl() {
+        if (isAutoEnableExcludedForUrl(window.location.href)) {
+            return false;
+        }
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
             return false;
         }
         const currentUrl = window.location.href;
         return matches.some((matchPattern) => matchPatternToRegExp(matchPattern).test(currentUrl));
+    }
+
+    function normalizeUrl(url) {
+        return url.split('#')[0];
+    }
+
+    function getUrlHost(url) {
+        try {
+            return new URL(url).host;
+        } catch {
+            return '';
+        }
+    }
+
+    function isHostExcluded(url, hosts) {
+        const host = getUrlHost(url);
+        if (!host) {
+            return false;
+        }
+        return hosts.some((excludedHost) => host === excludedHost || host.endsWith(`.${excludedHost}`));
+    }
+
+    function isUrlExcluded(url, prefixes) {
+        const normalizedUrl = normalizeUrl(url);
+        return prefixes.some((prefix) => normalizedUrl.startsWith(prefix));
+    }
+
+    function isAutoEnableExcludedForUrl(url) {
+        return isUrlExcluded(url, AUTO_ENABLE_EXCLUDED_URL_PREFIXES);
+    }
+
+    function isMinFontExcludedForUrl(url) {
+        return isHostExcluded(url, MIN_FONT_EXCLUDED_HOSTS);
     }
 
     function applyMinimumFontSizeIfNeeded() {
