@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.5.2
-// @description  Hide/click/scrollTo elements on specific sites for better reading experience.
+// @version      2026-01-17_1.5.2
+// @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js
@@ -32,12 +32,12 @@
         'www.infoq.cn': {
             hide: [
                 'div.audioPlayer.AudioPlayer_main_HiF3z',
-                'div.header.common-header-pc.layout-header',
+                'div.header',
                 'div.sub-nav-wrap',
                 '.geo-banner.fixed'
             ],
             click: [],
-            scrollTo: 'article-title'
+            scrollTo: '.article-title'
         },
         'www.inside.com.tw': {
             hide: [],
