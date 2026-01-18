@@ -1,15 +1,16 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-18_1.0.0
-// @description  Expose a draggable top-right 🌙 toggle button to force dark mode colors on any page.
+// @version      2026-01-18_1.0.1
+// @description  Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.tampermonkey.net
+// @match        https://www.lesswrong.com/*
 // @match        *://*/*
-// @grant        none
+// @grant        GM_info
 // @run-at       document-start
 // ==/UserScript==
 
@@ -129,6 +130,32 @@
         } else {
             enableForceDarkMode();
         }
+    }
+
+    function getUserScriptMatches() {
+        if (typeof GM_info !== 'undefined' && GM_info && GM_info.script && Array.isArray(GM_info.script.matches)) {
+            return GM_info.script.matches;
+        }
+        return [];
+    }
+
+    function isCatchAllMatch(matchPattern) {
+        return matchPattern === '*://*/*';
+    }
+
+    function matchPatternToRegExp(matchPattern) {
+        const escapedPattern = matchPattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+        const regexPattern = escapedPattern.replace(/\*/g, '.*');
+        return new RegExp(`^${regexPattern}$`);
+    }
+
+    function shouldAutoEnableForUrl() {
+        const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
+        if (matches.length === 0) {
+            return false;
+        }
+        const currentUrl = window.location.href;
+        return matches.some((matchPattern) => matchPatternToRegExp(matchPattern).test(currentUrl));
     }
 
     function onDocumentReady(callback) {
@@ -279,4 +306,8 @@
     }
 
     onDocumentReady(createFloatingToggleButton);
+
+    if (shouldAutoEnableForUrl()) {
+        enableForceDarkMode();
+    }
 })();

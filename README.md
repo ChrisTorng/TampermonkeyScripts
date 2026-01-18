@@ -81,7 +81,7 @@ Keep pages within the viewport width, wrap long content, and expose a draggable 
 
 ## [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 
-Expose a draggable top-right 🌙 toggle button to force dark mode colors on any page.
+Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
