@@ -55,10 +55,12 @@ function rewriteTestCasesLink(markdown) {
 }
 
 function linkifyPlainUrls(markdown) {
-  return markdown.replace(
-    /(?<!\]\()https?:\/\/[^\s)]+/g,
-    (url) => `<a href="${url}">${url}</a>`
-  );
+  return markdown.replace(/https?:\/\/[^\s)]+/g, (url, offset, text) => {
+    if (offset >= 2 && text.slice(offset - 2, offset) === '](') {
+      return url;
+    }
+    return `<a href="${url}">${url}</a>`;
+  });
 }
 
 function applyTransforms(markdown, transforms) {
