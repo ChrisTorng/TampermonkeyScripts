@@ -79,6 +79,10 @@ Show a top-right YouTube tools overlay with « » speed controls and the current
 
 Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 
+## [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
+
+Toggle a draggable dark mode button to force readable dark colors when auto darkening misfires.
+
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 Reload [Medium](https://medium.com/) and Medium-powered domains once per session to avoid hangups.
@@ -111,6 +115,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
+  - [ForceDarkMode.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
 
