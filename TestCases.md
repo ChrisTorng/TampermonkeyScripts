@@ -65,6 +65,9 @@
 - https://news.ycombinator.com/item?id=46255285
 - https://archive.is/75aY9
 
+# Better Mobile View
+- https://hackernews.betacat.io/
+
 # Force Dark Mode
 - https://www.lesswrong.com/rationality
 
