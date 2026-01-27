@@ -79,6 +79,10 @@ Show a top-right YouTube tools overlay with « » speed controls and the current
 
 Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 
+## [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
+
+Expand Hacker News Summary article images to full width in portrait mobile view.
+
 ## [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 
 Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
@@ -115,6 +119,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
+  - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
   - [ForceDarkMode.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
