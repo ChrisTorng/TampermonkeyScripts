@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-30_1.3.7
+// @version      2026-01-27_1.3.8
 // @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -11,6 +11,7 @@
 // @match        https://news.ycombinator.com/item?*
 // @match        https://archive.is/*
 // @match        *://*/*
+// @exclude      https://github.com/*
 // @grant        GM_info
 // @run-at       document-start
 // ==/UserScript==
