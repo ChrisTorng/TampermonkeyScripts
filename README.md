@@ -59,6 +59,10 @@ Open external links in background tabs with a ↗︎ indicator on:
 - [The Neuron Daily](https://www.theneurondaily.com/)
 - [Taipei Astronomical Museum News](https://tam.gov.taipei/)
 
+## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
+
+Track the latest seen article and open newly listed Taipei Astronomical Museum news items in background tabs with a yellow star.
+
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
 Stretch Git diffs edge-to-edge and slim line numbers on [ChatGPT Codex tasks](https://chatgpt.com/codex) and [GitHub](https://github.com/).
@@ -114,6 +118,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
   - [FixFloating.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
   - [ArticlesExternalNewTab.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js)
+  - [AutoOpenNewArticles.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
