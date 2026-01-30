@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-28_1.0.1
+// @version      2026-01-28_1.0.2
 // @description  Track the latest seen article and open newly listed items from The Neuron Daily and Taipei Astronomical Museum news lists in background tabs with a yellow star.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -76,6 +76,11 @@
     function getTitleElement(link) {
         if (link.classList.contains('caption')) {
             return link;
+        }
+
+        const heading = link.querySelector('h1, h2, h3, h4, h5, h6');
+        if (heading) {
+            return heading;
         }
 
         return link.querySelector('.figcaption span') || link.querySelector('.figcaption') || link;
