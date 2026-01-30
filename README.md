@@ -61,7 +61,7 @@ Open external links in background tabs with a ↗︎ indicator on:
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Track the latest seen article and open newly listed Taipei Astronomical Museum news items in background tabs with a yellow star.
+Track the latest seen article and open newly listed items from The Neuron Daily and Taipei Astronomical Museum news lists in background tabs with a yellow star.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 

@@ -52,6 +52,7 @@
 # AutoOpenNewArticles
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913
+- https://www.theneurondaily.com/
 
 # Coding Diff Optimizer
 - https://chatgpt.com/codex/tasks/task_e_68e41a320a388322a04ba2f35d096cd7

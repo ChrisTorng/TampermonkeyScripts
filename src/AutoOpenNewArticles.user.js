@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-27_1.0.0
-// @description  Track the latest seen article and open newly listed Taipei Astronomical Museum news items in background tabs with a yellow star.
+// @version      2026-01-28_1.0.2
+// @description  Track the latest seen article and open newly listed items from The Neuron Daily and Taipei Astronomical Museum news lists in background tabs with a yellow star.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -10,6 +10,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=tam.gov.taipei
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
+// @match        https://www.theneurondaily.com/*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
@@ -42,8 +43,12 @@
 
     function getStorageKey() {
         const url = new URL(window.location.href);
-        const listId = url.searchParams.get('n') || 'unknown';
-        return `${STORAGE_PREFIX}:${url.pathname}:${listId}`;
+        if (url.hostname === 'tam.gov.taipei') {
+            const listId = url.searchParams.get('n') || 'unknown';
+            return `${STORAGE_PREFIX}:${url.pathname}:${listId}`;
+        }
+
+        return `${STORAGE_PREFIX}:${url.hostname}${url.pathname}`;
     }
 
     function getArticleId(link, listId) {
@@ -59,9 +64,23 @@
         }
     }
 
+    function getNeuronArticleId(link) {
+        try {
+            const url = new URL(link.href, window.location.href);
+            return `${url.hostname}:${url.pathname}`;
+        } catch (error) {
+            return `neuron:${link.href}`;
+        }
+    }
+
     function getTitleElement(link) {
         if (link.classList.contains('caption')) {
             return link;
+        }
+
+        const heading = link.querySelector('h1, h2, h3, h4, h5, h6');
+        if (heading) {
+            return heading;
         }
 
         return link.querySelector('.figcaption span') || link.querySelector('.figcaption') || link;
@@ -86,11 +105,34 @@
         return candidates.filter((link) => link.href.includes(`n=${listId}`));
     }
 
+    function collectNeuronLinks() {
+        const candidates = Array.from(document.querySelectorAll('a[href]'));
+        const uniqueLinks = new Map();
+
+        candidates.forEach((link) => {
+            const href = link.getAttribute('href');
+            if (!href) {
+                return;
+            }
+
+            if (!href.startsWith('/p/') && !href.startsWith('https://www.theneurondaily.com/p/')) {
+                return;
+            }
+
+            const absoluteUrl = new URL(href, window.location.href).toString();
+            if (!uniqueLinks.has(absoluteUrl)) {
+                uniqueLinks.set(absoluteUrl, link);
+            }
+        });
+
+        return Array.from(uniqueLinks.values());
+    }
+
     function openNewArticles(articles, lastSeenId) {
         const lastSeenIndex = articles.findIndex((article) => article.id === lastSeenId);
         if (lastSeenIndex <= 0) {
             return {
-                newArticles: lastSeenIndex === 0 ? [] : [],
+                newArticles: [],
                 foundLastSeen: lastSeenIndex === 0,
             };
         }
@@ -108,24 +150,29 @@
     }
 
     function handleArticles() {
-        const listId = new URL(window.location.href).searchParams.get('n');
-        if (!listId) {
+        const url = new URL(window.location.href);
+        const isTamPage = url.hostname === 'tam.gov.taipei';
+        const isNeuronPage = url.hostname === 'www.theneurondaily.com';
+        if (isNeuronPage && url.pathname.startsWith('/p/')) {
             return;
         }
+        const listId = isTamPage ? url.searchParams.get('n') : null;
 
         ensureStyles();
 
         const storageKey = getStorageKey();
         const lastSeenId = GM_getValue(storageKey, '');
-        const links = collectArticleLinks(listId);
+        const links = isTamPage && listId ? collectArticleLinks(listId) : [];
+        const neuronLinks = isNeuronPage ? collectNeuronLinks() : [];
 
-        if (links.length === 0) {
+        const activeLinks = isNeuronPage ? neuronLinks : links;
+        if (activeLinks.length === 0) {
             return;
         }
 
-        const articles = links.map((link) => ({
+        const articles = activeLinks.map((link) => ({
             link,
-            id: getArticleId(link, listId),
+            id: isNeuronPage ? getNeuronArticleId(link) : getArticleId(link, listId || 'unknown'),
         }));
 
         const latestId = articles[0].id;
