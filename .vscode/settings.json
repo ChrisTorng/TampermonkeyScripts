@@ -3,5 +3,12 @@
         {
             "text": "Use conventional commit message format. Written in English."
         }
+    ],
+    "nodejs-testing.nodejsPath": "C:\\Users\\ChrisTorng\\scoop\\apps\\nvm\\current\\nodejs\\nodejs\\node.exe",
+    "nodejs-testing.include": [
+        "./scripts"
+    ],
+    "nodejs-testing.exclude": [
+        "**/node_modules/**"
     ]
 }

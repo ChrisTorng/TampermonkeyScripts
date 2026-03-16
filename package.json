@@ -4,7 +4,8 @@
   "private": true,
   "description": "Utility scripts for the TampermonkeyScripts repository.",
   "scripts": {
-    "generate:index": "node scripts/generate-index.js"
+    "generate:index": "node scripts/generate-index.js",
+    "test:redirect-urls": "node scripts/test-redirect-urls.js"
   },
   "dependencies": {
     "marked": "^12.0.2"
