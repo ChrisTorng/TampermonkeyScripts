@@ -11,16 +11,18 @@ const scriptPath = path.join(repoRoot, 'src', 'ForceMobileView.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
 const hnFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'news.ycombinator.com_item_id_46255285.html');
 const archiveFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'archive.is_75aY9.html');
+const lcamtufFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'lcamtuf.coredump.cx_prep_index-old.shtml.html');
 const hnFixtureHtml = fs.readFileSync(hnFixturePath, 'utf8');
 const archiveFixtureHtml = fs.readFileSync(archiveFixturePath, 'utf8');
+const lcamtufFixtureHtml = fs.readFileSync(lcamtufFixturePath, 'utf8');
 
-function executeForceMobileView(url) {
+function executeForceMobileView(url, options = {}) {
     const harness = createHarness({
         url,
         readyState: 'loading',
         gmInfo: {
             script: {
-                matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', '*://*/*']
+                matches: options.matches || ['https://news.ycombinator.com/item?*', 'https://archive.is/*', '*://*/*']
             }
         },
         matchMedia(query) {
@@ -33,7 +35,13 @@ function executeForceMobileView(url) {
             return { matches: false, media: query, addEventListener() {}, removeEventListener() {} };
         },
         computedFontSize(element) {
-            return element.tagName === 'SPAN' ? '10px' : '16px';
+            if (element.tagName === 'SPAN') {
+                return options.spanFontSize || '10px';
+            }
+            if (element.tagName === 'BODY') {
+                return options.bodyFontSize || '16px';
+            }
+            return options.defaultFontSize || '16px';
         }
     });
     harness.window.innerWidth = 360;
@@ -74,6 +82,27 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
         assert.equal(textElement.style.getPropertyValue('line-height'), '1.4');
         assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), 'true');
+    });
+
+
+    test('fixtures contain captured lcamtuf tiny-font sample', () => {
+        assert.match(lcamtufFixtureHtml, /<h1>/i);
+        assert.match(lcamtufFixtureHtml, /font-size:\s*120%/i);
+    });
+
+    test('tiny body font auto-enables mobile view even when URL does not match explicit patterns', () => {
+        const { harness } = executeForceMobileView('https://lcamtuf.coredump.cx/prep/index-old.shtml', {
+            matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', '*://*/*'],
+            bodyFontSize: '9px',
+            defaultFontSize: '9px'
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const style = harness.document.getElementById('tm-force-width-style');
+        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+
+        assert(style, 'Expected tiny font auto-enable to insert mobile view style element.');
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
     });
 
     test('toggle button disables and re-enables styles and minimum font size overrides', () => {

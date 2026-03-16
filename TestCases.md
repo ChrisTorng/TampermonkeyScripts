@@ -75,6 +75,7 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 Section note: automated tests inject the script and mock `GM_info`.
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 - https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (tiny-font auto-enable behavior verified by DOM harness test)
 
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]

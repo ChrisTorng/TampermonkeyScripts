@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-27_1.3.8
-// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
+// @version      2026-03-16_1.4.0
+// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -282,6 +282,30 @@
         return matches.some((matchPattern) => matchPatternToRegExp(matchPattern).test(currentUrl));
     }
 
+    function isBodyFontTooSmall() {
+        if (!shouldEnforceMinFontSize() || !document.body) {
+            return false;
+        }
+        const bodyFontSizePx = Number.parseFloat(window.getComputedStyle(document.body).fontSize);
+        if (!Number.isFinite(bodyFontSizePx)) {
+            return false;
+        }
+        return bodyFontSizePx < getActiveMinFontSizePx();
+    }
+
+    function shouldAutoEnableForTinyFont() {
+        return isBodyFontTooSmall();
+    }
+
+    function autoEnableWhenTinyFontDetected() {
+        if (isEnabled) {
+            return;
+        }
+        if (shouldAutoEnableForTinyFont()) {
+            enableForceWidth();
+        }
+    }
+
     function applyMinimumFontSizeIfNeeded() {
         refreshMinimumFontSize();
     }
@@ -491,5 +515,8 @@
         window.visualViewport.addEventListener('resize', scheduleMinimumFontRefresh);
     }
 
-    onDocumentReady(createFloatingToggleButton);
+    onDocumentReady(() => {
+        autoEnableWhenTinyFontDetected();
+        createFloatingToggleButton();
+    });
 })();
