@@ -18,3 +18,16 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 
 ## 4. Communication
 - Communicate with users in Traditional Chinese using Taiwan phrasing unless they explicitly request another language.
+
+## 5. Automated testing
+- When a captured-page item in **[TestCases.md](TestCases.md)** has enough local data to validate script behavior, add or maintain an automated test for it.
+- Use the built-in Node test runner in a **VS Code Testing compatible format**:
+  - Put tests in `scripts/test-*.js`.
+  - Use `node:test` with explicit `test(...)` and/or `describe(...)` blocks so VS Code Testing can discover them.
+  - Keep the full suite runnable with `node --test`.
+- Prefer runtime-style tests that **inject the userscript into a local DOM harness and assert behavior**. Avoid static string checks when direct execution is feasible.
+- If a script depends on Tampermonkey-specific APIs or browser-only APIs, mock only the minimal surface needed for the test and keep the mocked behavior explicit in the test file.
+- Anti-bot, auth-only, or non-HTML captures may still use automated tests, but only for logic that can be validated locally (for example redirect rules, URL decisions, metadata detection, or session behavior). Do not label those cases as full-content coverage unless the content-dependent behavior is actually exercised.
+- Keep **[TestCases.md](TestCases.md)** synchronized with the current automated coverage:
+  - Mark each listed item with an explicit test status.
+  - Use a short reason when coverage is limited, blocked, mocked, or intentionally not direct.

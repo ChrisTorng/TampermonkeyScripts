@@ -1,43 +1,41 @@
 const fs = require('fs');
 const path = require('path');
-const assert = require('assert');
+const vm = require('vm');
+const assert = require('node:assert/strict');
+const { describe, test } = require('node:test');
 
-const fixturePath = path.join(__dirname, '..', 'tests', 'fixtures', 'hackernews.betacat.io.html');
-const scriptPath = path.join(__dirname, '..', 'src', 'BetterMobileView.user.js');
+const { createHarness } = require('./dom-harness');
+
+const repoRoot = path.join(__dirname, '..');
+const fixturePath = path.join(repoRoot, 'tests', 'fixtures', 'hackernews.betacat.io.html');
+const scriptPath = path.join(repoRoot, 'src', 'BetterMobileView.user.js');
 
 const fixtureHtml = fs.readFileSync(fixturePath, 'utf8');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
 
-assert(
-    fixtureHtml.includes('class="post-summary"'),
-    'Expected fixture to include .post-summary container.'
-);
-assert(
-    fixtureHtml.includes('class="feature-image"'),
-    'Expected fixture to include .feature-image link.'
-);
-assert(
-    fixtureHtml.includes('class="summary-text"'),
-    'Expected fixture to include .summary-text block.'
-);
-assert(
-    fixtureHtml.includes('class="img-rounded"'),
-    'Expected fixture to include .img-rounded image.'
-);
+function executeBetterMobileView(url) {
+    const harness = createHarness({ url, readyState: 'loading' });
+    harness.context.globalThis = harness.context;
+    harness.context.global = harness.context;
+    vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+    return harness;
+}
 
-const requiredSnippets = [
-    '@media (max-width: 768px) and (orientation: portrait)',
-    '.post-summary .feature-image',
-    '.post-summary .feature-image img',
-    '.post-summary .summary-text',
-    'width: 100%'
-];
+describe('BetterMobileView on captured Hacker News Summary pages', () => {
+    test('fixture contains captured summary layout content', () => {
+        assert.match(fixtureHtml, /CONTENT_CLASS:\s*VALID_/);
+        assert.match(fixtureHtml, /class="post-summary"/);
+        assert.match(fixtureHtml, /class="feature-image"/);
+        assert.match(fixtureHtml, /class="summary-text"/);
+    });
 
-requiredSnippets.forEach((snippet) => {
-    assert(
-        scriptContents.includes(snippet),
-        `Expected script to include CSS snippet: ${snippet}`
-    );
+    test('script injects the mobile layout style at startup', () => {
+        const harness = executeBetterMobileView('https://hackernews.betacat.io/');
+        const style = harness.document.getElementById('tm-better-mobile-view-style');
+
+        assert(style, 'Expected BetterMobileView style element.');
+        assert.match(style.textContent, /@media \(max-width: 768px\) and \(orientation: portrait\)/);
+        assert.match(style.textContent, /\.post-summary \.feature-image img/);
+        assert.match(style.textContent, /width: 100% !important/);
+    });
 });
-
-console.log('BetterMobileView checks passed.');
