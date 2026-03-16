@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-27_1.3.8
-// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
+// @version      2026-03-16_1.4.0
+// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -282,6 +282,31 @@
         return matches.some((matchPattern) => matchPatternToRegExp(matchPattern).test(currentUrl));
     }
 
+    function shouldAutoEnableForTinyFonts() {
+        if (!document.body || !shouldEnforceMinFontSize()) {
+            return false;
+        }
+        const minFontSizePx = Math.max(DEFAULT_MIN_FONT_SIZE_PX, calculateMinimumFontSizePx());
+        const bodyFontSize = Number.parseFloat(window.getComputedStyle(document.body).fontSize);
+        if (Number.isFinite(bodyFontSize) && bodyFontSize < minFontSizePx) {
+            return true;
+        }
+
+        const candidates = document.body.querySelectorAll('p, li, td, th, span, div, a, article, section');
+        const maxChecks = 120;
+        for (let i = 0; i < candidates.length && i < maxChecks; i += 1) {
+            const candidate = candidates[i];
+            if (!candidate.textContent || !candidate.textContent.trim()) {
+                continue;
+            }
+            const computedFontSize = Number.parseFloat(window.getComputedStyle(candidate).fontSize);
+            if (Number.isFinite(computedFontSize) && computedFontSize < minFontSizePx) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function applyMinimumFontSizeIfNeeded() {
         refreshMinimumFontSize();
     }
@@ -483,6 +508,12 @@
 
     if (shouldAutoEnableForUrl()) {
         enableForceWidth();
+    } else {
+        onDocumentReady(() => {
+            if (!isEnabled && shouldAutoEnableForTinyFonts()) {
+                enableForceWidth();
+            }
+        });
     }
 
     window.addEventListener('resize', scheduleMinimumFontRefresh);
