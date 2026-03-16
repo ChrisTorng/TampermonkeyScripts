@@ -1,4 +1,5 @@
 # Test status legend
+- `AUTOMATED`: covered by automated runtime tests in `node --test`.
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
 - `N/A`: reference sample with no matching userscript behavior expected.
 
@@ -73,8 +74,9 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
-- https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+- https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+- https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (tiny-font auto-enable behavior)
 
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
