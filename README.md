@@ -58,6 +58,7 @@ Open external links in background tabs with a ↗︎ indicator on:
 - [Hacker News Summary](https://hackernews.betacat.io/)
 - [The Neuron Daily](https://www.theneurondaily.com/)
 - [Taipei Astronomical Museum News](https://tam.gov.taipei/)
+- [Wiwi Blog](https://wiwi.blog/blog/)
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
@@ -81,7 +82,7 @@ Show a top-right YouTube tools overlay with « » speed controls and the current
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
+Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 
 ## [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
