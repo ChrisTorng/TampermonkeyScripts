@@ -79,6 +79,9 @@ Section note: automated tests inject the script and mock `GM_info`.
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
+# Better Discord
+- https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
+
 # Force Dark Mode
 Section note: automated tests inject the script and mock `GM_info`.
 - https://www.lesswrong.com/rationality [CONTENT_CLASS: VALID_ARTICLE_CONTENT]

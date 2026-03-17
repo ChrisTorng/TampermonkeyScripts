@@ -87,6 +87,10 @@ Keep pages within the viewport width, wrap long content, and expose a draggable 
 
 Expand Hacker News Summary article images to full width in portrait mobile view.
 
+## [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
+
+Hide extra Discord chat input buttons so only the send button remains.
+
 ## [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 
 Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
@@ -125,6 +129,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
+  - [BetterDiscord.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
   - [ForceDarkMode.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
