@@ -58,6 +58,7 @@ Open external links in background tabs with a ↗︎ indicator on:
 - [Hacker News Summary](https://hackernews.betacat.io/)
 - [The Neuron Daily](https://www.theneurondaily.com/)
 - [Taipei Astronomical Museum News](https://tam.gov.taipei/)
+- [Wiwi Blog](https://wiwi.blog/blog/)
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 

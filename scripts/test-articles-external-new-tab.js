@@ -154,6 +154,28 @@ describe('ArticlesExternalNewTab on captured listings', () => {
         assert.equal(openCalls[0].href, 'https://www.theneurondaily.com/p/you-can-now-build-agents-and-apps-inside-chatgpt');
     });
 
+
+    test('Wiwi Blog opens external links in background tabs and keeps internal blog links unchanged', () => {
+        const openCalls = [];
+        const harness = createArticlesHarness('https://wiwi.blog/blog/', openCalls);
+        const externalLink = createLink(harness.document, 'https://example.com/article', { textContent: 'external' });
+        const internalLink = createLink(harness.document, 'https://wiwi.blog/blog/sample-post/', { textContent: 'internal' });
+        harness.appendToBody(externalLink);
+        harness.appendToBody(internalLink);
+        runArticlesScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(externalLink.target, '_blank');
+        assert.equal(internalLink.target, '');
+
+        const clickEvent = createMouseEvent('click');
+        externalLink.dispatchEvent(clickEvent);
+        assert.equal(clickEvent.defaultPrevented, true);
+        assert.equal(openCalls[0].href, 'https://example.com/article');
+        assert.equal(openCalls[0].options.active, false);
+        assert.equal(openCalls[0].options.insert, true);
+    });
+
     test('The Neuron Daily article sanitizes tracking parameters for external links', () => {
         const html = loadFixture('www.theneurondaily.com_p_you-can-now-build-agents-and-apps-inside-chatgpt.html');
         assert.match(html, /CONTENT_CLASS:\s*INVALID_ANTI_BOT/);
