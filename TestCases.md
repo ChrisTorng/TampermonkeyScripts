@@ -54,6 +54,7 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 - https://www.theneurondaily.com/p/you-can-now-build-agents-and-apps-inside-chatgpt [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; URL/link rule only)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913&sms=2CF1F5E2E0B96411 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+- https://wiwi.blog/blog/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.

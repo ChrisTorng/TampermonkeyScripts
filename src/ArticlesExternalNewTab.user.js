@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_2.1.2
-// @description  Open external links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, and Taipei Astronomical Museum News.
+// @version      2026-03-17_2.1.3
+// @description  Open external links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, Taipei Astronomical Museum News, and Wiwi Blog.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js
@@ -13,6 +13,7 @@
 // @match        https://www.theneurondaily.com/*
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
+// @match        https://wiwi.blog/blog/*
 // @grant        GM_openInTab
 // ==/UserScript==
 
@@ -122,6 +123,14 @@
                     url.hostname === 'tam.gov.taipei' &&
                     url.pathname.startsWith('/News_Content.aspx')
                 );
+            }
+        }
+
+        if (pageHost === 'wiwi.blog') {
+            const isBlogPage = pagePath.startsWith('/blog/');
+
+            if (isBlogPage) {
+                return url.hostname !== 'wiwi.blog';
             }
         }
 
