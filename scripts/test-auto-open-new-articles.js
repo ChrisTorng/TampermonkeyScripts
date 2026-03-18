@@ -157,9 +157,13 @@ describe('AutoOpenNewArticles on The Neuron Daily listings', () => {
         const section = harness.document.createElement('section');
         harness.appendToBody(section);
 
-        const newLink = createLink(harness.document, 'https://www.theneurondaily.com/p/new-agent-release', {
-            textContent: 'New Agent Release'
-        });
+        const newLink = createLink(harness.document, 'https://www.theneurondaily.com/p/new-agent-release');
+        const hiddenMetaSpan = harness.document.createElement('span');
+        hiddenMetaSpan.textContent = 'Hidden Meta';
+        const titleHeading = harness.document.createElement('h3');
+        titleHeading.textContent = 'New Agent Release';
+        newLink.append(hiddenMetaSpan, titleHeading);
+
         const seenLink = createLink(harness.document, 'https://www.theneurondaily.com/p/older-ai-news', {
             textContent: 'Older AI News'
         });
@@ -177,5 +181,6 @@ describe('AutoOpenNewArticles on The Neuron Daily listings', () => {
         assert.equal(openCalls[0].options.insert, true);
         assert.equal(gmStore.get(storageKey), 'theneurondaily:/p/new-agent-release');
         assert.equal(newLink.firstChild.textContent, '★');
+        assert.equal(hiddenMetaSpan.firstChild, null);
     });
 });
