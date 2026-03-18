@@ -123,3 +123,64 @@ describe('AutoOpenNewArticles on captured Taipei museum listings', () => {
         });
     }
 });
+
+describe('AutoOpenNewArticles on The Neuron Daily listings', () => {
+    test('stores the latest article on first visit and does not open tabs', () => {
+        const openCalls = [];
+        const { harness, gmStore } = createAutoOpenHarness('https://www.theneurondaily.com/', {}, openCalls);
+        const main = harness.document.createElement('main');
+        harness.appendToBody(main);
+
+        const firstLink = createLink(harness.document, 'https://www.theneurondaily.com/p/latest-ai-breakthrough', {
+            textContent: 'Latest AI Breakthrough'
+        });
+        const secondLink = createLink(harness.document, 'https://www.theneurondaily.com/p/older-ai-news', {
+            textContent: 'Older AI News'
+        });
+        main.append(firstLink, secondLink);
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(openCalls.length, 0);
+        assert.equal(gmStore.get('autoOpenNewArticles:lastSeen:theneurondaily:listings'), 'theneurondaily:/p/latest-ai-breakthrough');
+    });
+
+    test('opens unseen Neuron Daily articles in background and marks the newest one', () => {
+        const openCalls = [];
+        const storageKey = 'autoOpenNewArticles:lastSeen:theneurondaily:listings';
+        const { harness, gmStore } = createAutoOpenHarness(
+            'https://www.theneurondaily.com/archive',
+            { [storageKey]: 'theneurondaily:/p/older-ai-news' },
+            openCalls
+        );
+        const section = harness.document.createElement('section');
+        harness.appendToBody(section);
+
+        const newLink = createLink(harness.document, 'https://www.theneurondaily.com/p/new-agent-release');
+        const hiddenMetaSpan = harness.document.createElement('span');
+        hiddenMetaSpan.textContent = 'Hidden Meta';
+        const titleHeading = harness.document.createElement('h3');
+        titleHeading.textContent = 'New Agent Release';
+        newLink.append(hiddenMetaSpan, titleHeading);
+
+        const seenLink = createLink(harness.document, 'https://www.theneurondaily.com/p/older-ai-news', {
+            textContent: 'Older AI News'
+        });
+        const duplicateNewLink = createLink(harness.document, 'https://www.theneurondaily.com/p/new-agent-release', {
+            textContent: 'Duplicate New Agent Release'
+        });
+
+        section.append(newLink, seenLink, duplicateNewLink);
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(openCalls.length, 1);
+        assert.equal(openCalls[0].href, 'https://www.theneurondaily.com/p/new-agent-release');
+        assert.equal(openCalls[0].options.active, false);
+        assert.equal(openCalls[0].options.insert, true);
+        assert.equal(gmStore.get(storageKey), 'theneurondaily:/p/new-agent-release');
+        assert.equal(newLink.firstChild.textContent, '★');
+        assert.equal(hiddenMetaSpan.firstChild, null);
+    });
+});
