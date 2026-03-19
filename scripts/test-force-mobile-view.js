@@ -39,6 +39,18 @@ function executeForceMobileView(url, options = {}) {
                 return options.computedFontSize(element);
             }
             return element.tagName === 'SPAN' ? '10px' : '16px';
+        },
+        computedStyle(element) {
+            if (typeof options.computedStyle === 'function') {
+                return options.computedStyle(element);
+            }
+            return {
+                fontSize: element.tagName === 'SPAN' ? '10px' : '16px',
+                marginLeft: '0px',
+                marginRight: '0px',
+                paddingLeft: '0px',
+                paddingRight: '0px'
+            };
         }
     });
     harness.window.innerWidth = 360;
@@ -80,7 +92,6 @@ describe('ForceMobileView on captured pages', () => {
 
         assert(style, 'Expected mobile view style element to be inserted.');
         assert.match(style.textContent, /max-width: 100vw !important/);
-        assert.match(style.textContent, /body > \* \{\n\s*margin-left: 0 !important;/);
         assert(button, 'Expected mobile view toggle button to be created.');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
@@ -126,5 +137,35 @@ describe('ForceMobileView on captured pages', () => {
         assert(harness.document.getElementById('tm-force-width-style'));
         assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), 'true');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
+    });
+
+    test('excessive horizontal spacing is trimmed on enable and restored on disable', () => {
+        const { harness } = executeForceMobileView('https://daringfireball.net/2026/03/your_frustration_is_the_product', {
+            computedStyle(element) {
+                return {
+                    fontSize: '16px',
+                    marginLeft: element.id === 'post' ? '24px' : '0px',
+                    marginRight: element.id === 'post' ? '24px' : '0px',
+                    paddingLeft: element.id === 'post' ? '18px' : '0px',
+                    paddingRight: element.id === 'post' ? '18px' : '0px'
+                };
+            }
+        });
+        const post = harness.document.createElement('article');
+        post.id = 'post';
+        post.textContent = 'content';
+        harness.appendToBody(post);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+
+        assert.equal(post.style.getPropertyValue('margin-left'), '0px');
+        assert.equal(post.style.getPropertyValue('padding-left'), '8px');
+        assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), 'true');
+
+        button.click();
+        assert.equal(post.style.getPropertyValue('margin-left'), '');
+        assert.equal(post.style.getPropertyValue('padding-left'), '');
+        assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), null);
     });
 });
