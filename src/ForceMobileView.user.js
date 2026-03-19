@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-16_1.4.0
-// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
+// @version      2026-03-19_1.5.0
+// @description  Keep pages within the viewport width, trim excessive horizontal spacing, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -55,6 +55,12 @@
             `        font-size: 16px !important;\n` +
             `        -webkit-text-size-adjust: 100% !important;\n` +
             `        text-size-adjust: 100% !important;\n` +
+            `    }\n` +
+            `    body > * {\n` +
+            `        margin-left: 0 !important;\n` +
+            `        margin-right: 0 !important;\n` +
+            `        padding-left: min(2vw, 8px) !important;\n` +
+            `        padding-right: min(2vw, 8px) !important;\n` +
             `    }\n` +
             `}\n` +
             `body * {\n` +
