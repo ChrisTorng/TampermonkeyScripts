@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-16_1.4.0
-// @description  Keep pages within the viewport width, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
+// @version      2026-03-19_1.6.0
+// @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -29,6 +29,17 @@
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
     const MIN_LINE_HEIGHT_VALUE_ATTR = 'data-tm-force-width-line-height-value';
     const MIN_LINE_HEIGHT_PRIORITY_ATTR = 'data-tm-force-width-line-height-priority';
+    const SPACING_FLAG_ATTR = 'data-tm-force-width-spacing-trimmed';
+    const SPACING_MARGIN_LEFT_ATTR = 'data-tm-force-width-margin-left';
+    const SPACING_MARGIN_LEFT_PRIORITY_ATTR = 'data-tm-force-width-margin-left-priority';
+    const SPACING_MARGIN_RIGHT_ATTR = 'data-tm-force-width-margin-right';
+    const SPACING_MARGIN_RIGHT_PRIORITY_ATTR = 'data-tm-force-width-margin-right-priority';
+    const SPACING_PADDING_LEFT_ATTR = 'data-tm-force-width-padding-left';
+    const SPACING_PADDING_LEFT_PRIORITY_ATTR = 'data-tm-force-width-padding-left-priority';
+    const SPACING_PADDING_RIGHT_ATTR = 'data-tm-force-width-padding-right';
+    const SPACING_PADDING_RIGHT_PRIORITY_ATTR = 'data-tm-force-width-padding-right-priority';
+    const SPACING_TARGET_SELECTOR = 'main, article, section, div, aside, header, footer, nav, ul, ol, li, p, blockquote, pre, figure, table';
+    const MAX_SIDE_SPACING_PX = 8;
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
@@ -55,6 +66,12 @@
             `        font-size: 16px !important;\n` +
             `        -webkit-text-size-adjust: 100% !important;\n` +
             `        text-size-adjust: 100% !important;\n` +
+            `    }\n` +
+            `    body > * {\n` +
+            `        margin-left: 0 !important;\n` +
+            `        margin-right: 0 !important;\n` +
+            `        padding-left: min(2vw, 8px) !important;\n` +
+            `        padding-right: min(2vw, 8px) !important;\n` +
             `    }\n` +
             `}\n` +
             `body * {\n` +
@@ -120,6 +137,7 @@
                         mutation.addedNodes.forEach((node) => {
                             if (node.nodeType === Node.ELEMENT_NODE) {
                                 applyMinimumFontSize(node, minFontSizePx);
+                                applyHorizontalSpacingNormalization(node);
                             }
                         });
                     });
@@ -147,6 +165,7 @@
         insertStyle();
         ensureObserver();
         applyMinimumFontSizeIfNeeded();
+        applyHorizontalSpacingNormalization(document.body || document.documentElement);
     }
 
     function disableForceWidth() {
@@ -157,6 +176,7 @@
         removeStyle();
         stopObserver();
         clearMinimumFontSize();
+        clearHorizontalSpacingNormalization();
         currentMinFontSizePx = null;
     }
 
@@ -224,6 +244,7 @@
                 clearMinimumFontSize();
                 currentMinFontSizePx = null;
             }
+            clearHorizontalSpacingNormalization();
             return;
         }
         const nextMinFontSizePx = calculateMinimumFontSizePx();
@@ -237,10 +258,68 @@
         if (!document.body) {
             onDocumentReady(() => {
                 applyMinimumFontSize(document.body, currentMinFontSizePx);
+                applyHorizontalSpacingNormalization(document.body);
             });
             return;
         }
         applyMinimumFontSize(document.body, currentMinFontSizePx);
+        applyHorizontalSpacingNormalization(document.body);
+    }
+
+    function getSidePixels(value) {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function getElementsForSpacingNormalization(root) {
+        const targets = [];
+        if (!root || root.nodeType !== Node.ELEMENT_NODE) {
+            return targets;
+        }
+        if (root.matches && root.matches(SPACING_TARGET_SELECTOR)) {
+            targets.push(root);
+        }
+        targets.push(...root.querySelectorAll(SPACING_TARGET_SELECTOR));
+        return targets;
+    }
+
+    function applyHorizontalSpacingNormalization(root) {
+        if (!root || !shouldEnforceMinFontSize()) {
+            return;
+        }
+        const elements = getElementsForSpacingNormalization(root);
+        elements.forEach((element) => {
+            if (element.hasAttribute(SPACING_FLAG_ATTR)) {
+                return;
+            }
+            const computedStyle = window.getComputedStyle(element);
+            const marginLeft = getSidePixels(computedStyle.marginLeft);
+            const marginRight = getSidePixels(computedStyle.marginRight);
+            const paddingLeft = getSidePixels(computedStyle.paddingLeft);
+            const paddingRight = getSidePixels(computedStyle.paddingRight);
+            const hasExcessiveSpacing = marginLeft > MAX_SIDE_SPACING_PX ||
+                marginRight > MAX_SIDE_SPACING_PX ||
+                paddingLeft > MAX_SIDE_SPACING_PX ||
+                paddingRight > MAX_SIDE_SPACING_PX;
+            if (!hasExcessiveSpacing) {
+                return;
+            }
+
+            element.setAttribute(SPACING_FLAG_ATTR, 'true');
+            element.setAttribute(SPACING_MARGIN_LEFT_ATTR, element.style.getPropertyValue('margin-left'));
+            element.setAttribute(SPACING_MARGIN_LEFT_PRIORITY_ATTR, element.style.getPropertyPriority('margin-left'));
+            element.setAttribute(SPACING_MARGIN_RIGHT_ATTR, element.style.getPropertyValue('margin-right'));
+            element.setAttribute(SPACING_MARGIN_RIGHT_PRIORITY_ATTR, element.style.getPropertyPriority('margin-right'));
+            element.setAttribute(SPACING_PADDING_LEFT_ATTR, element.style.getPropertyValue('padding-left'));
+            element.setAttribute(SPACING_PADDING_LEFT_PRIORITY_ATTR, element.style.getPropertyPriority('padding-left'));
+            element.setAttribute(SPACING_PADDING_RIGHT_ATTR, element.style.getPropertyValue('padding-right'));
+            element.setAttribute(SPACING_PADDING_RIGHT_PRIORITY_ATTR, element.style.getPropertyPriority('padding-right'));
+
+            element.style.setProperty('margin-left', '0px', 'important');
+            element.style.setProperty('margin-right', '0px', 'important');
+            element.style.setProperty('padding-left', `${MAX_SIDE_SPACING_PX}px`, 'important');
+            element.style.setProperty('padding-right', `${MAX_SIDE_SPACING_PX}px`, 'important');
+        });
     }
 
     function scheduleMinimumFontRefresh() {
@@ -364,6 +443,29 @@
             element.removeAttribute(MIN_FONT_PRIORITY_ATTR);
             element.removeAttribute(MIN_LINE_HEIGHT_VALUE_ATTR);
             element.removeAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR);
+        });
+    }
+
+    function restoreInlineProperty(element, propertyName, valueAttr, priorityAttr) {
+        const inlineValue = element.getAttribute(valueAttr) || '';
+        const inlinePriority = element.getAttribute(priorityAttr) || '';
+        if (inlineValue) {
+            element.style.setProperty(propertyName, inlineValue, inlinePriority);
+        } else {
+            element.style.removeProperty(propertyName);
+        }
+        element.removeAttribute(valueAttr);
+        element.removeAttribute(priorityAttr);
+    }
+
+    function clearHorizontalSpacingNormalization() {
+        const elements = document.querySelectorAll(`[${SPACING_FLAG_ATTR}="true"]`);
+        elements.forEach((element) => {
+            restoreInlineProperty(element, 'margin-left', SPACING_MARGIN_LEFT_ATTR, SPACING_MARGIN_LEFT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'margin-right', SPACING_MARGIN_RIGHT_ATTR, SPACING_MARGIN_RIGHT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'padding-left', SPACING_PADDING_LEFT_ATTR, SPACING_PADDING_LEFT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'padding-right', SPACING_PADDING_RIGHT_ATTR, SPACING_PADDING_RIGHT_PRIORITY_ATTR);
+            element.removeAttribute(SPACING_FLAG_ATTR);
         });
     }
 
