@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-27_1.0.0
-// @description  Track the latest seen article and open newly listed Taipei Astronomical Museum news items in background tabs with a yellow star.
+// @version      2026-03-18_1.1.1
+// @description  Track the latest seen article and open newly listed articles on Taipei Astronomical Museum and The Neuron Daily in background tabs with a yellow star.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -10,6 +10,8 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=tam.gov.taipei
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
+// @match        https://www.theneurondaily.com/
+// @match        https://www.theneurondaily.com/archive*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
@@ -40,26 +42,89 @@
         document.head.appendChild(style);
     }
 
-    function getStorageKey() {
+    function getSiteConfig() {
         const url = new URL(window.location.href);
-        const listId = url.searchParams.get('n') || 'unknown';
-        return `${STORAGE_PREFIX}:${url.pathname}:${listId}`;
-    }
 
-    function getArticleId(link, listId) {
-        try {
-            const url = new URL(link.href, window.location.href);
-            const contentId = url.searchParams.get('s');
-            if (contentId) {
-                return `${listId}:${contentId}`;
+        if (url.hostname === 'tam.gov.taipei') {
+            const listId = url.searchParams.get('n');
+            if (!listId) {
+                return null;
             }
-            return `${listId}:${url.pathname}${url.search}`;
-        } catch (error) {
-            return `${listId}:${link.href}`;
+
+            return {
+                scope: `${url.pathname}:${listId}`,
+                collectArticleLinks: () => {
+                    const contentRoot = document.querySelector('#CCMS_Content') || document.body;
+                    const candidates = Array.from(contentRoot.querySelectorAll('a[href*="News_Content.aspx"]'));
+
+                    return candidates.filter((link) => link.href.includes(`n=${listId}`));
+                },
+                getArticleId: (link) => {
+                    try {
+                        const articleUrl = new URL(link.href, window.location.href);
+                        const contentId = articleUrl.searchParams.get('s');
+                        if (contentId) {
+                            return `${listId}:${contentId}`;
+                        }
+                        return `${listId}:${articleUrl.pathname}${articleUrl.search}`;
+                    } catch (error) {
+                        return `${listId}:${link.href}`;
+                    }
+                }
+            };
         }
+
+        if (url.hostname === 'www.theneurondaily.com') {
+            const isListingPage = url.pathname === '/' || url.pathname === '/archive';
+            if (!isListingPage) {
+                return null;
+            }
+
+            return {
+                scope: 'theneurondaily:listings',
+                collectArticleLinks: () => {
+                    const candidates = Array.from(document.querySelectorAll('a[href]'));
+                    const seen = new Set();
+
+                    return candidates.filter((link) => {
+                        try {
+                            const articleUrl = new URL(link.href, window.location.href);
+                            const isArticle = articleUrl.origin === url.origin && articleUrl.pathname.startsWith('/p/');
+                            if (!isArticle) {
+                                return false;
+                            }
+
+                            const key = articleUrl.pathname;
+                            if (seen.has(key)) {
+                                return false;
+                            }
+
+                            seen.add(key);
+                            return true;
+                        } catch (error) {
+                            return false;
+                        }
+                    });
+                },
+                getArticleId: (link) => {
+                    try {
+                        const articleUrl = new URL(link.href, window.location.href);
+                        return `theneurondaily:${articleUrl.pathname}`;
+                    } catch (error) {
+                        return `theneurondaily:${link.href}`;
+                    }
+                }
+            };
+        }
+
+        return null;
     }
 
     function getTitleElement(link) {
+        if (window.location.hostname === 'www.theneurondaily.com') {
+            return link;
+        }
+
         if (link.classList.contains('caption')) {
             return link;
         }
@@ -79,18 +144,10 @@
         titleElement.insertBefore(star, titleElement.firstChild);
     }
 
-    function collectArticleLinks(listId) {
-        const contentRoot = document.querySelector('#CCMS_Content') || document.body;
-        const candidates = Array.from(contentRoot.querySelectorAll('a[href*="News_Content.aspx"]'));
-
-        return candidates.filter((link) => link.href.includes(`n=${listId}`));
-    }
-
     function openNewArticles(articles, lastSeenId) {
         const lastSeenIndex = articles.findIndex((article) => article.id === lastSeenId);
         if (lastSeenIndex <= 0) {
             return {
-                newArticles: lastSeenIndex === 0 ? [] : [],
                 foundLastSeen: lastSeenIndex === 0,
             };
         }
@@ -102,22 +159,21 @@
         });
 
         return {
-            newArticles,
             foundLastSeen: true,
         };
     }
 
     function handleArticles() {
-        const listId = new URL(window.location.href).searchParams.get('n');
-        if (!listId) {
+        const siteConfig = getSiteConfig();
+        if (!siteConfig) {
             return;
         }
 
         ensureStyles();
 
-        const storageKey = getStorageKey();
+        const storageKey = `${STORAGE_PREFIX}:${siteConfig.scope}`;
         const lastSeenId = GM_getValue(storageKey, '');
-        const links = collectArticleLinks(listId);
+        const links = siteConfig.collectArticleLinks();
 
         if (links.length === 0) {
             return;
@@ -125,7 +181,7 @@
 
         const articles = links.map((link) => ({
             link,
-            id: getArticleId(link, listId),
+            id: siteConfig.getArticleId(link),
         }));
 
         const latestId = articles[0].id;
