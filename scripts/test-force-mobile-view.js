@@ -164,8 +164,14 @@ describe('ForceMobileView on captured pages', () => {
         const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
 
         assert.equal(post.style.getPropertyValue('margin-left'), '0px');
-        assert.equal(post.style.getPropertyValue('padding-left'), '8px');
+        assert.equal(post.style.getPropertyValue('padding-left'), '2px');
+        assert.equal(post.style.getPropertyValue('padding-right'), '2px');
         assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), 'true');
+        const totalSideWhitespace = Number.parseFloat(post.style.getPropertyValue('margin-left') || '0') +
+            Number.parseFloat(post.style.getPropertyValue('margin-right') || '0') +
+            Number.parseFloat(post.style.getPropertyValue('padding-left') || '0') +
+            Number.parseFloat(post.style.getPropertyValue('padding-right') || '0');
+        assert(totalSideWhitespace <= 4, 'Expected side whitespace to stay minimal on narrow mobile screens.');
 
         button.click();
         assert.equal(post.style.getPropertyValue('margin-left'), '');
