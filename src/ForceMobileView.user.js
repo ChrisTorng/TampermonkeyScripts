@@ -41,6 +41,20 @@
     const SPACING_PADDING_LEFT_PRIORITY_ATTR = 'data-tm-force-width-padding-left-priority';
     const SPACING_PADDING_RIGHT_ATTR = 'data-tm-force-width-padding-right';
     const SPACING_PADDING_RIGHT_PRIORITY_ATTR = 'data-tm-force-width-padding-right-priority';
+    const LAYOUT_POSITION_ATTR = 'data-tm-force-width-position';
+    const LAYOUT_POSITION_PRIORITY_ATTR = 'data-tm-force-width-position-priority';
+    const LAYOUT_FLOAT_ATTR = 'data-tm-force-width-float';
+    const LAYOUT_FLOAT_PRIORITY_ATTR = 'data-tm-force-width-float-priority';
+    const LAYOUT_LEFT_ATTR = 'data-tm-force-width-left';
+    const LAYOUT_LEFT_PRIORITY_ATTR = 'data-tm-force-width-left-priority';
+    const LAYOUT_RIGHT_ATTR = 'data-tm-force-width-right';
+    const LAYOUT_RIGHT_PRIORITY_ATTR = 'data-tm-force-width-right-priority';
+    const LAYOUT_WIDTH_ATTR = 'data-tm-force-width-width';
+    const LAYOUT_WIDTH_PRIORITY_ATTR = 'data-tm-force-width-width-priority';
+    const LAYOUT_MAX_WIDTH_ATTR = 'data-tm-force-width-max-width';
+    const LAYOUT_MAX_WIDTH_PRIORITY_ATTR = 'data-tm-force-width-max-width-priority';
+    const LAYOUT_TRANSFORM_ATTR = 'data-tm-force-width-transform';
+    const LAYOUT_TRANSFORM_PRIORITY_ATTR = 'data-tm-force-width-transform-priority';
     const SPACING_TARGET_SELECTOR = 'main, article, section, div, aside, header, footer, nav, ul, ol, li, p, blockquote, pre, figure, table';
     const MAX_SIDE_SPACING_PX = 2;
     let isEnabled = false;
@@ -290,6 +304,7 @@
         if (!root || !shouldEnforceMinFontSize()) {
             return;
         }
+        const viewportWidth = getContentWidthPx();
         const elements = getElementsForSpacingNormalization(root);
         elements.forEach((element) => {
             if (element.hasAttribute(SPACING_FLAG_ATTR)) {
@@ -322,7 +337,39 @@
             element.style.setProperty('margin-right', '0px', 'important');
             element.style.setProperty('padding-left', `${MAX_SIDE_SPACING_PX}px`, 'important');
             element.style.setProperty('padding-right', `${MAX_SIDE_SPACING_PX}px`, 'important');
+
+            if (isSidebarLikeElement(element, computedStyle, viewportWidth)) {
+                storeLayoutProperty(element, 'position', LAYOUT_POSITION_ATTR, LAYOUT_POSITION_PRIORITY_ATTR);
+                storeLayoutProperty(element, 'float', LAYOUT_FLOAT_ATTR, LAYOUT_FLOAT_PRIORITY_ATTR);
+                storeLayoutProperty(element, 'left', LAYOUT_LEFT_ATTR, LAYOUT_LEFT_PRIORITY_ATTR);
+                storeLayoutProperty(element, 'right', LAYOUT_RIGHT_ATTR, LAYOUT_RIGHT_PRIORITY_ATTR);
+                storeLayoutProperty(element, 'width', LAYOUT_WIDTH_ATTR, LAYOUT_WIDTH_PRIORITY_ATTR);
+                storeLayoutProperty(element, 'max-width', LAYOUT_MAX_WIDTH_ATTR, LAYOUT_MAX_WIDTH_PRIORITY_ATTR);
+                storeLayoutProperty(element, 'transform', LAYOUT_TRANSFORM_ATTR, LAYOUT_TRANSFORM_PRIORITY_ATTR);
+                element.style.setProperty('position', 'static', 'important');
+                element.style.setProperty('float', 'none', 'important');
+                element.style.setProperty('left', 'auto', 'important');
+                element.style.setProperty('right', 'auto', 'important');
+                element.style.setProperty('width', 'auto', 'important');
+                element.style.setProperty('max-width', '100%', 'important');
+                element.style.setProperty('transform', 'none', 'important');
+            }
         });
+    }
+
+    function isSidebarLikeElement(element, computedStyle, viewportWidth) {
+        if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) {
+            return false;
+        }
+        const widthPx = getSidePixels(computedStyle.width);
+        const hasLinks = element.querySelectorAll('a').length >= 3;
+        const isOverlayColumn = computedStyle.position === 'absolute' || computedStyle.position === 'fixed' || computedStyle.float !== 'none';
+        return isOverlayColumn && hasLinks && widthPx > 0 && widthPx <= viewportWidth * 0.6;
+    }
+
+    function storeLayoutProperty(element, propertyName, valueAttr, priorityAttr) {
+        element.setAttribute(valueAttr, element.style.getPropertyValue(propertyName));
+        element.setAttribute(priorityAttr, element.style.getPropertyPriority(propertyName));
     }
 
     function scheduleMinimumFontRefresh() {
@@ -513,6 +560,13 @@
             restoreInlineProperty(element, 'margin-right', SPACING_MARGIN_RIGHT_ATTR, SPACING_MARGIN_RIGHT_PRIORITY_ATTR);
             restoreInlineProperty(element, 'padding-left', SPACING_PADDING_LEFT_ATTR, SPACING_PADDING_LEFT_PRIORITY_ATTR);
             restoreInlineProperty(element, 'padding-right', SPACING_PADDING_RIGHT_ATTR, SPACING_PADDING_RIGHT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'position', LAYOUT_POSITION_ATTR, LAYOUT_POSITION_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'float', LAYOUT_FLOAT_ATTR, LAYOUT_FLOAT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'left', LAYOUT_LEFT_ATTR, LAYOUT_LEFT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'right', LAYOUT_RIGHT_ATTR, LAYOUT_RIGHT_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'width', LAYOUT_WIDTH_ATTR, LAYOUT_WIDTH_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'max-width', LAYOUT_MAX_WIDTH_ATTR, LAYOUT_MAX_WIDTH_PRIORITY_ATTR);
+            restoreInlineProperty(element, 'transform', LAYOUT_TRANSFORM_ATTR, LAYOUT_TRANSFORM_PRIORITY_ATTR);
             element.removeAttribute(SPACING_FLAG_ATTR);
         });
     }

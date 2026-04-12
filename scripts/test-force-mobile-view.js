@@ -48,6 +48,10 @@ function executeForceMobileView(url, options = {}) {
             }
             return {
                 fontSize: element.tagName === 'SPAN' ? '10px' : '16px',
+                lineHeight: '22px',
+                width: '360px',
+                position: 'static',
+                float: 'none',
                 marginLeft: '0px',
                 marginRight: '0px',
                 paddingLeft: '0px',
@@ -148,6 +152,10 @@ describe('ForceMobileView on captured pages', () => {
             computedStyle(element) {
                 return {
                     fontSize: '16px',
+                    lineHeight: '22px',
+                    width: element.id === 'post' ? '320px' : '360px',
+                    position: 'static',
+                    float: 'none',
                     marginLeft: element.id === 'post' ? '24px' : '0px',
                     marginRight: element.id === 'post' ? '24px' : '0px',
                     paddingLeft: element.id === 'post' ? '18px' : '0px',
@@ -177,6 +185,75 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(post.style.getPropertyValue('margin-left'), '');
         assert.equal(post.style.getPropertyValue('padding-left'), '');
         assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), null);
+    });
+
+    test('absolute sidebar columns are flattened so article content can use full mobile width', () => {
+        const { harness } = executeForceMobileView('https://daringfireball.net/2026/03/your_frustration_is_the_product', {
+            computedStyle(element) {
+                if (element.id === 'Sidebar') {
+                    return {
+                        fontSize: '16px',
+                        lineHeight: '22px',
+                        width: '160px',
+                        position: 'absolute',
+                        float: 'none',
+                        left: '0px',
+                        right: 'auto',
+                        marginLeft: '16px',
+                        marginRight: '0px',
+                        paddingLeft: '16px',
+                        paddingRight: '8px'
+                    };
+                }
+                if (element.id === 'Main') {
+                    return {
+                        fontSize: '16px',
+                        lineHeight: '22px',
+                        width: '425px',
+                        position: 'relative',
+                        float: 'none',
+                        left: '0px',
+                        right: 'auto',
+                        marginLeft: '222px',
+                        marginRight: '0px',
+                        paddingLeft: '0px',
+                        paddingRight: '0px'
+                    };
+                }
+                return {
+                    fontSize: '16px',
+                    lineHeight: '22px',
+                    width: '360px',
+                    position: 'static',
+                    float: 'none',
+                    left: 'auto',
+                    right: 'auto',
+                    marginLeft: '0px',
+                    marginRight: '0px',
+                    paddingLeft: '0px',
+                    paddingRight: '0px'
+                };
+            }
+        });
+        const sidebar = harness.document.createElement('aside');
+        sidebar.id = 'Sidebar';
+        ['Archive', 'The Talk Show', 'Dithering'].forEach((label) => {
+            const link = harness.document.createElement('a');
+            link.href = '#';
+            link.textContent = label;
+            sidebar.appendChild(link);
+        });
+        const main = harness.document.createElement('main');
+        main.id = 'Main';
+        main.textContent = 'Article text';
+        harness.appendToBody(sidebar);
+        harness.appendToBody(main);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(sidebar.style.getPropertyValue('position'), 'static');
+        assert.equal(sidebar.style.getPropertyValue('width'), 'auto');
+        assert.equal(sidebar.style.getPropertyValue('max-width'), '100%');
+        assert.equal(main.style.getPropertyValue('margin-left'), '0px');
     });
 
     test('legacy font-only boost overlaps text lines, while current behavior raises parent line-height', () => {
