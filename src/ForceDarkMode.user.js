@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-18_1.0.1
+// @version      2026-04-12_1.0.2
 // @description  Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,6 +10,41 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.tampermonkey.net
 // @match        https://www.lesswrong.com/*
 // @match        *://*/*
+// @exclude      *://hackernews.betacat.io/*
+// @exclude      *://*.hackernews.betacat.io/*
+// @exclude      *://theneurondaily.com/*
+// @exclude      *://*.theneurondaily.com/*
+// @exclude      *://tam.gov.taipei/*
+// @exclude      *://*.tam.gov.taipei/*
+// @exclude      *://wiwi.*/*
+// @exclude      *://*.wiwi.*/*
+// @exclude      *://*.kagi.com/*
+// @exclude      *://chatgpt.com/*
+// @exclude      *://*.chatgpt.com/*
+// @exclude      *://christorng.github.io/*
+// @exclude      *://github.com/*
+// @exclude      *://discord.com/*
+// @exclude      *://*.discord.com/*
+// @exclude      *://ebird.org/*
+// @exclude      *://*.ebird.org/*
+// @exclude      *://newsminimalist.com/*
+// @exclude      *://*.newsminimalist.com/*
+// @exclude      *://*ycombinator.com/*
+// @exclude      *://huggingface.co/*
+// @exclude      *://*.huggingface.co/*
+// @exclude      *://youtube.com/*
+// @exclude      *://*.youtube.com/*
+// @exclude      *://x.com/*
+// @exclude      *://*.x.com/*
+// @exclude      *://nitter.net/*
+// @exclude      *://*.nitter.net/*
+// @exclude      *://bing.com/*
+// @exclude      *://*.bing.com/*
+// @exclude      *://*.wikipedia.org/*
+// @exclude      *://reddit.com/*
+// @exclude      *://*.reddit.com/*
+// @exclude      *://arxiv.org/*
+// @exclude      *://*.arxiv.org/*
 // @grant        GM_info
 // @run-at       document-start
 // ==/UserScript==
