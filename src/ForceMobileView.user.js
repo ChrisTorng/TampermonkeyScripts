@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-04-12_1.7.2
+// @version      2026-04-12_1.7.3
 // @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -20,10 +20,12 @@
 // @exclude      *://wiwi.*/*
 // @exclude      *://*.wiwi.*/*
 // @exclude      *://*.kagi.com/*
+// @exclude      *://kagi.com/*
 // @exclude      *://chatgpt.com/*
 // @exclude      *://*.chatgpt.com/*
 // @exclude      *://christorng.github.io/*
-// @exclude      https://github.com/*
+// @exclude      *://github.com/*
+// @exclude      *://*.github.com/*
 // @exclude      *://discord.com/*
 // @exclude      *://*.discord.com/*
 // @exclude      *://ebird.org/*
@@ -41,11 +43,33 @@
 // @exclude      *://*.nitter.net/*
 // @exclude      *://bing.com/*
 // @exclude      *://*.bing.com/*
+// @exclude      *://wikipedia.org/*
 // @exclude      *://*.wikipedia.org/*
 // @exclude      *://reddit.com/*
 // @exclude      *://*.reddit.com/*
 // @exclude      *://arxiv.org/*
 // @exclude      *://*.arxiv.org/*
+// @exclude      *://cht.com.tw/*
+// @exclude      *://*.cht.com.tw/*
+// @exclude      *://*.vercel.app/*
+// @exclude      *://vercel.app/*
+// @exclude      *://openai.com/*
+// @exclude      *://*.openai.com/*
+// @exclude      *://anthropic.com/*
+// @exclude      *://*.anthropic.com/*
+// @exclude      *://claude.ai/*
+// @exclude      *://*.claude.ai/*
+// @exclude      *://google.com/*
+// @exclude      *://*.google.com/*
+// @exclude      *://facebook.com/*
+// @exclude      *://*.facebook.com/*
+// @exclude      *://*.cwa.gov.tw/*
+// @exclude      *://cwa.gov.tw/*
+// @exclude      *://chrisrtxubuntu:*/*
+// @exclude      *://microsoft.com/*
+// @exclude      *://*.microsoft.com/*
+// @exclude      *://instagram.com/*
+// @exclude      *://*.instagram.com/*
 // @grant        GM_info
 // @run-at       document-start
 // ==/UserScript==
