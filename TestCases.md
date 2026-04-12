@@ -81,6 +81,7 @@ Section note: automated tests inject the script and mock `GM_info`.
 - https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (tiny-font auto-enable behavior)
 - https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mobile spacing logic is AUTOMATED via synthetic DOM harness, but full live-page capture coverage is still limited)
+- https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height overlap regression is simulated with local DOM harness against captured page content)
 
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]

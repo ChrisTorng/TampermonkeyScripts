@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-19_1.6.0
+// @version      2026-04-12_1.7.0
 // @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -29,6 +29,9 @@
     const MIN_FONT_PRIORITY_ATTR = 'data-tm-force-width-font-priority';
     const MIN_LINE_HEIGHT_VALUE_ATTR = 'data-tm-force-width-line-height-value';
     const MIN_LINE_HEIGHT_PRIORITY_ATTR = 'data-tm-force-width-line-height-priority';
+    const MIN_LINE_HEIGHT_ONLY_FLAG_ATTR = 'data-tm-force-width-min-line-height-only';
+    const MIN_LINE_HEIGHT_ONLY_VALUE_ATTR = 'data-tm-force-width-min-line-height-only-value';
+    const MIN_LINE_HEIGHT_ONLY_PRIORITY_ATTR = 'data-tm-force-width-min-line-height-only-priority';
     const SPACING_FLAG_ATTR = 'data-tm-force-width-spacing-trimmed';
     const SPACING_MARGIN_LEFT_ATTR = 'data-tm-force-width-margin-left';
     const SPACING_MARGIN_LEFT_PRIORITY_ATTR = 'data-tm-force-width-margin-left-priority';
@@ -394,6 +397,7 @@
         if (!root || !Number.isFinite(minFontSizePx)) {
             return;
         }
+        const enforcedAncestors = new Set();
         const elements = [];
         if (root.nodeType === Node.ELEMENT_NODE) {
             elements.push(root);
@@ -417,8 +421,39 @@
             element.setAttribute(MIN_LINE_HEIGHT_VALUE_ATTR, lineHeightValue);
             element.setAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR, lineHeightPriority);
             element.style.setProperty('font-size', `${minFontSizePx}px`, 'important');
-            element.style.setProperty('line-height', String(MIN_LINE_HEIGHT_RATIO), 'important');
+            const minimumLineHeightPx = minFontSizePx * MIN_LINE_HEIGHT_RATIO;
+            element.style.setProperty('line-height', `${minimumLineHeightPx}px`, 'important');
+            let parent = element.parentElement;
+            while (parent && parent !== document.documentElement) {
+                if (!enforcedAncestors.has(parent)) {
+                    enforceReadableLineHeight(parent);
+                    enforcedAncestors.add(parent);
+                }
+                parent = parent.parentElement;
+            }
         });
+    }
+
+    function enforceReadableLineHeight(element) {
+        if (!element || element.hasAttribute(MIN_FONT_FLAG_ATTR) || element.hasAttribute(MIN_LINE_HEIGHT_ONLY_FLAG_ATTR)) {
+            return;
+        }
+        const computedStyle = window.getComputedStyle(element);
+        const computedFontSize = Number.parseFloat(computedStyle.fontSize);
+        const computedLineHeight = Number.parseFloat(computedStyle.lineHeight);
+        if (!Number.isFinite(computedFontSize) || !Number.isFinite(computedLineHeight)) {
+            return;
+        }
+        const minimumLineHeightPx = computedFontSize * MIN_LINE_HEIGHT_RATIO;
+        if (computedLineHeight >= minimumLineHeightPx) {
+            return;
+        }
+        const lineHeightValue = element.style.getPropertyValue('line-height');
+        const lineHeightPriority = element.style.getPropertyPriority('line-height');
+        element.setAttribute(MIN_LINE_HEIGHT_ONLY_FLAG_ATTR, 'true');
+        element.setAttribute(MIN_LINE_HEIGHT_ONLY_VALUE_ATTR, lineHeightValue);
+        element.setAttribute(MIN_LINE_HEIGHT_ONLY_PRIORITY_ATTR, lineHeightPriority);
+        element.style.setProperty('line-height', `${minimumLineHeightPx}px`, 'important');
     }
 
     function clearMinimumFontSize() {
@@ -443,6 +478,19 @@
             element.removeAttribute(MIN_FONT_PRIORITY_ATTR);
             element.removeAttribute(MIN_LINE_HEIGHT_VALUE_ATTR);
             element.removeAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR);
+        });
+        const lineHeightOnlyElements = document.querySelectorAll(`[${MIN_LINE_HEIGHT_ONLY_FLAG_ATTR}="true"]`);
+        lineHeightOnlyElements.forEach((element) => {
+            const lineHeightValue = element.getAttribute(MIN_LINE_HEIGHT_ONLY_VALUE_ATTR) || '';
+            const lineHeightPriority = element.getAttribute(MIN_LINE_HEIGHT_ONLY_PRIORITY_ATTR) || '';
+            if (lineHeightValue) {
+                element.style.setProperty('line-height', lineHeightValue, lineHeightPriority);
+            } else {
+                element.style.removeProperty('line-height');
+            }
+            element.removeAttribute(MIN_LINE_HEIGHT_ONLY_FLAG_ATTR);
+            element.removeAttribute(MIN_LINE_HEIGHT_ONLY_VALUE_ATTR);
+            element.removeAttribute(MIN_LINE_HEIGHT_ONLY_PRIORITY_ATTR);
         });
     }
 

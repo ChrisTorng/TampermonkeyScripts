@@ -12,9 +12,11 @@ const scriptContents = fs.readFileSync(scriptPath, 'utf8');
 const hnFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'news.ycombinator.com_item_id_46255285.html');
 const archiveFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'archive.is_75aY9.html');
 const lcamtufFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'lcamtuf.coredump.cx_prep_index-old.shtml.html');
+const steveBlankFixturePath = path.join(repoRoot, 'tests', 'Force Mobile View', 'steveblank.com_2026_04_09_nowhere-is-safe.html');
 const hnFixtureHtml = fs.readFileSync(hnFixturePath, 'utf8');
 const archiveFixtureHtml = fs.readFileSync(archiveFixturePath, 'utf8');
 const lcamtufFixtureHtml = fs.readFileSync(lcamtufFixturePath, 'utf8');
+const steveBlankFixtureHtml = fs.readFileSync(steveBlankFixturePath, 'utf8');
 
 function executeForceMobileView(url, options = {}) {
     const harness = createHarness({
@@ -74,13 +76,15 @@ function executeForceMobileView(url, options = {}) {
 }
 
 describe('ForceMobileView on captured pages', () => {
-    test('fixtures contain captured HN, archive.is, and lcamtuf content', () => {
+    test('fixtures contain captured HN, archive.is, lcamtuf, and Steve Blank content', () => {
         assert.match(hnFixtureHtml, /CONTENT_CLASS:\s*VALID_/);
         assert.match(hnFixtureHtml, /hnmain/);
         assert.match(archiveFixtureHtml, /CONTENT_CLASS:\s*VALID_/);
         assert.match(archiveFixtureHtml, /archive\.is/i);
         assert.match(lcamtufFixtureHtml, /CONTENT_CLASS:\s*VALID_/);
         assert.match(lcamtufFixtureHtml, /lcamtuf\.coredump\.cx/i);
+        assert.match(steveBlankFixtureHtml, /CONTENT_CLASS:\s*VALID_/);
+        assert.match(steveBlankFixtureHtml, /steveblank\.com/i);
     });
 
     test('matched URL auto-enables mobile view style, min font enforcement, and toggle button', () => {
@@ -95,7 +99,7 @@ describe('ForceMobileView on captured pages', () => {
         assert(button, 'Expected mobile view toggle button to be created.');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
-        assert.equal(textElement.style.getPropertyValue('line-height'), '1.4');
+        assert.equal(textElement.style.getPropertyValue('line-height'), '25.2px');
         assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), 'true');
     });
 
@@ -167,5 +171,60 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(post.style.getPropertyValue('margin-left'), '');
         assert.equal(post.style.getPropertyValue('padding-left'), '');
         assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), null);
+    });
+
+    test('legacy font-only boost overlaps text lines, while current behavior raises parent line-height', () => {
+        const { harness } = executeForceMobileView('https://steveblank.com/2026/04/09/nowhere-is-safe/', {
+            fixtureHtml: steveBlankFixtureHtml,
+            computedStyle(element) {
+                const inlineFont = element.style.getPropertyValue('font-size');
+                const inlineLineHeight = element.style.getPropertyValue('line-height');
+                if (element.id === 'problem-line-box') {
+                    return {
+                        fontSize: inlineFont || '20px',
+                        lineHeight: inlineLineHeight || '12px',
+                        marginLeft: '0px',
+                        marginRight: '0px',
+                        paddingLeft: '0px',
+                        paddingRight: '0px'
+                    };
+                }
+                if (element.id === 'problem-small-text') {
+                    return {
+                        fontSize: inlineFont || '10px',
+                        lineHeight: inlineLineHeight || '10px',
+                        marginLeft: '0px',
+                        marginRight: '0px',
+                        paddingLeft: '0px',
+                        paddingRight: '0px'
+                    };
+                }
+                return {
+                    fontSize: inlineFont || '16px',
+                    lineHeight: inlineLineHeight || '22px',
+                    marginLeft: '0px',
+                    marginRight: '0px',
+                    paddingLeft: '0px',
+                    paddingRight: '0px'
+                };
+            }
+        });
+        const paragraph = harness.document.createElement('p');
+        paragraph.id = 'problem-line-box';
+        const span = harness.document.createElement('span');
+        span.id = 'problem-small-text';
+        span.textContent = 'Dense translated text';
+        paragraph.appendChild(span);
+        harness.appendToBody(paragraph);
+
+        const legacyLineHeight = 12;
+        const legacyFontAfterBoost = 18;
+        assert(legacyLineHeight < legacyFontAfterBoost, 'Legacy font-only boost would have line overlap.');
+
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(span.style.getPropertyValue('font-size'), '18px');
+        assert.equal(span.style.getPropertyValue('line-height'), '25.2px');
+        assert.equal(paragraph.getAttribute('data-tm-force-width-min-line-height-only'), 'true');
+        assert.equal(paragraph.style.getPropertyValue('line-height'), '28px');
     });
 });
