@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-04-12_1.7.1
+// @version      2026-04-12_1.7.2
 // @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -11,7 +11,41 @@
 // @match        https://news.ycombinator.com/item?*
 // @match        https://archive.is/*
 // @match        *://*/*
+// @exclude      *://hackernews.betacat.io/*
+// @exclude      *://*.hackernews.betacat.io/*
+// @exclude      *://theneurondaily.com/*
+// @exclude      *://*.theneurondaily.com/*
+// @exclude      *://tam.gov.taipei/*
+// @exclude      *://*.tam.gov.taipei/*
+// @exclude      *://wiwi.*/*
+// @exclude      *://*.wiwi.*/*
+// @exclude      *://*.kagi.com/*
+// @exclude      *://chatgpt.com/*
+// @exclude      *://*.chatgpt.com/*
+// @exclude      *://christorng.github.io/*
 // @exclude      https://github.com/*
+// @exclude      *://discord.com/*
+// @exclude      *://*.discord.com/*
+// @exclude      *://ebird.org/*
+// @exclude      *://*.ebird.org/*
+// @exclude      *://newsminimalist.com/*
+// @exclude      *://*.newsminimalist.com/*
+// @exclude      *://*ycombinator.com/*
+// @exclude      *://huggingface.co/*
+// @exclude      *://*.huggingface.co/*
+// @exclude      *://youtube.com/*
+// @exclude      *://*.youtube.com/*
+// @exclude      *://x.com/*
+// @exclude      *://*.x.com/*
+// @exclude      *://nitter.net/*
+// @exclude      *://*.nitter.net/*
+// @exclude      *://bing.com/*
+// @exclude      *://*.bing.com/*
+// @exclude      *://*.wikipedia.org/*
+// @exclude      *://reddit.com/*
+// @exclude      *://*.reddit.com/*
+// @exclude      *://arxiv.org/*
+// @exclude      *://*.arxiv.org/*
 // @grant        GM_info
 // @run-at       document-start
 // ==/UserScript==

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.5
+// @version      2026-04-12_1.2.6
 // @description  Add a quick Internet Archive link on any site for testing snapshots.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -9,6 +9,41 @@
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=web.archive.org
 // @match        *://*/*
+// @exclude      *://hackernews.betacat.io/*
+// @exclude      *://*.hackernews.betacat.io/*
+// @exclude      *://theneurondaily.com/*
+// @exclude      *://*.theneurondaily.com/*
+// @exclude      *://tam.gov.taipei/*
+// @exclude      *://*.tam.gov.taipei/*
+// @exclude      *://wiwi.*/*
+// @exclude      *://*.wiwi.*/*
+// @exclude      *://*.kagi.com/*
+// @exclude      *://chatgpt.com/*
+// @exclude      *://*.chatgpt.com/*
+// @exclude      *://christorng.github.io/*
+// @exclude      *://github.com/*
+// @exclude      *://discord.com/*
+// @exclude      *://*.discord.com/*
+// @exclude      *://ebird.org/*
+// @exclude      *://*.ebird.org/*
+// @exclude      *://newsminimalist.com/*
+// @exclude      *://*.newsminimalist.com/*
+// @exclude      *://*ycombinator.com/*
+// @exclude      *://huggingface.co/*
+// @exclude      *://*.huggingface.co/*
+// @exclude      *://youtube.com/*
+// @exclude      *://*.youtube.com/*
+// @exclude      *://x.com/*
+// @exclude      *://*.x.com/*
+// @exclude      *://nitter.net/*
+// @exclude      *://*.nitter.net/*
+// @exclude      *://bing.com/*
+// @exclude      *://*.bing.com/*
+// @exclude      *://*.wikipedia.org/*
+// @exclude      *://reddit.com/*
+// @exclude      *://*.reddit.com/*
+// @exclude      *://arxiv.org/*
+// @exclude      *://*.arxiv.org/*
 // @grant        none
 // ==/UserScript==
 
