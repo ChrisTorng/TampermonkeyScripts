@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-04-12_1.7.0
+// @version      2026-04-12_1.7.1
 // @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -42,7 +42,7 @@
     const SPACING_PADDING_RIGHT_ATTR = 'data-tm-force-width-padding-right';
     const SPACING_PADDING_RIGHT_PRIORITY_ATTR = 'data-tm-force-width-padding-right-priority';
     const SPACING_TARGET_SELECTOR = 'main, article, section, div, aside, header, footer, nav, ul, ol, li, p, blockquote, pre, figure, table';
-    const MAX_SIDE_SPACING_PX = 8;
+    const MAX_SIDE_SPACING_PX = 2;
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
@@ -73,8 +73,8 @@
             `    body > * {\n` +
             `        margin-left: 0 !important;\n` +
             `        margin-right: 0 !important;\n` +
-            `        padding-left: min(2vw, 8px) !important;\n` +
-            `        padding-right: min(2vw, 8px) !important;\n` +
+            `        padding-left: min(0.6vw, 2px) !important;\n` +
+            `        padding-right: min(0.6vw, 2px) !important;\n` +
             `    }\n` +
             `}\n` +
             `body * {\n` +
