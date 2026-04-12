@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.5
+// @version      2026-04-12_1.2.7
 // @description  Add a quick Internet Archive link on any site for testing snapshots.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -9,13 +9,72 @@
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=web.archive.org
 // @match        *://*/*
+// @exclude      *://hackernews.betacat.io/*
+// @exclude      *://*.hackernews.betacat.io/*
+// @exclude      *://theneurondaily.com/*
+// @exclude      *://*.theneurondaily.com/*
+// @exclude      *://tam.gov.taipei/*
+// @exclude      *://*.tam.gov.taipei/*
+// @exclude      *://wiwi.*/*
+// @exclude      *://*.wiwi.*/*
+// @exclude      *://*.kagi.com/*
+// @exclude      *://kagi.com/*
+// @exclude      *://chatgpt.com/*
+// @exclude      *://*.chatgpt.com/*
+// @exclude      *://christorng.github.io/*
+// @exclude      *://github.com/*
+// @exclude      *://*.github.com/*
+// @exclude      *://discord.com/*
+// @exclude      *://*.discord.com/*
+// @exclude      *://ebird.org/*
+// @exclude      *://*.ebird.org/*
+// @exclude      *://newsminimalist.com/*
+// @exclude      *://*.newsminimalist.com/*
+// @exclude      *://*ycombinator.com/*
+// @exclude      *://huggingface.co/*
+// @exclude      *://*.huggingface.co/*
+// @exclude      *://youtube.com/*
+// @exclude      *://*.youtube.com/*
+// @exclude      *://x.com/*
+// @exclude      *://*.x.com/*
+// @exclude      *://nitter.net/*
+// @exclude      *://*.nitter.net/*
+// @exclude      *://bing.com/*
+// @exclude      *://*.bing.com/*
+// @exclude      *://wikipedia.org/*
+// @exclude      *://*.wikipedia.org/*
+// @exclude      *://reddit.com/*
+// @exclude      *://*.reddit.com/*
+// @exclude      *://arxiv.org/*
+// @exclude      *://*.arxiv.org/*
+// @exclude      *://cht.com.tw/*
+// @exclude      *://*.cht.com.tw/*
+// @exclude      *://*.vercel.app/*
+// @exclude      *://vercel.app/*
+// @exclude      *://openai.com/*
+// @exclude      *://*.openai.com/*
+// @exclude      *://anthropic.com/*
+// @exclude      *://*.anthropic.com/*
+// @exclude      *://claude.ai/*
+// @exclude      *://*.claude.ai/*
+// @exclude      *://google.com/*
+// @exclude      *://*.google.com/*
+// @exclude      *://facebook.com/*
+// @exclude      *://*.facebook.com/*
+// @exclude      *://*.cwa.gov.tw/*
+// @exclude      *://cwa.gov.tw/*
+// @exclude      *://chrisrtxubuntu:*/*
+// @exclude      *://microsoft.com/*
+// @exclude      *://*.microsoft.com/*
+// @exclude      *://instagram.com/*
+// @exclude      *://*.instagram.com/*
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // 檢查是否為最上層視窗
+    // Ensure execution only in the top-level window
     if (window !== window.top) {
         return;
     }
