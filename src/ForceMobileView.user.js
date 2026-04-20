@@ -32,7 +32,6 @@
 // @exclude      *://*.ebird.org/*
 // @exclude      *://newsminimalist.com/*
 // @exclude      *://*.newsminimalist.com/*
-// @exclude      *://*ycombinator.com/*
 // @exclude      *://huggingface.co/*
 // @exclude      *://*.huggingface.co/*
 // @exclude      *://youtube.com/*
