@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-28_1.0.4
-// @description  Show a top-right YouTube tools overlay with « » speed controls and the current playback rate on watch pages.
+// @version      2026-05-20_1.0.5
+// @description  Show a top-right YouTube tools overlay with « » speed controls, 1x/1.5x/2x quick buttons, and the current playback rate on watch pages.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -65,6 +65,15 @@
     }
 
     function onRateChange() {
+        updateSpeedDisplay();
+    }
+
+    function setAbsoluteRate(rate) {
+        const video = currentVideo || document.querySelector('video');
+        if (!video) {
+            return;
+        }
+        video.playbackRate = clampRate(rate);
         updateSpeedDisplay();
     }
 
@@ -144,8 +153,8 @@
     position: fixed;
     top: 40px;
     right: 12px;
-    width: clamp(96px, 22vw, 120px);
-    height: 40px;
+    width: clamp(132px, 28vw, 170px);
+    min-height: 76px;
     z-index: 2147483647;
     color: rgba(255, 255, 255, 0.6);
     font-family: "Roboto", "Arial", sans-serif;
@@ -243,6 +252,35 @@
 #${overlayId} .tm-yt-speed-overlay__click--right:active {
     background: rgba(229, 9, 20, 0.38);
 }
+
+#${overlayId} .tm-yt-speed-overlay__presets {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 44px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+#${overlayId} .tm-yt-speed-overlay__preset {
+    border: none;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: clamp(11px, 2.8vw, 13px);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+    background: rgba(0, 0, 0, 0.48);
+    cursor: pointer;
+}
+
+#${overlayId} .tm-yt-speed-overlay__preset:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
+
+#${overlayId} .tm-yt-speed-overlay__preset:active {
+    background: rgba(229, 9, 20, 0.46);
+}
 `;
         document.head.appendChild(style);
     }
@@ -288,9 +326,23 @@
         label.appendChild(speedValue);
         label.appendChild(rightIcon);
 
+        const presets = document.createElement('div');
+        presets.className = 'tm-yt-speed-overlay__presets';
+
+        [1, 1.5, 2].forEach((rate) => {
+            const preset = document.createElement('button');
+            preset.type = 'button';
+            preset.className = 'tm-yt-speed-overlay__preset';
+            preset.textContent = formatRate(rate);
+            preset.setAttribute('aria-label', `Set playback speed to ${formatRate(rate)}`);
+            preset.addEventListener('click', () => setAbsoluteRate(rate));
+            presets.appendChild(preset);
+        });
+
         overlay.appendChild(leftButton);
         overlay.appendChild(rightButton);
         overlay.appendChild(label);
+        overlay.appendChild(presets);
 
         const host = document.fullscreenElement || document.body;
         host.appendChild(overlay);
