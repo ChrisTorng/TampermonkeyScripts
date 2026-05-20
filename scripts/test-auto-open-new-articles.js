@@ -183,4 +183,24 @@ describe('AutoOpenNewArticles on The Neuron Daily listings', () => {
         assert.equal(newLink.firstChild.textContent, '★');
         assert.equal(hiddenMetaSpan.firstChild, null);
     });
+
+    test('reloads the listing page when the tab becomes active', () => {
+        const openCalls = [];
+        const { harness } = createAutoOpenHarness('https://www.theneurondaily.com/', {}, openCalls);
+        const main = harness.document.createElement('main');
+        harness.appendToBody(main);
+        main.appendChild(createLink(harness.document, 'https://www.theneurondaily.com/p/latest-ai-breakthrough'));
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(harness.location.reloadCallCount, 0);
+
+        harness.document.visibilityState = 'hidden';
+        harness.dispatchDocumentEvent('visibilitychange');
+        assert.equal(harness.location.reloadCallCount, 0);
+
+        harness.document.visibilityState = 'visible';
+        harness.dispatchDocumentEvent('visibilitychange');
+        assert.equal(harness.location.reloadCallCount, 1);
+    });
 });

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-18_1.1.1
-// @description  Track the latest seen article and open newly listed articles on Taipei Astronomical Museum and The Neuron Daily in background tabs with a yellow star.
+// @version      2026-05-20_1.2.0
+// @description  Track the latest seen article, open newly listed articles in background tabs with a yellow star, and reload listing pages when the tab becomes active on Taipei Astronomical Museum and The Neuron Daily.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -199,6 +199,25 @@
 
         GM_setValue(storageKey, latestId);
     }
+
+    function setupActiveTabReload() {
+        const siteConfig = getSiteConfig();
+        if (!siteConfig) {
+            return;
+        }
+
+        const reloadIfVisible = () => {
+            if (document.visibilityState && document.visibilityState !== 'visible') {
+                return;
+            }
+            window.location.reload();
+        };
+
+        document.addEventListener('visibilitychange', reloadIfVisible);
+        window.addEventListener('focus', reloadIfVisible);
+    }
+
+    setupActiveTabReload();
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', handleArticles);
