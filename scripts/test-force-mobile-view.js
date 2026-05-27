@@ -104,7 +104,7 @@ describe('ForceMobileView on captured pages', () => {
     });
 
 
-    test('tiny-font pages auto-enable mobile view even when URL is not explicitly matched', () => {
+    test('non-matched URLs no longer auto-enable mobile view even on tiny-font pages', () => {
         const { harness } = executeForceMobileView('https://lcamtuf.coredump.cx/prep/index-old.shtml', {
             fixtureHtml: lcamtufFixtureHtml,
             computedFontSize(element) {
@@ -122,9 +122,9 @@ describe('ForceMobileView on captured pages', () => {
         const style = harness.document.getElementById('tm-force-width-style');
         const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
 
-        assert(style, 'Expected tiny-font detection to auto-enable style injection.');
+        assert.equal(style, null, 'Expected style injection to remain disabled for non-matched URLs.');
         assert(button, 'Expected mobile view toggle button to be created.');
-        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
     });
 
     test('toggle button disables and re-enables styles and minimum font size overrides', () => {
@@ -144,7 +144,7 @@ describe('ForceMobileView on captured pages', () => {
     });
 
     test('excessive horizontal spacing is trimmed on enable and restored on disable', () => {
-        const { harness } = executeForceMobileView('https://daringfireball.net/2026/03/your_frustration_is_the_product', {
+        const { harness } = executeForceMobileView('https://archive.is/75aY9', {
             computedStyle(element) {
                 return {
                     fontSize: '16px',
@@ -180,7 +180,7 @@ describe('ForceMobileView on captured pages', () => {
     });
 
     test('legacy font-only boost overlaps text lines, while current behavior raises parent line-height', () => {
-        const { harness } = executeForceMobileView('https://steveblank.com/2026/04/09/nowhere-is-safe/', {
+        const { harness } = executeForceMobileView('https://news.ycombinator.com/item?id=46255285', {
             fixtureHtml: steveBlankFixtureHtml,
             computedStyle(element) {
                 const inlineFont = element.style.getPropertyValue('font-size');

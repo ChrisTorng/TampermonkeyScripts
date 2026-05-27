@@ -78,11 +78,11 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ## [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Show a top-right YouTube tools overlay with « » speed controls and the current playback rate on watch pages.
+Show a top-right YouTube tools overlay with « » speed controls, 1x/1.5x/2x quick buttons, and the current playback rate on watch pages.
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
+Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 
 ## [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
