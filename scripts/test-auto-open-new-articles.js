@@ -184,7 +184,7 @@ describe('AutoOpenNewArticles on The Neuron Daily listings', () => {
         assert.equal(hiddenMetaSpan.firstChild, null);
     });
 
-    test('reloads the listing page when the tab becomes active', () => {
+    test('reloads the listing page with cache-busting query when the tab becomes active', () => {
         const openCalls = [];
         const { harness } = createAutoOpenHarness('https://www.theneurondaily.com/', {}, openCalls);
         const main = harness.document.createElement('main');
@@ -197,10 +197,63 @@ describe('AutoOpenNewArticles on The Neuron Daily listings', () => {
 
         harness.document.visibilityState = 'hidden';
         harness.dispatchDocumentEvent('visibilitychange');
-        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(harness.location.replacedUrl, null);
 
         harness.document.visibilityState = 'visible';
         harness.dispatchDocumentEvent('visibilitychange');
-        assert.equal(harness.location.reloadCallCount, 1);
+        assert(harness.location.replacedUrl);
+        const replacedUrl = new URL(harness.location.replacedUrl);
+        assert.equal(replacedUrl.origin, 'https://www.theneurondaily.com');
+        assert.equal(replacedUrl.pathname, '/');
+        assert.match(replacedUrl.search, /_tmr=\d+/);
+    });
+});
+
+describe('AutoOpenNewArticles on Wiwi Blog listing', () => {
+    test('stores the latest article and opens unseen Wiwi articles in background tabs', () => {
+        const storageKey = 'autoOpenNewArticles:lastSeen:wiwi:blog:listings';
+        const openCalls = [];
+        const { harness, gmStore } = createAutoOpenHarness(
+            'https://wiwi.blog/blog/',
+            { [storageKey]: 'wiwi:/blog/older-post' },
+            openCalls
+        );
+        const main = harness.document.createElement('main');
+        harness.appendToBody(main);
+
+        const latestLink = createLink(harness.document, 'https://wiwi.blog/blog/new-post', { textContent: 'New Post' });
+        const seenLink = createLink(harness.document, 'https://wiwi.blog/blog/older-post', { textContent: 'Older Post' });
+        const duplicateLatest = createLink(harness.document, 'https://wiwi.blog/blog/new-post', { textContent: 'Duplicate New Post' });
+        const nonArticle = createLink(harness.document, 'https://wiwi.blog/about', { textContent: 'About' });
+        main.append(latestLink, seenLink, duplicateLatest, nonArticle);
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(openCalls.length, 1);
+        assert.equal(openCalls[0].href, 'https://wiwi.blog/blog/new-post');
+        assert.equal(openCalls[0].options.active, false);
+        assert.equal(openCalls[0].options.insert, true);
+        assert.equal(gmStore.get(storageKey), 'wiwi:/blog/new-post');
+        assert.equal(latestLink.firstChild.textContent, '★');
+    });
+
+    test('reloads Wiwi listing with cache-busting query when tab becomes active', () => {
+        const openCalls = [];
+        const { harness } = createAutoOpenHarness('https://wiwi.blog/blog/', {}, openCalls);
+        const main = harness.document.createElement('main');
+        harness.appendToBody(main);
+        main.appendChild(createLink(harness.document, 'https://wiwi.blog/blog/new-post'));
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        harness.document.visibilityState = 'visible';
+        harness.dispatchDocumentEvent('visibilitychange');
+        assert(harness.location.replacedUrl);
+        const replacedUrl = new URL(harness.location.replacedUrl);
+        assert.equal(replacedUrl.origin, 'https://wiwi.blog');
+        assert.equal(replacedUrl.pathname, '/blog/');
+        assert.match(replacedUrl.search, /_tmr=\d+/);
     });
 });
