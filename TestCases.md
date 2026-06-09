@@ -62,6 +62,7 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://www.theneurondaily.com/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: AUTOMATED] (listing detection and new-item open flow validated with local DOM harness)
 - https://www.theneurondaily.com/archive [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: AUTOMATED] (listing detection and new-item open flow validated with local DOM harness)
+- https://wiwi.blog/blog/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (listing detection, new-item open flow, and active-tab cache-busting reload validated with local DOM harness)
 
 # Coding Diff Optimizer
 - https://chatgpt.com/codex/tasks/task_e_68e41a320a388322a04ba2f35d096cd7 [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; synthetic diff selector on supported Codex URL)
@@ -79,7 +80,7 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 Section note: automated tests inject the script and mock `GM_info`.
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
-- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (tiny-font auto-enable behavior)
+- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (non-matched URL remains off by default even with tiny fonts)
 - https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mobile spacing logic is AUTOMATED via synthetic DOM harness, including minimal side-whitespace enforcement; full live-page capture coverage is still limited)
 - https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height overlap regression is simulated with local DOM harness against captured page content)
 

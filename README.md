@@ -62,7 +62,7 @@ Open external links in background tabs with a ↗︎ indicator on:
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Track the latest seen article and auto-open newly listed items in background tabs with a yellow star on Taipei Astronomical Museum and The Neuron Daily.
+Track the latest seen article, auto-open newly listed items in background tabs with a yellow star, and no-cache reload listing pages when the tab becomes active on Taipei Astronomical Museum, The Neuron Daily, and Wiwi Blog.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
@@ -78,11 +78,11 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ## [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Show a top-right YouTube tools overlay with « » speed controls and the current playback rate on watch pages.
+Show a top-right YouTube tools overlay with « » speed controls, 1x/1.5x/2x quick buttons, and the current playback rate on watch pages.
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs or tiny fonts.
+Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 
 ## [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 

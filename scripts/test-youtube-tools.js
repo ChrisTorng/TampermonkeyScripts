@@ -39,16 +39,26 @@ describe('YouTubeTools on captured watch pages', () => {
         const speedValue = overlay.querySelector('.tm-yt-speed-overlay__value');
 
         assert(overlay, 'Expected YouTube tools overlay.');
-        assert.equal(buttons.length, 2);
+        assert.equal(buttons.length, 5);
         assert.equal(speedValue.textContent, '1x');
 
         buttons[1].click();
         assert.equal(video.playbackRate, 1.25);
         assert.equal(speedValue.textContent, '1.25x');
 
-        video.playbackRate = 1.5;
-        video.dispatchEvent({ type: 'ratechange' });
+        const preset15 = [...buttons].find((button) => button.textContent === '1.5x');
+        const preset2 = [...buttons].find((button) => button.textContent === '2x');
+
+        assert(preset15, 'Expected a 1.5x preset button.');
+        assert(preset2, 'Expected a 2x preset button.');
+
+        preset15.click();
+        assert.equal(video.playbackRate, 1.5);
         assert.equal(speedValue.textContent, '1.5x');
+
+        preset2.click();
+        assert.equal(video.playbackRate, 2);
+        assert.equal(speedValue.textContent, '2x');
     });
 
     test('route change away from watch page removes the overlay', () => {

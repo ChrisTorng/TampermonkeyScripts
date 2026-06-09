@@ -12,6 +12,7 @@
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
 // @match        https://www.theneurondaily.com/
 // @match        https://www.theneurondaily.com/archive*
+// @match        https://wiwi.blog/blog/
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
@@ -117,6 +118,50 @@
             };
         }
 
+        if (url.hostname === 'wiwi.blog') {
+            if (url.pathname !== '/blog/' && url.pathname !== '/blog') {
+                return null;
+            }
+
+            return {
+                scope: 'wiwi:blog:listings',
+                collectArticleLinks: () => {
+                    const candidates = Array.from(document.querySelectorAll('a[href]'));
+                    const seen = new Set();
+
+                    return candidates.filter((link) => {
+                        try {
+                            const articleUrl = new URL(link.href, window.location.href);
+                            const isArticle = articleUrl.origin === url.origin
+                                && articleUrl.pathname.startsWith('/blog/')
+                                && articleUrl.pathname !== '/blog/'
+                                && articleUrl.pathname !== '/blog';
+                            if (!isArticle) {
+                                return false;
+                            }
+
+                            const key = articleUrl.pathname;
+                            if (seen.has(key)) {
+                                return false;
+                            }
+                            seen.add(key);
+                            return true;
+                        } catch (error) {
+                            return false;
+                        }
+                    });
+                },
+                getArticleId: (link) => {
+                    try {
+                        const articleUrl = new URL(link.href, window.location.href);
+                        return `wiwi:${articleUrl.pathname}`;
+                    } catch (error) {
+                        return `wiwi:${link.href}`;
+                    }
+                }
+            };
+        }
+
         return null;
     }
 
@@ -199,6 +244,36 @@
 
         GM_setValue(storageKey, latestId);
     }
+
+    function setupActiveTabReload() {
+        const siteConfig = getSiteConfig();
+        if (!siteConfig) {
+            return;
+        }
+
+        let lastReloadAt = 0;
+
+        const reloadIfVisible = () => {
+            if (document.visibilityState && document.visibilityState !== 'visible') {
+                return;
+            }
+
+            const now = Date.now();
+            if (now - lastReloadAt < 1000) {
+                return;
+            }
+            lastReloadAt = now;
+
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set('_tmr', String(now));
+            window.location.replace(nextUrl.toString());
+        };
+
+        document.addEventListener('visibilitychange', reloadIfVisible);
+        window.addEventListener('focus', reloadIfVisible);
+    }
+
+    setupActiveTabReload();
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', handleArticles);
