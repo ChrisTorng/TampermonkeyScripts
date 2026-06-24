@@ -43,6 +43,7 @@ Hide/click/scrollTo elements on specific sites for better reading experience:
 - [INSIDE](https://www.inside.com.tw/)
 - [Los Angeles Times](https://www.latimes.com/)
 - [What is Intelligence?](https://whatisintelligence.antikythera.org/)
+- [Taipei Astronomical Museum News Content](https://tam.gov.taipei/News_Content.aspx)
 
 ## [Fix Floating Elements User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FixFloating.user.js)
 

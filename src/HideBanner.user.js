@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-17_1.5.2
+// @version      2026-06-24_1.5.3
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -13,6 +13,7 @@
 // @match        https://www.inside.com.tw/*
 // @match        https://www.latimes.com/*
 // @match        https://whatisintelligence.antikythera.org/*
+// @match        https://tam.gov.taipei/News_Content.aspx*
 // @grant        none
 // ==/UserScript==
 
@@ -66,11 +67,26 @@
             ],
             click: [],
             scrollTo: null
+        },
+        'tam.gov.taipei': {
+            path: '/News_Content.aspx',
+            hide: [],
+            click: [],
+            scrollTo: '#CCMS_Content .simple-text.title h3'
         }
     };
 
-    // Get selectors for current domain
-    const currentConfig = domainSelectors[window.location.hostname] || { hide: [], click: [], scrollTo: null };
+    function getCurrentConfig() {
+        const config = domainSelectors[window.location.hostname];
+        if (!config) return { hide: [], click: [], scrollTo: null };
+        if (config.path && window.location.pathname !== config.path) {
+            return { hide: [], click: [], scrollTo: null };
+        }
+        return config;
+    }
+
+    // Get selectors for current domain and supported path
+    const currentConfig = getCurrentConfig();
 
     // Track clicked elements to avoid repeated clicks
     const clickedElements = new WeakSet();

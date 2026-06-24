@@ -133,6 +133,43 @@ describe('HideBanner on captured pages', () => {
         assert.equal(headline.scrollIntoViewCallCount, 1);
     });
 
+
+    test('tam.gov News_Content pages scroll to the article title', () => {
+        const harness = executeHideBanner('https://tam.gov.taipei/News_Content.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&s=AB8D80ADF566657B');
+        const content = harness.document.createElement('div');
+        content.id = 'CCMS_Content';
+        const wrapper = harness.document.createElement('div');
+        wrapper.className = 'simple-text title';
+        const title = harness.document.createElement('h3');
+        title.className = 'h3';
+        title.textContent = '捕獲關鍵第三例！「無暗物質星系鏈」也許能解開一項史詩級謎團';
+        title._rect = { top: 160, left: 0, right: 480, bottom: 200, width: 480, height: 40 };
+        wrapper.appendChild(title);
+        content.appendChild(wrapper);
+        harness.appendToBody(content);
+
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(title.scrollIntoViewCallCount, 1);
+    });
+
+    test('tam.gov non-News_Content pages are not affected', () => {
+        const harness = executeHideBanner('https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801');
+        const content = harness.document.createElement('div');
+        content.id = 'CCMS_Content';
+        const wrapper = harness.document.createElement('div');
+        wrapper.className = 'simple-text title';
+        const title = harness.document.createElement('h3');
+        title._rect = { top: 160, left: 0, right: 480, bottom: 200, width: 480, height: 40 };
+        wrapper.appendChild(title);
+        content.appendChild(wrapper);
+        harness.appendToBody(content);
+
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(title.scrollIntoViewCallCount, 0);
+    });
+
     test('antikythera hides menu chrome including shadow content', () => {
         const harness = executeHideBanner('https://whatisintelligence.antikythera.org/chapter-02/');
         const menuHost = harness.document.createElement('antikythera-menu');
