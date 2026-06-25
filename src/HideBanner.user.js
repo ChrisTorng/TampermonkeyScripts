@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2026-06-25_1.5.4
+// @version      2026-06-25_1.5.5
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -72,11 +72,12 @@
             path: '/News_Content.aspx',
             hide: [
                 '.group.base-mobile',
-                '.simple-text.major-logo'
+                '.simple-text.major-logo',
+                '#CCMS_Content .area-customize.ai-wrapper'
             ],
             click: [],
             scrollTo: [
-                '#CCMS_Content .area-essay.page-caption-p ol a',
+                '#CCMS_Content .area-essay.page-caption-p strong[id]',
                 '#CCMS_Content .simple-text.title h3'
             ]
         }
