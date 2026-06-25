@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2026-06-24_1.5.3
+// @version      2026-06-25_1.5.4
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -70,9 +70,15 @@
         },
         'tam.gov.taipei': {
             path: '/News_Content.aspx',
-            hide: [],
+            hide: [
+                '.group.base-mobile',
+                '.simple-text.major-logo'
+            ],
             click: [],
-            scrollTo: '#CCMS_Content .simple-text.title h3'
+            scrollTo: [
+                '#CCMS_Content .area-essay.page-caption-p ol a',
+                '#CCMS_Content .simple-text.title h3'
+            ]
         }
     };
 
@@ -132,7 +138,8 @@
     function scrollToElement() {
         if (!currentConfig.scrollTo) return;
 
-        const element = queryAll(currentConfig.scrollTo)[0];
+        const selectors = Array.isArray(currentConfig.scrollTo) ? currentConfig.scrollTo : [currentConfig.scrollTo];
+        const element = selectors.flatMap(selector => Array.from(queryAll(selector)))[0];
         if (!element) return;
 
         const elementRect = element.getBoundingClientRect();

@@ -134,8 +134,12 @@ describe('HideBanner on captured pages', () => {
     });
 
 
-    test('tam.gov News_Content pages scroll to the article title', () => {
+    test('tam.gov single News_Content pages hide the fixed banner and scroll to the article title', () => {
         const harness = executeHideBanner('https://tam.gov.taipei/News_Content.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&s=AB8D80ADF566657B');
+        const mobileBanner = harness.document.createElement('div');
+        mobileBanner.className = 'group base-mobile';
+        const logoBanner = harness.document.createElement('div');
+        logoBanner.className = 'simple-text major-logo';
         const content = harness.document.createElement('div');
         content.id = 'CCMS_Content';
         const wrapper = harness.document.createElement('div');
@@ -146,15 +150,54 @@ describe('HideBanner on captured pages', () => {
         title._rect = { top: 160, left: 0, right: 480, bottom: 200, width: 480, height: 40 };
         wrapper.appendChild(title);
         content.appendChild(wrapper);
+        harness.appendToBody(mobileBanner);
+        harness.appendToBody(logoBanner);
         harness.appendToBody(content);
 
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
+        assert.equal(mobileBanner.style.display, 'none');
+        assert.equal(logoBanner.style.display, 'none');
         assert.equal(title.scrollIntoViewCallCount, 1);
+    });
+
+
+    test('tam.gov News_Content collection pages scroll to the first article link instead of the collection heading', () => {
+        const harness = executeHideBanner('https://tam.gov.taipei/News_Content.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&s=EA498826874ED925');
+        const content = harness.document.createElement('div');
+        content.id = 'CCMS_Content';
+        const titleWrapper = harness.document.createElement('div');
+        titleWrapper.className = 'simple-text title';
+        const collectionTitle = harness.document.createElement('h3');
+        collectionTitle.textContent = '115-06-24天文新知彙整';
+        collectionTitle._rect = { top: 120, left: 0, right: 480, bottom: 160, width: 480, height: 40 };
+        titleWrapper.appendChild(collectionTitle);
+        const essay = harness.document.createElement('div');
+        essay.className = 'area-essay page-caption-p';
+        const orderedList = harness.document.createElement('ol');
+        const firstItem = harness.document.createElement('li');
+        const firstLink = harness.document.createElement('a');
+        firstLink.textContent = '遙遠的「暗影發射器」天體';
+        firstLink._rect = { top: 260, left: 0, right: 480, bottom: 320, width: 480, height: 60 };
+        firstItem.appendChild(firstLink);
+        orderedList.appendChild(firstItem);
+        essay.appendChild(orderedList);
+        content.appendChild(titleWrapper);
+        content.appendChild(essay);
+        harness.appendToBody(content);
+
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(firstLink.scrollIntoViewCallCount, 1);
+        assert.equal(collectionTitle.scrollIntoViewCallCount, 0);
     });
 
     test('tam.gov non-News_Content pages are not affected', () => {
         const harness = executeHideBanner('https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801');
+        const mobileBanner = harness.document.createElement('div');
+        mobileBanner.className = 'group base-mobile';
+        const logoBanner = harness.document.createElement('div');
+        logoBanner.className = 'simple-text major-logo';
         const content = harness.document.createElement('div');
         content.id = 'CCMS_Content';
         const wrapper = harness.document.createElement('div');
@@ -163,10 +206,14 @@ describe('HideBanner on captured pages', () => {
         title._rect = { top: 160, left: 0, right: 480, bottom: 200, width: 480, height: 40 };
         wrapper.appendChild(title);
         content.appendChild(wrapper);
+        harness.appendToBody(mobileBanner);
+        harness.appendToBody(logoBanner);
         harness.appendToBody(content);
 
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
+        assert.notEqual(mobileBanner.style.display, 'none');
+        assert.notEqual(logoBanner.style.display, 'none');
         assert.equal(title.scrollIntoViewCallCount, 0);
     });
 
