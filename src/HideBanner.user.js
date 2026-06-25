@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Banner script
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-17_1.5.2
+// @version      2026-06-25_1.5.5
 // @description  Hide/click/scroll to specified elements on multiple websites
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -13,6 +13,7 @@
 // @match        https://www.inside.com.tw/*
 // @match        https://www.latimes.com/*
 // @match        https://whatisintelligence.antikythera.org/*
+// @match        https://tam.gov.taipei/News_Content.aspx*
 // @grant        none
 // ==/UserScript==
 
@@ -66,11 +67,33 @@
             ],
             click: [],
             scrollTo: null
+        },
+        'tam.gov.taipei': {
+            path: '/News_Content.aspx',
+            hide: [
+                '.group.base-mobile',
+                '.simple-text.major-logo',
+                '#CCMS_Content .area-customize.ai-wrapper'
+            ],
+            click: [],
+            scrollTo: [
+                '#CCMS_Content .area-essay.page-caption-p strong[id]',
+                '#CCMS_Content .simple-text.title h3'
+            ]
         }
     };
 
-    // Get selectors for current domain
-    const currentConfig = domainSelectors[window.location.hostname] || { hide: [], click: [], scrollTo: null };
+    function getCurrentConfig() {
+        const config = domainSelectors[window.location.hostname];
+        if (!config) return { hide: [], click: [], scrollTo: null };
+        if (config.path && window.location.pathname !== config.path) {
+            return { hide: [], click: [], scrollTo: null };
+        }
+        return config;
+    }
+
+    // Get selectors for current domain and supported path
+    const currentConfig = getCurrentConfig();
 
     // Track clicked elements to avoid repeated clicks
     const clickedElements = new WeakSet();
@@ -116,7 +139,8 @@
     function scrollToElement() {
         if (!currentConfig.scrollTo) return;
 
-        const element = queryAll(currentConfig.scrollTo)[0];
+        const selectors = Array.isArray(currentConfig.scrollTo) ? currentConfig.scrollTo : [currentConfig.scrollTo];
+        const element = selectors.flatMap(selector => Array.from(queryAll(selector)))[0];
         if (!element) return;
 
         const elementRect = element.getBoundingClientRect();

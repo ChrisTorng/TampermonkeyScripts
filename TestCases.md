@@ -41,7 +41,9 @@
 - https://pansci.asia/archives/380040 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://www.inside.com.tw/article/40278-is-taiwan-the-worlds-best-use-case-for-stablecoins [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://www.latimes.com/environment/story/2025-12-18/state-regulators-vote-to-keep-utility-profits-high-angering-customers [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
-- https://whatisintelligence.antikythera.org/chapter-02/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+- https://whatisintelligence.antikythera.org/chapter-02/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+- https://tam.gov.taipei/News_Content.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&s=AB8D80ADF566657B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+- https://tam.gov.taipei/News_Content.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&s=EA498826874ED925 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 
 # Fix Floating Elements
 - https://whatisintelligence.antikythera.org/chapter-02/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
