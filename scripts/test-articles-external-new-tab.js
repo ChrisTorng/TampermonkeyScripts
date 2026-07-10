@@ -176,6 +176,44 @@ describe('ArticlesExternalNewTab on captured listings', () => {
         assert.equal(openCalls[0].options.insert, true);
     });
 
+    test('Paul Bourke pages open every link in background tabs', () => {
+        const openCalls = [];
+        const harness = createArticlesHarness('https://paulbourke.net/geometry/', openCalls);
+        const externalLink = createLink(harness.document, 'https://example.com/reference', { textContent: 'external' });
+        const internalLink = createLink(harness.document, 'https://paulbourke.net/geometry/polygonise/', { textContent: 'internal' });
+        const wwwInternalLink = createLink(harness.document, 'https://www.paulbourke.net/geometry/', { textContent: 'www internal' });
+        harness.appendToBody(externalLink);
+        harness.appendToBody(internalLink);
+        harness.appendToBody(wwwInternalLink);
+        runArticlesScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(externalLink.target, '_blank');
+        assert.equal(internalLink.target, '_blank');
+        assert.equal(wwwInternalLink.target, '_blank');
+
+        const clickEvent = createMouseEvent('click');
+        externalLink.dispatchEvent(clickEvent);
+        assert.equal(clickEvent.defaultPrevented, true);
+        assert.equal(openCalls[0].href, 'https://example.com/reference');
+        assert.equal(openCalls[0].options.active, false);
+        assert.equal(openCalls[0].options.insert, true);
+
+        const internalClickEvent = createMouseEvent('click');
+        internalLink.dispatchEvent(internalClickEvent);
+        assert.equal(internalClickEvent.defaultPrevented, true);
+        assert.equal(openCalls[1].href, 'https://paulbourke.net/geometry/polygonise/');
+        assert.equal(openCalls[1].options.active, false);
+        assert.equal(openCalls[1].options.insert, true);
+
+        const wwwInternalClickEvent = createMouseEvent('click');
+        wwwInternalLink.dispatchEvent(wwwInternalClickEvent);
+        assert.equal(wwwInternalClickEvent.defaultPrevented, true);
+        assert.equal(openCalls[2].href, 'https://www.paulbourke.net/geometry/');
+        assert.equal(openCalls[2].options.active, false);
+        assert.equal(openCalls[2].options.insert, true);
+    });
+
     test('The Neuron Daily article sanitizes tracking parameters for external links', () => {
         const html = loadFixture('www.theneurondaily.com_p_you-can-now-build-agents-and-apps-inside-chatgpt.html');
         assert.match(html, /CONTENT_CLASS:\s*INVALID_ANTI_BOT/);
