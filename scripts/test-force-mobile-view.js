@@ -24,7 +24,7 @@ function executeForceMobileView(url, options = {}) {
         readyState: 'loading',
         gmInfo: {
             script: {
-                matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', '*://*/*']
+                matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', 'https://paulbourke.net/*', 'https://www.paulbourke.net/*', '*://*/*']
             }
         },
         matchMedia(query) {
@@ -65,6 +65,8 @@ function executeForceMobileView(url, options = {}) {
         harness.document.body.innerHTML = options.fixtureHtml;
     }
 
+    const setupResult = typeof options.setupBody === 'function' ? options.setupBody(harness) : {};
+
     const textElement = harness.document.createElement('span');
     textElement.textContent = 'small text';
     harness.appendToBody(textElement);
@@ -72,7 +74,7 @@ function executeForceMobileView(url, options = {}) {
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
-    return { harness, textElement };
+    return { harness, textElement, ...setupResult };
 }
 
 describe('ForceMobileView on captured pages', () => {
@@ -103,6 +105,18 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), 'true');
     });
 
+
+    test('paulbourke.net pages auto-enable mobile view by default', () => {
+        const { harness } = executeForceMobileView('https://paulbourke.net/geometry/');
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const style = harness.document.getElementById('tm-force-width-style');
+        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+
+        assert(style, 'Expected Paul Bourke pages to auto-enable mobile view style.');
+        assert(button, 'Expected mobile view toggle button to be created.');
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+    });
 
     test('non-matched URLs no longer auto-enable mobile view even on tiny-font pages', () => {
         const { harness } = executeForceMobileView('https://lcamtuf.coredump.cx/prep/index-old.shtml', {
@@ -144,7 +158,14 @@ describe('ForceMobileView on captured pages', () => {
     });
 
     test('excessive horizontal spacing is trimmed on enable and restored on disable', () => {
-        const { harness } = executeForceMobileView('https://archive.is/75aY9', {
+        const { harness, post } = executeForceMobileView('https://archive.is/75aY9', {
+            setupBody(harness) {
+                const post = harness.document.createElement('article');
+                post.id = 'post';
+                post.textContent = 'content';
+                harness.appendToBody(post);
+                return { post };
+            },
             computedStyle(element) {
                 return {
                     fontSize: '16px',
@@ -155,10 +176,6 @@ describe('ForceMobileView on captured pages', () => {
                 };
             }
         });
-        const post = harness.document.createElement('article');
-        post.id = 'post';
-        post.textContent = 'content';
-        harness.appendToBody(post);
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
@@ -222,6 +239,7 @@ describe('ForceMobileView on captured pages', () => {
         span.textContent = 'Dense translated text';
         paragraph.appendChild(span);
         harness.appendToBody(paragraph);
+        harness.triggerMutation([paragraph]);
 
         const legacyLineHeight = 12;
         const legacyFontAfterBoost = 18;
