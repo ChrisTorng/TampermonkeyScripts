@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-05-20_1.7.5
+// @version      2026-07-10_1.7.6
 // @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,6 +10,8 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.tampermonkey.net
 // @match        https://news.ycombinator.com/item?*
 // @match        https://archive.is/*
+// @match        https://paulbourke.net/*
+// @match        https://www.paulbourke.net/*
 // @match        *://*/*
 // @exclude      *://hackernews.betacat.io/*
 // @exclude      *://*.hackernews.betacat.io/*
