@@ -57,6 +57,7 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913&sms=2CF1F5E2E0B96411 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://wiwi.blog/blog/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+- https://paulbourke.net/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (all-link behavior is validated with a local DOM harness)
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2026-03-17_2.1.3
-// @description  Open external links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, Taipei Astronomical Museum News, and Wiwi Blog.
+// @version      2026-07-10_2.1.5
+// @description  Open supported article links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, Taipei Astronomical Museum News, Wiwi Blog, and Paul Bourke.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js
@@ -14,6 +14,8 @@
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
 // @match        https://wiwi.blog/blog/*
+// @match        https://paulbourke.net/*
+// @match        https://www.paulbourke.net/*
 // @grant        GM_openInTab
 // ==/UserScript==
 
@@ -132,6 +134,10 @@
             if (isBlogPage) {
                 return url.hostname !== 'wiwi.blog';
             }
+        }
+
+        if (pageHost === 'paulbourke.net' || pageHost === 'www.paulbourke.net') {
+            return true;
         }
 
         return false;
