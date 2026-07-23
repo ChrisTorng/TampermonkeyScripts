@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-05-20_1.0.5
-// @description  Show a top-right YouTube tools overlay with « » speed controls, 1x/1.5x/2x quick buttons, and the current playback rate on watch pages.
+// @version      2026-07-23_1.0.6
+// @description  Show a top-right YouTube playback-speed overlay that hides in fullscreen until hovered.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -160,11 +160,17 @@
     font-family: "Roboto", "Arial", sans-serif;
     pointer-events: auto;
     user-select: none;
-    transition: color 160ms ease;
+    opacity: 1;
+    transition: color 160ms ease, opacity 0s;
 }
 
 #${overlayId}.tm-yt-speed-overlay--fullscreen {
     position: absolute;
+    opacity: 0;
+}
+
+#${overlayId}.tm-yt-speed-overlay--fullscreen:hover {
+    opacity: 1;
 }
 
 #${overlayId} .tm-yt-speed-overlay__click {

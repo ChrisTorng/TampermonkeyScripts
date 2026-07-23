@@ -61,6 +61,32 @@ describe('YouTubeTools on captured watch pages', () => {
         assert.equal(speedValue.textContent, '2x');
     });
 
+    test('fullscreen hides the overlay until its top-right hover area is entered', () => {
+        const { harness, video } = executeYouTubeTools('https://www.youtube.com/watch?v=nCg3aXn5F3M');
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.flushAnimationFrames();
+
+        const overlay = harness.document.getElementById('tm-yt-speed-overlay');
+        const style = harness.document.getElementById('tm-yt-speed-overlay-style');
+
+        assert(overlay, 'Expected YouTube tools overlay.');
+        assert.equal(overlay.classList.contains('tm-yt-speed-overlay--fullscreen'), false);
+        assert.match(style.textContent, /tm-yt-speed-overlay--fullscreen \{\s*position: absolute;\s*opacity: 0;/);
+        assert.match(style.textContent, /tm-yt-speed-overlay--fullscreen:hover \{\s*opacity: 1;/);
+
+        harness.document.fullscreenElement = video;
+        harness.dispatchWindowEvent('fullscreenchange');
+
+        assert.equal(overlay.classList.contains('tm-yt-speed-overlay--fullscreen'), true);
+        assert.equal(overlay.parentElement, video);
+
+        harness.document.fullscreenElement = null;
+        harness.dispatchWindowEvent('fullscreenchange');
+
+        assert.equal(overlay.classList.contains('tm-yt-speed-overlay--fullscreen'), false);
+        assert.equal(overlay.parentElement, harness.document.body);
+    });
+
     test('route change away from watch page removes the overlay', () => {
         const { harness } = executeYouTubeTools('https://www.youtube.com/watch?v=nCg3aXn5F3M');
         harness.dispatchDocumentEvent('DOMContentLoaded');
