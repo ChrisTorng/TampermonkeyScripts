@@ -77,7 +77,7 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 - https://indieweb.org/POSSE [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
 # YouTube Tools
-- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
+- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
