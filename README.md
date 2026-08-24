@@ -9,6 +9,7 @@ Redirect supported pages to more readable destinations while preserving back nav
 Supported sites:
 - [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Nitter](https://nitter.net/) status pages for a lighter viewer
 - [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
+  - On Edge mobile, add [https://rdx.overdevs.com](https://rdx.overdevs.com) as a Tracking Prevention exception so Reddit content loads correctly.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
 - [arXiv](https://arxiv.org/) abs/pdf pages → arXiv HTML view
 
