@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-05-27_1.3.0
-// @description  Track the latest seen article, open newly listed articles in background tabs with a yellow star, and no-cache reload listing pages when the tab becomes active on Taipei Astronomical Museum, The Neuron Daily, and Wiwi Blog.
+// @version      2026-06-09_1.3.1
+// @description  Track the latest seen article and open newly listed articles on Taipei Astronomical Museum and The Neuron Daily in background tabs with a yellow star.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
