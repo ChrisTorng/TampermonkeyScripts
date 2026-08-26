@@ -7,7 +7,7 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 Redirect supported pages to more readable destinations while preserving back navigation.
 
 Supported sites:
-- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Nitter](https://nitter.net/) status pages for a lighter viewer
+- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Twitter Viewer](https://twitterwebviewer.com/) for account-free viewing
 - [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
   - On Edge mobile, add [https://rdx.overdevs.com](https://rdx.overdevs.com) as a Tracking Prevention exception so Reddit content loads correctly.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub

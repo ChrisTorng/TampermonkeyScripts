@@ -202,10 +202,10 @@ const redirectCases = [
         name: 'x.com status',
         fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
         sourceUrl: 'https://x.com/cocktailpeanut/status/1860756706357022812',
-        expectedTargetUrl: 'https://nitter.net/cocktailpeanut/status/1860756706357022812',
+        expectedTargetUrl: 'https://twitterwebviewer.com/?tweet=1860756706357022812',
         sessionKey: 'redirectx-last-redirect-x',
         redirectId: '1860756706357022812',
-        skipReferrer: 'https://nitter.net/cocktailpeanut/status/1860756706357022812'
+        skipReferrer: 'https://twitterwebviewer.com/?tweet=1860756706357022812'
     },
     {
         name: 'reddit.com thread',
