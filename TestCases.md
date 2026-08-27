@@ -4,12 +4,12 @@
 - `N/A`: reference sample with no matching userscript behavior expected.
 
 # RedirectUrls
-- https://x.com/cocktailpeanut/status/1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file [CONTENT_CLASS: VALID_ARTICLE_CONTENT] (redirects to repository home and Back returns here without re-triggering)
-- https://arxiv.org/abs/2402.07939v1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://arxiv.org/pdf/2402.07939v1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
+- https://x.com/cocktailpeanut/status/1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+- https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+- https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+- https://github.com/ChrisTorng/TampermonkeyScripts?tab=readme-ov-file [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (redirects to repository home and Back returns here without re-triggering)
+- https://arxiv.org/abs/2402.07939v1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+- https://arxiv.org/pdf/2402.07939v1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 
 # Archive Today
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
@@ -75,6 +75,10 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 # Responsive Scroll Position Indicator
 - https://mastodon.social/@firefoxwebdevs/115740500373677782 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 - https://indieweb.org/POSSE [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+
+# Translation Crash Guard
+Section note: automated tests cover the DOM operation guard with a local harness; Android Edge machine-translation UI still needs manual device validation.
+- https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
