@@ -76,6 +76,10 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 - https://mastodon.social/@firefoxwebdevs/115740500373677782 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 - https://indieweb.org/POSSE [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
+# Translation Crash Guard
+Section note: automated tests cover the DOM operation guard with a local harness; Android Edge machine-translation UI still needs manual device validation.
+- https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
+
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
 
