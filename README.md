@@ -4,7 +4,7 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ## [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
-Add a button after the main article when Hacker News comments are available for the current page.
+Add an article button for Hacker News comments, including pages reached through redirects.
 
 ## [RedirectUrls User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
 

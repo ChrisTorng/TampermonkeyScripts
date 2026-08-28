@@ -16,18 +16,30 @@ function waitForPromises() {
     return new Promise((resolve) => setImmediate(resolve));
 }
 
-function executeScript(hits) {
-    const harness = createHarness({ url: 'https://blog.exe.dev/engineering-with-ai' });
+function executeScript({
+    url = 'https://blog.exe.dev/engineering-with-ai',
+    referrer = '',
+    history = [],
+    responseForUrl = () => []
+} = {}) {
+    const harness = createHarness({ url, referrer });
     const article = harness.document.createElement('article');
     harness.appendToBody(article);
     const requests = [];
 
-    harness.context.fetch = async (url) => {
-        requests.push(String(url));
+    const tab = {
+        hackerNewsCommentsHistory: history,
+        hackerNewsCommentsRecordedAt: Date.now()
+    };
+    harness.context.GM_getTab = (callback) => callback(tab);
+    harness.context.GM_saveTab = (savedTab) => Object.assign(tab, savedTab);
+    harness.context.fetch = async (requestUrl) => {
+        requests.push(String(requestUrl));
+        const searchedUrl = new URL(requestUrl).searchParams.get('query');
         return {
             ok: true,
             async json() {
-                return { hits };
+                return { hits: responseForUrl(searchedUrl) };
             }
         };
     };
@@ -51,7 +63,9 @@ describe('Hacker News Comments on the captured article', () => {
             url: 'https://blog.exe.dev/engineering-with-ai',
             num_comments: 100
         };
-        const { harness, article, requests } = executeScript([story]);
+        const { harness, article, requests } = executeScript({
+            responseForUrl: () => [story]
+        });
         await waitForPromises();
 
         const wrapper = harness.document.getElementById('tm-hacker-news-comments');
@@ -67,13 +81,35 @@ describe('Hacker News Comments on the captured article', () => {
     });
 
     test('does not add a link for a search result with a different URL', async () => {
-        const { harness } = executeScript([{
-            objectID: '1',
-            url: 'https://example.com/a-different-article',
-            num_comments: 20
-        }]);
+        const { harness } = executeScript({
+            responseForUrl: () => [{
+                objectID: '1',
+                url: 'https://example.com/a-different-article',
+                num_comments: 20
+            }]
+        });
         await waitForPromises();
 
         assert.equal(harness.document.getElementById('tm-hacker-news-comments'), null);
+    });
+
+    test('walks backward through per-tab URLs when a redirect target has no story', async () => {
+        const sourceUrl = 'https://blog.exe.dev/engineering-with-ai';
+        const { harness, requests } = executeScript({
+            url: 'https://web.archive.org/web/20260828/https://blog.exe.dev/engineering-with-ai',
+            referrer: sourceUrl,
+            history: [sourceUrl],
+            responseForUrl: (searchedUrl) => searchedUrl === sourceUrl ? [{
+                objectID: '49465119',
+                url: sourceUrl,
+                num_comments: 100
+            }] : []
+        });
+        await waitForPromises();
+
+        const link = harness.document.querySelector('#tm-hacker-news-comments a');
+        assert.equal(link.href, 'https://news.ycombinator.com/item?id=49465119');
+        assert.equal(new URL(requests[0]).searchParams.get('query'), 'https://web.archive.org/web/20260828/https://blog.exe.dev/engineering-with-ai');
+        assert(requests.some((request) => new URL(request).searchParams.get('query') === sourceUrl));
     });
 });

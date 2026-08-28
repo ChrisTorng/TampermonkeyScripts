@@ -4,7 +4,7 @@
 - `N/A`: reference sample with no matching userscript behavior expected.
 
 # Hacker News Comments
-Section note: the automated test injects the userscript into a local article DOM and mocks the Hacker News Algolia API response.
+Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API and per-tab navigation history.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 
 # RedirectUrls

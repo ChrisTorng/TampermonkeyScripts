@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Hacker News Comments
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-28_1.0.0
-// @description  Add a button after the main article when Hacker News comments are available for the current page.
+// @version      2026-08-28_1.1.0
+// @description  Add an article button for Hacker News comments, including pages reached through redirects.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js
@@ -10,7 +10,8 @@
 // @icon         https://news.ycombinator.com/favicon.ico
 // @match        http://*/*
 // @match        https://*/*
-// @grant        none
+// @grant        GM_getTab
+// @grant        GM_saveTab
 // ==/UserScript==
 
 (function () {
@@ -18,6 +19,8 @@
 
     const BUTTON_ID = 'tm-hacker-news-comments';
     const SEARCH_API = 'https://hn.algolia.com/api/v1/search';
+    const HISTORY_LIMIT = 20;
+    const REDIRECT_WINDOW_MS = 15000;
 
     function normalizeUrl(value) {
         try {
@@ -31,9 +34,49 @@
         }
     }
 
-    function getPageUrls() {
+    function getTabState() {
+        return new Promise((resolve) => {
+            if (typeof GM_getTab !== 'function') {
+                resolve({});
+                return;
+            }
+            GM_getTab((tab) => resolve(tab || {}));
+        });
+    }
+
+    async function captureNavigation() {
+        const currentUrl = window.location.href;
+        const referrer = document.referrer;
+        const tab = await getTabState();
+        const previousHistory = Array.isArray(tab.hackerNewsCommentsHistory)
+            ? tab.hackerNewsCommentsHistory
+            : [];
+        const previousUrl = previousHistory.at(-1);
+        const followsPreviousPage = normalizeUrl(referrer) === normalizeUrl(previousUrl);
+        const followsRecentNavigation = Date.now() - (tab.hackerNewsCommentsRecordedAt || 0) < REDIRECT_WINDOW_MS;
+        const history = followsPreviousPage || followsRecentNavigation
+            ? previousHistory.slice()
+            : [];
+
+        if (referrer && normalizeUrl(referrer) !== normalizeUrl(history.at(-1))) {
+            history.push(referrer);
+        }
+        if (normalizeUrl(currentUrl) !== normalizeUrl(history.at(-1))) {
+            history.push(currentUrl);
+        }
+
+        tab.hackerNewsCommentsHistory = history.slice(-HISTORY_LIMIT);
+        tab.hackerNewsCommentsRecordedAt = Date.now();
+        if (typeof GM_saveTab === 'function') {
+            GM_saveTab(tab);
+        }
+        return tab.hackerNewsCommentsHistory;
+    }
+
+    function getPageUrls(history) {
         const canonical = document.querySelector('link[rel="canonical"]')?.href;
-        return [...new Set([canonical, window.location.href].filter(Boolean))];
+        const previousUrls = history.slice(0, -1).reverse();
+        return [...new Set([canonical, window.location.href, document.referrer, ...previousUrls].filter(Boolean))];
     }
 
     async function findStory(pageUrls) {
@@ -99,9 +142,10 @@
         }
     }
 
-    async function initialize() {
+    async function initialize(historyPromise) {
         try {
-            const story = await findStory(getPageUrls());
+            const history = await historyPromise;
+            const story = await findStory(getPageUrls(history));
             if (story) {
                 addCommentsButton(story);
             }
@@ -110,9 +154,10 @@
         }
     }
 
+    const historyPromise = captureNavigation();
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize, { once: true });
+        document.addEventListener('DOMContentLoaded', () => initialize(historyPromise), { once: true });
     } else {
-        initialize();
+        initialize(historyPromise);
     }
 })();
