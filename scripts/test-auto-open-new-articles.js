@@ -14,13 +14,15 @@ const fixtures = [
     {
         name: 'News_Photo listing',
         fixture: path.join('AutoOpenNewArticles', 'tam.gov.taipei_News_Photo.aspx_n_EF86D8AF23B9A85B.html'),
-        sourceUrl: 'https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B',
+        sourceUrl: 'https://tam.gov.taipei/news_photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&page=1&PageSize=20',
+        storagePath: '/News_Photo.aspx',
         listId: 'EF86D8AF23B9A85B'
     },
     {
         name: 'News_Link_pic listing',
         fixture: path.join('AutoOpenNewArticles', 'tam.gov.taipei_News_Link_pic.aspx_n_B64052C7930D4913.html'),
         sourceUrl: 'https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913',
+        storagePath: '/News_Link_pic.aspx',
         listId: 'B64052C7930D4913'
     }
 ];
@@ -77,6 +79,11 @@ function runAutoOpenScript(harness) {
 }
 
 describe('AutoOpenNewArticles on captured Taipei museum listings', () => {
+    test('matches lowercase Taipei museum listing URLs used by the site', () => {
+        assert.match(scriptContents, /^\/\/ @match\s+https:\/\/tam\.gov\.taipei\/news_photo\.aspx\*$/m);
+        assert.match(scriptContents, /^\/\/ @match\s+https:\/\/tam\.gov\.taipei\/news_link_pic\.aspx\*$/m);
+    });
+
     for (const fixtureCase of fixtures) {
         test(`${fixtureCase.name} stores the newest article on first visit without opening tabs`, () => {
             const html = loadFixture(fixtureCase.fixture);
@@ -89,7 +96,7 @@ describe('AutoOpenNewArticles on captured Taipei museum listings', () => {
             runAutoOpenScript(harness);
             harness.dispatchDocumentEvent('DOMContentLoaded');
 
-            const storageKey = `autoOpenNewArticles:lastSeen:${new URL(fixtureCase.sourceUrl).pathname}:${fixtureCase.listId}`;
+            const storageKey = `autoOpenNewArticles:lastSeen:${fixtureCase.storagePath}:${fixtureCase.listId}`;
             const latestArticleId = `${fixtureCase.listId}:${new URL(`https://tam.gov.taipei/${articleUrls[0].replace(/^\//, '')}`).searchParams.get('s')}`;
 
             assert.equal(openCalls.length, 0);
@@ -101,7 +108,7 @@ describe('AutoOpenNewArticles on captured Taipei museum listings', () => {
             const html = loadFixture(fixtureCase.fixture);
             const articleUrls = extractArticleUrls(html, fixtureCase.listId);
             const secondArticle = new URL(`https://tam.gov.taipei/${articleUrls[1].replace(/^\//, '')}`);
-            const storageKey = `autoOpenNewArticles:lastSeen:${new URL(fixtureCase.sourceUrl).pathname}:${fixtureCase.listId}`;
+            const storageKey = `autoOpenNewArticles:lastSeen:${fixtureCase.storagePath}:${fixtureCase.listId}`;
             const openCalls = [];
             const { harness, gmStore } = createAutoOpenHarness(
                 fixtureCase.sourceUrl,
