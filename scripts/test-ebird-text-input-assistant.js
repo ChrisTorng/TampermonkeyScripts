@@ -135,6 +135,18 @@ describe('eBird compact note parser', () => {
         assert.match(unknown.errors.join('\n'), /不確定的物種/);
     });
 
+    test('accepts slash dates followed by encoded clipboard spaces', () => {
+        const { api } = loadAssistant();
+        const record = plain(api.parseRecord(
+            '2000/1/4&#x20;\n測試公園\n7：00 開始 8 分鐘\n麻雀 2',
+            new Date(1999, 0, 1),
+            testLocationPresets
+        ));
+
+        assert.deepEqual(record.date, { year: 2000, month: 1, day: 4 });
+        assert.deepEqual(record.errors, []);
+    });
+
     test('stores editable location presets only in Tampermonkey storage', () => {
         const { api } = loadAssistant();
 
@@ -255,9 +267,10 @@ describe('eBird species form safety', () => {
         complete.addEventListener('click', () => { completeClicks += 1; });
         submit.addEventListener('click', () => { submitClicks += 1; });
 
-        const filledCount = await api.fillSpecies(record);
+        const result = await api.fillSpecies(record);
 
-        assert.equal(filledCount, 2);
+        assert.equal(result.filledCount, 2);
+        assert.deepEqual(plain(result.errors), []);
         assert.equal(harness.document.getElementById('magrob').value, '2');
         assert.equal(harness.document.getElementById('p-magrob_bcode').value, 'P');
         assert.equal(harness.document.getElementById('livbul1').value, '3');
@@ -266,6 +279,38 @@ describe('eBird species form safety', () => {
         assert.equal(completeClicks, 1);
         assert.equal(submitClicks, 0);
         assert.equal(submit.dataset.tmEbirdManualOnly, 'true');
+    });
+
+    test('continues after missing species fields and reports every known failure', async () => {
+        const { harness, api } = loadAssistant();
+        const record = api.parseRecord(`2000.01.05
+測試公園
+7：15 開始 6 分鐘
+麻雀 4
+小雨燕 2`, new Date(2000, 0, 1), testLocationPresets);
+
+        function addElement(tagName, id) {
+            const element = harness.document.createElement(tagName);
+            element.id = id;
+            harness.appendToBody(element);
+            return element;
+        }
+
+        addElement('input', 'eutspa');
+        const complete = addElement('input', 'all-spp-y');
+        const submit = addElement('button', 'btn-continue');
+        let completeClicks = 0;
+        let submitClicks = 0;
+        complete.addEventListener('click', () => { completeClicks += 1; });
+        submit.addEventListener('click', () => { submitClicks += 1; });
+
+        const result = await api.fillSpecies(record, { elementTimeoutMs: 0 });
+
+        assert.equal(harness.document.getElementById('eutspa').value, '4');
+        assert.deepEqual([result.filledCount, result.totalCount], [1, 2]);
+        assert.match(result.errors.join('\n'), /小雨燕（houswi）/);
+        assert.equal(completeClicks, 0);
+        assert.equal(submitClicks, 0);
     });
 
     test('keeps the fixed assistant panel scrollable within the viewport', () => {

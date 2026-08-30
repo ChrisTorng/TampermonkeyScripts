@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBird Text Input Assistant
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.1.1
+// @version      2026-08-30_1.1.2
 // @description  Parse compact Taiwan birding notes, use local location presets, and fill eBird forms without submitting them.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -128,7 +128,10 @@
     }
 
     function parseRecord(text, fallbackDate = new Date(), locationPresets = getLocationPresets()) {
-        const lines = String(text || '')
+        const normalizedSource = String(text || '')
+            .replace(/&(?:#x20|#32|nbsp);/gi, ' ')
+            .replace(/\u00a0/g, ' ');
+        const lines = normalizedSource
             .replace(/\r/g, '')
             .split('\n')
             .map((line) => line.trim())
@@ -226,7 +229,7 @@
             errors.push('沒有可填入的物種紀錄。');
         }
 
-        return { date, location, effort, observations, errors, warnings, source: String(text || '').trim() };
+        return { date, location, effort, observations, errors, warnings, source: normalizedSource.trim() };
     }
 
     function dispatchValueEvents(element) {
@@ -373,27 +376,48 @@
         }
     }
 
-    async function fillSpecies(record) {
+    async function fillSpecies(record, options = {}) {
         if (record.errors.length > 0) {
             throw new Error(record.errors.join('\n'));
         }
-        for (const observation of record.observations) {
+        const errors = [];
+        const filledObservations = [];
+        const countResults = await Promise.allSettled(record.observations.map(async (observation) => {
+            await waitForElement(observation.code, options.elementTimeoutMs ?? 4000);
             setValue(observation.code, observation.count);
-        }
-        for (const observation of record.observations) {
-            await applyObservationDetails(observation);
+            return observation;
+        }));
+        countResults.forEach((result, index) => {
+            const observation = record.observations[index];
+            if (result.status === 'fulfilled') {
+                filledObservations.push(observation);
+            } else {
+                errors.push(`${observation.name}（${observation.code}）：找不到數量欄位`);
+            }
+        });
+        for (const observation of filledObservations) {
+            try {
+                await applyObservationDetails(observation);
+            } catch (error) {
+                errors.push(`${observation.name}（${observation.code}）：${error.message}`);
+            }
         }
         const complete = document.getElementById('all-spp-y');
         if (!complete) {
-            throw new Error('找不到完整清單選項。');
+            errors.push('找不到完整清單選項');
+        } else if (errors.length === 0) {
+            complete.click();
         }
-        complete.click();
         const submit = document.getElementById('btn-continue');
         if (submit) {
             submit.dataset.tmEbirdManualOnly = 'true';
             submit.title = 'Tampermonkey 未按下此按鈕；請人工確認後自行送出。';
         }
-        return record.observations.length;
+        return {
+            filledCount: filledObservations.length,
+            totalCount: record.observations.length,
+            errors
+        };
     }
 
     function addStyle() {
@@ -618,9 +642,14 @@
                 const run = async () => {
                     button.disabled = true;
                     try {
-                        const count = await fillSpecies(record);
-                        status.textContent = `已填入 ${count} 種。尚未送出，請人工確認 Submit。`;
-                        status.className = 'tm-ebird-status tm-ebird-ok';
+                        const result = await fillSpecies(record);
+                        if (result.errors.length > 0) {
+                            status.textContent = `已填入數量 ${result.filledCount}/${result.totalCount} 種；以下項目未完成：\n- ${result.errors.join('\n- ')}\n\n未勾選完整清單，也未送出。`;
+                            status.className = 'tm-ebird-status tm-ebird-error';
+                        } else {
+                            status.textContent = `已完整填入 ${result.filledCount} 種。尚未送出，請人工確認 Submit。`;
+                            status.className = 'tm-ebird-status tm-ebird-ok';
+                        }
                     } catch (error) {
                         status.textContent = error.message;
                         status.className = 'tm-ebird-status tm-ebird-error';
