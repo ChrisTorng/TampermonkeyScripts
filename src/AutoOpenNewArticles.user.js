@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-06-09_1.3.1
+// @version      2026-08-29_1.3.2
 // @description  Track the latest seen article and open newly listed articles on Taipei Astronomical Museum and The Neuron Daily in background tabs with a yellow star.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,6 +10,8 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=tam.gov.taipei
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
+// @match        https://tam.gov.taipei/news_photo.aspx*
+// @match        https://tam.gov.taipei/news_link_pic.aspx*
 // @match        https://www.theneurondaily.com/
 // @match        https://www.theneurondaily.com/archive*
 // @match        https://wiwi.blog/blog/
@@ -52,8 +54,15 @@
                 return null;
             }
 
+            const normalizedPath = url.pathname.toLowerCase();
+            const canonicalPath = normalizedPath === '/news_photo.aspx'
+                ? '/News_Photo.aspx'
+                : normalizedPath === '/news_link_pic.aspx'
+                    ? '/News_Link_pic.aspx'
+                    : url.pathname;
+
             return {
-                scope: `${url.pathname}:${listId}`,
+                scope: `${canonicalPath}:${listId}`,
                 collectArticleLinks: () => {
                     const contentRoot = document.querySelector('#CCMS_Content') || document.body;
                     const candidates = Array.from(contentRoot.querySelectorAll('a[href*="News_Content.aspx"]'));

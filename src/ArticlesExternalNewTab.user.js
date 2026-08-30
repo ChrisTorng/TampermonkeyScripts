@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2026-07-10_2.1.5
+// @version      2026-08-29_2.1.6
 // @description  Open supported article links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, Taipei Astronomical Museum News, Wiwi Blog, and Paul Bourke.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -13,6 +13,8 @@
 // @match        https://www.theneurondaily.com/*
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
+// @match        https://tam.gov.taipei/news_photo.aspx*
+// @match        https://tam.gov.taipei/news_link_pic.aspx*
 // @match        https://wiwi.blog/blog/*
 // @match        https://paulbourke.net/*
 // @match        https://www.paulbourke.net/*
@@ -117,13 +119,14 @@
         }
 
         if (pageHost === 'tam.gov.taipei') {
-            const isPhotoPage = pagePath.startsWith('/News_Photo.aspx');
-            const isLinkPicPage = pagePath.startsWith('/News_Link_pic.aspx');
+            const normalizedPagePath = pagePath.toLowerCase();
+            const isPhotoPage = normalizedPagePath.startsWith('/news_photo.aspx');
+            const isLinkPicPage = normalizedPagePath.startsWith('/news_link_pic.aspx');
 
             if (isPhotoPage || isLinkPicPage) {
                 return (
                     url.hostname === 'tam.gov.taipei' &&
-                    url.pathname.startsWith('/News_Content.aspx')
+                    url.pathname.toLowerCase().startsWith('/news_content.aspx')
                 );
             }
         }
