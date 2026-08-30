@@ -87,6 +87,10 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 Show a top-right YouTube playback-speed overlay that hides in fullscreen until hovered.
 
+## [eBird Text Input Assistant User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdTextInputAssistant.user.js)
+
+Parse compact Taiwan birding notes, use local location presets, and fill eBird forms without submitting them.
+
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
 Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
@@ -136,6 +140,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [TranslationCrashGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
+  - [EBirdTextInputAssistant.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdTextInputAssistant.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
   - [BetterDiscord.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
