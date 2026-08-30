@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBird Text Input Assistant
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.1.3
+// @version      2026-08-30_1.1.4
 // @description  Parse compact Taiwan birding notes, use local location presets, and fill eBird forms without submitting them.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -74,7 +74,7 @@
         '珠頸斑鳩': { code: 'spodov', name: '珠頸斑鳩' },
         '紅鳩': { code: 'recdov1', name: '紅鳩' },
         '野鴿': { code: 'rocpig1', name: '野鴿（野化）' },
-        '小雨燕': { code: 'houswi', name: '小雨燕' },
+        '小雨燕': { code: 'houswi1', codes: ['houswi1', 'houswi'], name: '小雨燕' },
         '紅冠': { code: 'commoo3', name: '紅冠水雞' },
         '紅冠水雞': { code: 'commoo3', name: '紅冠水雞' },
         '小環': { code: 'lirplo', name: '小環頸鴴' },
@@ -204,6 +204,7 @@
             const observation = {
                 alias,
                 code: species.code,
+                codes: species.codes || [species.code],
                 name: species.name,
                 count,
                 breedingCode,
@@ -293,6 +294,26 @@
                 }
                 if (Date.now() - started >= timeoutMs) {
                     reject(new Error(`等待 eBird 欄位逾時：${id}`));
+                    return;
+                }
+                setTimeout(check, 50);
+            }
+            check();
+        });
+    }
+
+    function waitForObservationField(observation, timeoutMs = 4000) {
+        const codes = Array.from(new Set(observation.codes || [observation.code]));
+        const started = Date.now();
+        return new Promise((resolve, reject) => {
+            function check() {
+                const code = codes.find((candidate) => document.getElementById(candidate));
+                if (code) {
+                    resolve({ code, element: document.getElementById(code) });
+                    return;
+                }
+                if (Date.now() - started >= timeoutMs) {
+                    reject(new Error(`等待 eBird 欄位逾時：${codes.join('／')}`));
                     return;
                 }
                 setTimeout(check, 50);
@@ -418,19 +439,22 @@
         }
         const errors = [];
         const filledObservations = [];
-        const missingBeforeReveal = record.observations.some((observation) => !document.getElementById(observation.code));
+        const missingBeforeReveal = record.observations.some((observation) => {
+            const codes = observation.codes || [observation.code];
+            return !codes.some((code) => document.getElementById(code));
+        });
         if (missingBeforeReveal) {
             revealAdditionalSpeciesSections();
         }
         const countResults = await Promise.allSettled(record.observations.map(async (observation) => {
-            await waitForElement(observation.code, options.elementTimeoutMs ?? 4000);
-            setCountValue(observation.code, observation.count);
-            return observation;
+            const resolved = await waitForObservationField(observation, options.elementTimeoutMs ?? 4000);
+            setCountValue(resolved.code, observation.count);
+            return { ...observation, code: resolved.code };
         }));
         countResults.forEach((result, index) => {
             const observation = record.observations[index];
             if (result.status === 'fulfilled') {
-                filledObservations.push(observation);
+                filledObservations.push(result.value);
             } else {
                 errors.push(`${observation.name}（${observation.code}）：找不到數量欄位`);
             }

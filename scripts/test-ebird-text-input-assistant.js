@@ -312,7 +312,7 @@ describe('eBird species form safety', () => {
 
         assert.equal(harness.document.getElementById('eutspa').value, '4');
         assert.deepEqual([result.filledCount, result.totalCount], [1, 2]);
-        assert.match(result.errors.join('\n'), /小雨燕（houswi）/);
+        assert.match(result.errors.join('\n'), /小雨燕（houswi1）/);
         assert.equal(completeClicks, 0);
         assert.equal(submitClicks, 0);
     });
@@ -338,7 +338,7 @@ describe('eBird species form safety', () => {
         uncommon.setAttribute('aria-expanded', 'false');
         uncommon.addEventListener('click', () => {
             uncommon.setAttribute('aria-expanded', 'true');
-            addElement('input', 'houswi');
+            addElement('input', 'houswi1');
         });
         const complete = addElement('input', 'all-spp-y');
         let completeClicks = 0;
@@ -346,10 +346,30 @@ describe('eBird species form safety', () => {
 
         const result = await api.fillSpecies(record, { elementTimeoutMs: 0 });
 
-        assert.equal(harness.document.getElementById('houswi').value, '2');
+        assert.equal(harness.document.getElementById('houswi1').value, '2');
         assert.deepEqual([result.filledCount, result.totalCount], [2, 2]);
         assert.deepEqual(plain(result.errors), []);
         assert.equal(completeClicks, 1);
+    });
+
+    test('accepts a legacy candidate taxon code when a portal uses it', async () => {
+        const { harness, api } = loadAssistant();
+        const record = api.parseRecord(`2000.01.05
+測試公園
+7：15 開始 6 分鐘
+小雨燕 2`, new Date(2000, 0, 1), testLocationPresets);
+        const count = harness.document.createElement('input');
+        count.id = 'houswi';
+        harness.appendToBody(count);
+        const complete = harness.document.createElement('input');
+        complete.id = 'all-spp-y';
+        harness.appendToBody(complete);
+
+        const result = await api.fillSpecies(record, { elementTimeoutMs: 0 });
+
+        assert.equal(count.value, '2');
+        assert.equal(result.filledCount, 1);
+        assert.deepEqual(plain(result.errors), []);
     });
 
     test('keeps the fixed assistant panel scrollable within the viewport', () => {
