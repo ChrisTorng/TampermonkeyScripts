@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBird Text Input Assistant
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.1.2
+// @version      2026-08-30_1.1.3
 // @description  Parse compact Taiwan birding notes, use local location presets, and fill eBird forms without submitting them.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -251,6 +251,22 @@
         return element;
     }
 
+    function setCountValue(id, value) {
+        const element = setValue(id, value);
+        if (typeof element.focus === 'function') {
+            element.focus();
+        }
+        element.click();
+        const keyup = typeof Event === 'function'
+            ? new Event('keyup', { bubbles: true })
+            : { type: 'keyup', bubbles: true };
+        element.dispatchEvent(keyup);
+        if (typeof element.blur === 'function') {
+            element.blur();
+        }
+        return element;
+    }
+
     function selectOption(select, values, texts = []) {
         const normalizedValues = values.map((value) => String(value).toLowerCase());
         const normalizedTexts = texts.map((text) => String(text).trim().toLowerCase());
@@ -376,15 +392,39 @@
         }
     }
 
+    function revealAdditionalSpeciesSections() {
+        const controls = Array.from(document.querySelectorAll('button, a, label, summary, [role="button"]'));
+        const sectionPattern = /^(?:show\s+)?(?:rarities|rare species|uncommon|not observed|no observations|不常見|稀有|稀有鳥種|無觀察紀錄|顯示稀有鳥種)$/i;
+        let clicked = 0;
+        controls.forEach((control) => {
+            const text = control.textContent.replace(/\s+/g, ' ').trim();
+            if (!sectionPattern.test(text)) {
+                return;
+            }
+            const expanded = control.getAttribute('aria-expanded');
+            const input = control.matches('input') ? control : control.querySelector('input[type="checkbox"]');
+            if (expanded === 'true' || (input && input.checked)) {
+                return;
+            }
+            control.click();
+            clicked += 1;
+        });
+        return clicked;
+    }
+
     async function fillSpecies(record, options = {}) {
         if (record.errors.length > 0) {
             throw new Error(record.errors.join('\n'));
         }
         const errors = [];
         const filledObservations = [];
+        const missingBeforeReveal = record.observations.some((observation) => !document.getElementById(observation.code));
+        if (missingBeforeReveal) {
+            revealAdditionalSpeciesSections();
+        }
         const countResults = await Promise.allSettled(record.observations.map(async (observation) => {
             await waitForElement(observation.code, options.elementTimeoutMs ?? 4000);
-            setValue(observation.code, observation.count);
+            setCountValue(observation.code, observation.count);
             return observation;
         }));
         countResults.forEach((result, index) => {
@@ -696,6 +736,7 @@
         startRecord,
         fillEffort,
         fillSpecies,
+        revealAdditionalSpeciesSections,
         storageKey,
         autoEffortKey
     };

@@ -250,8 +250,12 @@ describe('eBird species form safety', () => {
         }
 
         for (const observation of record.observations) {
-            addElement('input', observation.code);
-            addElement('a', `add_${observation.code}`);
+            const count = addElement('input', observation.code);
+            count.addEventListener('click', () => {
+                if (!harness.document.getElementById(`add_${observation.code}`)) {
+                    addElement('a', `add_${observation.code}`);
+                }
+            });
             const select = addElement('select', `p-${observation.code}_bcode`);
             select.options = [
                 { value: '', textContent: 'Choose the highest possible code...' },
@@ -311,6 +315,41 @@ describe('eBird species form safety', () => {
         assert.match(result.errors.join('\n'), /小雨燕（houswi）/);
         assert.equal(completeClicks, 0);
         assert.equal(submitClicks, 0);
+    });
+
+    test('expands a localized uncommon section before looking for missing species', async () => {
+        const { harness, api } = loadAssistant();
+        const record = api.parseRecord(`2000.01.05
+測試公園
+7：15 開始 6 分鐘
+麻雀 4
+小雨燕 2`, new Date(2000, 0, 1), testLocationPresets);
+
+        function addElement(tagName, id) {
+            const element = harness.document.createElement(tagName);
+            element.id = id;
+            harness.appendToBody(element);
+            return element;
+        }
+
+        addElement('input', 'eutspa');
+        const uncommon = addElement('button', 'uncommon-section');
+        uncommon.textContent = '不常見';
+        uncommon.setAttribute('aria-expanded', 'false');
+        uncommon.addEventListener('click', () => {
+            uncommon.setAttribute('aria-expanded', 'true');
+            addElement('input', 'houswi');
+        });
+        const complete = addElement('input', 'all-spp-y');
+        let completeClicks = 0;
+        complete.addEventListener('click', () => { completeClicks += 1; });
+
+        const result = await api.fillSpecies(record, { elementTimeoutMs: 0 });
+
+        assert.equal(harness.document.getElementById('houswi').value, '2');
+        assert.deepEqual([result.filledCount, result.totalCount], [2, 2]);
+        assert.deepEqual(plain(result.errors), []);
+        assert.equal(completeClicks, 1);
     });
 
     test('keeps the fixed assistant panel scrollable within the viewport', () => {
