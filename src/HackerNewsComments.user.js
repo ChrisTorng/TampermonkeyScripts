@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News Comments
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.2.0
+// @version      2026-08-30_1.3.0
 // @description  Add an article button for Hacker News comments, including pages reached through redirects.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,6 +10,7 @@
 // @icon         https://news.ycombinator.com/favicon.ico
 // @match        http://*/*
 // @match        https://*/*
+// @run-at       document-start
 // @connect      hn.algolia.com
 // @grant        GM_getTab
 // @grant        GM_saveTab
@@ -123,14 +124,9 @@
         return null;
     }
 
-    function addCommentsButton(story) {
-        if (document.getElementById(BUTTON_ID)) {
-            return;
-        }
-
+    function createCommentsButton(story) {
         const wrapper = document.createElement('div');
         wrapper.id = BUTTON_ID;
-        wrapper.style.cssText = 'display: flex; justify-content: flex-end; clear: both; margin: 1rem 0;';
 
         const link = document.createElement('a');
         link.href = `https://news.ycombinator.com/item?id=${encodeURIComponent(story.objectID)}`;
@@ -150,16 +146,39 @@
             'text-decoration: none'
         ].join(';');
         wrapper.appendChild(link);
+        return wrapper;
+    }
 
+    function placeCommentsButton(wrapper) {
         const article = document.querySelector('article');
         const footer = document.querySelector('footer');
         if (article) {
+            wrapper.style.cssText = 'display: flex; justify-content: flex-end; clear: both; margin: 1rem 0;';
             article.appendChild(wrapper);
         } else if (footer?.parentNode) {
+            wrapper.style.cssText = 'display: flex; justify-content: flex-end; clear: both; margin: 1rem 0;';
             footer.parentNode.insertBefore(wrapper, footer);
         } else {
+            wrapper.style.cssText = 'display: flex; position: fixed; right: 1rem; bottom: 1rem; z-index: 2147483647;';
             document.body.appendChild(wrapper);
         }
+    }
+
+    function keepCommentsButtonMounted(story) {
+        const wrapper = createCommentsButton(story);
+        placeCommentsButton(wrapper);
+
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById(BUTTON_ID)) {
+                placeCommentsButton(wrapper);
+                return;
+            }
+            const article = document.querySelector('article');
+            if (article && wrapper.parentNode !== article) {
+                placeCommentsButton(wrapper);
+            }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
     }
 
     async function initialize(historyPromise) {
@@ -167,7 +186,7 @@
             const history = await historyPromise;
             const story = await findStory(getPageUrls(history));
             if (story) {
-                addCommentsButton(story);
+                keepCommentsButtonMounted(story);
             }
         } catch (error) {
             console.debug('Hacker News comment lookup failed.', error);

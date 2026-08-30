@@ -110,6 +110,54 @@ describe('Hacker News Comments on the captured article', () => {
         assert.equal(harness.context.fetch, undefined);
     });
 
+    test('remounts the button after a Los Angeles Times client render replaces it', async () => {
+        const latimesUrl = 'https://www.latimes.com/environment/story/2026-08-26/highest-ever-ocean-temperature-measured-as-powerful-el-nino-forms';
+        const { harness, article } = executeScript({
+            url: latimesUrl,
+            responseForUrl: (searchedUrl) => searchedUrl === latimesUrl ? [{
+                objectID: '49494231',
+                url: latimesUrl,
+                num_comments: 104
+            }] : []
+        });
+        await waitForPromises();
+
+        const originalWrapper = harness.document.getElementById('tm-hacker-news-comments');
+        article.removeChild(originalWrapper);
+        harness.triggerMutation([], { target: article, removedNodes: [originalWrapper] });
+
+        const remountedWrapper = harness.document.getElementById('tm-hacker-news-comments');
+        assert.equal(remountedWrapper, originalWrapper);
+        assert.equal(remountedWrapper.parentNode, article);
+        assert.equal(remountedWrapper.querySelector('a').href, 'https://news.ycombinator.com/item?id=49494231');
+    });
+
+    test('uses a visible fixed fallback until a dynamically rendered article appears', async () => {
+        const url = 'https://example.com/dynamic-article';
+        const harness = createHarness({ url });
+        const tab = {};
+        harness.context.GM_getTab = (callback) => callback(tab);
+        harness.context.GM_saveTab = (savedTab) => Object.assign(tab, savedTab);
+        harness.context.GM_xmlhttpRequest = ({ onload }) => queueMicrotask(() => onload({
+            status: 200,
+            responseText: JSON.stringify({ hits: [{ objectID: '123', url, num_comments: 4 }] })
+        }));
+        harness.context.globalThis = harness.context;
+        harness.context.global = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        await waitForPromises();
+
+        const wrapper = harness.document.getElementById('tm-hacker-news-comments');
+        assert.equal(wrapper.parentNode, harness.document.body);
+        assert.match(wrapper.style.cssText, /position: fixed/);
+
+        const article = harness.document.createElement('article');
+        harness.appendToBody(article);
+        harness.triggerMutation([article]);
+        assert.equal(wrapper.parentNode, article);
+        assert.doesNotMatch(wrapper.style.cssText, /position: fixed/);
+    });
+
     test('walks backward through per-tab URLs when a redirect target has no story', async () => {
         const sourceUrl = 'https://blog.exe.dev/engineering-with-ai';
         const { harness, requests } = executeScript({
