@@ -71,10 +71,10 @@ const syntheticRecords = [
 麻雀 4`
 ];
 
-function loadAssistant() {
+function loadAssistant(options = {}) {
     const harness = createHarness({
         url: 'https://ebird.org/atlastw/submit/checklist',
-        readyState: 'loading'
+        readyState: options.readyState || 'loading'
     });
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
@@ -172,7 +172,7 @@ describe('eBird compact note parser', () => {
 });
 
 describe('eBird species form safety', () => {
-    test('fills date and effort with location defaults before continuing', async () => {
+    test('fills a Chinese-localized date and effort form with location defaults before continuing', async () => {
         const { harness, api } = loadAssistant();
         api.saveLocationPreset('測試河段', testLocationPresets['測試河段']);
         const record = api.parseRecord(syntheticRecords[1]);
@@ -186,17 +186,22 @@ describe('eBird species form safety', () => {
 
         function addSelect(id, choices) {
             const select = addElement('select', id);
-            select.options = choices.map((text) => ({ value: text, textContent: text }));
+            select.options = choices.map((choice) => typeof choice === 'string'
+                ? { value: choice, textContent: choice }
+                : choice);
             return select;
         }
 
-        addSelect('p-month', ['Jan']);
-        addSelect('p-day', ['2']);
-        addSelect('p-year', ['2000']);
+        addSelect('p-month', [{ value: '1', textContent: '1月' }]);
+        addSelect('p-day', [{ value: '02', textContent: '2日' }]);
+        addSelect('p-year', [{ value: '2000', textContent: '2000年' }]);
         const protocol = addElement('input', 'P22');
         addElement('input', 'p-shared-hr');
         addElement('input', 'p-shared-min');
-        addSelect('p-shared-ampm', ['AM', 'PM']);
+        addSelect('p-shared-ampm', [
+            { value: 'am', textContent: '上午' },
+            { value: 'pm', textContent: '下午' }
+        ]);
         addElement('input', 'p-dur-hrs');
         addElement('input', 'p-dur-min');
         addElement('input', 'p-dist');
@@ -210,7 +215,7 @@ describe('eBird species form safety', () => {
         assert.equal(protocolClicks, 1);
         assert.equal(harness.document.getElementById('p-shared-hr').value, '2');
         assert.equal(harness.document.getElementById('p-shared-min').value, '30');
-        assert.equal(harness.document.getElementById('p-shared-ampm').value, 'PM');
+        assert.equal(harness.document.getElementById('p-shared-ampm').value, 'pm');
         assert.equal(harness.document.getElementById('p-dur-min').value, '10');
         assert.equal(harness.document.getElementById('p-dist').value, '0.2');
         assert.equal(harness.document.getElementById('p-party-size').value, '1');
@@ -261,5 +266,15 @@ describe('eBird species form safety', () => {
         assert.equal(completeClicks, 1);
         assert.equal(submitClicks, 0);
         assert.equal(submit.dataset.tmEbirdManualOnly, 'true');
+    });
+
+    test('keeps the fixed assistant panel scrollable within the viewport', () => {
+        const { harness } = loadAssistant({ readyState: 'complete' });
+        const style = harness.document.getElementById('tm-ebird-text-input-assistant-style');
+        const panel = harness.document.getElementById('tm-ebird-text-input-assistant');
+
+        assert.ok(panel);
+        assert.match(style.textContent, /max-height:\s*calc\(100dvh - 24px\)/);
+        assert.match(style.textContent, /overflow-y:\s*auto/);
     });
 });

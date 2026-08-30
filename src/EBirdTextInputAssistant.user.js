@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         eBird Text Input Assistant
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.1.0
+// @version      2026-08-30_1.1.1
 // @description  Parse compact Taiwan birding notes, use local location presets, and fill eBird forms without submitting them.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -248,10 +248,16 @@
         return element;
     }
 
-    function selectOptionByText(select, text) {
-        const option = Array.from(select.options || []).find((item) => item.textContent.trim() === text);
+    function selectOption(select, values, texts = []) {
+        const normalizedValues = values.map((value) => String(value).toLowerCase());
+        const normalizedTexts = texts.map((text) => String(text).trim().toLowerCase());
+        const option = Array.from(select.options || []).find((item) => {
+            const value = String(item.value).toLowerCase();
+            const text = item.textContent.trim().toLowerCase();
+            return normalizedValues.includes(value) || normalizedTexts.includes(text);
+        });
         if (!option) {
-            throw new Error(`找不到選項：${text}`);
+            throw new Error(`找不到選項：${texts[0] || values[0]}`);
         }
         select.value = option.value;
         dispatchValueEvents(select);
@@ -284,9 +290,9 @@
             throw new Error('找不到 eBird 日期欄位。');
         }
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        selectOptionByText(month, monthNames[date.month - 1]);
-        selectOptionByText(day, String(date.day));
-        selectOptionByText(year, String(date.year));
+        selectOption(month, [date.month, String(date.month).padStart(2, '0')], [monthNames[date.month - 1], `${date.month}月`]);
+        selectOption(day, [date.day, String(date.day).padStart(2, '0')], [String(date.day), `${date.day}日`]);
+        selectOption(year, [date.year], [String(date.year), `${date.year}年`]);
     }
 
     async function fillEffort(record, options = {}) {
@@ -312,7 +318,11 @@
         const twelveHour = record.effort.hour % 12 || 12;
         setValue('p-shared-hr', twelveHour);
         setValue('p-shared-min', String(record.effort.minute).padStart(2, '0'));
-        selectOptionByText(document.getElementById('p-shared-ampm'), isAfternoon ? 'PM' : 'AM');
+        selectOption(
+            document.getElementById('p-shared-ampm'),
+            isAfternoon ? ['PM', 'pm', 'P'] : ['AM', 'am', 'A'],
+            isAfternoon ? ['PM', '下午'] : ['AM', '上午']
+        );
         setValue('p-dur-hrs', Math.floor(record.effort.durationMinutes / 60));
         setValue('p-dur-min', record.effort.durationMinutes % 60);
         setValue('p-dist', record.effort.distanceKm);
@@ -393,8 +403,8 @@
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
-            #${panelId} { position: fixed; z-index: 2147483647; right: 12px; top: 12px; width: min(390px, calc(100vw - 24px)); padding: 12px; border: 2px solid #2f7f45; border-radius: 8px; background: #fff; color: #222; box-shadow: 0 4px 18px #0004; font: 14px/1.45 sans-serif; }
-            #${panelId} textarea { box-sizing: border-box; width: 100%; min-height: 210px; margin: 8px 0; padding: 8px; resize: vertical; }
+            #${panelId} { box-sizing: border-box; position: fixed; z-index: 2147483647; right: 12px; top: 12px; width: min(390px, calc(100vw - 24px)); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 12px; border: 2px solid #2f7f45; border-radius: 8px; background: #fff; color: #222; box-shadow: 0 4px 18px #0004; font: 14px/1.45 sans-serif; }
+            #${panelId} textarea { box-sizing: border-box; width: 100%; min-height: min(210px, 32vh); margin: 8px 0; padding: 8px; resize: vertical; }
             #${panelId} button { padding: 7px 12px; border: 0; border-radius: 5px; background: #2f7f45; color: #fff; cursor: pointer; }
             #${panelId} button:disabled { opacity: .55; cursor: default; }
             #${panelId} input, #${panelId} select { box-sizing: border-box; width: 100%; padding: 6px; }
@@ -433,7 +443,7 @@
         body.hidden = true;
         const note = document.createElement('p');
         note.className = 'tm-ebird-local-note';
-        note.textContent = '設定只儲存在 Tampermonkey，不會寫入腳本或上傳 GitHub。';
+        note.textContent = '先在 eBird 選擇地點並進到日期／努力量頁，再按「帶入目前地點」。設定只儲存在 Tampermonkey，不會上傳。';
         const existing = document.createElement('select');
 
         function addInput(labelText, type = 'text') {
@@ -508,7 +518,7 @@
         capture.addEventListener('click', () => {
             const currentLocId = new URLSearchParams(location.search).get('locID');
             if (!currentLocId) {
-                status.textContent = '請先開啟某個 eBird 地點的日期與努力量頁。';
+                status.textContent = '目前網址沒有 locID。請在 eBird「提交觀察紀錄」先選擇地點並繼續到日期／努力量頁，或直接手動填入 L 開頭的地點 ID。';
                 status.className = 'tm-ebird-status tm-ebird-error';
                 return;
             }

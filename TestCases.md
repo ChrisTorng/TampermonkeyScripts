@@ -84,8 +84,8 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
 
 # eBird Text Input Assistant
-Section note: automated tests cover representative compact-note formats, local location presets, routing, and a synthetic species form; live authenticated eBird form integration still requires manual validation.
-- https://ebird.org/atlastw/submit/effort [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (local presets, note parsing, routing, and effort rules are automated; authenticated live form is not captured)
+Section note: automated tests cover representative compact-note formats, local location presets, routing, viewport-safe panel layout, and a synthetic species form; live authenticated eBird form integration still requires manual validation.
+- https://ebird.org/atlastw/submit/effort [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (local presets, note parsing, routing, and Chinese-localized effort fields are automated; authenticated live form is not captured)
 - https://ebird.org/atlastw/submit/checklist [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (species counts, breeding codes, heard comments, complete-list selection, and no-submit safety are automated with a local DOM harness)
 
 # Force Mobile View
