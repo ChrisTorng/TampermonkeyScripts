@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News Comments
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-28_1.1.0
+// @version      2026-08-30_1.2.0
 // @description  Add an article button for Hacker News comments, including pages reached through redirects.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,8 +10,10 @@
 // @icon         https://news.ycombinator.com/favicon.ico
 // @match        http://*/*
 // @match        https://*/*
+// @connect      hn.algolia.com
 // @grant        GM_getTab
 // @grant        GM_saveTab
+// @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
 (function () {
@@ -79,6 +81,29 @@
         return [...new Set([canonical, window.location.href, document.referrer, ...previousUrls].filter(Boolean))];
     }
 
+    function requestJson(url) {
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url,
+                timeout: 10000,
+                onload(response) {
+                    if (response.status < 200 || response.status >= 300) {
+                        reject(new Error(`Hacker News search returned HTTP ${response.status}.`));
+                        return;
+                    }
+                    try {
+                        resolve(JSON.parse(response.responseText));
+                    } catch (error) {
+                        reject(error);
+                    }
+                },
+                onerror: () => reject(new Error('Hacker News search request failed.')),
+                ontimeout: () => reject(new Error('Hacker News search request timed out.'))
+            });
+        });
+    }
+
     async function findStory(pageUrls) {
         const normalizedPageUrls = new Set(pageUrls.map(normalizeUrl));
 
@@ -88,12 +113,7 @@
                 restrictSearchableAttributes: 'url',
                 query: pageUrl
             });
-            const response = await fetch(`${SEARCH_API}?${parameters}`);
-            if (!response.ok) {
-                continue;
-            }
-
-            const { hits = [] } = await response.json();
+            const { hits = [] } = await requestJson(`${SEARCH_API}?${parameters}`);
             const exactMatches = hits.filter((hit) => normalizedPageUrls.has(normalizeUrl(hit.url)));
             if (exactMatches.length > 0) {
                 return exactMatches.sort((a, b) => (b.num_comments || 0) - (a.num_comments || 0))[0];

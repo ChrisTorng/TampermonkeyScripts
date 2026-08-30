@@ -33,15 +33,13 @@ function executeScript({
     };
     harness.context.GM_getTab = (callback) => callback(tab);
     harness.context.GM_saveTab = (savedTab) => Object.assign(tab, savedTab);
-    harness.context.fetch = async (requestUrl) => {
+    harness.context.GM_xmlhttpRequest = ({ url: requestUrl, onload }) => {
         requests.push(String(requestUrl));
         const searchedUrl = new URL(requestUrl).searchParams.get('query');
-        return {
-            ok: true,
-            async json() {
-                return { hits: responseForUrl(searchedUrl) };
-            }
-        };
+        queueMicrotask(() => onload({
+            status: 200,
+            responseText: JSON.stringify({ hits: responseForUrl(searchedUrl) })
+        }));
     };
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
@@ -91,6 +89,25 @@ describe('Hacker News Comments on the captured article', () => {
         await waitForPromises();
 
         assert.equal(harness.document.getElementById('tm-hacker-news-comments'), null);
+    });
+
+    test('uses a privileged cross-origin request on an OpenAI page with a restrictive CSP', async () => {
+        const openAiUrl = 'https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/';
+        const { harness, requests } = executeScript({
+            url: openAiUrl,
+            responseForUrl: (searchedUrl) => searchedUrl === openAiUrl ? [{
+                objectID: '49486172',
+                url: openAiUrl,
+                num_comments: 493
+            }] : []
+        });
+        await waitForPromises();
+
+        const link = harness.document.querySelector('#tm-hacker-news-comments a');
+        assert.equal(link.href, 'https://news.ycombinator.com/item?id=49486172');
+        assert.equal(link.textContent, 'Hacker News comments (493)');
+        assert.match(requests[0], /^https:\/\/hn\.algolia\.com\/api\/v1\/search\?/);
+        assert.equal(harness.context.fetch, undefined);
     });
 
     test('walks backward through per-tab URLs when a redirect target has no story', async () => {

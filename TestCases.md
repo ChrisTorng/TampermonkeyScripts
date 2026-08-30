@@ -6,6 +6,7 @@
 # Hacker News Comments
 Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API and per-tab navigation history.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+- https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and cross-origin Tampermonkey request are mocked; live page capture is blocked by an anti-bot challenge)
 
 # RedirectUrls
 - https://x.com/cocktailpeanut/status/1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
