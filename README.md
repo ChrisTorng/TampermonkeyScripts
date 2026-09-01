@@ -11,7 +11,7 @@ Add an article button for Hacker News comments, including pages reached through 
 Redirect supported pages to more readable destinations while preserving back navigation.
 
 Supported sites:
-- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Twitter Viewer](https://twitterwebviewer.com/) for account-free viewing
+- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → the official [X embedded post viewer](https://platform.twitter.com/) for lightweight, account-free viewing
 - [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
   - On Edge mobile, add [https://rdx.overdevs.com](https://rdx.overdevs.com) as a Tracking Prevention exception so Reddit content loads correctly.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
@@ -83,6 +83,10 @@ Show thin, fixed vertical markers that track scroll position for every scrollabl
 
 Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
+## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
+
+Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
+
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
 Toggle the current page between original and Google Translate with Ctrl+Alt+S.
@@ -90,10 +94,6 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 ## [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
 Show a top-right YouTube playback-speed overlay that hides in fullscreen until hovered.
-
-## [eBird Text Input Assistant User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdTextInputAssistant.user.js)
-
-Parse compact Taiwan birding notes, use local location presets, and fill eBird forms without submitting them.
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
@@ -143,9 +143,9 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
   - [TranslationCrashGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
+  - [TranslatePreformattedText.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
-  - [EBirdTextInputAssistant.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdTextInputAssistant.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
   - [BetterDiscord.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)

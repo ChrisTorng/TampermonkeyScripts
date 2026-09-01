@@ -4,7 +4,7 @@
 - `N/A`: reference sample with no matching userscript behavior expected.
 
 # Hacker News Comments
-Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API and per-tab navigation history.
+Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and cross-origin Tampermonkey request are mocked; live page capture is blocked by an anti-bot challenge)
 - https://www.latimes.com/environment/story/2026-08-26/highest-ever-ocean-temperature-measured-as-powerful-el-nino-forms [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and button remounting are automated; live content is replaced by an anti-ad-block message)
@@ -86,13 +86,12 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 Section note: automated tests cover the DOM operation guard with a local harness; Android Edge machine-translation UI still needs manual device validation.
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
+# Translate Preformatted Text
+Section note: automated tests use the example URL with representative preformatted blocks in the local DOM harness; live browser translation still requires manual validation.
+- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (per-block conversion, page-wide conversion, dragging, and dynamically added blocks are automated)
+
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
-
-# eBird Text Input Assistant
-Section note: automated tests cover representative compact-note formats, local location presets, routing, viewport-safe panel layout, localized uncommon-section expansion, and resilient partial species-form filling; live authenticated eBird form integration still requires manual validation.
-- https://ebird.org/atlastw/submit/effort [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (local presets, note parsing, routing, and Chinese-localized effort fields are automated; authenticated live form is not captured)
-- https://ebird.org/atlastw/submit/checklist [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (species counts, taxon-code candidates, field-activation behavior, uncommon-section expansion, breeding codes, heard comments, aggregate missing-field reporting, complete-list selection, and no-submit safety are automated with a local DOM harness)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
