@@ -32,6 +32,11 @@ function runArticlesScript(harness) {
 }
 
 describe('ArticlesExternalNewTab on captured listings', () => {
+    test('matches lowercase Taipei museum listing URLs used by the site', () => {
+        assert.match(scriptContents, /^\/\/ @match\s+https:\/\/tam\.gov\.taipei\/news_photo\.aspx\*$/m);
+        assert.match(scriptContents, /^\/\/ @match\s+https:\/\/tam\.gov\.taipei\/news_link_pic\.aspx\*$/m);
+    });
+
     test('news.ycombinator.com opens external articles in background tabs but leaves internal links alone', () => {
         const html = loadFixture('news.ycombinator.com.html');
         const externalUrl = html.match(/titleline"><a href="(https:\/\/[^"]+)"/)[1];
@@ -90,7 +95,10 @@ describe('ArticlesExternalNewTab on captured listings', () => {
         assert(contentUrl, 'Expected a News_Content link in the Taipei museum fixture.');
 
         const openCalls = [];
-        const harness = createArticlesHarness('https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B', openCalls);
+        const harness = createArticlesHarness(
+            'https://tam.gov.taipei/news_photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801&page=1&PageSize=20',
+            openCalls
+        );
         const contentLink = createLink(harness.document, `https://tam.gov.taipei/${contentUrl}`, { textContent: 'news' });
         const unrelatedLink = createLink(harness.document, 'https://tam.gov.taipei/cp.aspx?n=foo', { textContent: 'cp' });
         harness.appendToBody(contentLink);

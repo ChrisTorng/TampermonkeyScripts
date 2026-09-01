@@ -1,0 +1,791 @@
+<!-- CONTENT_CLASS: VALID_ARTICLE_CONTENT | Accessible page includes primary article/content body. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="/favicon.ico">
+    <title>Six Months of Writing Code Exclusively With Agents - exe.dev blog</title>
+    <meta name="description" content="What I&#39;ve learned from six months of coding with agents—and not writing a line of code by hand.">
+    <link rel="canonical" href="https://blog.exe.dev/engineering-with-ai">
+    <meta property="og:title" content="Six Months of Writing Code Exclusively With Agents - exe.dev blog">
+    <meta property="og:description" content="What I&#39;ve learned from six months of coding with agents—and not writing a line of code by hand.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://blog.exe.dev/engineering-with-ai">
+    <meta property="og:site_name" content="exe.dev">
+    <meta property="og:image" content="https://blog.exe.dev/static/og-card.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="exe.dev blog">
+    <meta property="article:published_time" content="2026-08-27">
+    <meta property="article:author" content="Maisem Ali">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Six Months of Writing Code Exclusively With Agents - exe.dev blog">
+    <meta name="twitter:description" content="What I&#39;ve learned from six months of coding with agents—and not writing a line of code by hand.">
+    <meta name="twitter:image" content="https://blog.exe.dev/static/og-card.png">
+    <link rel="stylesheet" href="/static/exe.css" />
+    <link rel="alternate" type="application/atom+xml" title="exe.dev blog" href="https://blog.exe.dev/atom.xml" />
+    <link rel="alternate" type="application/rss+xml" title="exe.dev blog" href="https://blog.exe.dev/rss.xml" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Maisem Ali"},"dateModified":"2026-08-27T13:00:00Z","datePublished":"2026-08-27T13:00:00Z","description":"What I've learned from six months of coding with agents—and not writing a line of code by hand.","headline":"Six Months of Writing Code Exclusively With Agents","image":"https://blog.exe.dev/static/og-card.png","mainEntityOfPage":"https://blog.exe.dev/engineering-with-ai","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://blog.exe.dev/apple-touch-icon.png"},"name":"exe.dev"},"url":"https://blog.exe.dev/engineering-with-ai"}</script>
+    
+<link rel="stylesheet" href="/static/topbar.css" />
+
+    <style>
+      body {
+        font-family:
+          "Charter", "Charter Roman", "ITC Charter", "STIX Two Text", "Hoefler Text",
+          "Iowan Old Style", "Palatino", "Palatino Linotype", "URW Palladio L",
+          Georgia, "Times New Roman", serif;
+        font-size: 16px;
+        font-size-adjust: 0.48;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        background: #fff;
+        color: #1f1f1f;
+        margin: 0;
+      }
+
+      main {
+        max-width: 720px;
+        margin: 64px auto 120px;
+        padding: 0 24px;
+      }
+
+      .post-header {
+        margin-bottom: 48px;
+      }
+
+      .post-title {
+        font-size: 40px;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+        margin-bottom: 12px;
+      }
+
+      .post-meta {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .post-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .unpublished-note {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.55);
+        margin-left: 8px;
+      }
+
+      .post-content {
+        font-size: 17px;
+        line-height: 1.75;
+        color: #2c2c2c;
+      }
+
+      .post-content h1,
+      .post-content h2,
+      .post-content h3,
+      .post-content h4 {
+        margin: 48px 0 16px 0;
+        font-weight: 600;
+        line-height: 1.3;
+        color: #111;
+      }
+
+       
+      .post-content h1 { font-size: 32px; }
+      .post-content h2 { font-size: 26px; }
+      .post-content h3 { font-size: 22px; }
+      .post-content h4 { font-size: 18px; }
+
+      .post-content p {
+        margin-bottom: 22px;
+      }
+
+      .post-content ul,
+      .post-content ol {
+        padding-left: 28px;
+        margin-bottom: 22px;
+      }
+
+      .post-content a {
+        color: #0054d1;
+        text-decoration: underline;
+      }
+
+      .post-content blockquote {
+        margin: 32px 0;
+        padding: 20px 24px;
+        border-left: 4px solid rgba(0, 0, 0, 0.08);
+        background: #f6f6f0;
+        border-radius: 14px;
+        font-style: italic;
+        font-size: 18px;
+        white-space: normal;
+        overflow-x: visible;
+      }
+
+      .post-content blockquote p {
+        margin: 0 0 16px;
+      }
+
+      .post-content blockquote p:last-child {
+        margin-bottom: 0;
+      }
+
+       
+      .post-content pre.code {
+        background: #f6f6f0;
+        padding: 20px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+       
+      .post-content pre.indented {
+        background: transparent;
+        padding: 12px 0;
+        border-radius: 0;
+        overflow-x: visible;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 17px;
+        line-height: 1.75;
+      }
+      .post-content pre.indented code { font-family: inherit; }
+
+       
+      .post-content pre.mermaid {
+        visibility: hidden;
+        margin: 32px 0 44px;
+        text-align: center;
+        background: transparent;
+        padding: 0;
+        font-size: 14px;
+      }
+       
+      .post-content pre.mermaid .mermaid-scroll {
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        text-align: left;
+      }
+      .post-content pre.mermaid[data-processed] { visibility: visible; }
+      .post-content pre.mermaid svg { max-width: 100%; height: auto; }
+
+       
+      .post-content pre.mermaid.is-zoomable {
+        cursor: zoom-in;
+        border-radius: 6px;
+      }
+      .post-content pre.mermaid.is-zoomable:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 4px;
+      }
+       
+      .post-content .mermaid-zoom-hint {
+        margin-top: 6px;
+        text-align: right;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.02em;
+        color: rgba(0, 0, 0, 0.45);
+        pointer-events: none;
+      }
+
+       
+      .mermaid-zoom-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mermaid-zoom-overlay[hidden] { display: none; }
+      .mermaid-zoom-scroll {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+         
+        touch-action: pan-x pan-y pinch-zoom;
+        padding: 56px 16px 24px;
+      }
+      .mermaid-zoom-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        z-index: 1;
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.06);
+        color: inherit;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      html.mermaid-zoom-open, html.mermaid-zoom-open body { overflow: hidden; }
+
+       
+      @media (min-width: 900px) {
+        main:has(pre.mermaid) { overflow-x: visible; }
+        .post-content pre.mermaid {
+          width: min(calc(100vw - 48px), 1400px);
+          margin-left: 50%;
+          transform: translateX(-50%);
+        }
+      }
+
+       
+      .post-content img {
+        max-width: 100%;
+        height: auto;
+      }
+      .post-content p > img,
+      .post-content > img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+       
+      .post-content .img-row {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        justify-content: center;
+        margin: 28px 0;
+      }
+      .post-content .img-row img {
+        flex: 1 1 0;
+        min-width: 0;
+        width: 100%;
+        height: auto;
+      }
+      @media (max-width: 560px) {
+        .post-content .img-row { flex-direction: column; align-items: center; }
+      }
+
+       
+      .post-content > figure {
+        width: fit-content;
+        max-width: 100%;
+        margin: 30px auto;
+        text-align: center;
+      }
+      .post-content > figure img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+      }
+      .post-content > figure figcaption {
+        margin-top: 8px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        line-height: 1.4;
+        color: rgba(0, 0, 0, 0.55);
+      }
+      .post-content .zoomable { cursor: zoom-in; }
+      .post-content .zoomable:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 4px;
+      }
+
+       
+      .img-zoom-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(12, 12, 12, 0.92);
+      }
+      .img-zoom-overlay[hidden] { display: none; }
+      .img-zoom-scroll {
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-x pan-y pinch-zoom;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 12px 16px;
+        box-sizing: border-box;
+      }
+      .img-zoom-overlay img {
+        display: block;
+        margin: auto;
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        border-radius: 6px;
+        background: #fff;
+        cursor: zoom-in;
+      }
+      .img-zoom-overlay.is-full img {
+        max-width: none;
+        max-height: none;
+        cursor: zoom-out;
+      }
+      .img-zoom-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        z-index: 1;
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      html.img-zoom-open, html.img-zoom-open body { overflow: hidden; }
+
+       
+      .post-content .asciinema-embed {
+        margin: 28px 0 8px;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        max-width: 100%;
+      }
+
+      .post-content p.asciinema-caption {
+        margin: 0 0 28px;
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+        text-align: center;
+      }
+
+      .post-content kbd {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12px;
+        padding: 2px 6px;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: #fafaf3;
+        color: #111;
+        white-space: nowrap;
+      }
+
+       
+      .post-content table.sharing-matrix {
+        width: 100%;
+        margin: 28px 0;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 15px;
+        line-height: 1.5;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .post-content table.sharing-matrix th,
+      .post-content table.sharing-matrix td {
+        padding: 12px 16px;
+        text-align: left;
+        vertical-align: top;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        border-right: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      .post-content table.sharing-matrix th:last-child,
+      .post-content table.sharing-matrix td:last-child {
+        border-right: none;
+      }
+      .post-content table.sharing-matrix tbody tr:last-child th,
+      .post-content table.sharing-matrix tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .post-content table.sharing-matrix thead th {
+        background: #f6f6f0;
+        font-weight: 600;
+        color: #111;
+      }
+      .post-content table.sharing-matrix tbody th[scope="row"] {
+        background: #fafaf3;
+        font-weight: 600;
+        color: #111;
+        width: 28%;
+      }
+      .post-content table.sharing-matrix .hint {
+        display: inline-block;
+        margin-top: 2px;
+        font-weight: 400;
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.55);
+      }
+
+      .post-footer {
+        margin-top: 64px;
+        padding-top: 32px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+
+      .post-footer a {
+        color: #0054d1;
+        text-decoration: none;
+      }
+
+      .post-feeds {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        font-size: 12px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+      .post-feeds a { color: rgba(0, 0, 0, 0.5); }
+      .post-feeds a:hover { color: #101010; }
+      .post-feeds .sep { color: rgba(0, 0, 0, 0.35); padding: 0 8px; }
+
+      @media (max-width: 768px) {
+        main {
+          margin: 32px auto 80px;
+          padding: 0 16px;
+        }
+
+        .post-title {
+          font-size: 32px;
+        }
+
+        .post-content h1 { font-size: 28px; }
+        .post-content h2 { font-size: 24px; }
+        .post-content h3 { font-size: 20px; }
+        .post-content h4 { font-size: 18px; }
+
+        .post-meta {
+          flex-direction: column;
+          gap: 8px;
+        }
+      }
+
+       
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #111;
+          color: #e5e5e5;
+        }
+
+        .post-title {
+          color: #f3f4f6;
+        }
+
+        .post-meta {
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .unpublished-note {
+          color: rgba(255, 255, 255, 0.55);
+        }
+
+        .post-content {
+          color: #d1d5db;
+        }
+
+        .post-content h1,
+        .post-content h2,
+        .post-content h3,
+        .post-content h4 {
+          color: #f3f4f6;
+        }
+
+        .post-content a {
+          color: #60a5fa;
+        }
+
+        .post-content blockquote {
+          border-left-color: rgba(255, 255, 255, 0.15);
+          background: #1a1a1a;
+        }
+
+        .post-content pre.code {
+          background: #1a1a1a;
+        }
+
+        .post-content .mermaid-zoom-hint { color: rgba(255, 255, 255, 0.5); }
+        .post-content > figure figcaption { color: rgba(255, 255, 255, 0.6); }
+        .post-content > figure img {
+          border-color: rgba(255, 255, 255, 0.14);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
+
+        .mermaid-zoom-overlay { background: #111; }
+        .mermaid-zoom-close { background: rgba(255, 255, 255, 0.12); color: #e5e5e5; }
+
+        .post-content img[src$=".svg"] {
+          filter: invert(1) hue-rotate(180deg);
+        }
+
+        .post-footer {
+          border-top-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .post-footer a {
+          color: #60a5fa;
+        }
+
+        .post-feeds a { color: rgba(255, 255, 255, 0.55); }
+        .post-feeds a:hover { color: #f3f4f6; }
+        .post-feeds .sep { color: rgba(255, 255, 255, 0.35); }
+      }
+    </style>
+  </head>
+  <body>
+    
+<header>
+  <div class="nav-container">
+    <div class="nav-left">
+      <a href="https://exe.dev" class="nav-logo-img"><img src="/static/exy.webp" alt="exe.dev logo" /></a>
+      <a href="https://exe.dev" class="nav-logo-text">exe.dev</a>
+      <a href="https://exe.dev/docs" class="nav-link">docs</a>
+      <a href="/" class="nav-link active">blog</a>
+      <a href="https://exe.dev/pricing" class="nav-link">pricing</a>
+      <div class="nav-dropdown">
+        <button type="button" class="nav-link nav-dropdown-trigger" aria-haspopup="true" aria-expanded="false">uses<svg class="nav-dropdown-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg></button>
+        <div class="nav-dropdown-menu" role="menu">
+          <a href="https://exe.dev/sandbox" class="nav-dropdown-item" role="menuitem"><span class="nav-dropdown-title">Sandbox</span><span class="nav-dropdown-desc">Disposable VMs for AI agents, by the second.</span></a>
+          <a href="https://exe.dev/vps" class="nav-dropdown-item" role="menuitem"><span class="nav-dropdown-title">VPS</span><span class="nav-dropdown-desc">Persistent Linux VMs with HTTPS and SSH.</span></a>
+          <a href="https://exe.dev/devbox" class="nav-dropdown-item" role="menuitem"><span class="nav-dropdown-title">Devbox</span><span class="nav-dropdown-desc">Cloud dev environment for you and your agents.</span></a>
+        </div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a href="https://exe.dev/auth" class="btn btn-primary">Dashboard</a>
+    </div>
+  </div>
+</header>
+
+    
+    <main>
+      <header class="post-header">
+        <h1 class="post-title">Six Months of Writing Code Exclusively With Agents</h1>
+        <div class="post-meta">
+          <span>2026-08-27</span>
+          <span>
+            Maisem Ali
+            
+          </span>
+        </div>
+      </header>
+      <article class="post-content"><p>In February of this year, I made a rule for myself: I wasn’t going to write code by hand anymore. I’ve been living by that rule for six months.</p>
+<h2>The system lived in my head</h2>
+<p>Back in 2024, before AI, my superpower was knowing how the entire system worked, especially the interfaces between its different components.</p>
+<p>If someone came to me with a feature they wanted to build or a bug they were trying to fix, I could usually point them to the exact line of code that mattered and tell them what needed to change. I also remembered why the strange-looking decisions existed and which assumptions were never written down.</p>
+<p>This was knowledge I’d built over months and years of working in the codebase. It was hard-earned and invaluable. It let me build features quickly and, more importantly, safely.</p>
+<p>The cost was that I had to keep up with everything. As more people contributed, I spent more and more time reading changes just to maintain that mental model.</p>
+<p>The bigger cost was the typing. Every time I wanted to build something, I could see the code in my head. I just couldn’t type it out fast enough.</p>
+<p>Typing speed was only part of the problem: a feature was almost never one edit. Even a small change spanned multiple layers and touched handlers, schema, tests, and docs. And those edits weren’t equal: a bad handler could be reverted, but a bad migration could leave a mess behind. So writing the code by hand meant carrying one decision safely through every place it touched.</p>
+<p>Copilot autocomplete helped immediately: a doc comment became a first draft, often wrong, but beats editing a blank file. Cursor’s tab complete helped more. The models were clearly improving fast.</p>
+<p>Claude Code changed a ton. I could describe the change once, and the agent would edit a bunch of files at once.</p>
+<p>As a result, I typed a lot less. But typing less didn’t mean working less: I read every change the model generated to match it against the desired state I had in my head. Agents would still be wrong quite a lot and make changes that weren’t required. Working incrementally kept them on track. This meant hand editing some of the generated code. After all, I was still responsible for every line that merged. The model wasn’t going to be held accountable.</p>
+<p>Then, early this year, the models got really good, almost all at once. GPT-5.3 and Opus 4.6 could suddenly handle larger changes with much less steering, and the results were finally good enough to build on.</p>
+<p>So in February I made the rule: no more code by hand. If an agent got stuck, I wasn’t allowed to finish the code myself. I had to figure out what the agent was missing - and fix that instead.</p>
+<p>I didn’t get good at coding by reading about coding. I got good by writing a lot of code, running it, seeing it fail, fixing it, and doing it again.</p>
+<p>AI agents are just software, after all. I wasn’t going to understand them by reading prompt guides. I had to use them for real work, see where they failed, change the prompts, tools, or environment, and try again.</p>
+<p>The rule forced me to get those reps.</p>
+<p>I broke it once, for three minutes. I opened the code and wrote a few lines, and it felt great. I had missed this. Right up until I realized how much I still had to type. I noped out.</p>
+<h2>One agent became a dozen</h2>
+<p>Once I stopped typing the code myself, I started finding these pockets of free time. I would give an agent a task, and then there was nothing for me to do while it worked.</p>
+<p>Instead of waiting, I spun up another agent to do something else. Then I did it again.</p>
+<p>I wasn’t intentionally building a parallel system. I was just filling the time between tasks. I have ADHD. I got distracted.</p>
+<p>It’s easy to imagine what would happen if you shared a single dev box between colleagues. Now imagine they don’t talk to each other and they’re all working at the same time.</p>
+<p>That was my first parallel setup. The agents changed the same files and Git state, installed dependencies, fought over ports, and left processes running. I also had to coordinate when each agent could test, push, or deploy. Worse, I often ended up waiting for the longest-running agent before the others could move forward. I had started more agents to avoid waiting and somehow created a new way to wait.</p>
+<p>I asked friends and colleagues how they dealt with this, and everyone had a workaround.</p>
+<p>Worktrees came up first. Each agent got its own checkout and branch, and the source collisions mostly went away, but worktrees only solved the Git part. The agents still shared databases, ports, processes, and the rest of the machine.</p>
+<p>So people patched around that with AGENTS.md: use a random port, create an ephemeral database, don’t touch another agent’s process. Every conflict became another instruction, and the agents burned context figuring out how not to step on each other instead of doing the task.</p>
+<p>Containers got closer: separate ports, processes, and local state. But the boundary was leaky: whatever my laptop could reach, the container could potentially reach too. The blast radius of a bad command wasn’t contained, so I was still approving commands. And worst of all, my laptop had to stay awake. If I closed it, all of the work stopped.</p>
+<h2>I closed my laptop. The work kept going.</h2>
+<p>By this point, I had joined exe.dev. We make <a href="https://blog.exe.dev/meet-exe.dev">Linux VMs that come up in a couple of seconds</a> with SSH and HTTPS already set up, so moving the agents off my laptop was the natural next step.</p>
+<p>Each task got its own machine. I could close my laptop, walk away, and the work kept running.</p>
+<p>But now I had a new problem: how do I reliably bring up a complete development environment for whatever I want the agent to work on?</p>
+<p><img src="/assets/attempt-log-card.png" alt="Three attempts at a startup script: fresh VM each time, looping until the environment came up clean" /></p>
+<p>So, staying true to not writing code, I asked Claude to write a startup script. I told it what I wanted and instructed it to loop until things worked. It installed our toolchains, cloned the repositories, configured Claude Code and Codex, and did everything needed to turn a fresh VM into a development environment. Then it ran the validation loop: bring up a fresh box, run the script, see what broke, fix the script, and try again.</p>
+<p>The agent boxes worked, but each agent still had its own tmux session. I ended up keeping a dozen terminal windows open just to see what each agent was doing. I had to jump between them to find which agent had finished, which one was stuck, and which one needed something from me. I needed one place to manage all of them.</p>
+<p>So I built <code>botd</code>.</p>
+<p>I gave it three rules. First, it had to run somewhere other than my laptop (the agents should keep working when I closed it). Second, <a href="https://blog.exe.dev/building-software-from-your-phone">mobile had to be first-class</a>. Managing agents shouldn’t require sitting in front of a terminal. Third, it had to preserve every conversation so I could look back across agents and understand where they got stuck, which instructions worked, and which problems kept repeating.</p>
+<p><code>botd</code> provisioned and deprovisioned the agent boxes, drove the agents underneath, and kept track of every task. It showed me which agents were working, which were stuck, and which were waiting for me. From my phone or laptop, I could inspect the conversation, send follow-up instructions, and review the diff.</p>
+<p>Instead of managing a dozen terminal sessions, I had one place to manage the work.</p>
+<p>None of this worked if I had to approve every tool call. That would just turn me into the queue again. Each agent was running inside an isolated, disposable VM, so I let it run in YOLO mode. It could run bash commands, install packages, start services, and change whatever it needed. A trashed environment cost me nothing but the VM.</p>
+<p>But an agent that can only touch its own VM isn’t very interesting. I still wanted agents to read logs, pull from Git, call Anthropic or OpenAI, and inspect things in Stripe.</p>
+<p>That access is where the real risk lived, and the VM did nothing to bound it. An agent reads untrusted content and can be prompt-injected by it; whatever it can reach, an injected agent can leak or corrupt. There were holes I knew I hadn’t filled. So every piece of external access got the same question: what’s the worst that can happen through this? Reading mostly passed: agents got read-only access. Writing didn’t, so write access was limited to test environments, where the worst case was corrupted test data.</p>
+<p>I also didn’t want the <a href="https://blog.exe.dev/oauth-for-agents">credentials inside the VM</a>. With <a href="https://blog.exe.dev/http-proxy-secrets">exe.dev integrations</a>, the agent sends its request through a proxy, the proxy adds the credential, and the agent receives the response without ever seeing the secret.</p>
+<h2>Everything passed. I still didn’t want it.</h2>
+<p>At peak I was running about twenty VMs at a time. Not all of them were active. Some tasks got started, sat untouched for weeks, and were eventually abandoned because the cognitive overhead was too much and the work was never urgent or important enough to survive.</p>
+<p>Validation sucked at that scale. I couldn’t manually rebuild every branch, rerun its tests, and check the application myself. But inside their isolated boxes, agents could run the tests, trigger the full CI suite, start the application, and drive it through a browser. They would send me screenshots of the completed work.</p>
+<p>But the agent was still grading its own work. If it misunderstood what I wanted, it could build the wrong thing, write tests for the wrong thing, and then confidently tell me that everything passed.</p>
+<p>That’s why being able to open the running environment mattered. I could use it myself, drive the new UI end to end, and make sure it worked the way I wanted, not just the way the agent said it worked.</p>
+<p>Then there was the reviewing. When I wrote the code myself, I understood the change by the time it was ready for review. After all, I had made the decisions along the way. With an agent, the whole diff appeared at once. It might have passing tests and screenshots, but it was still unfamiliar code. And when several agents finished around the same time, I had a queue of complete changes to load into my head before I could merge any of them.</p>
+<p><img src="/assets/slide-20-merge-queue-card.png" alt="A queue of finished agent branches, each with passing tests and screenshots, waiting on one reviewer" /></p>
+<p>Having <a href="https://blog.exe.dev/review-the-reviews">other agents review the code</a> worked surprisingly well. They occasionally caught real bugs, and it was cheap enough to run several reviews. But I couldn’t merge something just because the agents approved it. I still had to understand the change. I was still responsible for the code that got merged.</p>
+<p>And sometimes I understood it. The tests were green, the screenshots looked good, the UI did what I had asked for, even the schema looked good and the code was approved by all the review agents.</p>
+<p><img src="/assets/1787847799-image.png" alt="" /></p>
+<p>I threw it away anyway.</p>
+<p>Maybe nobody needed it. Maybe it introduced a second way to do something we already supported. Maybe a small convenience added complexity we would carry for years.</p>
+<p>The tools could tell me that the change worked. They couldn’t tell me whether it was worth adding to the system.</p>
+<p>Unshipping something is so much harder than shipping it. Hyrum’s Law kicks in: once enough people use a system, someone depends on every observable behavior, even behavior you never intended to be a contract. Removing something breaks users, scripts, and workflows you didn’t know existed.</p>
+<p>Shipping got easy. Deciding what to ship got important.</p>
+<h2>Not all agents write code</h2>
+<p>Everything so far has been about shipping code. But <a href="https://blog.exe.dev/inventory">some of the most useful agents we run</a> don’t ship code at all.</p>
+<p>It’s worth pausing on what an agent actually is, because the word sounds heavier than it deserves. An agent is <a href="https://sketch.dev/blog/agent-loop">a model in a loop with tools</a>. Send the model a message; if it asks for a tool call, run the tool and send the result back; repeat. That’s the whole thing.</p>
+<p>The model is what makes the loop capable. Give it bash on a real computer, and it can install what’s missing, adapt when your grep has different flags, and keep going until the job is done.</p>
+<p>The loop never changes. The tools decide what an agent can be. A development agent needs a full computer: shell, compilers, browsers, the freedom to install things. Hold those back and the agent is useless, and you’re back to approving every action.</p>
+<p>My starting point: give the agent whatever I’d give a developer. Good developer tools have turned out to be good agent tools. Whether the best agent tools end up being developer tools at all, time will tell.</p>
+<p>And the thing to fear isn’t any single tool. It’s combinations. Private data, untrusted content, external communication: any two are manageable. All three in one agent is how your secrets walk out the door. That’s what Simon Willison calls <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">the lethal trifecta</a>. So I don’t minimize tools blindly: I isolate the environment and I watch the combinations.</p>
+<p>Here’s the first example: investigation. When a customer reports a problem, I have a prompt I use, and it’s embarrassingly simple:</p>
+<p>“Customer reports: &lt;their report, verbatim&gt;. Please figure out what happened using the ClickHouse logs.”</p>
+<p>Verbatim matters. If I summarize the report, the agent inherits my interpretation - and my blind spots. Given the customer’s own words, it queries the logs, reads the relevant code, and reconstructs what actually happened.</p>
+<p>Then the decision is mine. Sometimes I ask for options and pick one. Sometimes the evidence says working-as-intended, and the fix is a doc or an email, not code. Either way I’m deciding from evidence, not guessing from a bug report.</p>
+<p>The second job: attack. Our red-team agent has one instruction: try to break into our systems.</p>
+<p>And it worked. It found open network paths we thought we had restricted, and showed us exactly how they were still reachable. We patched them before anyone outside ever noticed.</p>
+<p>That’s more useful than a list of theoretical vulnerabilities. It took an assumption we were relying on and tested it against the running system, and the assumption was wrong.</p>
+<p>The third job: watch. Deployments are scary, but not deploying is worse. We deploy in waves, and writing perfect rules for when to continue is basically impossible: production fails in weird ways.</p>
+<p>So <a href="https://blog.exe.dev/athena-deploys-exe">Athena</a> babysits every deployment. It reads the diff, the metrics, and the logs, and watches the rollout. During one deployment it noticed a problem, investigated, and realized it was an infrastructure issue, not the new code. Instead of blindly halting everything, it continued deploying to the other machines.</p>
+<p><img src="/assets/athena-rollout-card.png" alt="A deployment rolling out in waves; Athena flags an infrastructure issue mid-rollout and keeps the wave going" /></p>
+<p>Could I do a better job? I’m not sure anymore. Athena is more diligent than I can be. It doesn’t get distracted, doesn’t get impatient, and never stops paying attention. It is tireless.</p>
+<h2>Engineer the system before the agent writes the code</h2>
+<p>An agent can now design and build an entire system almost instantly. The design might even be good. But if I simply accept it, do I know how it works? Where it breaks? Which corners it cut? Which tradeoffs I agreed to?</p>
+<p>At that point, I’ve inherited a legacy codebase that happens to be brand new. That’s vibe coding.</p>
+<p><a href="https://blog.exe.dev/claude-is-not-a-compiler">Agentic engineering</a> is working with the agent on the system first: the architecture, interfaces, constraints, and tradeoffs. When the code arrives, I understand what I’m about to own.</p>
+<p>There is no one answer to agentic engineering. Everyone works differently; every model is good at different things. The key here is reps: do a lot, ask a lot, throw away a lot. You’ll learn what works for you.</p>
+<p>Everything we knew about running software teams is amplified now. Start with testing. When agents write and rewrite the implementation, unit tests that mirror the implementation just churn with it. Behavior, contract, and property tests matter so much more now: define the system’s invariants and pin down what must stay true while the code underneath changes freely.</p>
+<p>So much of the game is migrations now. Code changes are cheap, but systems carry state: data, running processes, users mid-flight. Getting from one design to the next without dropping any of that is the part that’s still hard. The job is risk management and migrations.</p>
+<p>The agent <a href="https://blog.exe.dev/codebase-as-prompt">copies what it finds in the codebase</a>. Good patterns amplify. Bad patterns amplify faster. Engineering hygiene is more important than ever: every pattern you tolerate becomes the template for the next hundred changes.</p>
+<p>And it’s the <a href="https://blog.exe.dev/devtools-must-be-open-source">golden age of personalized tools</a>. You don’t have to be a domain expert to write a new linter. So write a new linter. Enforce the pattern, encode the lesson, make the mistake impossible. The marginal cost of a bespoke tool has collapsed.</p>
+<p>Peer code review is dead. We don’t do code reviews at exe.dev: <a href="https://blog.exe.dev/replace-your-ci">we merge code we deem should be merged</a>. The review that matters happens earlier: in the design discussion, the contracts, the validation. By the time the diff exists, the decisions are already made.</p>
+<p>Here’s a recent example. <a href="https://blog.exe.dev/shelley">Shelley</a> is the coding agent we ship in exe.dev VMs. I wanted its tools to be asynchronous.</p>
+<p>The first design put the onus on the agent to decide which commands should run in the background. That introduced a ton of edge cases: large outputs, long-running tasks, blocked agents, and the agent having to predict all of this ahead of time.</p>
+<p>If I were vibe coding, I would have accepted that design and let the agent deal with those edge cases. Maybe it would have handled them. Maybe it wouldn’t have. I wouldn’t really know.</p>
+<p>Instead, we kept discussing the problem and found a design that removed most of the edge cases entirely. Every command follows the same path and automatically moves into the background after sixty seconds.</p>
+<p>I didn’t remember this example off the top of my head. I asked an agent to search across all of my agent conversations for a case where my questions had materially changed the architecture. It returned the original request, the first design, the objections I raised, how the design changed, the final commit, and links to the original sessions.</p>
+<p>This is why preserving every conversation mattered. The history wasn’t just an archive. I could query it to understand how I worked.</p>
+<h2>botd is dead; long live botd</h2>
+<p>There’s one more part of this story. <code>botd</code> died this month. It crumbled under its own weight.</p>
+<p>That probably shouldn’t be surprising. <code>botd</code> was entirely vibe coded. I didn’t read a single line of its code, nor did I really pay attention to how it was architected. And at its core was a genuinely hard problem: driving every model family through its own native harness (Claude Code, Codex, and the rest) while papering over their differences. That is exactly the kind of problem where architecture matters, and I was not paying attention to it.</p>
+<p>It helped me deliver an enormous amount of work, but it eventually became the exact thing I described earlier: a brand-new legacy codebase that I had inherited without understanding all of the decisions inside it. The architecture was exploratory, and some of the decisions buried in it made even modest changes mean redoing large parts of the system. And I wanted to build on top of Shelley so that I could control the harness better; botd was living on borrowed time. It just died before I could retire it.</p>
+<p>But here’s the twist: that search I described earlier was never sent to botd. All the history was in SQLite, so I pointed another agent at it and got the analysis anyway. The tool died; the data didn’t.</p>
+<p>When I started, my advantage was that the system lived in my head. Six months later, the honest answer is that I’ve lost some of that depth. I don’t have the same line-by-line familiarity with every system.</p>
+<p>But I can ask agents detailed questions and use them to dig into whatever I need to understand. Work no longer waits for me to finish one thing before starting another.</p>
+<p>I’ve shipped more in these six months than in any stretch of my career. I’ve also failed more: abandoned VMs, dead-end designs, a whole tool that collapsed. The failures were cheap, so I could afford a lot of them - that’s most of how I learned what works.</p>
+<p>It’s the same loop that taught me to code, moved up a level: write, run, fail, fix. I used to iterate on code. Now I iterate on prompts, designs, whole features. A rewrite that used to cost a week costs a conversation. And <a href="https://x.com/davidcrawshaw/status/2022738438932566310">understanding is iterative</a> too: every conversation helps me understand and internalize the system more.</p>
+<p>I stopped writing code by hand. I didn’t stop engineering.</p>
+</article>
+      <footer class="post-footer">
+        <a href="/">&larr; All posts</a>
+        <nav class="post-feeds">
+          <a href="/rss.xml">RSS</a>
+          <span class="sep">&middot;</span>
+          <a href="/atom.xml">Atom</a>
+        </nav>
+      </footer>
+    </main>
+    
+    <script>
+      
+      
+      
+      
+      (function () {
+        var imgs = [].slice.call(
+          document.querySelectorAll('.post-content img[data-zoom], .post-content > figure img')
+        );
+        if (!imgs.length) return;
+
+        var overlay, scroll, big;
+        function build() {
+          overlay = document.createElement('div');
+          overlay.className = 'img-zoom-overlay';
+          overlay.hidden = true;
+          scroll = document.createElement('div');
+          scroll.className = 'img-zoom-scroll';
+          big = document.createElement('img');
+          scroll.appendChild(big);
+          var close = document.createElement('button');
+          close.type = 'button';
+          close.className = 'img-zoom-close';
+          close.setAttribute('aria-label', 'Close');
+          close.innerHTML = '&times;';
+          overlay.appendChild(scroll);
+          overlay.appendChild(close);
+          document.body.appendChild(overlay);
+
+          close.addEventListener('click', hide);
+          scroll.addEventListener('click', function (e) {
+            if (e.target === big) {
+              
+              var full = overlay.classList.toggle('is-full');
+              if (full) {
+                var r = big.getBoundingClientRect();
+                var fx = (e.clientX - r.left) / r.width;
+                var fy = (e.clientY - r.top) / r.height;
+                scroll.scrollLeft = fx * big.offsetWidth - scroll.clientWidth / 2;
+                scroll.scrollTop = fy * big.offsetHeight - scroll.clientHeight / 2;
+              }
+              return;
+            }
+            hide();
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !overlay.hidden) hide();
+          });
+        }
+
+        function show(img) {
+          if (!overlay) build();
+          overlay.classList.remove('is-full');
+          big.src = img.currentSrc || img.src;
+          big.alt = img.alt || '';
+          overlay.hidden = false;
+          document.documentElement.classList.add('img-zoom-open');
+        }
+        function hide() {
+          overlay.hidden = true;
+          overlay.classList.remove('is-full');
+          document.documentElement.classList.remove('img-zoom-open');
+        }
+
+        imgs.forEach(function (img) {
+          img.classList.add('zoomable');
+          img.tabIndex = 0;
+          img.setAttribute('role', 'button');
+          img.setAttribute('aria-label', 'Enlarge image' + (img.alt ? ': ' + img.alt : ''));
+          img.addEventListener('click', function () { show(img); });
+          img.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(img); }
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
