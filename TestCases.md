@@ -86,6 +86,10 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 Section note: automated tests cover the DOM operation guard with a local harness; Android Edge machine-translation UI still needs manual device validation.
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
+# Translate Preformatted Text
+Section note: automated tests use the example URL with representative preformatted blocks in the local DOM harness; live browser translation still requires manual validation.
+- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (per-block conversion, page-wide conversion, dragging, and dynamically added blocks are automated)
+
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
 

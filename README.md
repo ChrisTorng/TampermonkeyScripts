@@ -83,6 +83,10 @@ Show thin, fixed vertical markers that track scroll position for every scrollabl
 
 Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
+## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
+
+Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
+
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
 Toggle the current page between original and Google Translate with Ctrl+Alt+S.
@@ -143,6 +147,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
   - [TranslationCrashGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
+  - [TranslatePreformattedText.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [EBirdTextInputAssistant.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdTextInputAssistant.user.js)
