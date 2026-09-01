@@ -59,7 +59,10 @@ describe('Hacker News Comments on the captured article', () => {
         const story = {
             objectID: '49465119',
             url: 'https://blog.exe.dev/engineering-with-ai',
-            num_comments: 100
+            num_comments: 100,
+            points: 68,
+            title: 'Six months of writing code exclusively with agents',
+            author: 'bryanmikaelian'
         };
         const { harness, article, requests } = executeScript({
             responseForUrl: () => [story]
@@ -74,7 +77,10 @@ describe('Hacker News Comments on the captured article', () => {
         assert.equal(link.href, 'https://news.ycombinator.com/item?id=49465119');
         assert.equal(link.target, '_blank');
         assert.equal(link.rel, 'noopener noreferrer');
-        assert.equal(link.textContent, 'Hacker News comments (100)');
+        assert.equal(link.textContent, 'Y 100 · ▲68');
+        assert.equal(link.title, 'Six months of writing code exclusively with agents · 100 comments · 68 points · submitted by bryanmikaelian');
+        assert.equal(link.getAttribute('aria-label'), 'Open Hacker News discussion with 100 comments and 68 points');
+        assert.match(link.style.cssText, /background: #ff6600/);
         assert.match(requests[0], /^https:\/\/hn\.algolia\.com\/api\/v1\/search\?/);
     });
 
@@ -116,6 +122,23 @@ describe('Hacker News Comments on the captured article', () => {
         assert.deepEqual(searchedUrls, [destinationUrl]);
     });
 
+    test('does not treat a query-specific app URL as its Hacker News-listed root URL', async () => {
+        const jawboneUrl = 'https://chatgpt.com/?model=gpt-4o-jawbone';
+        const { harness } = executeScript({
+            url: jawboneUrl,
+            responseForUrl: () => [{
+                objectID: '42704795',
+                url: 'https://chatgpt.com/',
+                title: 'GPT-4o with scheduled tasks (jawbone) is available in beta',
+                num_comments: 135,
+                points: 249
+            }]
+        });
+        await waitForPromises();
+
+        assert.equal(harness.document.getElementById('tm-hacker-news-comments'), null);
+    });
+
     test('uses a privileged cross-origin request on an OpenAI page with a restrictive CSP', async () => {
         const openAiUrl = 'https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/';
         const { harness, requests } = executeScript({
@@ -130,7 +153,7 @@ describe('Hacker News Comments on the captured article', () => {
 
         const link = harness.document.querySelector('#tm-hacker-news-comments a');
         assert.equal(link.href, 'https://news.ycombinator.com/item?id=49486172');
-        assert.equal(link.textContent, 'Hacker News comments (493)');
+        assert.equal(link.textContent, 'Y 493');
         assert.match(requests[0], /^https:\/\/hn\.algolia\.com\/api\/v1\/search\?/);
         assert.equal(harness.context.fetch, undefined);
     });

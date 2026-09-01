@@ -4,7 +4,7 @@
 - `N/A`: reference sample with no matching userscript behavior expected.
 
 # Hacker News Comments
-Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, and search-engine referrers.
+Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and cross-origin Tampermonkey request are mocked; live page capture is blocked by an anti-bot challenge)
 - https://www.latimes.com/environment/story/2026-08-26/highest-ever-ocean-temperature-measured-as-powerful-el-nino-forms [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and button remounting are automated; live content is replaced by an anti-ad-block message)

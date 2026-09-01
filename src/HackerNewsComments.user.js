@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News Comments
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.4.0
+// @version      2026-09-01_1.5.0
 // @description  Add an article button for Hacker News comments, including pages reached through redirects.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -44,7 +44,6 @@
         try {
             const url = new URL(value);
             url.hash = '';
-            url.search = '';
             url.pathname = url.pathname.replace(/\/$/, '') || '/';
             return url.href;
         } catch {
@@ -158,17 +157,25 @@
         link.href = `https://news.ycombinator.com/item?id=${encodeURIComponent(story.objectID)}`;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = `Hacker News comments (${story.num_comments || 0})`;
-        link.title = 'Open the Hacker News discussion in a new tab';
+        const commentCount = story.num_comments || 0;
+        const score = Number.isFinite(story.points) ? story.points : null;
+        link.textContent = `Y ${commentCount}${score === null ? '' : ` · ▲${score}`}`;
+        link.title = [
+            story.title || 'Hacker News discussion',
+            `${commentCount} comments`,
+            score === null ? null : `${score} points`,
+            story.author ? `submitted by ${story.author}` : null
+        ].filter(Boolean).join(' · ');
+        link.setAttribute('aria-label', `Open Hacker News discussion with ${commentCount} comments${score === null ? '' : ` and ${score} points`}`);
         link.style.cssText = [
             'display: inline-block',
             'box-sizing: border-box',
-            'padding: 0.55rem 0.8rem',
-            'border: 1px solid #ff6600',
-            'border-radius: 0.35rem',
-            'background: #fff7f2',
-            'color: #b34700',
-            'font: 600 14px/1.2 system-ui, sans-serif',
+            'padding: 0.3rem 0.5rem',
+            'border: 0',
+            'border-radius: 999px',
+            'background: #ff6600',
+            'color: #ffffff',
+            'font: 600 12px/1.2 system-ui, sans-serif',
             'text-decoration: none'
         ].join(';');
         wrapper.appendChild(link);
