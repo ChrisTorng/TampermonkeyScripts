@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News Comments
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-30_1.3.0
+// @version      2026-09-01_1.5.0
 // @description  Add an article button for Hacker News comments, including pages reached through redirects.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -24,16 +24,39 @@
     const SEARCH_API = 'https://hn.algolia.com/api/v1/search';
     const HISTORY_LIMIT = 20;
     const REDIRECT_WINDOW_MS = 15000;
+    const SEARCH_ENGINE_HOST_PATTERNS = [
+        /(^|\.)google\.[a-z.]+$/,
+        /(^|\.)bing\.(com|cn)$/,
+        /(^|\.)search\.yahoo\.[a-z.]+$/,
+        /(^|\.)duckduckgo\.com$/,
+        /(^|\.)search\.brave\.com$/,
+        /(^|\.)baidu\.com$/,
+        /(^|\.)yandex\.[a-z.]+$/,
+        /(^|\.)ecosia\.org$/,
+        /(^|\.)kagi\.com$/,
+        /(^|\.)startpage\.com$/,
+        /(^|\.)qwant\.com$/,
+        /(^|\.)search\.naver\.com$/,
+        /(^|\.)sogou\.com$/
+    ];
 
     function normalizeUrl(value) {
         try {
             const url = new URL(value);
             url.hash = '';
-            url.search = '';
             url.pathname = url.pathname.replace(/\/$/, '') || '/';
             return url.href;
         } catch {
             return '';
+        }
+    }
+
+    function isSearchEngineUrl(value) {
+        try {
+            const hostname = new URL(value).hostname.toLowerCase();
+            return SEARCH_ENGINE_HOST_PATTERNS.some((pattern) => pattern.test(hostname));
+        } catch {
+            return false;
         }
     }
 
@@ -79,7 +102,10 @@
     function getPageUrls(history) {
         const canonical = document.querySelector('link[rel="canonical"]')?.href;
         const previousUrls = history.slice(0, -1).reverse();
-        return [...new Set([canonical, window.location.href, document.referrer, ...previousUrls].filter(Boolean))];
+        return [...new Set(
+            [canonical, window.location.href, document.referrer, ...previousUrls]
+                .filter((url) => url && !isSearchEngineUrl(url))
+        )];
     }
 
     function requestJson(url) {
@@ -106,8 +132,6 @@
     }
 
     async function findStory(pageUrls) {
-        const normalizedPageUrls = new Set(pageUrls.map(normalizeUrl));
-
         for (const pageUrl of pageUrls) {
             const parameters = new URLSearchParams({
                 tags: 'story',
@@ -115,7 +139,8 @@
                 query: pageUrl
             });
             const { hits = [] } = await requestJson(`${SEARCH_API}?${parameters}`);
-            const exactMatches = hits.filter((hit) => normalizedPageUrls.has(normalizeUrl(hit.url)));
+            const normalizedPageUrl = normalizeUrl(pageUrl);
+            const exactMatches = hits.filter((hit) => normalizeUrl(hit.url) === normalizedPageUrl);
             if (exactMatches.length > 0) {
                 return exactMatches.sort((a, b) => (b.num_comments || 0) - (a.num_comments || 0))[0];
             }
@@ -132,17 +157,25 @@
         link.href = `https://news.ycombinator.com/item?id=${encodeURIComponent(story.objectID)}`;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = `Hacker News comments (${story.num_comments || 0})`;
-        link.title = 'Open the Hacker News discussion in a new tab';
+        const commentCount = story.num_comments || 0;
+        const score = Number.isFinite(story.points) ? story.points : null;
+        link.textContent = `Y ${commentCount}${score === null ? '' : ` · ▲${score}`}`;
+        link.title = [
+            story.title || 'Hacker News discussion',
+            `${commentCount} comments`,
+            score === null ? null : `${score} points`,
+            story.author ? `submitted by ${story.author}` : null
+        ].filter(Boolean).join(' · ');
+        link.setAttribute('aria-label', `Open Hacker News discussion with ${commentCount} comments${score === null ? '' : ` and ${score} points`}`);
         link.style.cssText = [
             'display: inline-block',
             'box-sizing: border-box',
-            'padding: 0.55rem 0.8rem',
-            'border: 1px solid #ff6600',
-            'border-radius: 0.35rem',
-            'background: #fff7f2',
-            'color: #b34700',
-            'font: 600 14px/1.2 system-ui, sans-serif',
+            'padding: 0.3rem 0.5rem',
+            'border: 0',
+            'border-radius: 999px',
+            'background: #ff6600',
+            'color: #ffffff',
+            'font: 600 12px/1.2 system-ui, sans-serif',
             'text-decoration: none'
         ].join(';');
         wrapper.appendChild(link);
