@@ -202,10 +202,19 @@ const redirectCases = [
         name: 'x.com status',
         fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
         sourceUrl: 'https://x.com/cocktailpeanut/status/1860756706357022812',
-        expectedTargetUrl: 'https://nitter.net/cocktailpeanut/status/1860756706357022812',
+        expectedTargetUrl: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812',
         sessionKey: 'redirectx-last-redirect-x',
         redirectId: '1860756706357022812',
-        skipReferrer: 'https://nitter.net/cocktailpeanut/status/1860756706357022812'
+        skipReferrer: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812'
+    },
+    {
+        name: 'twitter.com status',
+        fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
+        sourceUrl: 'https://twitter.com/cocktailpeanut/status/1860756706357022812',
+        expectedTargetUrl: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812',
+        sessionKey: 'redirectx-last-redirect-twitter',
+        redirectId: '1860756706357022812',
+        skipReferrer: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812'
     },
     {
         name: 'reddit.com thread',

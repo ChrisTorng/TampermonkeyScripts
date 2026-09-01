@@ -7,7 +7,7 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 Redirect supported pages to more readable destinations while preserving back navigation.
 
 Supported sites:
-- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Nitter](https://nitter.net/) status pages for a lighter viewer
+- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → the official [X embedded post viewer](https://platform.twitter.com/) for lightweight, account-free viewing
 - [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
   - On Edge mobile, add [https://rdx.overdevs.com](https://rdx.overdevs.com) as a Tracking Prevention exception so Reddit content loads correctly.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
@@ -74,6 +74,10 @@ Stretch Git diffs edge-to-edge and slim line numbers on [ChatGPT Codex tasks](ht
 ## [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
 
 Show thin, fixed vertical markers that track scroll position for every scrollable area on the page.
+
+## [Translation Crash Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
+
+Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 

@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         RedirectUrls
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-28_1.3.1
+// @version      2026-09-01_1.5.0
 // @description  Redirect supported pages to more readable destinations while preserving back navigation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=nitter.net
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=platform.twitter.com
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
 // @match        https://www.reddit.com/*
@@ -95,17 +95,17 @@
         {
             name: 'x.com status',
             match: /https?:\/\/x\.com\/([^/]+)\/status\/(\d+)/,
-            buildTarget: (match) => `https://nitter.net/${match[1]}/status/${match[2]}`,
+            buildTarget: (match) => `https://platform.twitter.com/embed/Tweet.html?id=${match[2]}`,
             sessionKey: 'redirectx-last-redirect-x',
-            skipReferrers: ['nitter.net', 'twitter.com', 'x.com'],
+            skipReferrers: ['platform.twitter.com', 'twitter.com', 'x.com'],
             getRedirectId: (match) => match[2]
         },
         {
             name: 'twitter.com status',
             match: /https?:\/\/twitter\.com\/([^/]+)\/status\/(\d+)/,
-            buildTarget: (match) => `https://nitter.net/${match[1]}/status/${match[2]}`,
+            buildTarget: (match) => `https://platform.twitter.com/embed/Tweet.html?id=${match[2]}`,
             sessionKey: 'redirectx-last-redirect-twitter',
-            skipReferrers: ['nitter.net', 'twitter.com', 'x.com'],
+            skipReferrers: ['platform.twitter.com', 'twitter.com', 'x.com'],
             getRedirectId: (match) => match[2]
         },
         {
