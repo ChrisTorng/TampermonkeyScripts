@@ -3,6 +3,12 @@
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
 - `N/A`: reference sample with no matching userscript behavior expected.
 
+# Hacker News Comments
+Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API and per-tab navigation history.
+- https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+- https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and cross-origin Tampermonkey request are mocked; live page capture is blocked by an anti-bot challenge)
+- https://www.latimes.com/environment/story/2026-08-26/highest-ever-ocean-temperature-measured-as-powerful-el-nino-forms [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and button remounting are automated; live content is replaced by an anti-ad-block message)
+
 # RedirectUrls
 - https://x.com/cocktailpeanut/status/1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
