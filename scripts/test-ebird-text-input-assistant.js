@@ -71,6 +71,56 @@ const syntheticRecords = [
 麻雀 4`
 ];
 
+const requestedAliasMappings = {
+    '珠頸': 'spodov',
+    '斑文鳥': 'nutman',
+    '野鴿': 'rocpig1',
+    '麻雀': 'eutspa',
+    '黑領': 'bkcsta1',
+    '家燕': 'barswa',
+    '紅鳩': 'recdov1',
+    '紅嘴': 'blabul1',
+    '紅冠': 'commoo3',
+    '洋燕': 'pacswa1',
+    '鵲鴝': 'magrob',
+    '小環': 'lirplo',
+    '小白': 'litegr',
+    '白頭翁': 'livbul1',
+    '白尾': 'whvmyn',
+    '白腹': 'whbwat1',
+    '夜鷺': 'bcnher',
+    '金背': 'ortdov',
+    '家八': 'commyn',
+    '冠八': 'cremyn',
+    '斯氏': 'swiwhe1',
+    '台灣藍鵲': 'formag1',
+    '黑冠': 'manher1',
+    '樹鵲': 'grytre1',
+    '東方黃': 'eaywag',
+    '喜鵲': 'orimag1',
+    '黃頭鷺': 'categr2',
+    '白面': 'whiwag8',
+    '五色鳥': 'taibar2',
+    '亞洲': 'asgsta1',
+    '褐頭': 'plapri1',
+    '翠鳥': 'comkin1',
+    '斑馬鳩': 'zebdov',
+    '褐頭鷦鶯': 'plapri1',
+    '灰頭鷦鶯': 'gybpri1',
+    '大卷尾': 'bladro1',
+    '葡萄胸': 'vibsta4',
+    '磯鷸': 'comsan',
+    '赤腰燕': 'strswa2',
+    '灰頭椋鳥': 'chtsta2',
+    '綠簑鷺': 'strher1',
+    '小啄木': 'gycwoo1',
+    '薑母鴨': 'musduc',
+    '黑頭文鳥': 'chemun',
+    '小雨燕': 'houswi1',
+    '白腰草鷸': 'grnsan',
+    '灰鶺鴒': 'grywag'
+};
+
 function loadAssistant(options = {}) {
     const harness = createHarness({
         url: 'https://ebird.org/atlastw/submit/checklist',
@@ -145,6 +195,30 @@ describe('eBird compact note parser', () => {
 
         assert.deepEqual(record.date, { year: 2000, month: 1, day: 4 });
         assert.deepEqual(record.errors, []);
+    });
+
+    test('parses every requested Taiwan field-name alias', () => {
+        const { api } = loadAssistant();
+
+        for (const [alias, expectedCode] of Object.entries(requestedAliasMappings)) {
+            const record = plain(api.parseRecord(
+                `2000.01.04\n測試公園\n7：00 開始 8 分鐘\n${alias} 1`,
+                new Date(2000, 0, 1),
+                testLocationPresets
+            ));
+            assert.deepEqual(record.errors, [], alias);
+            assert.equal(record.observations.length, 1, alias);
+            assert.equal(record.observations[0].code, expectedCode, alias);
+        }
+    });
+
+    test('uses the user-confirmed current Chinese names for updated taxa', () => {
+        const { api } = loadAssistant();
+
+        assert.equal(api.speciesAliases['東方黃'].name, '東方黃鶺鴒 (黃頭)');
+        assert.equal(api.speciesAliases['赤腰燕'].name, '東方金腰燕 (赤腰燕)');
+        assert.deepEqual(plain(api.speciesAliases['赤腰燕'].codes), ['strswa2', 'y00621', 'strswa1']);
+        assert.equal(api.speciesAliases['冠八'].name, '八哥 (冠八哥)');
     });
 
     test('stores editable location presets only in Tampermonkey storage', () => {
