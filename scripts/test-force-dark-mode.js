@@ -6,6 +6,18 @@ const { describe, test } = require('node:test');
 
 const { createHarness } = require('./dom-harness');
 
+function assertFloatingControlLayout(button, slot) {
+    assert.equal(button.getAttribute('data-tm-floating-control'), String(slot));
+    assert.equal(button.style.getPropertyValue('position'), 'fixed');
+    assert.equal(button.style.getPropertyValue('top'), `${70 + (slot * 44)}px`);
+    assert.equal(button.style.getPropertyValue('right'), '8px');
+    assert.equal(button.style.getPropertyValue('width'), '44px');
+    assert.equal(button.style.getPropertyValue('height'), '34px');
+    for (const property of ['position', 'top', 'right', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
+        assert.equal(button.style.getPropertyPriority(property), 'important', `${property} must resist page CSS`);
+    }
+}
+
 const repoRoot = path.join(__dirname, '..');
 const scriptPath = path.join(repoRoot, 'src', 'ForceDarkMode.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
@@ -45,6 +57,7 @@ describe('ForceDarkMode on captured LessWrong content', () => {
         assert.match(style.textContent, /color-scheme: dark !important/);
         assert(button, 'Expected floating toggle button to be created.');
         assert.equal(button.textContent, '🌙');
+        assertFloatingControlLayout(button, 2);
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(button.title, 'Force Dark Mode is ON (click to disable)');
     });
