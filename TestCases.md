@@ -3,6 +3,12 @@
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
 - `N/A`: reference sample with no matching userscript behavior expected.
 
+# Hacker News Comments
+Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.
+- https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+- https://openai.com/index/our-decision-on-cursor-following-its-acquisition-by-spacex/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and cross-origin Tampermonkey request are mocked; live page capture is blocked by an anti-bot challenge)
+- https://www.latimes.com/environment/story/2026-08-26/highest-ever-ocean-temperature-measured-as-powerful-el-nino-forms [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (exact URL lookup and button remounting are automated; live content is replaced by an anti-ad-block message)
+
 # RedirectUrls
 - https://x.com/cocktailpeanut/status/1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
@@ -82,6 +88,11 @@ Section note: automated tests cover the DOM operation guard with a local harness
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
+
+# eBird Text Input Assistant
+Section note: automated tests cover representative compact-note formats, local location presets, routing, viewport-safe panel layout, localized uncommon-section expansion, and resilient partial species-form filling; live authenticated eBird form integration still requires manual validation.
+- https://ebird.org/atlastw/submit/effort [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (local presets, note parsing, routing, and Chinese-localized effort fields are automated; authenticated live form is not captured)
+- https://ebird.org/atlastw/submit/checklist [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (species counts, taxon-code candidates, field-activation behavior, uncommon-section expansion, breeding codes, heard comments, aggregate missing-field reporting, complete-list selection, and no-submit safety are automated with a local DOM harness)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
