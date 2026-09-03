@@ -6,6 +6,18 @@ const { describe, test } = require('node:test');
 
 const { createHarness } = require('./dom-harness');
 
+function assertFloatingControlLayout(button, slot) {
+    assert.equal(button.getAttribute('data-tm-floating-control'), String(slot));
+    assert.equal(button.style.getPropertyValue('position'), 'fixed');
+    assert.equal(button.style.getPropertyValue('top'), `${70 + (slot * 44)}px`);
+    assert.equal(button.style.getPropertyValue('right'), '8px');
+    assert.equal(button.style.getPropertyValue('width'), '44px');
+    assert.equal(button.style.getPropertyValue('height'), '34px');
+    for (const property of ['position', 'top', 'right', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
+        assert.equal(button.style.getPropertyPriority(property), 'important', `${property} must resist page CSS`);
+    }
+}
+
 const repoRoot = path.join(__dirname, '..');
 const scriptPath = path.join(repoRoot, 'src', 'ForceMobileView.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
@@ -99,6 +111,7 @@ describe('ForceMobileView on captured pages', () => {
         assert(style, 'Expected mobile view style element to be inserted.');
         assert.match(style.textContent, /max-width: 100vw !important/);
         assert(button, 'Expected mobile view toggle button to be created.');
+        assertFloatingControlLayout(button, 1);
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
         assert.equal(textElement.style.getPropertyValue('line-height'), '25.2px');

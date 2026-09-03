@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-04-12_1.0.3
+// @version      2026-09-03_1.0.4
 // @description  Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -225,6 +225,45 @@
         }
     }
 
+    // Keep these values synchronized with README.md's Floating control layout table.
+    function applyFloatingControlStyle(button, slot) {
+        const styles = {
+            appearance: 'none',
+            position: 'fixed',
+            top: `${70 + (slot * 44)}px`,
+            right: '8px',
+            bottom: 'auto',
+            left: 'auto',
+            display: 'inline-flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            'box-sizing': 'border-box',
+            width: '44px',
+            'min-width': '44px',
+            'max-width': '44px',
+            height: '34px',
+            'min-height': '34px',
+            'max-height': '34px',
+            margin: '0',
+            padding: '0',
+            border: '0',
+            'border-radius': '6px',
+            'font-family': 'system-ui, sans-serif',
+            'font-size': '15px',
+            'line-height': '1',
+            'text-align': 'center',
+            'text-transform': 'none',
+            'white-space': 'nowrap',
+            cursor: 'move',
+            'user-select': 'none',
+            'touch-action': 'none',
+            'box-shadow': '0 2px 6px rgba(0, 0, 0, 0.25)',
+            'z-index': '2147483647',
+        };
+        Object.entries(styles).forEach(([property, value]) => button.style.setProperty(property, value, 'important'));
+        button.setAttribute('data-tm-floating-control', String(slot));
+    }
+
     function createFloatingToggleButton() {
         if (!document.body) {
             return;
@@ -234,26 +273,10 @@
         toggleButton.type = 'button';
         toggleButton.textContent = '🌙';
         toggleButton.title = 'Toggle Force Dark Mode';
-        toggleButton.style.cssText = `
-            position: absolute;
-            z-index: 2147483647;
-            padding: 6px 10px;
-            background-color: rgba(0, 0, 0, 0.55);
-            color: #f0f0f0;
-            border: none;
-            border-radius: 6px;
-            cursor: move;
-            font-size: 15px;
-            user-select: none;
-            touch-action: none;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-        `;
+        applyFloatingControlStyle(toggleButton, 2);
+        toggleButton.style.setProperty('background-color', 'rgba(0, 0, 0, 0.55)', 'important');
+        toggleButton.style.setProperty('color', '#f0f0f0', 'important');
         document.body.appendChild(toggleButton);
-
-        toggleButton.style.top = '148px';
-        toggleButton.style.right = '0px';
-        toggleButton.style.left = 'auto';
-        toggleButton.style.bottom = 'auto';
 
         const dragThreshold = 3;
         let isDragging = false;
@@ -268,13 +291,13 @@
 
         function updateButtonAppearance() {
             if (isEnabled) {
-                toggleButton.style.backgroundColor = 'rgba(34, 139, 34, 0.85)';
-                toggleButton.style.color = '#ffffff';
+                toggleButton.style.setProperty('background-color', 'rgba(34, 139, 34, 0.85)', 'important');
+                toggleButton.style.setProperty('color', '#ffffff', 'important');
                 toggleButton.setAttribute('aria-pressed', 'true');
                 toggleButton.title = 'Force Dark Mode is ON (click to disable)';
             } else {
-                toggleButton.style.backgroundColor = 'rgba(0, 0, 0, 0.55)';
-                toggleButton.style.color = '#f0f0f0';
+                toggleButton.style.setProperty('background-color', 'rgba(0, 0, 0, 0.55)', 'important');
+                toggleButton.style.setProperty('color', '#f0f0f0', 'important');
                 toggleButton.setAttribute('aria-pressed', 'false');
                 toggleButton.title = 'Force Dark Mode is OFF (click to enable)';
             }
@@ -324,8 +347,8 @@
                 hasMoved = true;
             }
             if (!hasSwitchedToLeft) {
-                toggleButton.style.right = 'auto';
-                toggleButton.style.bottom = 'auto';
+                toggleButton.style.setProperty('right', 'auto', 'important');
+                toggleButton.style.setProperty('bottom', 'auto', 'important');
                 hasSwitchedToLeft = true;
             }
             e.preventDefault();
@@ -336,8 +359,8 @@
             currentX = Math.min(Math.max(currentX, 0), maxX);
             currentY = Math.min(Math.max(currentY, 0), maxY);
 
-            toggleButton.style.left = `${currentX}px`;
-            toggleButton.style.top = `${currentY}px`;
+            toggleButton.style.setProperty('left', `${currentX}px`, 'important');
+            toggleButton.style.setProperty('top', `${currentY}px`, 'important');
         }
 
         function dragEnd() {

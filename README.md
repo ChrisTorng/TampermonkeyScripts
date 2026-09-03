@@ -115,6 +115,19 @@ Expose a draggable top-right 🌙 toggle button to force dark mode colors with a
 
 Reload [Medium](https://medium.com/) and Medium-powered domains once per session to avoid hangups.
 
+## Floating control layout
+
+The page-wide controls share one viewport-fixed layout contract so page CSS and horizontally overflowing documents cannot resize or displace them. Their default order is:
+
+| Slot | Control | Script | Top offset |
+| ---: | :---: | --- | ---: |
+| 0 | → | All Go Internet Archive / Internet Archive fallback | 70 px |
+| 1 | ↔ | Force Mobile View | 114 px |
+| 2 | 🌙 | Force Dark Mode | 158 px |
+| 3 | 譯∞ | Translate Preformatted Text | 202 px |
+
+Every control is 44 × 34 px, sits 8 px from the viewport's right edge, and uses a 10 px vertical gap. Each script's `applyFloatingControlStyle` function carries the same constants and applies geometry inline with `!important`, protecting it from site-wide button rules such as `button { width: 100% !important; }`. Drag bounds use the viewport rather than document dimensions, so an overly wide page does not move controls beyond the visible right edge. To add, reorder, or resize a control, update the synchronized helper in all five scripts, this table, and the runtime layout assertions in the corresponding `scripts/test-*.js` files together; assign each control a unique consecutive slot to prevent overlap.
+
 ## Test Cases
 
 See [TestCases.md](TestCases.md) for sample URLs across the scripts.
