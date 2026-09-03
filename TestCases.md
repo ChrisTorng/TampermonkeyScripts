@@ -1,3 +1,6 @@
+# Floating control layout
+Runtime tests verify the shared page-anchored slot, dimensions, edge alignment, low opacity, and `!important` page-CSS isolation for →, ↔, 🌙, and 譯∞. Drag tests also verify viewport-relative movement where supported.
+
 # Test status legend
 - `AUTOMATED`: covered by automated runtime tests in `node --test`.
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.4.6
+// @version      2026-09-03_1.4.8
 // @description  Send most paywall articles to Internet Archive for archiving, hide fixed titles, and offer an Archive Today fallback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -48,6 +48,46 @@
 (function () {
     'use strict';
 
+    // Keep these values synchronized with README.md's Floating control layout table.
+    function applyFloatingControlStyle(button, slot) {
+        const styles = {
+            appearance: 'none',
+            position: 'absolute',
+            top: `${70 + (slot * 44)}px`,
+            right: 'auto',
+            bottom: 'auto',
+            left: 'calc(100vw - 44px)',
+            display: 'inline-flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            'box-sizing': 'border-box',
+            width: '44px',
+            'min-width': '44px',
+            'max-width': '44px',
+            height: '34px',
+            'min-height': '34px',
+            'max-height': '34px',
+            margin: '0',
+            opacity: '0.5',
+            padding: '0',
+            border: '0',
+            'border-radius': '6px',
+            'font-family': 'system-ui, sans-serif',
+            'font-size': '15px',
+            'line-height': '1',
+            'text-align': 'center',
+            'text-transform': 'none',
+            'white-space': 'nowrap',
+            cursor: 'move',
+            'user-select': 'none',
+            'touch-action': 'none',
+            'box-shadow': '0 2px 6px rgba(0, 0, 0, 0.25)',
+            'z-index': '2147483647',
+        };
+        Object.entries(styles).forEach(([property, value]) => button.style.setProperty(property, value, 'important'));
+        button.setAttribute('data-tm-floating-control', String(slot));
+    }
+
     if (window.location.hostname === 'web.archive.org') {
         const currentUrl = window.location.href;
         const match = currentUrl.match(/\/web\/\d+\*?\/(.*)/);
@@ -56,21 +96,9 @@
             // 創建並添加 Go 按鈕
             const goButton = document.createElement('button');
             goButton.textContent = '→';
-            goButton.style.cssText = `
-                position: fixed;
-                top: 70px;
-                right: 0px;
-                z-index: 2147483647;
-                padding: 5px 10px;
-                background-color: rgba(0, 0, 0, 0.3);
-                color: darkgray;
-                border: none;
-                border-radius: 4px;
-                cursor: move;
-                font-size: 14px;
-                user-select: none;
-                touch-action: none;
-            `;
+            applyFloatingControlStyle(goButton, 0);
+            goButton.style.setProperty('background-color', 'rgba(0, 0, 0, 0.55)', 'important');
+            goButton.style.setProperty('color', '#f0f0f0', 'important');
                 document.body.appendChild(goButton);
             console.log('Go 按鈕已建立');
 

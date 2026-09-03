@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-01_1.0.1
+// @version      2026-09-03_1.0.3
 // @description  Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
 // @author       Chris Torng
 // @match        *://*/*
@@ -53,9 +53,6 @@
             top: 6px !important;
         }
         #tm-translate-all-pre {
-            cursor: move !important;
-            position: absolute !important;
-            touch-action: none !important;
             z-index: 2147483647 !important;
         }
         [${convertedAttribute}] {
@@ -67,6 +64,46 @@
     `;
     (document.head || document.documentElement).appendChild(style);
 
+    // Keep these values synchronized with README.md's Floating control layout table.
+    function applyFloatingControlStyle(button, slot) {
+        const styles = {
+            appearance: 'none',
+            position: 'absolute',
+            top: `${70 + (slot * 44)}px`,
+            right: 'auto',
+            bottom: 'auto',
+            left: 'calc(100vw - 44px)',
+            display: 'inline-flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            'box-sizing': 'border-box',
+            width: '44px',
+            'min-width': '44px',
+            'max-width': '44px',
+            height: '34px',
+            'min-height': '34px',
+            'max-height': '34px',
+            margin: '0',
+            opacity: '0.5',
+            padding: '0',
+            border: '0',
+            'border-radius': '6px',
+            'font-family': 'system-ui, sans-serif',
+            'font-size': '15px',
+            'line-height': '1',
+            'text-align': 'center',
+            'text-transform': 'none',
+            'white-space': 'nowrap',
+            cursor: 'move',
+            'user-select': 'none',
+            'touch-action': 'none',
+            'box-shadow': '0 2px 6px rgba(0, 0, 0, 0.25)',
+            'z-index': '2147483647',
+        };
+        Object.entries(styles).forEach(([property, value]) => button.style.setProperty(property, value, 'important'));
+        button.setAttribute('data-tm-floating-control', String(slot));
+    }
+
     const allButton = document.createElement('button');
     allButton.id = 'tm-translate-all-pre';
     allButton.className = 'tm-translate-pre-button';
@@ -75,10 +112,9 @@
     allButton.setAttribute('aria-label', 'Translate all preformatted blocks');
     allButton.title = 'Turn every preformatted block into translatable content';
     allButton.hidden = true;
-    allButton.style.top = '192px';
-    allButton.style.right = '0px';
-    allButton.style.left = 'auto';
-    allButton.style.bottom = 'auto';
+    applyFloatingControlStyle(allButton, 3);
+    allButton.style.setProperty('background-color', 'rgba(0, 0, 0, .35)', 'important');
+    allButton.style.setProperty('color', 'rgba(255, 255, 255, .75)', 'important');
 
     function copyAttributes(source, target) {
         Array.from(source.attributes || []).forEach((attribute) => {
@@ -189,10 +225,10 @@
         const maxY = Math.max(document.documentElement.clientHeight, window.innerHeight) - allButton.offsetHeight;
         const currentX = Math.min(Math.max(pointer.clientX - initialX, 0), maxX);
         const currentY = Math.min(Math.max(pointer.clientY - initialY, 0), maxY);
-        allButton.style.left = `${currentX}px`;
-        allButton.style.top = `${currentY}px`;
-        allButton.style.right = 'auto';
-        allButton.style.bottom = 'auto';
+        allButton.style.setProperty('left', `${currentX}px`, 'important');
+        allButton.style.setProperty('top', `${currentY}px`, 'important');
+        allButton.style.setProperty('right', 'auto', 'important');
+        allButton.style.setProperty('bottom', 'auto', 'important');
     }
 
     function dragEnd() {

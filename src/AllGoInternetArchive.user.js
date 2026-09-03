@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-04-12_1.2.7
+// @version      2026-09-03_1.2.9
 // @description  Add a quick Internet Archive link on any site for testing snapshots.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -248,6 +248,46 @@
 
     onDocumentReady(initializeArchiveTodayLinkIcons);
 
+    // Keep these values synchronized with README.md's Floating control layout table.
+    function applyFloatingControlStyle(button, slot) {
+        const styles = {
+            appearance: 'none',
+            position: 'absolute',
+            top: `${70 + (slot * 44)}px`,
+            right: 'auto',
+            bottom: 'auto',
+            left: 'calc(100vw - 44px)',
+            display: 'inline-flex',
+            'align-items': 'center',
+            'justify-content': 'center',
+            'box-sizing': 'border-box',
+            width: '44px',
+            'min-width': '44px',
+            'max-width': '44px',
+            height: '34px',
+            'min-height': '34px',
+            'max-height': '34px',
+            margin: '0',
+            opacity: '0.5',
+            padding: '0',
+            border: '0',
+            'border-radius': '6px',
+            'font-family': 'system-ui, sans-serif',
+            'font-size': '15px',
+            'line-height': '1',
+            'text-align': 'center',
+            'text-transform': 'none',
+            'white-space': 'nowrap',
+            cursor: 'move',
+            'user-select': 'none',
+            'touch-action': 'none',
+            'box-shadow': '0 2px 6px rgba(0, 0, 0, 0.25)',
+            'z-index': '2147483647',
+        };
+        Object.entries(styles).forEach(([property, value]) => button.style.setProperty(property, value, 'important'));
+        button.setAttribute('data-tm-floating-control', String(slot));
+    }
+
     function createFloatingGoButton() {
         if (!document.body) {
             return;
@@ -255,21 +295,9 @@
 
         const goButton = document.createElement('button');
         goButton.textContent = '→';
-        goButton.style.cssText = `
-            position: absolute;
-            top: 70px;
-            right: 0px;
-            z-index: 2147483647;
-            padding: 5px 10px;
-            background-color: rgba(0, 0, 0, 0.3);
-            color: darkgray;
-            border: none;
-            border-radius: 4px;
-            cursor: move;
-            font-size: 14px;
-            user-select: none;
-            touch-action: none;
-        `;
+        applyFloatingControlStyle(goButton, 0);
+        goButton.style.setProperty('background-color', 'rgba(0, 0, 0, 0.55)', 'important');
+        goButton.style.setProperty('color', '#f0f0f0', 'important');
         document.body.appendChild(goButton);
 
         let isDragging = false;
@@ -308,15 +336,15 @@
                 }
 
                 // 防止按鈕拖出視窗
-                const maxX = Math.max(document.documentElement.scrollWidth, window.innerWidth) - goButton.offsetWidth;
-                const maxY = Math.max(document.documentElement.scrollHeight, window.innerHeight) - goButton.offsetHeight;
+                const maxX = Math.max(document.documentElement.clientWidth, window.innerWidth) - goButton.offsetWidth;
+                const maxY = Math.max(document.documentElement.clientHeight, window.innerHeight) - goButton.offsetHeight;
 
                 currentX = Math.min(Math.max(currentX, 0), maxX);
                 currentY = Math.min(Math.max(currentY, 0), maxY);
 
-                goButton.style.left = currentX + 'px';
-                goButton.style.top = currentY + 'px';
-                goButton.style.right = 'auto';
+                goButton.style.setProperty('left', `${currentX}px`, 'important');
+                goButton.style.setProperty('top', `${currentY}px`, 'important');
+                goButton.style.setProperty('right', 'auto', 'important');
             }
         }
 

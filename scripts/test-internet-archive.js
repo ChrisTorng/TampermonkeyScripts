@@ -6,6 +6,20 @@ const { describe, test } = require('node:test');
 
 const { createHarness } = require('./dom-harness');
 
+function assertFloatingControlLayout(button, slot) {
+    assert.equal(button.getAttribute('data-tm-floating-control'), String(slot));
+    assert.equal(button.style.getPropertyValue('position'), 'absolute');
+    assert.equal(button.style.getPropertyValue('top'), `${70 + (slot * 44)}px`);
+    assert.equal(button.style.getPropertyValue('right'), 'auto');
+    assert.equal(button.style.getPropertyValue('left'), 'calc(100vw - 44px)');
+    assert.equal(button.style.getPropertyValue('opacity'), '0.5');
+    assert.equal(button.style.getPropertyValue('width'), '44px');
+    assert.equal(button.style.getPropertyValue('height'), '34px');
+    for (const property of ['position', 'top', 'right', 'left', 'opacity', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
+        assert.equal(button.style.getPropertyPriority(property), 'important', `${property} must resist page CSS`);
+    }
+}
+
 const repoRoot = path.join(__dirname, '..');
 const scriptPath = path.join(repoRoot, 'src', 'InternetArchive.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
@@ -75,6 +89,7 @@ describe('InternetArchive redirects captured pages', () => {
         const goButton = harness.document.body.children.find((child) => child.tagName === 'BUTTON');
         assert(goButton, 'Expected a Go button on web.archive.org pages.');
         assert.equal(goButton.textContent, '→');
+        assertFloatingControlLayout(goButton, 0);
 
         goButton.click();
         assert.equal(

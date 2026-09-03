@@ -6,6 +6,20 @@ const { describe, test } = require('node:test');
 
 const { createHarness } = require('./dom-harness');
 
+function assertFloatingControlLayout(button, slot) {
+    assert.equal(button.getAttribute('data-tm-floating-control'), String(slot));
+    assert.equal(button.style.getPropertyValue('position'), 'absolute');
+    assert.equal(button.style.getPropertyValue('top'), `${70 + (slot * 44)}px`);
+    assert.equal(button.style.getPropertyValue('right'), 'auto');
+    assert.equal(button.style.getPropertyValue('left'), 'calc(100vw - 44px)');
+    assert.equal(button.style.getPropertyValue('opacity'), '0.5');
+    assert.equal(button.style.getPropertyValue('width'), '44px');
+    assert.equal(button.style.getPropertyValue('height'), '34px');
+    for (const property of ['position', 'top', 'right', 'left', 'opacity', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
+        assert.equal(button.style.getPropertyPriority(property), 'important', `${property} must resist page CSS`);
+    }
+}
+
 const scriptPath = path.join(__dirname, '..', 'src', 'TranslatePreformattedText.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
 
@@ -56,7 +70,7 @@ describe('Translate Preformatted Text', () => {
         const allButton = harness.document.getElementById('tm-translate-all-pre');
         assert.equal(allButton.hidden, false);
         assert.equal(allButton.textContent, '譯∞');
-        assert.equal(allButton.style.top, '192px');
+        assertFloatingControlLayout(allButton, 3);
         allButton.click();
 
         assert.equal(harness.document.querySelectorAll('pre').length, 0);
@@ -68,15 +82,16 @@ describe('Translate Preformatted Text', () => {
         const harness = execute((currentHarness) => addPre(currentHarness, 'drag me'));
         const allButton = harness.document.getElementById('tm-translate-all-pre');
         const preventDefault = () => {};
-        allButton.offsetTop = 192;
+        allButton.offsetTop = 202;
 
-        allButton.dispatchEvent({ type: 'mousedown', clientX: 10, clientY: 200 });
+        allButton.dispatchEvent({ type: 'mousedown', clientX: 10, clientY: 210 });
         harness.document.dispatchEvent({ type: 'mousemove', clientX: 110, clientY: 300, preventDefault });
         harness.document.dispatchEvent({ type: 'mouseup' });
         allButton.dispatchEvent({ type: 'click', preventDefault });
 
         assert.equal(allButton.style.left, '100px');
         assert.equal(allButton.style.top, '292px');
+        assert.equal(allButton.style.getPropertyPriority('top'), 'important');
         assert.equal(allButton.style.right, 'auto');
         assert.equal(harness.document.querySelectorAll('pre').length, 1);
     });

@@ -6,6 +6,20 @@ const { describe, test } = require('node:test');
 
 const { createHarness } = require('./dom-harness');
 
+function assertFloatingControlLayout(button, slot) {
+    assert.equal(button.getAttribute('data-tm-floating-control'), String(slot));
+    assert.equal(button.style.getPropertyValue('position'), 'absolute');
+    assert.equal(button.style.getPropertyValue('top'), `${70 + (slot * 44)}px`);
+    assert.equal(button.style.getPropertyValue('right'), 'auto');
+    assert.equal(button.style.getPropertyValue('left'), 'calc(100vw - 44px)');
+    assert.equal(button.style.getPropertyValue('opacity'), '0.5');
+    assert.equal(button.style.getPropertyValue('width'), '44px');
+    assert.equal(button.style.getPropertyValue('height'), '34px');
+    for (const property of ['position', 'top', 'right', 'left', 'opacity', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
+        assert.equal(button.style.getPropertyPriority(property), 'important', `${property} must resist page CSS`);
+    }
+}
+
 const repoRoot = path.join(__dirname, '..');
 const scriptPath = path.join(repoRoot, 'src', 'AllGoInternetArchive.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
@@ -58,6 +72,7 @@ describe('AllGoInternetArchive on captured pages', () => {
         assert(archiveLink.querySelector('.agi-archive-today-icon'));
         assert.equal(regularLink.querySelector('.agi-archive-today-icon'), null);
         assert(button, 'Expected floating archive button to be created.');
+        assertFloatingControlLayout(button, 0);
 
         button.click();
         assert.equal(harness.location.href, 'https://web.archive.org/https://indieweb.org/POSSE');
