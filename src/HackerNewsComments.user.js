@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News Comments
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-01_1.5.0
+// @version      2026-09-03_1.5.1
 // @description  Add an article button for Hacker News comments, including pages reached through redirects.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -159,7 +159,7 @@
         link.rel = 'noopener noreferrer';
         const commentCount = story.num_comments || 0;
         const score = Number.isFinite(story.points) ? story.points : null;
-        link.textContent = `Y ${commentCount}${score === null ? '' : ` · ▲${score}`}`;
+        link.textContent = `Y${score === null ? '' : ` ${score}`} · 💬 ${commentCount}`;
         link.title = [
             story.title || 'Hacker News discussion',
             `${commentCount} comments`,
