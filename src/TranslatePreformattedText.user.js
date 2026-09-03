@@ -1,0 +1,223 @@
+// ==UserScript==
+// @name         Translate Preformatted Text
+// @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
+// @version      2026-09-01_1.0.1
+// @description  Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
+// @author       Chris Torng
+// @match        *://*/*
+// @grant        none
+// @run-at       document-idle
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const wrapperAttribute = 'data-tm-translatable-pre-wrapper';
+    const convertedAttribute = 'data-tm-translatable-pre-converted';
+
+    const style = document.createElement('style');
+    style.textContent = `
+        [${wrapperAttribute}] {
+            position: relative !important;
+        }
+        .tm-translate-pre-button {
+            appearance: none !important;
+            align-items: center !important;
+            background: rgba(0, 0, 0, .35) !important;
+            border: 0 !important;
+            border-radius: 4px !important;
+            box-shadow: none !important;
+            color: rgba(255, 255, 255, .75) !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            font: 600 12px/1 system-ui, sans-serif !important;
+            height: 24px !important;
+            justify-content: center !important;
+            min-height: 0 !important;
+            min-width: 24px !important;
+            opacity: .5 !important;
+            padding: 0 5px !important;
+            text-transform: none !important;
+            transition: opacity .15s ease !important;
+            user-select: none !important;
+            width: auto !important;
+            z-index: 2147483646 !important;
+        }
+        .tm-translate-pre-button:hover,
+        .tm-translate-pre-button:focus-visible {
+            opacity: .9 !important;
+        }
+        .tm-translate-pre-one {
+            position: absolute !important;
+            right: 6px !important;
+            top: 6px !important;
+        }
+        #tm-translate-all-pre {
+            cursor: move !important;
+            position: absolute !important;
+            touch-action: none !important;
+            z-index: 2147483647 !important;
+        }
+        [${convertedAttribute}] {
+            box-sizing: border-box;
+            font-family: monospace;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+
+    const allButton = document.createElement('button');
+    allButton.id = 'tm-translate-all-pre';
+    allButton.className = 'tm-translate-pre-button';
+    allButton.type = 'button';
+    allButton.textContent = '譯∞';
+    allButton.setAttribute('aria-label', 'Translate all preformatted blocks');
+    allButton.title = 'Turn every preformatted block into translatable content';
+    allButton.hidden = true;
+    allButton.style.top = '192px';
+    allButton.style.right = '0px';
+    allButton.style.left = 'auto';
+    allButton.style.bottom = 'auto';
+
+    function copyAttributes(source, target) {
+        Array.from(source.attributes || []).forEach((attribute) => {
+            if (Array.isArray(attribute)) {
+                target.setAttribute(attribute[0], attribute[1]);
+            } else {
+                target.setAttribute(attribute.name, attribute.value);
+            }
+        });
+        target.className = source.className;
+        target.id = source.id;
+    }
+
+    function updateAllButton() {
+        allButton.hidden = document.querySelectorAll(`[${wrapperAttribute}]`).length === 0;
+    }
+
+    function convert(wrapper) {
+        if (!wrapper || !wrapper.parentNode) {
+            return;
+        }
+
+        const pre = wrapper.querySelector('pre');
+        if (!pre) {
+            return;
+        }
+
+        const replacement = document.createElement('div');
+        copyAttributes(pre, replacement);
+        replacement.setAttribute(convertedAttribute, 'true');
+        replacement.textContent = pre.textContent;
+        wrapper.parentNode.insertBefore(replacement, wrapper);
+        wrapper.parentNode.removeChild(wrapper);
+        updateAllButton();
+    }
+
+    function enhance(pre) {
+        if (!pre || !pre.parentNode || pre.closest(`[${wrapperAttribute}]`)) {
+            return;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute(wrapperAttribute, 'true');
+        const parent = pre.parentNode;
+        parent.insertBefore(wrapper, pre);
+        parent.removeChild(pre);
+        wrapper.appendChild(pre);
+
+        const button = document.createElement('button');
+        button.className = 'tm-translate-pre-button tm-translate-pre-one';
+        button.type = 'button';
+        button.textContent = '譯';
+        button.setAttribute('aria-label', 'Translate this preformatted block');
+        button.title = 'Turn this preformatted block into translatable content';
+        button.addEventListener('click', () => convert(wrapper));
+        wrapper.appendChild(button);
+    }
+
+    function scan(root = document) {
+        if (root.nodeType === 1 && root.tagName === 'PRE') {
+            enhance(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll('pre').forEach(enhance);
+        }
+        updateAllButton();
+    }
+
+    const dragThreshold = 3;
+    let isDragging = false;
+    let hasMoved = false;
+    let initialX = 0;
+    let initialY = 0;
+    let startClientX = 0;
+    let startClientY = 0;
+
+    function getPointer(event) {
+        return event.type.startsWith('touch') ? event.touches[0] : event;
+    }
+
+    function dragStart(event) {
+        if (event.target !== allButton) {
+            return;
+        }
+        const pointer = getPointer(event);
+        isDragging = true;
+        hasMoved = false;
+        startClientX = pointer.clientX;
+        startClientY = pointer.clientY;
+        initialX = pointer.clientX - allButton.offsetLeft;
+        initialY = pointer.clientY - allButton.offsetTop;
+    }
+
+    function drag(event) {
+        if (!isDragging) {
+            return;
+        }
+        const pointer = getPointer(event);
+        const deltaX = Math.abs(pointer.clientX - startClientX);
+        const deltaY = Math.abs(pointer.clientY - startClientY);
+        if (!hasMoved && deltaX < dragThreshold && deltaY < dragThreshold) {
+            return;
+        }
+
+        hasMoved = true;
+        event.preventDefault();
+        const maxX = Math.max(document.documentElement.clientWidth, window.innerWidth) - allButton.offsetWidth;
+        const maxY = Math.max(document.documentElement.clientHeight, window.innerHeight) - allButton.offsetHeight;
+        const currentX = Math.min(Math.max(pointer.clientX - initialX, 0), maxX);
+        const currentY = Math.min(Math.max(pointer.clientY - initialY, 0), maxY);
+        allButton.style.left = `${currentX}px`;
+        allButton.style.top = `${currentY}px`;
+        allButton.style.right = 'auto';
+        allButton.style.bottom = 'auto';
+    }
+
+    function dragEnd() {
+        isDragging = false;
+    }
+
+    allButton.addEventListener('mousedown', dragStart);
+    allButton.addEventListener('touchstart', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('touchmove', drag);
+    document.addEventListener('mouseup', dragEnd);
+    document.addEventListener('touchend', dragEnd);
+
+    allButton.addEventListener('click', (event) => {
+        if (hasMoved) {
+            hasMoved = false;
+            return;
+        }
+        event.preventDefault();
+        Array.from(document.querySelectorAll(`[${wrapperAttribute}]`)).forEach(convert);
+    });
+    document.body.appendChild(allButton);
+    scan();
+
+    new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => mutation.addedNodes.forEach(scan));
+    }).observe(document.body, { childList: true, subtree: true });
+})();
