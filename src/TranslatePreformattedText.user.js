@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-03_1.0.2
+// @version      2026-09-03_1.0.3
 // @description  Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
 // @author       Chris Torng
 // @match        *://*/*
@@ -68,11 +68,11 @@
     function applyFloatingControlStyle(button, slot) {
         const styles = {
             appearance: 'none',
-            position: 'fixed',
+            position: 'absolute',
             top: `${70 + (slot * 44)}px`,
-            right: '8px',
+            right: 'auto',
             bottom: 'auto',
-            left: 'auto',
+            left: 'calc(100vw - 44px)',
             display: 'inline-flex',
             'align-items': 'center',
             'justify-content': 'center',
@@ -84,6 +84,7 @@
             'min-height': '34px',
             'max-height': '34px',
             margin: '0',
+            opacity: '0.5',
             padding: '0',
             border: '0',
             'border-radius': '6px',

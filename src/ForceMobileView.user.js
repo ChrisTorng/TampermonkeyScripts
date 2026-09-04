@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-03_1.0.4
+// @version      2026-09-03_1.0.5
 // @description  Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -555,11 +555,11 @@
     function applyFloatingControlStyle(button, slot) {
         const styles = {
             appearance: 'none',
-            position: 'fixed',
+            position: 'absolute',
             top: `${70 + (slot * 44)}px`,
-            right: '8px',
+            right: 'auto',
             bottom: 'auto',
-            left: 'auto',
+            left: 'calc(100vw - 44px)',
             display: 'inline-flex',
             'align-items': 'center',
             'justify-content': 'center',
@@ -571,6 +571,7 @@
             'min-height': '34px',
             'max-height': '34px',
             margin: '0',
+            opacity: '0.5',
             padding: '0',
             border: '0',
             'border-radius': '6px',

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-03_1.4.7
+// @version      2026-09-03_1.4.8
 // @description  Send most paywall articles to Internet Archive for archiving, hide fixed titles, and offer an Archive Today fallback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -52,11 +52,11 @@
     function applyFloatingControlStyle(button, slot) {
         const styles = {
             appearance: 'none',
-            position: 'fixed',
+            position: 'absolute',
             top: `${70 + (slot * 44)}px`,
-            right: '8px',
+            right: 'auto',
             bottom: 'auto',
-            left: 'auto',
+            left: 'calc(100vw - 44px)',
             display: 'inline-flex',
             'align-items': 'center',
             'justify-content': 'center',
@@ -68,6 +68,7 @@
             'min-height': '34px',
             'max-height': '34px',
             margin: '0',
+            opacity: '0.5',
             padding: '0',
             border: '0',
             'border-radius': '6px',

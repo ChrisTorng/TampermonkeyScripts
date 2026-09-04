@@ -117,7 +117,7 @@ Reload [Medium](https://medium.com/) and Medium-powered domains once per session
 
 ## Floating control layout
 
-The page-wide controls share one viewport-fixed layout contract so page CSS and horizontally overflowing documents cannot resize or displace them. Their default order is:
+The page-wide controls share one page-anchored layout contract so page CSS and horizontally overflowing documents cannot resize or initially displace them. Their default order is:
 
 | Slot | Control | Script | Top offset |
 | ---: | :---: | --- | ---: |
@@ -126,7 +126,7 @@ The page-wide controls share one viewport-fixed layout contract so page CSS and 
 | 2 | 🌙 | Force Dark Mode | 158 px |
 | 3 | 譯∞ | Translate Preformatted Text | 202 px |
 
-Every control is 44 × 34 px, sits 8 px from the viewport's right edge, and uses a 10 px vertical gap. Each script's `applyFloatingControlStyle` function carries the same constants and applies geometry inline with `!important`, protecting it from site-wide button rules such as `button { width: 100% !important; }`. Drag bounds use the viewport rather than document dimensions, so an overly wide page does not move controls beyond the visible right edge. To add, reorder, or resize a control, update the synchronized helper in all five scripts, this table, and the runtime layout assertions in the corresponding `scripts/test-*.js` files together; assign each control a unique consecutive slot to prevent overlap.
+Every control is 44 × 34 px, starts flush against the viewport's right edge, uses 50% opacity, and has a 10 px vertical gap. Each script's `applyFloatingControlStyle` function carries the same constants and applies geometry and opacity inline with `!important`, protecting it from site-wide button rules such as `button { width: 100% !important; }`. The controls use document-level `position: absolute` with a viewport-relative initial left offset: they start at the visible right edge but scroll out with the page instead of covering text throughout reading. To add, reorder, or resize a control, update the synchronized helper in all five scripts, this table, and the runtime layout assertions in the corresponding `scripts/test-*.js` files together; assign each control a unique consecutive slot to prevent overlap.
 
 ## Test Cases
 
