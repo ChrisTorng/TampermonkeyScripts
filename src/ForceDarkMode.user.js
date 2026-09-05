@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-03_1.0.5
+// @version      2026-09-04_1.0.6
 // @description  Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -225,7 +225,7 @@
         }
     }
 
-    // Keep these values synchronized with README.md's Floating control layout table.
+    // Keep this shared floating-control contract synchronized as documented in AGENTS.md.
     function applyFloatingControlStyle(button, slot) {
         const styles = {
             appearance: 'none',

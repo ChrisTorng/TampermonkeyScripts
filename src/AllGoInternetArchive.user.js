@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-03_1.2.9
+// @version      2026-09-04_1.2.10
 // @description  Add a quick Internet Archive link on any site for testing snapshots.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -248,7 +248,7 @@
 
     onDocumentReady(initializeArchiveTodayLinkIcons);
 
-    // Keep these values synchronized with README.md's Floating control layout table.
+    // Keep this shared floating-control contract synchronized as documented in AGENTS.md.
     function applyFloatingControlStyle(button, slot) {
         const styles = {
             appearance: 'none',

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-05_1.1.0
-// @description  Make preformatted blocks translatable and keep mobile Wikipedia sections visible to automatic translation.
+// @version      2026-09-05_1.1.1
+// @description  Add per-block and draggable page-wide toggles for preformatted text, and keep mobile Wikipedia sections visible to automatic translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -48,6 +48,10 @@
         .tm-translate-pre-button:focus-visible {
             opacity: .9 !important;
         }
+        .tm-translate-pre-button[aria-pressed="true"] {
+            background-color: rgba(34, 139, 34, .85) !important;
+            color: #fff !important;
+        }
         .tm-translate-pre-one {
             position: absolute !important;
             right: 6px !important;
@@ -65,7 +69,7 @@
     `;
     (document.head || document.documentElement).appendChild(style);
 
-    // Keep these values synchronized with README.md's Floating control layout table.
+    // Keep this shared floating-control contract synchronized as documented in AGENTS.md.
     function applyFloatingControlStyle(button, slot) {
         const styles = {
             appearance: 'none',
@@ -129,26 +133,43 @@
         target.id = source.id;
     }
 
-    function updateAllButton() {
-        allButton.hidden = document.querySelectorAll(`[${wrapperAttribute}]`).length === 0;
+    function setButtonState(button, isActive, scope) {
+        button.setAttribute('aria-pressed', String(isActive));
+        button.style.setProperty('background-color', isActive ? 'rgba(34, 139, 34, .85)' : 'rgba(0, 0, 0, .35)', 'important');
+        button.style.setProperty('color', isActive ? '#fff' : 'rgba(255, 255, 255, .75)', 'important');
+        button.title = isActive
+            ? `Show original ${scope} preformatted content`
+            : `Make ${scope} preformatted content translatable`;
     }
 
-    function convert(wrapper) {
-        if (!wrapper || !wrapper.parentNode) {
+    function updateAllButton() {
+        const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        const hasBlocks = wrappers.length > 0;
+        const allConverted = hasBlocks && wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
+        allButton.hidden = !hasBlocks;
+        allButton.style.setProperty('display', hasBlocks ? 'inline-flex' : 'none', 'important');
+        setButtonState(allButton, allConverted, 'all');
+    }
+
+    function setConverted(wrapper, shouldConvert) {
+        if (!wrapper) {
             return;
         }
-
-        const pre = wrapper.querySelector('pre');
-        if (!pre) {
+        const current = wrapper.querySelector(shouldConvert ? 'pre' : `[${convertedAttribute}]`);
+        if (!current) {
             return;
         }
-
-        const replacement = document.createElement('div');
-        copyAttributes(pre, replacement);
-        replacement.setAttribute(convertedAttribute, 'true');
-        replacement.textContent = pre.textContent;
-        wrapper.parentNode.insertBefore(replacement, wrapper);
-        wrapper.parentNode.removeChild(wrapper);
+        const replacement = document.createElement(shouldConvert ? 'div' : 'pre');
+        copyAttributes(current, replacement);
+        if (shouldConvert) {
+            replacement.setAttribute(convertedAttribute, 'true');
+        } else {
+            replacement.removeAttribute(convertedAttribute);
+        }
+        replacement.textContent = current.textContent;
+        wrapper.insertBefore(replacement, current);
+        wrapper.removeChild(current);
+        setButtonState(wrapper.querySelector('.tm-translate-pre-one'), shouldConvert, 'this');
         updateAllButton();
     }
 
@@ -169,8 +190,10 @@
         button.type = 'button';
         button.textContent = '譯';
         button.setAttribute('aria-label', 'Translate this preformatted block');
-        button.title = 'Turn this preformatted block into translatable content';
-        button.addEventListener('click', () => convert(wrapper));
+        setButtonState(button, false, 'this');
+        button.addEventListener('click', () => {
+            setConverted(wrapper, !wrapper.querySelector(`[${convertedAttribute}]`));
+        });
         wrapper.appendChild(button);
     }
 
@@ -268,7 +291,9 @@
             return;
         }
         event.preventDefault();
-        Array.from(document.querySelectorAll(`[${wrapperAttribute}]`)).forEach(convert);
+        const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        const shouldConvert = !wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
+        wrappers.forEach((wrapper) => setConverted(wrapper, shouldConvert));
     });
     function mountAllButton() {
         if (document.body && !allButton.parentNode) {

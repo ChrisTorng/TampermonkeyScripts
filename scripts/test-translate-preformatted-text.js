@@ -40,7 +40,16 @@ function addPre(harness, text, className = '') {
 }
 
 describe('Translate Preformatted Text', () => {
-    test('a block button converts one PRE while retaining its text and class', () => {
+    test('the page-wide button stays hidden when there are no PRE blocks', () => {
+        const harness = execute(() => {});
+        const allButton = harness.document.getElementById('tm-translate-all-pre');
+
+        assert.equal(allButton.hidden, true);
+        assert.equal(allButton.style.getPropertyValue('display'), 'none');
+        assert.equal(allButton.style.getPropertyPriority('display'), 'important');
+    });
+
+    test('a block button toggles between PRE and DIV while retaining its text and class', () => {
         const harness = execute((currentHarness) => {
             addPre(currentHarness, 'declare const tools: {\n  apply_patch(input: string)\n}', 'tool-code');
             addPre(currentHarness, 'second block');
@@ -58,9 +67,18 @@ describe('Translate Preformatted Text', () => {
         assert.equal(converted.className, 'tool-code');
         assert.match(converted.textContent, /apply_patch/);
         assert.equal(harness.document.querySelectorAll('pre').length, 1);
+        assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
+        assert.equal(buttons[0].style.getPropertyValue('background-color'), 'rgba(34, 139, 34, .85)');
+
+        buttons[0].dispatchEvent({ type: 'click' });
+        const restored = harness.document.querySelector('pre.tool-code');
+        assert(restored);
+        assert.match(restored.textContent, /apply_patch/);
+        assert.equal(harness.document.querySelectorAll('[data-tm-translatable-pre-converted]').length, 0);
+        assert.equal(buttons[0].getAttribute('aria-pressed'), 'false');
     });
 
-    test('the page-wide button converts every PRE block', () => {
+    test('the page-wide button toggles every PRE block and remains available', () => {
         const harness = execute((currentHarness) => {
             addPre(currentHarness, 'first block');
             addPre(currentHarness, 'second block');
@@ -75,7 +93,14 @@ describe('Translate Preformatted Text', () => {
 
         assert.equal(harness.document.querySelectorAll('pre').length, 0);
         assert.equal(harness.document.querySelectorAll('[data-tm-translatable-pre-converted]').length, 3);
-        assert.equal(allButton.hidden, true);
+        assert.equal(allButton.hidden, false);
+        assert.equal(allButton.getAttribute('aria-pressed'), 'true');
+        assert.equal(allButton.style.getPropertyValue('background-color'), 'rgba(34, 139, 34, .85)');
+
+        allButton.click();
+        assert.equal(harness.document.querySelectorAll('pre').length, 3);
+        assert.equal(harness.document.querySelectorAll('[data-tm-translatable-pre-converted]').length, 0);
+        assert.equal(allButton.getAttribute('aria-pressed'), 'false');
     });
 
     test('the page-wide icon can be dragged without converting blocks', () => {
