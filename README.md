@@ -85,7 +85,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
+Make preformatted blocks translatable and keep mobile Wikipedia sections visible to automatic translation.
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
