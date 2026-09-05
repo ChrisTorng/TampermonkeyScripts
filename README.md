@@ -103,6 +103,10 @@ Keep pages within the viewport width, trim excessive horizontal spacing on all e
 
 Expand Hacker News Summary article images to full width in portrait mobile view.
 
+## [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
+
+Fit embedded games within mobile screens and add a distraction-free fullscreen toggle.
+
 ## [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
 Hide extra Discord chat input buttons so only the send button remains.
@@ -161,6 +165,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
+  - [FullscreenGameView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
   - [BetterDiscord.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
   - [ForceDarkMode.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
