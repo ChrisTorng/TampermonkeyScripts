@@ -109,6 +109,10 @@ Section note: automated tests inject the script and mock `GM_info`.
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
+# Fullscreen Game View
+Section note: automated tests inject the userscript into a representative ARC Prize game DOM and mock the browser fullscreen API fallback.
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width repair, fullscreen button mounting, entry, and exit are automated; visual layout still requires manual device validation)
+
 # Better Discord
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 
