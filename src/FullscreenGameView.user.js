@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-05_1.0.0
+// @version      2026-09-05_1.0.1
 // @description  Fit embedded games within mobile screens and add a distraction-free fullscreen toggle.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -100,6 +100,16 @@ body:has(#task-detail-root) {
 #playground .shell-root {
     box-sizing: border-box !important;
     max-width: min(540px, 100%) !important;
+    overflow: visible !important;
+}
+
+/* The site's D-pad grid places its left button one grid column outside the shell. */
+@media (max-width: 767px) {
+    #playground .d-pad-grid {
+        position: relative !important;
+        transform: translateX(2rem) !important;
+        z-index: 1 !important;
+    }
 }
 `;
     (document.head || document.documentElement).appendChild(style);

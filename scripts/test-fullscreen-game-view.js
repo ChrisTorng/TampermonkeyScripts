@@ -20,12 +20,18 @@ function executeOnArcTask() {
     game.className = 'game-page-inner';
     const shell = harness.document.createElement('div');
     shell.className = 'shell-root';
+    const controls = harness.document.createElement('div');
+    controls.className = 'shell-controls';
+    const dPad = harness.document.createElement('div');
+    dPad.className = 'd-pad-grid';
+    controls.appendChild(dPad);
+    shell.appendChild(controls);
     game.appendChild(shell);
     playground.append(taskRoot, game);
     harness.document.body.appendChild(playground);
     harness.context.globalThis = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
-    return { ...harness, game };
+    return { ...harness, game, dPad };
 }
 
 describe('Fullscreen Game View on ARC Prize tasks', () => {
@@ -38,6 +44,8 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.match(style.textContent, /#playground \.shell-root/);
         assert.match(style.textContent, /max-width: min\(540px, 100%\) !important/);
         assert.match(style.textContent, /box-sizing: border-box !important/);
+        assert.match(style.textContent, /overflow: visible !important/);
+        assert.match(style.textContent, /#playground \.d-pad-grid[\s\S]*transform: translateX\(2rem\) !important/);
         assert(game.classList.contains('tm-fullscreen-game-view-target'));
         assert.equal(button.parentElement, game);
         assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
