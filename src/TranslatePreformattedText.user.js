@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-04_1.1.0
-// @description  Add per-block and draggable page-wide toggles between original preformatted text and translatable content.
+// @version      2026-09-05_1.1.1
+// @description  Add per-block and draggable page-wide toggles for preformatted text, and keep mobile Wikipedia sections visible to automatic translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
@@ -14,6 +14,7 @@
 
     const wrapperAttribute = 'data-tm-translatable-pre-wrapper';
     const convertedAttribute = 'data-tm-translatable-pre-converted';
+    const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
     const style = document.createElement('style');
     style.textContent = `
@@ -197,6 +198,7 @@
     }
 
     function scan(root = document) {
+        revealWikipediaSections(root);
         if (root.nodeType === 1 && root.tagName === 'PRE') {
             enhance(root);
         }
@@ -204,6 +206,24 @@
             root.querySelectorAll('pre').forEach(enhance);
         }
         updateAllButton();
+    }
+
+    function revealWikipediaSections(root) {
+        if (!isWikipedia) {
+            return;
+        }
+
+        const sections = [];
+        if (root.nodeType === 1 && root.classList.contains('mw-collapsible-content')) {
+            sections.push(root);
+        }
+        if (root.querySelectorAll) {
+            sections.push(...root.querySelectorAll('.mw-collapsible-content'));
+        }
+        sections.forEach((section) => {
+            section.hidden = false;
+            section.removeAttribute('hidden');
+        });
     }
 
     const dragThreshold = 3;
@@ -275,10 +295,30 @@
         const shouldConvert = !wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
         wrappers.forEach((wrapper) => setConverted(wrapper, shouldConvert));
     });
-    document.body.appendChild(allButton);
+    function mountAllButton() {
+        if (document.body && !allButton.parentNode) {
+            document.body.appendChild(allButton);
+        }
+    }
+
+    mountAllButton();
+    if (!document.body) {
+        document.addEventListener('DOMContentLoaded', mountAllButton, { once: true });
+    }
     scan();
 
     new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => mutation.addedNodes.forEach(scan));
-    }).observe(document.body, { childList: true, subtree: true });
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes') {
+                revealWikipediaSections(mutation.target);
+                return;
+            }
+            mutation.addedNodes.forEach(scan);
+        });
+    }).observe(document.documentElement, {
+        attributes: isWikipedia,
+        attributeFilter: isWikipedia ? ['hidden'] : undefined,
+        childList: true,
+        subtree: true,
+    });
 })();

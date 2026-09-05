@@ -23,8 +23,8 @@ function assertFloatingControlLayout(button, slot) {
 const scriptPath = path.join(__dirname, '..', 'src', 'TranslatePreformattedText.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
 
-function execute(setupDom) {
-    const harness = createHarness({ url: 'https://codex-tool-reference.simonw.chatgpt.site/' });
+function execute(setupDom, url = 'https://codex-tool-reference.simonw.chatgpt.site/') {
+    const harness = createHarness({ url });
     setupDom(harness);
     harness.context.globalThis = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
@@ -129,5 +129,31 @@ describe('Translate Preformatted Text', () => {
 
         assert(latePre.closest('[data-tm-translatable-pre-wrapper]'));
         assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+    });
+
+    test('mobile Wikipedia sections remain visible for automatic translation', () => {
+        let initialSection;
+        const harness = execute((currentHarness) => {
+            initialSection = currentHarness.document.createElement('div');
+            initialSection.className = 'mw-collapsible-content';
+            initialSection.hidden = true;
+            initialSection.setAttribute('hidden', '');
+            initialSection.textContent = 'The first reports of the Rego Grande site';
+            currentHarness.appendToBody(initialSection);
+        }, 'https://en.wikipedia.org/wiki/Parque_Arqueol%C3%B3gico_do_Solst%C3%ADcio');
+
+        assert.equal(initialSection.hidden, false);
+        assert.equal(initialSection.hasAttribute('hidden'), false);
+
+        initialSection.hidden = true;
+        initialSection.setAttribute('hidden', '');
+        harness.triggerMutation([], {
+            type: 'attributes',
+            target: initialSection,
+            attributeName: 'hidden',
+        });
+
+        assert.equal(initialSection.hidden, false);
+        assert.equal(initialSection.hasAttribute('hidden'), false);
     });
 });
