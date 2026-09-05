@@ -1,6 +1,3 @@
-# Floating control layout
-Runtime tests verify the shared page-anchored slot, dimensions, edge alignment, low opacity, and `!important` page-CSS isolation for →, ↔, 🌙, and 譯∞. Drag tests also verify viewport-relative movement where supported.
-
 # Test status legend
 - `AUTOMATED`: covered by automated runtime tests in `node --test`.
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
@@ -91,7 +88,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 
 # Translate Preformatted Text
 Section note: automated tests use the example URL with representative preformatted blocks in the local DOM harness; live browser translation still requires manual validation.
-- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (per-block conversion, page-wide conversion, dragging, and dynamically added blocks are automated)
+- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, dragging, and dynamically added blocks are automated)
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)

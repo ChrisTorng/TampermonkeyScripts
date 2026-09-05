@@ -31,3 +31,10 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Keep **[TestCases.md](TestCases.md)** synchronized with the current automated coverage:
   - Mark each listed item with an explicit test status.
   - Use a short reason when coverage is limited, blocked, mocked, or intentionally not direct.
+
+## 6. Shared floating controls
+- Whenever modifying any script that has a floating control, consider all floating controls together. Keep their appearance, placement, dragging, toggle behavior, active-state feedback, and page-CSS isolation consistent rather than implementing script-specific variants.
+- The page-wide controls use one page-anchored layout contract: `position: absolute`, 44 × 34 px, 50% opacity, a viewport-relative initial right-edge position, and 10 px vertical gaps. Geometry and opacity are inline `!important` styles so host-page CSS cannot resize or displace them.
+- Active toggle controls use a green `rgba(34, 139, 34, 0.85)` background, white text, and `aria-pressed="true"`; inactive controls use the shared dark background and `aria-pressed="false"`.
+- Preserve unique consecutive slots: slot 0 → (`AllGoInternetArchive` / `InternetArchive` fallback), slot 1 ↔ (`ForceMobileView`), slot 2 🌙 (`ForceDarkMode`), and slot 3 譯∞ (`TranslatePreformattedText`). Their top offsets are `70 + slot × 44` px.
+- When adding, removing, reordering, or resizing a floating control, update every affected script's shared styling helper and the corresponding runtime layout/interaction assertions in `scripts/test-*.js` together.
