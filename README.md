@@ -85,7 +85,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Preserve inline code placement during automatic translation, add preformatted-text toggles, and keep mobile Wikipedia sections visible.
+Preserve inline code placement, add opt-in translation toggles for preformatted, source-code, code-quote, and Mermaid blocks, and keep mobile Wikipedia sections visible.
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
