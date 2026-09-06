@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-05_1.1.1
-// @description  Add per-block and draggable page-wide toggles for preformatted text, and keep mobile Wikipedia sections visible to automatic translation.
+// @version      2026-09-06_1.2.0
+// @description  Preserve inline code placement during automatic translation, add preformatted-text toggles, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -14,6 +14,7 @@
 
     const wrapperAttribute = 'data-tm-translatable-pre-wrapper';
     const convertedAttribute = 'data-tm-translatable-pre-converted';
+    const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
     const style = document.createElement('style');
@@ -65,6 +66,11 @@
             font-family: monospace;
             overflow: auto;
             white-space: pre-wrap;
+        }
+        [${inlineCodeAttribute}] {
+            display: inline;
+            font-family: monospace;
+            white-space: break-spaces;
         }
     `;
     (document.head || document.documentElement).appendChild(style);
@@ -133,6 +139,50 @@
         target.id = source.id;
     }
 
+    const inlineCodeStyleProperties = [
+        'background-color', 'background-image', 'border', 'border-radius', 'box-shadow',
+        'color', 'display', 'font-family', 'font-size', 'font-style', 'font-weight',
+        'letter-spacing', 'line-height', 'margin', 'padding', 'text-decoration',
+        'text-transform', 'vertical-align', 'white-space', 'word-break',
+    ];
+
+    function preserveComputedStyle(source, target) {
+        if (typeof window.getComputedStyle !== 'function') {
+            return;
+        }
+        const computedStyle = window.getComputedStyle(source);
+        if (!computedStyle || typeof computedStyle.getPropertyValue !== 'function') {
+            return;
+        }
+        inlineCodeStyleProperties.forEach((property) => {
+            const value = computedStyle.getPropertyValue(property);
+            if (value) {
+                target.style.setProperty(property, value);
+            }
+        });
+    }
+
+    function makeInlineCodeTranslatable(code) {
+        if (!code || !code.parentNode || code.closest('pre') || code.hasAttribute(inlineCodeAttribute)) {
+            return;
+        }
+
+        const replacement = document.createElement('span');
+        copyAttributes(code, replacement);
+        replacement.setAttribute(inlineCodeAttribute, 'true');
+        preserveComputedStyle(code, replacement);
+
+        if (code.firstChild) {
+            while (code.firstChild) {
+                replacement.appendChild(code.firstChild);
+            }
+        } else {
+            replacement.textContent = code.textContent;
+        }
+        code.parentNode.insertBefore(replacement, code);
+        code.parentNode.removeChild(code);
+    }
+
     function setButtonState(button, isActive, scope) {
         button.setAttribute('aria-pressed', String(isActive));
         button.style.setProperty('background-color', isActive ? 'rgba(34, 139, 34, .85)' : 'rgba(0, 0, 0, .35)', 'important');
@@ -199,6 +249,12 @@
 
     function scan(root = document) {
         revealWikipediaSections(root);
+        if (root.nodeType === 1 && root.tagName === 'CODE') {
+            makeInlineCodeTranslatable(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
+        }
         if (root.nodeType === 1 && root.tagName === 'PRE') {
             enhance(root);
         }
