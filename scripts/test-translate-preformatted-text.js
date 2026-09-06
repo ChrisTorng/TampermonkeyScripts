@@ -22,6 +22,10 @@ function assertFloatingControlLayout(button, slot) {
 
 const scriptPath = path.join(__dirname, '..', 'src', 'TranslatePreformattedText.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
+const simonWillisonFixture = fs.readFileSync(
+    path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'simonwillison.net_2026_Sep_2_claudes-new-system-prompt.html'),
+    'utf8'
+);
 
 function execute(setupDom, url = 'https://codex-tool-reference.simonw.chatgpt.site/') {
     const harness = createHarness({ url });
@@ -107,6 +111,37 @@ describe('Translate Preformatted Text', () => {
         assert.equal(nestedCode.hasAttribute('data-tm-translatable-inline-code'), false);
         assert(nestedCode.closest('[data-tm-translatable-pre-wrapper]'));
         assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+    });
+
+    test('code quotations on Simon Willison articles receive block controls', () => {
+        assert.match(simonWillisonFixture, /<blockquote>\s*<p><code>Claude does not reproduce song lyrics/);
+        let quote;
+        let code;
+        const harness = execute((currentHarness) => {
+            quote = currentHarness.document.createElement('blockquote');
+            const paragraph = currentHarness.document.createElement('p');
+            code = currentHarness.document.createElement('code');
+            code.textContent = 'Claude does not reproduce song lyrics, poems, or passages from books and articles.';
+            paragraph.appendChild(code);
+            quote.appendChild(paragraph);
+            currentHarness.appendToBody(quote);
+        }, 'https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/');
+
+        const button = harness.document.querySelector('.tm-translate-pre-one');
+        assert(button);
+        assert.equal(button.textContent, '譯');
+        assert.equal(code.tagName, 'CODE');
+        assert.equal(code.hasAttribute('data-tm-translatable-inline-code'), false);
+
+        button.click();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted);
+        assert.equal(converted.tagName, 'DIV');
+        assert.match(converted.textContent, /song lyrics/);
+
+        button.click();
+        assert.equal(harness.document.querySelector('blockquote'), quote);
+        assert.equal(quote.querySelector('code'), code);
     });
 
     test('the page-wide button stays hidden when there are no PRE blocks', () => {
