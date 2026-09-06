@@ -62,9 +62,35 @@ describe('Translate Preformatted Text', () => {
         assert.equal(inlineCode.className, 'source-code');
         assert.equal(inlineCode.getAttribute('title'), 'Lean declaration');
         assert.equal(inlineCode.getAttribute('data-tm-translatable-inline-code'), 'true');
+        assert.equal(inlineCode.getAttribute('data-tm-translatable-inline-code-original'), 'native_decide');
+        assert.equal(inlineCode.getAttribute('translate'), 'no');
         assert.equal(paragraph.children[0].textContent, 'no ');
         assert.equal(paragraph.children[2].textContent, ' is used');
         assert.equal(harness.document.querySelectorAll('code').length, 0);
+    });
+
+    test('inline code changed by translation is restored without wrapping it again', () => {
+        let paragraph;
+        const harness = execute((currentHarness) => {
+            paragraph = currentHarness.document.createElement('p');
+            const code = currentHarness.document.createElement('code');
+            code.textContent = 'native_decide';
+            paragraph.appendChild(code);
+            currentHarness.appendToBody(paragraph);
+        });
+
+        const inlineCode = paragraph.children[0];
+        inlineCode.textContent = 'native decide';
+        harness.triggerMutation([], { type: 'childList', target: inlineCode });
+
+        assert.equal(inlineCode.textContent, 'native_decide');
+        assert.equal(inlineCode.tagName, 'SPAN');
+        assert.equal(harness.document.querySelectorAll('[data-tm-translatable-inline-code]').length, 1);
+        assert.equal(harness.document.querySelectorAll('code').length, 0);
+
+        harness.triggerMutation([], { type: 'childList', target: inlineCode });
+        assert.equal(inlineCode.textContent, 'native_decide');
+        assert.equal(harness.document.querySelectorAll('[data-tm-translatable-inline-code]').length, 1);
     });
 
     test('code inside PRE remains code and uses the existing block controls', () => {
@@ -187,6 +213,8 @@ describe('Translate Preformatted Text', () => {
         assert.equal(paragraph.children[0].tagName, 'SPAN');
         assert.equal(paragraph.children[0].textContent, 'FinalCheck.lean');
         assert.equal(paragraph.children[0].getAttribute('data-tm-translatable-inline-code'), 'true');
+        assert.equal(paragraph.children[0].getAttribute('data-tm-translatable-inline-code-original'), 'FinalCheck.lean');
+        assert.equal(paragraph.children[0].getAttribute('translate'), 'no');
     });
 
     test('mobile Wikipedia sections remain visible for automatic translation', () => {
