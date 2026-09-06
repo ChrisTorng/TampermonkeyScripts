@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-06_1.2.0
+// @version      2026-09-06_1.2.1
 // @description  Preserve inline code placement during automatic translation, add preformatted-text toggles, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
@@ -15,6 +15,7 @@
     const wrapperAttribute = 'data-tm-translatable-pre-wrapper';
     const convertedAttribute = 'data-tm-translatable-pre-converted';
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
+    const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
     const style = document.createElement('style');
@@ -162,14 +163,50 @@
         });
     }
 
+    function getProtectedInlineCode(target) {
+        if (!target) {
+            return null;
+        }
+        if (target.nodeType === 1) {
+            if (target.hasAttribute(inlineCodeAttribute)) {
+                return target;
+            }
+            return typeof target.closest === 'function' ? target.closest(`[${inlineCodeAttribute}]`) : null;
+        }
+        const parent = target.parentElement || target.parentNode;
+        if (!parent) {
+            return null;
+        }
+        if (parent.hasAttribute && parent.hasAttribute(inlineCodeAttribute)) {
+            return parent;
+        }
+        return typeof parent.closest === 'function' ? parent.closest(`[${inlineCodeAttribute}]`) : null;
+    }
+
+    function restoreInlineCode(target) {
+        const inlineCode = getProtectedInlineCode(target);
+        if (!inlineCode) {
+            return false;
+        }
+        const originalText = inlineCode.getAttribute(inlineCodeOriginalAttribute);
+        if (originalText === null || inlineCode.textContent === originalText) {
+            return false;
+        }
+        inlineCode.textContent = originalText;
+        return true;
+    }
+
     function makeInlineCodeTranslatable(code) {
         if (!code || !code.parentNode || code.closest('pre') || code.hasAttribute(inlineCodeAttribute)) {
             return;
         }
 
         const replacement = document.createElement('span');
+        const originalText = code.textContent;
         copyAttributes(code, replacement);
         replacement.setAttribute(inlineCodeAttribute, 'true');
+        replacement.setAttribute(inlineCodeOriginalAttribute, originalText);
+        replacement.setAttribute('translate', 'no');
         preserveComputedStyle(code, replacement);
 
         if (code.firstChild) {
@@ -177,7 +214,7 @@
                 replacement.appendChild(code.firstChild);
             }
         } else {
-            replacement.textContent = code.textContent;
+            replacement.textContent = originalText;
         }
         code.parentNode.insertBefore(replacement, code);
         code.parentNode.removeChild(code);
@@ -365,15 +402,22 @@
 
     new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
+            if (restoreInlineCode(mutation.target)) {
+                return;
+            }
             if (mutation.type === 'attributes') {
                 revealWikipediaSections(mutation.target);
                 return;
             }
-            mutation.addedNodes.forEach(scan);
+            mutation.addedNodes.forEach((node) => {
+                restoreInlineCode(node);
+                scan(node);
+            });
         });
     }).observe(document.documentElement, {
         attributes: isWikipedia,
         attributeFilter: isWikipedia ? ['hidden'] : undefined,
+        characterData: true,
         childList: true,
         subtree: true,
     });
