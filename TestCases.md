@@ -90,6 +90,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 Section note: automated tests use representative inline code, preformatted blocks, and mobile Wikipedia sections in the local DOM harness; live browser translation still requires manual validation.
 - https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (inline code elements are replaced early with styled translatable spans while their original positions, text, classes, and attributes are retained)
 - https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, dragging, and dynamically added blocks are automated)
+- https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured code-only quotations receive per-block translation controls and can be toggled without treating their code as inline content)
 - https://en.wikipedia.org/wiki/Parque_Arqueol%C3%B3gico_do_Solst%C3%ADcio [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (initial and dynamically collapsed mobile sections are kept visible; machine-translation output requires manual validation)
 
 # YouTube Tools

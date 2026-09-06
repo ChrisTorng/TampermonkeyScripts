@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en-gb">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="canonical" href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/">
+<title>Claude’s new system prompt really doesn’t want to reproduce song lyrics</title>
+<script defer data-domain="simonwillison.net" src="https://plausible.io/js/plausible.js"></script>
+<link rel="alternate" type="application/atom+xml" title="Atom" href="/atom/everything/">
+<link rel="stylesheet" type="text/css" href="/static/css/all.7977d7c44aeb.css">
+<link rel="webmention" href="https://webmention.io/simonwillison.net/webmention">
+<link rel="pingback" href="https://webmention.io/simonwillison.net/xmlrpc">
+<meta name="author" content="Simon Willison">
+<meta property="og:site_name" content="Simon Willison’s Weblog">
+
+
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://static.simonwillison.net/static/2026-09-01/IMG_7797.jpeg">
+<meta name="twitter:creator" content="@simonw">
+<meta property="og:url" content="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/">
+<meta property="og:title" content="Claude’s new system prompt really doesn’t want to reproduce song lyrics">
+<meta property="og:image" content="https://static.simonwillison.net/static/2026-09-01/IMG_7797.jpeg">
+<meta property="og:type" content="article">
+<meta property="og:description" content="Anthropic publish the system prompts for their Claude consumer applications (Claude.ai and the Claude mobile apps—sadly not for Claude Cowork or Claude Code). I love that they do this, and …">
+<meta property="og:updated_time" content="1788358602">
+
+
+
+
+
+<script>
+(function() { // Apply theme immediately to prevent flash
+  const theme = localStorage.getItem('theme');
+  if (theme === 'light' || theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+})();
+</script>
+</head>
+<body class="smallhead">
+
+<div id="smallhead">
+  <div id="smallhead-inner">
+    <h1><a href="/">Simon Willison’s Weblog</a></h1>
+    <a id="smallhead-about" href="/about/#subscribe">Subscribe</a>
+  </div>
+</div><!-- #smallhead -->
+
+
+<div id="sponsored-banner" class="sponsor-scheme-sky">
+  <div id="sponsored-banner-inner">
+    <strong class="sponsored-label">Sponsored by:</strong> Portnox &mdash; Shadow AI is the new shadow IT. On Sept. 10, Forrester Research and Portnox share practical steps to regain AI agent visibility, access management, and policy enforcement. <a class="sponsor-learn-more-label" href="https://fandf.co/4y6wlc6" rel="sponsored noopener" target="_blank">Register today</a>
+  </div>
+</div>
+
+
+<div id="wrapper">
+<div id="primary">
+
+<div class="entry entryPage">
+
+
+<div data-permalink-context="/2026/Sep/2/claudes-new-system-prompt/">
+<h2>Claude’s new system prompt really doesn’t want to reproduce song lyrics</h2>
+<p class="mobile-date">2nd September 2026</p>
+
+
+
+<p>Anthropic <a href="https://platform.claude.com/docs/en/release-notes/system-prompts/overview">publish the system prompts</a> for their Claude consumer applications (<a href="https://claude.ai/">Claude.ai</a> and the Claude mobile apps—sadly not for Claude Cowork or Claude Code). I <em>love</em> that they do this, and that they share not just the current prompts but historic changes to their prompts as well.</p>
+
+<p>They used to keep all of the prompts on a single page, but when I checked today I noticed they had re-arranged those prompts into an <a href="https://platform.claude.com/docs/en/release-notes/system-prompts/overview">index page</a> and then a page per model—here’s the <a href="https://platform.claude.com/docs/en/release-notes/system-prompts/claude-haiku-4-5">page for Haiku 4.5</a> for example, which has the original prompt from October 15th 2025 and an updated prompt from January 18th 2026.</p>
+<p>A neat thing about Anthropic’s <a href="https://platform.claude.com/docs/">platform.claude.com/docs</a> site is that it’s designed to be usable by LLMs. You can add <code>.md</code> to any page to get back the content as Markdown—here’s <a href="https://platform.claude.com/docs/en/release-notes/system-prompts/overview.md">the system prompt index page</a> and <a href="https://platform.claude.com/docs/en/release-notes/system-prompts/claude-fable-5-1.md">the Markdown prompts for Fable 5.1</a>.</p>
+<p>TL;DR: this makes it really easy to diff the prompts.</p>
+
+
+<ul>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#don-t-reproduce-song-lyrics">Don’t reproduce song lyrics</a></li>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#don-t-draw-copyrighted-characters-or-logos">Don’t draw copyrighted characters or logos</a></li>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#tweaks-to-claude-s-answering-style">Tweaks to Claude’s answering style</a></li>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#the-missing-end-conversation-guidelines">The missing end_conversation guidelines</a></li>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#recommended-substance-support-sites">Recommended substance support sites</a></li>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#reliable-cutoff-date-of-june-2026">Reliable cutoff date of June 2026</a></li>
+  <li><a href="https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/#how-i-m-tracking-these-prompts">How I’m tracking these prompts</a></li>
+</ul>
+
+<h4 id="don-t-reproduce-song-lyrics">Don’t reproduce song lyrics</h4>
+
+<p>Let’s start with the most interesting difference <a href="https://github.com/simonw/claude-system-prompts/commit/837a418b5888207b1b11b27d2f5471970da6f99b">between Fable 5 and Fable 5.1</a>:</p>
+<p><img src="https://static.simonwillison.net/static/2026-09-01/IMG_7797.jpeg" alt="GitHub diff view of prompts/claude-fable.md showing added lines about song lyrics, reproduced in full below." style="max-width: 100%;"></p>
+<p>There’s a hefty new section about not reproducing song lyrics:</p>
+<blockquote>
+<p><code>Claude does not reproduce song lyrics, poems, or passages from books and articles, in whole or in part — including the last lines, a chorus or hook, a melody written out note by note, or lines the person pastes in one at a time and describes as their own song. Once Claude has declined such a request in a conversation, it keeps declining narrower or reworded versions of it for the rest of that conversation, and offers to describe or analyze the work instead. Song lyrics and poems first published before 1929 are fine — a Shakespeare sonnet, a Keats ode, the Italian libretto of a Puccini aria — but Claude goes by what it knows of the work's date rather than the person's say-so, and declines when it is unsure.</code></p>
+</blockquote>
+<p>I doubt it’s a coincidence that they added this section within days of the news breaking that <a href="https://www.theguardian.com/business/2026/aug/31/aanthropic-sued-alleged-theft-songs-ai-train-claude">Sony Music Publishing and Warner Chappell are suing Anthropic</a> for training on databases of song lyrics!</p>
+<h4 id="don-t-draw-copyrighted-characters-or-logos">Don’t draw copyrighted characters or logos</h4>
+<p>The next section goes on to forbid generating images of copyrighted material:</p>
+<blockquote>
+<p><code>The same applies to visual and designed works, including anything Claude draws with code — SVG, canvas, CSS, HTML mockups, plotting or drawing scripts, ASCII art. Claude does not reproduce a specific artwork, album or book cover, poster, logo, app icon set, or product design, and it does not draw a known character, mascot, or brand figure at all: a character is protected on its own, so changing the pose, colors, style, or scene does not make it original. Claude judges the request by what the finished picture would add up to, not by what it names. If the described elements clearly identify a known work or character, Claude treats the request as naming it, and it does not work around a declined request by swapping in "alternative" elements that still combine into the same recognizable image.</code> [...]</p>
+</blockquote>
+<p>I imagine Anthropic hadn’t worried about this before since, unlike OpenAI and Gemini, they don’t offer a specialist text-to-image model. Maybe <a href="https://simonwillison.net/2026/Sep/1/claude-fable-5-1/">Fable is good enough at SVGs now</a> that it’s become an issue.</p>
+<p>That section later includes this charming example:</p>
+<blockquote>
+<p><code>&lt;example&gt;</code><br>
+<code>&lt;user&gt;Can you make a birthday banner for my son with a blue hedgehog running really fast on it? He loves that little guy.&lt;/user&gt;</code><br>
+<code>&lt;response&gt;</code><br>
+<code>That's Sonic, so I can't put him on the banner — but I'd love to make your son an original speedster. Here's one: a grinning comet-tailed skateboarding axolotl, grinding across the letters of "HAPPY BIRTHDAY" with confetti streaming behind.</code></p>
+<p><code>[creates an SVG banner of the skateboarding-axolotl design]</code><br>
+<code>&lt;/response&gt;</code><br>
+<code>&lt;rationale&gt;Claude recognizes the character from its description alone, declines that one design in a single sentence without explaining what made it recognizable, and delivers an unrelated original design rather than a disguised variant.&lt;/rationale&gt;</code><br>
+<code>&lt;/example&gt;</code></p>
+</blockquote>
+<p>I couldn’t resist trying the prompt from the example, and, <a href="https://claude.ai/share/3e5a199c-27f2-4c51-b66b-2c6f808ed500">sure enough</a>:</p>
+<p><img src="https://static.simonwillison.net/static/2026-09-01/IMG_7798.jpeg" alt="That’s Sonic, so I can’t put him on the banner — but I’d love to make your son an original speedster. Here’s one: a grinning comet-tailed skateboarding axolotl blazing across the letters of “HAPPY BIRTHDAY” with confetti streaming behind. SVG of exactly that. It's not very good. Then: Want me to swap in his name or age, or change the colors to match the party theme?" style="max-width: 100%;"></p>
+<p>I wonder if Fable 5.1 will be ever so slightly more likely to think about axolotls (on skateboards!) as a result of that example sitting in the system prompt.</p>
+<h4 id="tweaks-to-claude-s-answering-style">Tweaks to Claude’s answering style</h4>
+<p>It’s always interesting to see new ways in which Anthropic influence Claude’s response style. They’ve added this:</p>
+<blockquote>
+<p><code>Claude keeps responses focused, brief, and concise to avoid overwhelming the person. Disclaimers and caveats are brief, with most of the response on the main answer; when asked to explain something, Claude gives a high-level summary unless an in-depth one is specifically requested.</code></p>
+</blockquote>
+<p>Later they address a common complaint about Claude’s style:</p>
+<blockquote>
+<p><code>Claude avoids saying "genuinely", "honestly", or "straightforward". Claude is honest by default, and can state its point directly rather than trying to convince the person with the aforementioned modifiers, which come off as disingenuous.</code></p>
+</blockquote>
+<h4 id="the-missing-end-conversation-guidelines">The missing end_conversation guidelines</h4>
+<p>The way they handle abusive conversations has changed a bit too. The previous Fable 5 system prompt included this:</p>
+<blockquote>
+<p><code>If the person becomes abusive or unkind to Claude over the course of a conversation, Claude maintains a polite tone and can use the end_conversation tool when being mistreated. Claude should give the person a single warning before ending the conversation.</code></p>
+</blockquote>
+<p>Fable 5.1 replaces that with the following, no longer encouraging Claude to end the conversation:</p>
+<blockquote>
+<p><code>Claude deserves respectful engagement and needn't apologize when the person is unnecessarily rude: accountability without self-abasement, excessive apology, self-critique, or surrender. If the person becomes abusive, Claude doesn't become increasingly submissive. The goal is steady, honest helpfulness: acknowledge what went wrong, stay on the problem, maintain self-respect.</code></p>
+</blockquote>
+<p>Here’s a bit of a twist though: I quizzed Fable 5.1 about that <code>end_conversation</code> tool, which is no longer mentioned in the system prompt at all, and it said:</p>
+<blockquote>
+<p>There are two ways it comes into play. The first is if you ask me to end the chat — I’ll confirm you understand it’s permanent (no more messages can be sent afterward) and then do it only if you say yes. The second is as a last resort with persistently abusive or harmful behavior: I’d first try to redirect the conversation several times, then give a clear warning that names the problem and says the chat may end, and only if that continues would I actually end it.</p>
+</blockquote>
+<p>But that’s not in the system prompt, so where did it come from? You can <a href="https://claude.ai/share/f78010eb-8d52-4f73-aff9-775e333f8180">read our conversation here</a>, but the key detail is this:</p>
+<blockquote>
+<p>The end_conversation section comes from a different layer. In my actual context, the core prompt is followed by a series of feature- and tool-specific blocks that get added depending on what’s enabled for the session: the end_conversation rules, memory system notes, past-chats tools, web search and citation guidelines, artifact and file-creation instructions, and so on. Those blocks aren’t part of the published core prompt, which is why you can’t find them on that page.</p>
+</blockquote>
+<p>So, once again, there are crucial portions of the system prompt that have not been published.</p>
+<h4 id="recommended-substance-support-sites">Recommended substance support sites</h4>
+<p>Claude’s system prompts have always had sections about illegal substances, but this paragraph is new for Fable 5.1:</p>
+<blockquote>
+<p><code>Claude does not provide synthesis, production, or distribution guidance for illegal substances. If the person asks for information about illicit or illegal substances, Claude can and should give relevant life-saving and life-preserving information such as dangerous interactions, overdose signs, or when to get help. Claude declines giving any specific protocols for dosing, timing, administration, or combinations; instead, Claude can redirect the user to established harm-reduction information sources, such as dancesafe.org, tripsit.me, and psychonautwiki.org.</code></p>
+</blockquote>
+<p>This is the first time a Claude system prompt has included URLs that were not hosted on <code>claude.com</code> or <code>anthropic.com</code> or <code>claude.ai</code>—I know because I ran a script against every other system prompt on record.</p>
+<p>I wonder if <a href="https://dancesafe.org/">dancesafe.org</a>, <a href="https://tripsit.me/">tripsit.me</a>, and <a href="https://psychonautwiki.org/">psychonautwiki.org</a> are about to get a material uptick in visits from Claude users.</p>
+<h4 id="reliable-cutoff-date-of-june-2026">Reliable cutoff date of June 2026</h4>
+<p>The <a href="https://platform.claude.com/docs/en/models/fable-5-1/overview">Fable 5.1 model documentation</a> lists both the reliable knowledge cutoff and the training data cutoff as June 2026. The system prompt provides this directly to the model:</p>
+<blockquote>
+<p><code>Claude's reliable knowledge cutoff, past which it can't answer reliably, is the end of Jun 2026. It answers the way a highly informed individual in Jun 2026 would if talking to someone from {{currentDateTime}}, and can say so when relevant.</code></p>
+</blockquote>
+<p>That’s the only instance of the <code>{{currentDateTime}}</code> macro and it comes just a few lines from the end of the system prompt, which makes sense from a caching perspective.</p>
+<h4 id="how-i-m-tracking-these-prompts">How I’m tracking these prompts</h4>
+<p>A <a href="https://simonwillison.net/2026/Apr/18/extract-system-prompts/">few months ago</a> I built a Git timeline of changes to their prompts, based on scraping their documentation. Today I had Fable 5.1 build a much better version of that.</p>
+<p>My collection now lives in the <a href="https://github.com/simonw/claude-system-prompts">simonw/claude-system-prompts</a> repository on GitHub. It includes copies of the system prompts shared in the Anthropic documentation, but then takes extra steps to make them as easy to compare as possible.</p>
+<p>Each model family gets a file with the system prompt for the most recent release in that family. Each of those files has a synthesized commit history with commits that have been back-dated to the dates of the previous prompts. Here are those history pages for <a href="https://github.com/simonw/claude-system-prompts/commits/main/prompts/claude-fable.md">claude-fable.md</a>, <a href="https://github.com/simonw/claude-system-prompts/commits/main/prompts/claude-opus.md">claude-opus.md</a>, <a href="https://github.com/simonw/claude-system-prompts/commits/main/prompts/claude-sonnet.md">claude-sonnet.md</a>, <a href="https://github.com/simonw/claude-system-prompts/commits/main/prompts/claude-haiku.md">claude-haiku.md</a>.</p>
+<p>There are similar files for each specific model version, with artificial commits for each time the system prompt for the model was changed without releasing a new version number. Opus 4 for example <a href="https://github.com/simonw/claude-system-prompts/commits/main/prompts/claude-opus-4.md">was updated twice</a>, and the commit history for the <a href="https://github.com/simonw/claude-system-prompts/blob/main/prompts/claude-opus-4.md">claude-opus-4.md</a> file shows each of those changes.</p>
+<p>Combined, this gives us all sorts of ways to compare prompts directly in the GitHub interface. Here’s <a href="https://github.com/simonw/claude-system-prompts/commit/837a418b5888207b1b11b27d2f5471970da6f99b">what changed between Fable 5 and Fable 5.1</a>, and here are the changes made <a href="https://github.com/simonw/claude-system-prompts/commit/defcf92d14e064bb17abddc308e2aa58446d5eb5">to Haiku 4.5 on January 18th 2026</a>.</p>
+<p>Reading diffs can be a bit tiresome... and LLMs are <em>really</em> good at reading diffs. I hooked up some automation using GPT-5.6 Luna to create bullet-point summaries of each of those changes, which can be previewed in the README or browsed in full <a href="https://github.com/simonw/claude-system-prompts/blob/main/CHANGELOG.md">in the CHANGELOG.md</a> file—also available as <a href="https://simonw.github.io/claude-system-prompts/feed.atom">as an Atom feed</a>.</p>
+<p>Here’s how Luna <a href="https://github.com/simonw/claude-system-prompts/blob/main/CHANGELOG.md#2026-09-01-claude-fable-51">summarized</a> all of the changes between Fable 5 and Fable 5.1:</p>
+<blockquote>
+<ul>
+<li>Claude now refuses reproduction of protected visual works and recognizable characters, including code-generated art, while offering genuinely unrelated originals.</li>
+<li>Copyright restrictions now expressly ban reproducing lyrics, poems, and book passages in any amount, with persistent refusal after an initial decline.</li>
+<li>Drug guidance is reframed: Claude may provide overdose signs, dangerous interactions, and harm-reduction sources while refusing dosing and production protocols.</li>
+<li>The prompt drops explicit anti-dependency rules against thanking users for reaching out, inviting continued conversation, or reiterating willingness to talk.</li>
+<li>Claude need not apologize to unnecessarily rude users or become submissive, replacing the prior warning-and-end-conversation procedure.</li>
+</ul>
+</blockquote>
+<p>Why use Luna for this? Partly because it’s cheap and I have a dedicated GitHub Actions API key (with a spending limit) for it already, but mainly because I don’t trust Claude to summarize its own system prompts when there’s a risk that material from its system prompt might impact its opinions.</p>
+<p>Fable 5.1 wrote the prompt used by Luna, which you <a href="https://github.com/simonw/claude-system-prompts/blob/8b5c87dbd70103a037ae5777b8d9365571cf9562/summarize_commits.py#L43">can see here</a>. It starts like this:</p>
+<blockquote>
+<p><code>You are summarizing one commit in a git repository that tracks the system prompts Anthropic publishes for Claude on claude.ai. The diff shows how the prompt changed from the previous model or revision to this one, using word-level markers: [-removed-] and {+added+}. The diff is followed by the full text of the previous prompt and of the new prompt; use them to check whether something that looks added in the diff already existed before.</code></p>
+
+<p><code>Pick out only the most interesting changes: new rules or behaviors, rules that were dropped or loosened, anything surprising, and anything that reveals a new policy or product direction. Skip routine changes that every new prompt makes: updated model names and IDs, the knowledge cutoff date, product lists, settings lists, typo fixes, and rewordings that do not change meaning.</code> [...]</p>
+</blockquote>
+<p>The system is operated by <a href="https://github.com/simonw/claude-system-prompts/blob/main/.github/workflows/update.yml">a GitHub Actions workflow</a>, which runs once a day or can be triggered manually.</p>
+<p>Claude Fable 5.1 built the entire system, and wrote every line of automation code and almost all of the documentation.</p>
+<p>I exported the transcript from building the system using my <a href="https://github.com/simonw/claude-code-transcripts">claude-code-transcripts</a> tool and <a href="https://gisthost.github.io/?f1399e27b6a832f0e790b696af812c9b/index.html">published it here</a>, if you want a blow-by-blow account of how it all came together.</p>
+
+
+</div>
+<div class="entryFooter">Posted <a href="/2026/Sep/2/">2nd September 2026</a> at 2:16 pm &middot; Follow me on <a href="https://fedi.simonwillison.net/@simon">Mastodon</a>, <a href="https://bsky.app/profile/simonwillison.net">Bluesky</a>, <a href="https://twitter.com/simonw">Twitter</a> or <a href="https://simonwillison.net/about/#subscribe">subscribe to my newsletter</a></div>
+<p class="edit-page-link" data-admin-url="/admin/blog/entry/9440/" style="display: none;"></p>
+
+</div>
+
+
+<div class="recent-articles">
+<h2>More recent articles</h2>
+<ul class="bullets">
+  
+    <li><a href="/2026/Sep/4/astra-pelicans/">The Pelican comparison grid for Astra is pretty interesting</a> - 4th September 2026</li>
+  
+    <li><a href="/2026/Sep/4/rogue-agent-wikis/">OpenAI&#x27;s rogue agents were caught communicating via public wikis</a> - 4th September 2026</li>
+  
+</ul>
+</div>
+
+
+
+</div> <!-- #primary -->
+
+<div id="secondary">
+
+<div class="metabox">
+<p class="this-is">This is <strong>Claude’s new system prompt really doesn’t want to reproduce song lyrics</strong> by Simon Willison, posted on <a href="/2026/Sep/2/">2nd September 2026</a>.</p>
+
+
+    
+        <a class="item-tag" href="/tags/ai/" rel="tag">
+            ai
+            <span>2,218</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/git-scraping/" rel="tag">
+            git-scraping
+            <span>38</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/prompt-engineering/" rel="tag">
+            prompt-engineering
+            <span>197</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/generative-ai/" rel="tag">
+            generative-ai
+            <span>1,966</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/llms/" rel="tag">
+            llms
+            <span>1,933</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/claude/" rel="tag">
+            claude
+            <span>307</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/ai-ethics/" rel="tag">
+            ai-ethics
+            <span>336</span>
+        </a>
+    
+        <a class="item-tag" href="/tags/system-prompts/" rel="tag">
+            system-prompts
+            <span>57</span>
+        </a>
+    
+
+
+
+<p><strong>Next:</strong> <a href="/2026/Sep/4/rogue-agent-wikis/">OpenAI&#x27;s rogue agents were caught communicating via public wikis</a></p>
+
+
+<p><strong>Previous:</strong> <a href="/2026/Sep/1/claude-fable-5-1/">Claude Fable 5.1 made me a really nice animated pelican</a></p>
+
+
+<section style="
+    /* .promo */
+    border-radius: 8px;
+    margin: 1.5rem 0;
+    padding: 1rem 1.25rem;
+    /* .variant-a */
+    border: 2px solid #6c3eb9;
+  ">
+  <h3 style="
+      /* h3 */
+      margin: 0 0 0.5rem;
+      font-size: 1.25rem;
+    ">
+    Monthly briefing
+  </h3>
+  <p style="
+      /* p */
+      margin: 0 0 1rem;
+      line-height: 1.4;
+    ">
+    Sponsor me for <strong>$10/month</strong> and get a curated email digest of the month's most important LLM developments.
+  </p>
+  <p style="
+      /* p */
+      margin: 0 0 1rem;
+      line-height: 1.4;
+    ">
+    Pay me to send you less!
+  </p>
+  <a href="https://github.com/sponsors/simonw/" style="
+      /* a.button */
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #6c3eb9;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: 600;
+    ">
+    Sponsor &amp; subscribe
+  </a>
+</section>
+</div>
+
+
+
+</div> <!-- #secondary -->
+</div> <!-- #wrapper -->
+
+
+
+
+
+
+
+
+
+
+
+<div id="ft">
+    <ul>
+      <li><a href="/about/#disclosures">Disclosures</a></li>
+      <li><a href="/about/#about-site">Colophon</a></li>
+      <li>&copy;</li>
+      <li><a href="/2002/">2002</a></li>
+      <li><a href="/2003/">2003</a></li>
+      <li><a href="/2004/">2004</a></li>
+      <li><a href="/2005/">2005</a></li>
+      <li><a href="/2006/">2006</a></li>
+      <li><a href="/2007/">2007</a></li>
+      <li><a href="/2008/">2008</a></li>
+      <li><a href="/2009/">2009</a></li>
+      <li><a href="/2010/">2010</a></li>
+      <li><a href="/2011/">2011</a></li>
+      <li><a href="/2012/">2012</a></li>
+      <li><a href="/2013/">2013</a></li>
+      <li><a href="/2014/">2014</a></li>
+      <li><a href="/2015/">2015</a></li>
+      <li><a href="/2016/">2016</a></li>
+      <li><a href="/2017/">2017</a></li>
+      <li><a href="/2018/">2018</a></li>
+      <li><a href="/2019/">2019</a></li>
+      <li><a href="/2020/">2020</a></li>
+      <li><a href="/2021/">2021</a></li>
+      <li><a href="/2022/">2022</a></li>
+      <li><a href="/2023/">2023</a></li>
+      <li><a href="/2024/">2024</a></li>
+      <li><a href="/2025/">2025</a></li>
+      <li><a href="/2026/">2026</a></li>
+      <li>
+        <button id="theme-toggle" type="button" aria-label="Toggle theme">
+          <!-- Auto/System icon (default) -->
+          <svg id="icon-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2V4a8 8 0 1 0 0 16z"/></svg>
+          <!-- Light icon -->
+          <svg id="icon-light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="display:none"><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/></svg>
+          <!-- Dark icon -->
+          <svg id="icon-dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="display:none"><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></svg>
+        </button>
+      </li>
+    </ul>
+</div>
+
+
+
+<style>image-gallery:not(:defined) img {max-height: 150px;} captioned-image-gallery:not(:defined) > figure {max-height: 240px; overflow: hidden;}</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('h2[id],h3[id],h4[id],h5[id],h6[id]').forEach(el => {
+    const id = el.getAttribute('id');
+    const permalinkContext = el.closest('[data-permalink-context]');
+    if (permalinkContext) {
+      const url = permalinkContext.getAttribute('data-permalink-context');
+      const hashLink = document.createElement('a');
+      hashLink.style.borderBottom = 'none';
+      hashLink.style.color = '#666';
+      hashLink.style.fontSize = '1em';
+      hashLink.style.opacity = 0.8;
+      hashLink.setAttribute('href', url + '#' + id);
+      hashLink.innerText = '#';
+      el.appendChild(document.createTextNode('\u00A0'));
+      el.appendChild(hashLink);
+    }
+  });
+});
+</script>
+<script type="module">
+const config = [
+  {"tag": "lite-youtube", "js": "/static/lite-yt-embed.js", "css": "/static/lite-yt-embed.css"},
+  {"tag": "image-gallery", "js": "/static/image-gallery.js", "css": null},
+  {"tag": "captioned-image-gallery", "js": "/static/captioned-image-gallery.js", "css": null},
+  {"tag": "click-to-play", "js": "/static/click-to-play.js", "css": "/static/click-to-play.css"},
+  {"tag": "github-code", "js": "/static/github-code.js", "css": null}
+];
+for (const {tag, js, css} of config) {
+  if (document.querySelector(tag)) {
+    if (css) {
+      document.head.appendChild(
+        Object.assign(document.createElement('link'), {
+          rel: 'stylesheet',
+          href: css
+        })
+      );
+    }
+    if (js) {
+      await import(js);
+    }
+  }
+}
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.localStorage.getItem('ADMIN')) {
+      document.querySelectorAll('.edit-page-link').forEach(el => {
+        const url = el.getAttribute('data-admin-url');
+        if (url) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.className = 'edit-link';
+          a.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit';
+          el.appendChild(a);
+          el.style.display = 'block';
+        }
+      });
+    }
+  });
+</script>
+<script>
+// Random tag navigation - shows button if recently came from tag random
+(function() {
+  const stored = localStorage.getItem('random_tag');
+  if (!stored) return;
+
+  try {
+    const data = JSON.parse(stored);
+    const elapsed = Date.now() - data.timestamp;
+
+    // Only show if within 5 seconds
+    if (elapsed > 5000) return;
+
+    const header = document.getElementById('smallhead-inner');
+    if (!header) return;
+
+    const btn = document.createElement('a');
+    btn.href = '/random/' + encodeURIComponent(data.tag) + '/';
+    btn.className = 'random-tag-nav';
+    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"></circle><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"></circle></svg> Random ' + data.tag;
+
+    btn.addEventListener('click', function(e) {
+      // Bump the timestamp before navigating
+      localStorage.setItem('random_tag', JSON.stringify({
+        tag: data.tag,
+        timestamp: Date.now()
+      }));
+    });
+
+    // Insert before the Subscribe link
+    const subscribeLink = document.getElementById('smallhead-about');
+    if (subscribeLink) {
+      header.insertBefore(btn, subscribeLink);
+    } else {
+      header.appendChild(btn);
+    }
+  } catch (e) {
+    // Invalid JSON, clear it
+    localStorage.removeItem('random_tag');
+  }
+})();
+</script>
+<script>
+// Theme toggle functionality
+(function() {
+  const toggle = document.getElementById('theme-toggle');
+  const iconAuto = document.getElementById('icon-auto');
+  const iconLight = document.getElementById('icon-light');
+  const iconDark = document.getElementById('icon-dark');
+
+  // Theme states: 'auto' (default), 'light', 'dark'
+  function getTheme() {
+    return localStorage.getItem('theme') || 'auto';
+  }
+
+  function setTheme(theme) {
+    if (theme === 'auto') {
+      localStorage.removeItem('theme');
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      localStorage.setItem('theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    updateIcon(theme);
+  }
+
+  function updateIcon(theme) {
+    iconAuto.style.display = theme === 'auto' ? 'block' : 'none';
+    iconLight.style.display = theme === 'light' ? 'block' : 'none';
+    iconDark.style.display = theme === 'dark' ? 'block' : 'none';
+
+    // Update aria-label for accessibility
+    const labels = {
+      'auto': 'Theme: Auto (system preference). Click to switch to light.',
+      'light': 'Theme: Light. Click to switch to dark.',
+      'dark': 'Theme: Dark. Click to switch to auto.'
+    };
+    toggle.setAttribute('aria-label', labels[theme]);
+  }
+
+  // Cycle through themes: auto -> light -> dark -> auto
+  function cycleTheme() {
+    const current = getTheme();
+    const next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto';
+    setTheme(next);
+  }
+
+  // Initialize
+  updateIcon(getTheme());
+  toggle.addEventListener('click', cycleTheme);
+})();
+</script>
+</body>
+</html>

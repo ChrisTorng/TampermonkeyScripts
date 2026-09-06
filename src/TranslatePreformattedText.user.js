@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-06_1.2.1
-// @description  Preserve inline code placement during automatic translation, add preformatted-text toggles, and keep mobile Wikipedia sections visible.
+// @version      2026-09-06_1.3.0
+// @description  Preserve inline code placement during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -16,6 +16,7 @@
     const convertedAttribute = 'data-tm-translatable-pre-converted';
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
+    const originalBlocks = new WeakMap();
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
     const style = document.createElement('style');
@@ -197,7 +198,7 @@
     }
 
     function makeInlineCodeTranslatable(code) {
-        if (!code || !code.parentNode || code.closest('pre') || code.hasAttribute(inlineCodeAttribute)) {
+        if (!code || !code.parentNode || code.closest('pre') || code.closest(`[${wrapperAttribute}]`) || code.hasAttribute(inlineCodeAttribute)) {
             return;
         }
 
@@ -238,39 +239,57 @@
         setButtonState(allButton, allConverted, 'all');
     }
 
+    function getBlockText(node) {
+        if (node.nodeType === 3) {
+            return node.nodeValue || node.textContent || '';
+        }
+        if (node.nodeType === 1 && node.tagName === 'BR') {
+            return '\n';
+        }
+        const children = Array.from(node.childNodes || node.children || []);
+        if (children.length === 0) {
+            return node.textContent || '';
+        }
+        return children.map((child) => getBlockText(child)).join('');
+    }
+
     function setConverted(wrapper, shouldConvert) {
         if (!wrapper) {
             return;
         }
-        const current = wrapper.querySelector(shouldConvert ? 'pre' : `[${convertedAttribute}]`);
+        const current = wrapper.querySelector(shouldConvert ? 'pre, blockquote' : `[${convertedAttribute}]`);
         if (!current) {
             return;
         }
-        const replacement = document.createElement(shouldConvert ? 'div' : 'pre');
-        copyAttributes(current, replacement);
+        const replacement = shouldConvert ? document.createElement('div') : originalBlocks.get(wrapper);
+        if (!replacement) {
+            return;
+        }
         if (shouldConvert) {
+            originalBlocks.set(wrapper, current);
+            copyAttributes(current, replacement);
             replacement.setAttribute(convertedAttribute, 'true');
+            replacement.textContent = getBlockText(current);
         } else {
             replacement.removeAttribute(convertedAttribute);
         }
-        replacement.textContent = current.textContent;
         wrapper.insertBefore(replacement, current);
         wrapper.removeChild(current);
         setButtonState(wrapper.querySelector('.tm-translate-pre-one'), shouldConvert, 'this');
         updateAllButton();
     }
 
-    function enhance(pre) {
-        if (!pre || !pre.parentNode || pre.closest(`[${wrapperAttribute}]`)) {
+    function enhance(block) {
+        if (!block || !block.parentNode || block.closest(`[${wrapperAttribute}]`)) {
             return;
         }
 
         const wrapper = document.createElement('div');
         wrapper.setAttribute(wrapperAttribute, 'true');
-        const parent = pre.parentNode;
-        parent.insertBefore(wrapper, pre);
-        parent.removeChild(pre);
-        wrapper.appendChild(pre);
+        const parent = block.parentNode;
+        parent.insertBefore(wrapper, block);
+        parent.removeChild(block);
+        wrapper.appendChild(block);
 
         const button = document.createElement('button');
         button.className = 'tm-translate-pre-button tm-translate-pre-one';
@@ -286,19 +305,38 @@
 
     function scan(root = document) {
         revealWikipediaSections(root);
+        const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;
+        if (isCodeQuote(containingQuote)) {
+            enhance(containingQuote);
+        }
+        if (root.nodeType === 1 && (root.tagName === 'PRE' || isCodeQuote(root))) {
+            enhance(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll('pre').forEach(enhance);
+            root.querySelectorAll('blockquote').forEach((blockquote) => {
+                if (isCodeQuote(blockquote)) {
+                    enhance(blockquote);
+                }
+            });
+        }
         if (root.nodeType === 1 && root.tagName === 'CODE') {
             makeInlineCodeTranslatable(root);
         }
         if (root.querySelectorAll) {
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
-        if (root.nodeType === 1 && root.tagName === 'PRE') {
-            enhance(root);
-        }
-        if (root.querySelectorAll) {
-            root.querySelectorAll('pre').forEach(enhance);
-        }
         updateAllButton();
+    }
+
+    function isCodeQuote(element) {
+        if (!element || element.tagName !== 'BLOCKQUOTE' || element.querySelector('pre')) {
+            return false;
+        }
+        const codeText = Array.from(element.querySelectorAll('code'))
+            .map((code) => code.textContent.trim())
+            .join(' ');
+        return codeText.length >= 80;
     }
 
     function revealWikipediaSections(root) {
