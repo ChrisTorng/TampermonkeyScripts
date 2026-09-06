@@ -40,6 +40,75 @@ function addPre(harness, text, className = '') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('inline code is replaced in place before automatic translation can reorder it', () => {
+        let paragraph;
+        const harness = execute((currentHarness) => {
+            paragraph = currentHarness.document.createElement('p');
+            const before = currentHarness.document.createElement('span');
+            before.textContent = 'no ';
+            const code = currentHarness.document.createElement('code');
+            code.textContent = 'native_decide';
+            code.className = 'source-code';
+            code.setAttribute('title', 'Lean declaration');
+            const after = currentHarness.document.createElement('span');
+            after.textContent = ' is used';
+            paragraph.append(before, code, after);
+            currentHarness.appendToBody(paragraph);
+        }, 'https://github.com/anthropics/fermats-last-theorem');
+
+        const inlineCode = paragraph.children[1];
+        assert.equal(inlineCode.tagName, 'SPAN');
+        assert.equal(inlineCode.textContent, 'native_decide');
+        assert.equal(inlineCode.className, 'source-code');
+        assert.equal(inlineCode.getAttribute('title'), 'Lean declaration');
+        assert.equal(inlineCode.getAttribute('data-tm-translatable-inline-code'), 'true');
+        assert.equal(inlineCode.getAttribute('data-tm-translatable-inline-code-original'), 'native_decide');
+        assert.equal(inlineCode.getAttribute('translate'), 'no');
+        assert.equal(paragraph.children[0].textContent, 'no ');
+        assert.equal(paragraph.children[2].textContent, ' is used');
+        assert.equal(harness.document.querySelectorAll('code').length, 0);
+    });
+
+    test('inline code changed by translation is restored without wrapping it again', () => {
+        let paragraph;
+        const harness = execute((currentHarness) => {
+            paragraph = currentHarness.document.createElement('p');
+            const code = currentHarness.document.createElement('code');
+            code.textContent = 'native_decide';
+            paragraph.appendChild(code);
+            currentHarness.appendToBody(paragraph);
+        });
+
+        const inlineCode = paragraph.children[0];
+        inlineCode.textContent = 'native decide';
+        harness.triggerMutation([], { type: 'childList', target: inlineCode });
+
+        assert.equal(inlineCode.textContent, 'native_decide');
+        assert.equal(inlineCode.tagName, 'SPAN');
+        assert.equal(harness.document.querySelectorAll('[data-tm-translatable-inline-code]').length, 1);
+        assert.equal(harness.document.querySelectorAll('code').length, 0);
+
+        harness.triggerMutation([], { type: 'childList', target: inlineCode });
+        assert.equal(inlineCode.textContent, 'native_decide');
+        assert.equal(harness.document.querySelectorAll('[data-tm-translatable-inline-code]').length, 1);
+    });
+
+    test('code inside PRE remains code and uses the existing block controls', () => {
+        let nestedCode;
+        const harness = execute((currentHarness) => {
+            const pre = currentHarness.document.createElement('pre');
+            nestedCode = currentHarness.document.createElement('code');
+            nestedCode.textContent = 'lake build';
+            pre.appendChild(nestedCode);
+            currentHarness.appendToBody(pre);
+        });
+
+        assert.equal(nestedCode.tagName, 'CODE');
+        assert.equal(nestedCode.hasAttribute('data-tm-translatable-inline-code'), false);
+        assert(nestedCode.closest('[data-tm-translatable-pre-wrapper]'));
+        assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+    });
+
     test('the page-wide button stays hidden when there are no PRE blocks', () => {
         const harness = execute(() => {});
         const allButton = harness.document.getElementById('tm-translate-all-pre');
@@ -129,6 +198,23 @@ describe('Translate Preformatted Text', () => {
 
         assert(latePre.closest('[data-tm-translatable-pre-wrapper]'));
         assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+    });
+
+    test('inline code added later is automatically replaced in place', () => {
+        const harness = execute(() => {});
+        const paragraph = harness.document.createElement('p');
+        const lateCode = harness.document.createElement('code');
+        lateCode.textContent = 'FinalCheck.lean';
+        paragraph.appendChild(lateCode);
+        harness.appendToBody(paragraph);
+
+        harness.triggerMutation([paragraph]);
+
+        assert.equal(paragraph.children[0].tagName, 'SPAN');
+        assert.equal(paragraph.children[0].textContent, 'FinalCheck.lean');
+        assert.equal(paragraph.children[0].getAttribute('data-tm-translatable-inline-code'), 'true');
+        assert.equal(paragraph.children[0].getAttribute('data-tm-translatable-inline-code-original'), 'FinalCheck.lean');
+        assert.equal(paragraph.children[0].getAttribute('translate'), 'no');
     });
 
     test('mobile Wikipedia sections remain visible for automatic translation', () => {
