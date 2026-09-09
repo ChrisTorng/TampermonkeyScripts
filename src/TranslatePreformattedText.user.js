@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-06_1.3.0
-// @description  Preserve inline code placement during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
+// @version      2026-09-09_1.4.0
+// @description  Fix automatic translation for inline code, preformatted blocks, Mastodon apps, and mobile Wikipedia sections.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -304,6 +304,7 @@
     }
 
     function scan(root = document) {
+        enableMastodonTranslation(root);
         revealWikipediaSections(root);
         const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;
         if (isCodeQuote(containingQuote)) {
@@ -327,6 +328,20 @@
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
         updateAllButton();
+    }
+
+    function enableMastodonTranslation(root) {
+        const candidates = [];
+        if (root.nodeType === 1 && root.id === 'mastodon' && root.classList.contains('app-holder')) {
+            candidates.push(root);
+        }
+        if (root.querySelectorAll) {
+            candidates.push(...root.querySelectorAll('#mastodon.app-holder'));
+        }
+        candidates.forEach((app) => {
+            app.classList.remove('notranslate');
+            app.setAttribute('translate', 'yes');
+        });
     }
 
     function isCodeQuote(element) {
