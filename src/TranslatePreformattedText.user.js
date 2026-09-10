@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-09_1.4.0
-// @description  Fix automatic translation for inline code, preformatted blocks, Mastodon apps, and mobile Wikipedia sections.
+// @version      2026-09-10_1.4.0
+// @description  Add opt-in translation controls for preformatted, GitHub source, code-quote, and Mermaid blocks while fixing inline code, Mastodon, and mobile Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -240,6 +240,11 @@
     }
 
     function getBlockText(node) {
+        if (node.nodeType === 1 && node.classList.contains('react-code-lines')) {
+            return Array.from(node.querySelectorAll('[data-testid="code-cell"]'))
+                .map((line) => line.textContent)
+                .join('\n');
+        }
         if (node.nodeType === 3) {
             return node.nodeValue || node.textContent || '';
         }
@@ -257,7 +262,7 @@
         if (!wrapper) {
             return;
         }
-        const current = wrapper.querySelector(shouldConvert ? 'pre, blockquote' : `[${convertedAttribute}]`);
+        const current = shouldConvert ? originalBlocks.get(wrapper) : wrapper.querySelector(`[${convertedAttribute}]`);
         if (!current) {
             return;
         }
@@ -266,8 +271,11 @@
             return;
         }
         if (shouldConvert) {
-            originalBlocks.set(wrapper, current);
             copyAttributes(current, replacement);
+            replacement.removeAttribute('translate');
+            replacement.classList.remove('notranslate');
+            replacement.classList.remove('react-code-lines');
+            replacement.removeAttribute('data-type');
             replacement.setAttribute(convertedAttribute, 'true');
             replacement.textContent = getBlockText(current);
         } else {
@@ -289,7 +297,9 @@
         const parent = block.parentNode;
         parent.insertBefore(wrapper, block);
         parent.removeChild(block);
+        block.setAttribute('translate', 'no');
         wrapper.appendChild(block);
+        originalBlocks.set(wrapper, block);
 
         const button = document.createElement('button');
         button.className = 'tm-translate-pre-button tm-translate-pre-one';
@@ -306,6 +316,16 @@
     function scan(root = document) {
         enableMastodonTranslation(root);
         revealWikipediaSections(root);
+        if (root.nodeType === 1 && isSpecialBlock(root)) {
+            enhance(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll('.react-code-lines, [data-type="mermaid"]').forEach((block) => {
+                if (isSpecialBlock(block)) {
+                    enhance(block);
+                }
+            });
+        }
         const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;
         if (isCodeQuote(containingQuote)) {
             enhance(containingQuote);
@@ -352,6 +372,18 @@
             .map((code) => code.textContent.trim())
             .join(' ');
         return codeText.length >= 80;
+    }
+
+    function isSpecialBlock(element) {
+        if (!element) {
+            return false;
+        }
+        if (element.classList.contains('react-code-lines')) {
+            return Boolean(element.querySelector('[data-testid="code-cell"]'));
+        }
+        return element.getAttribute('data-type') === 'mermaid'
+            && Array.from(element.querySelectorAll('pre'))
+                .some((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
     }
 
     function revealWikipediaSections(root) {

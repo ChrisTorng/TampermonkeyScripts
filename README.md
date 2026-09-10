@@ -85,7 +85,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Fix automatic translation for inline code, preformatted blocks, Mastodon apps, and mobile Wikipedia sections.
+Add opt-in translation controls for preformatted, GitHub source, code-quote, and Mermaid blocks while fixing inline code, Mastodon, and mobile Wikipedia translation.
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 

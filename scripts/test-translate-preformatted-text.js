@@ -26,6 +26,14 @@ const simonWillisonFixture = fs.readFileSync(
     path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'simonwillison.net_2026_Sep_2_claudes-new-system-prompt.html'),
     'utf8'
 );
+const okfPlainFixture = fs.readFileSync(
+    path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'github.com_okf-memory_okf-agent-memory_blob_main_README.md_plain_1.html'),
+    'utf8'
+);
+const okfRenderedFixture = fs.readFileSync(
+    path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'github.com_okf-memory_okf-agent-memory_blob_main_README.md.html'),
+    'utf8'
+);
 const mathstodonFixture = fs.readFileSync(
     path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'mathstodon.xyz_@tao_117237320796901560.html'),
     'utf8'
@@ -146,6 +154,69 @@ describe('Translate Preformatted Text', () => {
         button.click();
         assert.equal(harness.document.querySelector('blockquote'), quote);
         assert.equal(quote.querySelector('code'), code);
+    });
+
+    test('GitHub source code view waits for its translation button to be pressed', () => {
+        assert.match(okfPlainFixture, /class="react-code-lines"/);
+        let source;
+        const harness = execute((currentHarness) => {
+            source = currentHarness.document.createElement('div');
+            source.className = 'react-code-lines';
+            ['# OKF Agent Memory', 'A standardized memory layer.'].forEach((text, index) => {
+                const line = currentHarness.document.createElement('div');
+                line.setAttribute('data-testid', 'code-cell');
+                line.setAttribute('data-line-number', String(index + 1));
+                line.textContent = text;
+                source.appendChild(line);
+            });
+            currentHarness.appendToBody(source);
+        }, 'https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1');
+
+        const button = harness.document.querySelector('.tm-translate-pre-one');
+        assert(button);
+        assert.equal(source.getAttribute('translate'), 'no');
+        assert.equal(source.querySelectorAll('[data-tm-translatable-inline-code]').length, 0);
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+
+        button.click();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert.equal(converted.getAttribute('translate'), null);
+        assert.equal(
+            converted.textContent,
+            '# OKF Agent Memory\nA standardized memory layer.'
+        );
+    });
+
+    test('rendered GitHub Mermaid diagrams receive a visible block control', () => {
+        assert.match(okfRenderedFixture, /data-type="mermaid" aria-label="mermaid rendered output container"/);
+        let mermaid;
+        const harness = execute((currentHarness) => {
+            mermaid = currentHarness.document.createElement('div');
+            mermaid.setAttribute('data-type', 'mermaid');
+            const hiddenSource = currentHarness.document.createElement('div');
+            hiddenSource.className = 'render-plaintext-hidden';
+            hiddenSource.hidden = true;
+            const pre = currentHarness.document.createElement('pre');
+            pre.setAttribute('aria-label', 'Raw mermaid code');
+            pre.textContent = 'flowchart TD\n    Input --> Memory';
+            hiddenSource.appendChild(pre);
+            mermaid.appendChild(hiddenSource);
+            currentHarness.appendToBody(mermaid);
+        }, 'https://github.com/okf-memory/okf-agent-memory/blob/main/README.md');
+
+        const wrapper = harness.document.querySelector('[data-tm-translatable-pre-wrapper]');
+        const button = wrapper.querySelector('.tm-translate-pre-one');
+        assert(button);
+        assert.equal(button.textContent, '譯');
+        assert.equal(button.hidden, false);
+        assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+        assert.equal(mermaid.closest('[data-tm-translatable-pre-wrapper]'), wrapper);
+        assert.equal(mermaid.getAttribute('translate'), 'no');
+
+        button.click();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert.equal(converted.getAttribute('translate'), null);
+        assert.match(converted.textContent, /Input --> Memory/);
     });
 
     test('the page-wide button stays hidden when there are no PRE blocks', () => {
