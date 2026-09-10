@@ -26,6 +26,10 @@ const simonWillisonFixture = fs.readFileSync(
     path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'simonwillison.net_2026_Sep_2_claudes-new-system-prompt.html'),
     'utf8'
 );
+const ploverFixture = fs.readFileSync(
+    path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'blog.plover.com_math_ordinals_02-wellfoundedness.html'),
+    'utf8'
+);
 
 function execute(setupDom, url = 'https://codex-tool-reference.simonw.chatgpt.site/') {
     const harness = createHarness({ url });
@@ -44,6 +48,41 @@ function addPre(harness, text, className = '') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('MathJax output is excluded from automatic translation', () => {
+        assert.match(ploverFixture, /MathJax\.js\?config=TeX-AMS-MML_HTMLorMML/);
+        assert.match(ploverFixture, /!!\\omega·2!!/);
+
+        let initialMath;
+        const harness = execute((currentHarness) => {
+            initialMath = currentHarness.document.createElement('span');
+            initialMath.className = 'MathJax';
+            initialMath.textContent = 'ω·2';
+            currentHarness.appendToBody(initialMath);
+        }, 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html');
+
+        assert.equal(initialMath.classList.contains('notranslate'), true);
+        assert.equal(initialMath.getAttribute('translate'), 'no');
+
+        const displayMath = harness.document.createElement('div');
+        displayMath.className = 'MathJax_Display';
+        const nestedMath = harness.document.createElement('span');
+        nestedMath.textContent = 'ω^2';
+        displayMath.appendChild(nestedMath);
+        harness.appendToBody(displayMath);
+        harness.triggerMutation([nestedMath]);
+
+        assert.equal(displayMath.classList.contains('notranslate'), true);
+        assert.equal(displayMath.getAttribute('translate'), 'no');
+
+        const modernMath = harness.document.createElement('mjx-container');
+        modernMath.textContent = 'ε₀';
+        harness.appendToBody(modernMath);
+        harness.triggerMutation([modernMath]);
+
+        assert.equal(modernMath.classList.contains('notranslate'), true);
+        assert.equal(modernMath.getAttribute('translate'), 'no');
+    });
+
     test('inline code is replaced in place before automatic translation can reorder it', () => {
         let paragraph;
         const harness = execute((currentHarness) => {

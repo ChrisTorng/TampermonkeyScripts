@@ -1,0 +1,674 @@
+<html>
+
+<head>
+<title>The Universe of Discourse : The road to epsilon-zero: Nim always ends, even with infinite ordinals</title>
+<meta name="referrer" content="always">
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="alternate" type="application/rss+xml" title="RSS" href="https://blog.plover.com/index.rss" />
+<link rel="alternate" type="application/atom+xml" title="Atom"
+      href="https://blog.plover.com/index.atom" />
+
+<link rel="me" type="mastodon" href="https://mathstodon.xyz/@mjd"/>
+<link rel="me" type="mastodon" href="https://functional.cafe/@universe_of_discourse"/>
+
+<link rel="openid2.provider" href="https://openid.stackexchange.com/openid/provider">
+<link rel="openid2.local_id" href="https://openid.stackexchange.com/user/1b891001-2f6a-41a9-8754-aeab31dd4599">
+<link rel='icon' sizes="192x192" href='https://pic.blog.plover.com/HOP-192.png' />
+<link rel='icon' sizes="128x128" href='https://pic.blog.plover.com/HOP-128.png' />
+<link rel="apple-touch-icon" sizes="192x192" href="https://pic.blog.plover.com/HOP-192.png">
+<meta property="og:title" content="The road to epsilon-zero: Nim always ends, even with infinite ordinals">
+<meta property="og:site_name" content="The Universe of Discourse : The road to epsilon-zero: Nim always ends, even with infinite ordinals">
+<meta property="og:description" content="From the highly eclectic blog of Mark Dominus">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://pic.blog.plover.com/math/ordinals/02-wellfoundedness/green_poker_chip_omega.svg">
+<meta property="og:image:width" content="100">
+<meta property="og:image:height" content="100">
+<meta property="og:image:alt" content="(no alt)">
+<meta property="og:url" content="https://blog.plover.com/math/ordinals/02-wellfoundedness.html">
+
+<!-- REDIRECT: -->
+
+<!-- MathJax -->
+<script type="text/javascript"
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- To enable inlining of $ ... $
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+});
+</script>
+-->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {inlineMath: [['!!','!!']]}, // temporary
+  // don't forget that TeX's line break \\ will not work in Markdown!
+  // use \\\\ instead!
+});
+</script>
+
+
+<style>
+body {
+  background-color: #ffffff;
+  margin: 0;
+}
+
+pre {
+  overflow: auto;
+  background-color: #e4f0e4;
+  border-top:  1px #d0d0d0 solid;
+  border-left: 1px #d0d0d0 solid;
+  padding: .6em 0;
+}
+
+pre.digression  {
+  background-color: #ffdddd;
+}
+
+/* ---- layout: was nested <table class="page-columns">, now flexbox ---- */
+
+.page-columns {
+  display: flex;
+  width: 100%;
+  border-top: thin solid black;
+  border-bottom: thin solid black;
+}
+
+.sidebar {
+  box-sizing: border-box;
+  padding: 0 0.5em;
+  flex: 0 0 8em;
+  background-color: #6699cc;
+}
+
+.mainsection {
+  box-sizing: border-box;
+  padding: 0 1em;
+  flex: 1 1 auto;
+  min-width: 0;
+  background-color: #fdfdfd;
+}
+
+pre.erroneous  {
+  background-color: #ffdddd;
+}
+
+blockquote {
+  border-top:  1px #d0d0d0 solid;
+  border-left: 1px #d0d0d0 solid;
+  padding: 3px;
+  background-color: #ffeef1;
+}
+
+blockquote blockquote {
+  background-color: #f1d2f1;
+}
+
+blockquote blockquote blockquote {
+  background-color: #bee6f2;
+}
+
+blockquote blockquote blockquote blockquote {
+  background-color: #bee9df;
+}
+
+.emph {
+  color: purple;
+  font-weight: bolder;
+}
+
+.displayImage {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.bookbox table          { margin-left:    0.5em;
+                          margin-bottom:  0.5em;
+}
+
+@media print, screen and (max-device-width: 800px) {
+  .sidebar { display: none; }
+  .bookbox { display: none; }
+}
+
+body           { font-family: Verdana,Geneva,Arial,Sans-serif;
+                    color: #222222; }
+a:link               { color: #000066 }
+a:visited            { color: #000066 }
+.sidebar  a:link     { color: #000000 }
+.sidebar  a:visited  { color: #000000 }
+.pagetitle        { font-family: Verdana,Geneva,Arial,Sans-serif;
+                    font-size: xx-large; font-weight: bold; color: #336699; }
+h1.pagetitle { padding: 0; margin: 0; }
+.dateheader       { font-family: Verdana,Geneva,Arial,Sans-serif;
+                    font-size: large; font-weight: bold; color: #336699; }
+.storytitle       { font-family: Verdana,Geneva,Arial,Sans-serif;
+                    font-size: x-large; font-weight: bold; color:
+                    #336699; text-decoration: none; }
+
+
+h2       { font-size: x-large; font-weight: bold; color: #bb4488;
+           font-family: Verdana,Geneva,Arial,Sans-serif;  }
+h3       { font-size: large; color: #996699;
+           font-family: Verdana,Geneva,Arial,Sans-serif;  }
+h4       { font-size: medium; color: #9966ee;
+           font-family: Verdana,Geneva,Arial,Sans-serif;  }
+
+/* ---- menu lists: were single-column <table class="menuitem">, now <ul> ---- */
+
+ul.menuitem {
+    list-style: none;
+    margin: 0 0 2px 0;
+    padding: 0;
+}
+
+ul.menuitem li, td.menuitem, li.toc {
+    font-size: small;
+    background-color: #ccccff;
+    margin-bottom: 1px;
+    padding: 0 2px;
+}
+
+.menuitem a,
+.toc      a,
+.subtopics a {
+    font-size: small;
+    text-decoration: none;
+}
+
+/* ---- subtopics: genuinely tabular (label + count), stays a <table> ---- */
+
+table.subtopics {
+    width: 100%;
+    border-spacing: 0 1px;
+}
+table.subtopics td {
+    font-size: small;
+    background-color: #ccccff;
+}
+table.subtopics td.count {
+    text-align: right;
+}
+
+img { max-width: 100% }
+img.center { display: block; margin-left: auto; margin-right: auto }
+.caption { text-align: center; display: block; margin-left: auto;
+           margin-right: auto; font-size: smaller;  }
+
+
+.spoiler, .spoiler *:visited, .spoiler *:link {
+  color: black; background-color: black;
+  border: black thin solid;
+}
+
+.spoiler:hover {
+  color: inherit; background-color: inherit;
+}
+
+span[tooltip] {
+  position: relative;
+  cursor: help;
+}
+
+span[tooltip]:hover::after,
+span[tooltip]:focus::after {
+  content: attr(tooltip);
+  position: absolute;
+  left: 0;
+  top: 24px;
+  border: 1px #aaaaaa solid;
+  border-radius: 10px;
+  background-color: #ffffcc;
+  padding: 12px;
+  color: #000000;
+  font-size: 14px;
+  z-index: 1;
+}
+
+@media handheld, screen and (max-device-width: 800px) {
+  .MathJax_Display { overflow-x: scroll; }
+}
+
+div.margin-note {
+  text-align: right;
+  margin-left: 50%;
+  font-size: smaller;
+  float: right;
+}
+
+div.popup-note {
+  content: "poo";
+  color: "maroon";
+  float: right;
+  display: inline;
+  border: 2px #008800 solid;
+  width: 2em;
+  text-align: center;
+}
+
+div.popup-note:hover:after {
+    position: relative;
+    content: attr(text);
+    display: inline-block;
+    left: 0px;
+    top: 0px;
+    padding: 5px;
+    background-color: black;
+    color: white;
+    font-size: smaller;
+    text-align: right;
+    width: 100%;
+#    margin-left: 50%;
+}
+
+tool-disclosure {
+  font-size: smaller;
+  color: gray;
+#  border: solid darkgray 1px;
+}
+
+</style>
+
+<meta name="google-site-verification"
+      content="XLxterQkreKJ10X-T_OAhtcZfF6si4ZF2vupilmCNEM" />
+</head>
+
+<body>
+
+<h1 class="pagetitle">
+<a
+  style="text-decoration: none" href="https://blog.plover.com/">The Universe of Discourse</a>
+</h1>
+
+<div class="page-columns">
+
+  <!-- left column -->
+  <div class="sidebar">
+
+   <p>
+   <br />
+   Mark Dominus (&#38518;&#25935;&#20462;)<br />
+   <a href="mailto:mjd@pobox.com">mjd@pobox.com</a> <br />
+   </p>
+
+   <p>
+   <img width=100 height=100 src="https://pic.blog.plover.com/TOP.jpg"><br />
+   </p>
+
+   <p>
+   <a href="https://blog.plover.com/meta/about-me.html">About me</a>
+   </p>
+
+   <p>
+   <a href="https://blog.plover.com/index.rss">RSS</a>
+   <a href="https://blog.plover.com/index.atom">Atom</a>   </p>
+
+
+   <p><a href="https://blog.plover.com/">12 recent entries</a><br>
+  <ul class="menuitem">
+    <li class="menuitem"><a href="https://blog.plover.com/math/ordinals/06-nim-shortlex.html"><span class=menuitem>The road to epsilon-zero: Sequences of numbers have an order too</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/ordinals/05-shortlex.html"><span class=menuitem>The road to epsilon-zero: Productive programs and well-founded orders</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/two-kinds-of-theorems.html"><span class=menuitem>There are two kinds of theorems</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/ordinals/04-coordinates.html"><span class=menuitem>The road to epsilon-zero: Coin-moving games with no coins</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/book/elbow-shelf.html"><span class=menuitem>Seven books I keep close because I love them</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/ordinals/03-track-tokens.html"><span class=menuitem>The road to epsilon-zero: Infinite Nim as a coin-moving game</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/games/sport-flukes-followup.html"><span class=menuitem>“Steph Curry: fluke or breakthrough” ten years later</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/ordinals/02-wellfoundedness.html"><span class=menuitem>The road to epsilon-zero: Nim always ends, even with infinite ordinals</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/ordinals/01-nim.html"><span class=menuitem>The road to epsilon-zero: ordinals as nim-heaps</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/math/epsilon-zero.html"><span class=menuitem>Starting to understand epsilon-zero</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/lang/who-owns-english.html"><span class=menuitem>It's our language now!</span></a>
+<li class="menuitem"><a href="https://blog.plover.com/history/andor.html"><span class=menuitem>I owe my life to a 1913 road rage incident</span></a>
+
+  </ul>
+</p>
+
+   <p>Archive:<br><table>
+<tr><td><a href="https://blog.plover.com/2026/">2026</a>:
+    <td><a href="https://blog.plover.com/2026/01/">J</a><a href="https://blog.plover.com/2026/02/">F</a><a href="https://blog.plover.com/2026/03/">M</a>AM<a href="https://blog.plover.com/2026/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2026/07/">J</a><a href="https://blog.plover.com/2026/08/">A</a>
+<tr><td><a href="https://blog.plover.com/2025/">2025</a>:
+    <td>J<a href="https://blog.plover.com/2025/02/">F</a><a href="https://blog.plover.com/2025/03/">M</a><a href="https://blog.plover.com/2025/04/">A</a><a href="https://blog.plover.com/2025/05/">M</a>J
+<tr><td>&nbsp;<td>JA<a href="https://blog.plover.com/2025/09/">S</a>OND
+<tr><td><a href="https://blog.plover.com/2024/">2024</a>:
+    <td>J<a href="https://blog.plover.com/2024/02/">F</a><a href="https://blog.plover.com/2024/03/">M</a><a href="https://blog.plover.com/2024/04/">A</a><a href="https://blog.plover.com/2024/05/">M</a><a href="https://blog.plover.com/2024/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2024/07/">J</a><a href="https://blog.plover.com/2024/08/">A</a>SO<a href="https://blog.plover.com/2024/11/">N</a>D
+<tr><td><a href="https://blog.plover.com/2023/">2023</a>:
+    <td>J<a href="https://blog.plover.com/2023/02/">F</a><a href="https://blog.plover.com/2023/03/">M</a><a href="https://blog.plover.com/2023/04/">A</a><a href="https://blog.plover.com/2023/05/">M</a><a href="https://blog.plover.com/2023/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2023/07/">J</a><a href="https://blog.plover.com/2023/08/">A</a><a href="https://blog.plover.com/2023/09/">S</a><a href="https://blog.plover.com/2023/10/">O</a><a href="https://blog.plover.com/2023/11/">N</a><a href="https://blog.plover.com/2023/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2022/">2022</a>:
+    <td><a href="https://blog.plover.com/2022/01/">J</a><a href="https://blog.plover.com/2022/02/">F</a><a href="https://blog.plover.com/2022/03/">M</a><a href="https://blog.plover.com/2022/04/">A</a><a href="https://blog.plover.com/2022/05/">M</a><a href="https://blog.plover.com/2022/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2022/07/">J</a>A<a href="https://blog.plover.com/2022/09/">S</a><a href="https://blog.plover.com/2022/10/">O</a><a href="https://blog.plover.com/2022/11/">N</a><a href="https://blog.plover.com/2022/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2021/">2021</a>:
+    <td><a href="https://blog.plover.com/2021/01/">J</a><a href="https://blog.plover.com/2021/02/">F</a><a href="https://blog.plover.com/2021/03/">M</a><a href="https://blog.plover.com/2021/04/">A</a>M<a href="https://blog.plover.com/2021/05/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2021/07/">J</a><a href="https://blog.plover.com/2021/08/">A</a><a href="https://blog.plover.com/2021/09/">S</a><a href="https://blog.plover.com/2021/10/">O</a><a href="https://blog.plover.com/2021/11/">N</a><a href="https://blog.plover.com/2021/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2020/">2020</a>:
+    <td><a href="https://blog.plover.com/2020/01/">J</a><a href="https://blog.plover.com/2020/02/">F</a><a href="https://blog.plover.com/2020/03/">M</a><a href="https://blog.plover.com/2020/04/">A</a><a href="https://blog.plover.com/2020/05/">M</a><a href="https://blog.plover.com/2020/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2020/07/">J</a><a href="https://blog.plover.com/2020/08/">A</a><a href="https://blog.plover.com/2020/09/">S</a><a href="https://blog.plover.com/2020/10/">O</a><a href="https://blog.plover.com/2020/11/">N</a><a href="https://blog.plover.com/2020/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2019/">2019</a>:
+<td><a href="https://blog.plover.com/2019/01/">J</a>F<a href="https://blog.plover.com/2019/03/">M</a><a href="https://blog.plover.com/2019/04/">A</a><a href="https://blog.plover.com/2019/05/">M</a><a href="https://blog.plover.com/2019/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2019/07/">J</a><a href="https://blog.plover.com/2019/08/">A</a><a href="https://blog.plover.com/2019/09/">S</a><a href="https://blog.plover.com/2019/10/">O</a><a href="https://blog.plover.com/2019/11/">N</a><a href="https://blog.plover.com/2019/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2018/">2018</a>:
+<td><a href="https://blog.plover.com/2018/01/">J</a><a href="https://blog.plover.com/2018/02/">F</a><a href="https://blog.plover.com/2018/03/">M</a><a href="https://blog.plover.com/2018/04/">A</a><a href="https://blog.plover.com/2018/05/">M</a><a href="https://blog.plover.com/2018/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2018/07/">J</a><a href="https://blog.plover.com/2018/08/">A</a><a href="https://blog.plover.com/2018/09/">S</a><a href="https://blog.plover.com/2018/10/">O</a><a href="https://blog.plover.com/2018/11/">N</a><a href="https://blog.plover.com/2018/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2017/">2017</a>:
+<td><a href="https://blog.plover.com/2017/01/">J</a><a href="https://blog.plover.com/2017/02/">F</a><a href="https://blog.plover.com/2017/03/">M</a><a href="https://blog.plover.com/2017/04/">A</a><a href="https://blog.plover.com/2017/05/">M</a><a href="https://blog.plover.com/2017/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2017/07/">J</a><a href="https://blog.plover.com/2017/08/">A</a><a href="https://blog.plover.com/2017/09/">S</a><a href="https://blog.plover.com/2017/10/">O</a></a><a href="https://blog.plover.com/2017/11/">N</a><a href="https://blog.plover.com/2017/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2016/">2016</a>:
+<td>J<a href="https://blog.plover.com/2016/02/">F</a><a href="https://blog.plover.com/2016/03/">M</a><a href="https://blog.plover.com/2016/04/">A</a><a href="https://blog.plover.com/2016/05/">M</a><a href="https://blog.plover.com/2016/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2016/07/">J</a>ASO<a href="https://blog.plover.com/2016/11/">N</a><a href="https://blog.plover.com/2016/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2015/">2015</a>:
+<td>JF<a href="https://blog.plover.com/2015/03/">M</a><a href="https://blog.plover.com/2015/04/">A</a><a href="https://blog.plover.com/2015/05/">M</a><a href="https://blog.plover.com/2015/06/">J</a><tr><td>&nbsp;<td><a href="https://blog.plover.com/2015/07/">J</a><a href="https://blog.plover.com/2015/08/">A</a><a href="https://blog.plover.com/2015/09/">S</a><a href="https://blog.plover.com/2015/10/">O</a><a href="https://blog.plover.com/2015/11/">N</a><a href="https://blog.plover.com/2015/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2014/">2014</a>:
+<td><a href="https://blog.plover.com/2014/01/">J</a><a href="https://blog.plover.com/2014/02/">F</a><a href="https://blog.plover.com/2014/03/">M</a><a href="https://blog.plover.com/2014/04/">A</a>MJ<tr><td>&nbsp;<td><a href="https://blog.plover.com/2014/07/">J</a>ASO<a href="https://blog.plover.com/2014/11/">N</a><a href="https://blog.plover.com/2014/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2013/">2013</a>:
+<td>JFMAMJ<tr><td>&nbsp;<td><a href="https://blog.plover.com/2013/07/">J</a>A<a href="https://blog.plover.com/2013/09/">S</a><a href="https://blog.plover.com/2013/10/">O</a>N<a href="https://blog.plover.com/2013/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2012/">2012</a>:
+<td><a href="https://blog.plover.com/2012/01/">J</a><a href="https://blog.plover.com/2012/02/">F</a><a href="https://blog.plover.com/2012/03/">M</a>AMJ
+<tr><td>&nbsp;<td>J<a href="https://blog.plover.com/2012/08/">A</a>SON<a href="https://blog.plover.com/2012/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2011/">2011</a>:
+<td>JFMA<a href="https://blog.plover.com/2011/05/">M</a><a href="https://blog.plover.com/2011/06/">J</a>
+<tr><td>&nbsp;<td>JASO<a href="https://blog.plover.com/2011/11/">N</a>D
+<tr><td><a href="https://blog.plover.com/2010/">2010</a>:
+<td><a href="https://blog.plover.com/2010/01/">J</a>FMAMJ
+<tr><td>&nbsp;<td>J<a href="https://blog.plover.com/2010/08/">A</a><a href="https://blog.plover.com/2010/09/">S</a><a href="https://blog.plover.com/2010/10/">O</a><a href="https://blog.plover.com/2010/11/">N</a>D
+<tr><td><a href="https://blog.plover.com/2009/">2009</a>:
+<td><a href="https://blog.plover.com/2009/01/">J</a><a href="https://blog.plover.com/2009/02/">F</a><a href="https://blog.plover.com/2009/03/">M</a>A<a href="https://blog.plover.com/2009/05/">M</a><a href="https://blog.plover.com/2009/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2009/07/">J</a>A<a href="https://blog.plover.com/2009/09/">S</a>ON<a href="https://blog.plover.com/2009/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2008/">2008</a>:
+<td><a href="https://blog.plover.com/2008/01/">J</a><a href="https://blog.plover.com/2008/02/">F</a><a href="https://blog.plover.com/2008/03/">M</a><a href="https://blog.plover.com/2008/04/">A</a><a href="https://blog.plover.com/2008/05/">M</a><a href="https://blog.plover.com/2008/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2008/07/">J</a>A<a href="https://blog.plover.com/2008/09/">S</a><a href="https://blog.plover.com/2008/10/">O</a><a href="https://blog.plover.com/2008/11/">N</a>D
+<tr><td><a href="https://blog.plover.com/2007/">2007</a>:
+<td><a href="https://blog.plover.com/2007/01/">J</a><a href="https://blog.plover.com/2007/02/">F</a><a href="https://blog.plover.com/2007/03/">M</a><a href="https://blog.plover.com/2007/04/">A</a><a href="https://blog.plover.com/2007/05/">M</a><a href="https://blog.plover.com/2007/06/">J</a>
+<tr><td>&nbsp;<td><a href="https://blog.plover.com/2007/07/">J</a><a href="https://blog.plover.com/2007/08/">A</a><a href="https://blog.plover.com/2007/09/">S</a><a href="https://blog.plover.com/2007/10/">O</a><a href="https://blog.plover.com/2007/11/">N</a><a href="https://blog.plover.com/2007/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2006/">2006</a>:
+<td><a href="https://blog.plover.com/2006/01/">J</a><a href="https://blog.plover.com/2006/02/">F</a><a
+href="https://blog.plover.com/2006/03/">M</a><a href="https://blog.plover.com/2006/04/">A</a><a
+href="https://blog.plover.com/2006/05/">M</a><a href="https://blog.plover.com/2006/06/">J</a>
+<tr><td>&nbsp;<td> <a href="https://blog.plover.com/2006/07/">J</a>A<a
+href="https://blog.plover.com/2006/09/">S</a><a
+href="https://blog.plover.com/2006/10/">O</a><a
+href="https://blog.plover.com/2006/11/">N</a><a
+href="https://blog.plover.com/2006/12/">D</a>
+<tr><td><a href="https://blog.plover.com/2005/">2005</a>: <td><a
+href="https://blog.plover.com/2005/10/">O</a><a href="https://blog.plover.com/2005/11/">N</a><a
+href="https://blog.plover.com/2005/12/">D</a>
+</table>
+<br>
+</p>
+
+
+
+<hr>
+Subtopics:<br>
+<p><table class="subtopics"><tr><td><a href="/math/">Mathematics</a><td class="count">252</tr>
+<tr><td><a href="/prog/">Programming</a><td class="count">102</tr>
+<tr><td><a href="/lang/">Language</a><td class="count">98</tr>
+<tr><td><a href="/misc/">Miscellaneous</a><td class="count">75</tr>
+<tr><td><a href="/book/">Book</a><td class="count">51</tr>
+<tr><td><a href="/tech/">Tech</a><td class="count">49</tr>
+<tr><td><a href="/lang/etym/">Etymology</a><td class="count">36</tr>
+<tr><td><a href="/prog/haskell/">Haskell</a><td class="count">33</tr>
+<tr><td><a href="/oops/">Oops</a><td class="count">30</tr>
+<tr><td><a href="/Unix/">Unix</a><td class="count">27</tr>
+<tr><td><a href="/aliens/dd/">Cosmic Call</a><td class="count">25</tr>
+<tr><td><a href="/math/se/">Math SE</a><td class="count">25</tr>
+<tr><td><a href="/law/">Law</a><td class="count">23</tr>
+<tr><td><a href="/physics/">Physics</a><td class="count">21</tr>
+<tr><td><a href="/prog/perl/">Perl</a><td class="count">17</tr>
+<tr><td><a href="/bio/">Biology</a><td class="count">16</tr>
+<tr><td><a href="/brain/">Brain</a><td class="count">15</tr>
+<tr><td><a href="/calendar/">Calendar</a><td class="count">15</tr>
+<tr><td><a href="/food/">Food</a><td class="count">15</tr>
+</table>
+</p>
+
+   <p>
+   <img alt="" src="https://pic.blog.plover.com/buttons/mjd-universe.png"
+   border="0" vspace=1 /></a>
+   <a href="http://hop.perl.plover.com/"><img alt="Higher-Order Perl"
+   src="https://pic.blog.plover.com/buttons/HOP-BUTTON.png" border="0" vspace=1 /></a>
+   <a href="http://blosxom.sourceforge.net/"><img alt="Blosxom"
+   src="https://pic.blog.plover.com/buttons/blosxom-sux.png" border="0" vspace=1 /></a>
+   </p>
+
+  <p><span style="font-size: small; background-color: #ccccff; padding: 2px;">Comments disabled</span></p>
+  </div>
+
+  <!-- main blog entry column -->
+  <div class="mainsection">
+
+   <br />
+<span class="dateheader">Sun, 19 Jul 2026</span>
+<p>
+<a class="storytitle" name="02-wellfoundedness" href="https://blog.plover.com/math/ordinals/02-wellfoundedness.html">The road to epsilon-zero: Nim always ends, even with infinite ordinals</a>
+<br />
+<p>Previously:</p>
+
+<ol>
+<li><a href="https://blog.plover.com/math/epsilon-zero.html">Ordinal numbers and basic set theory </a></li>
+<li><a href="https://blog.plover.com/math/ordinals/01-nim.html">Ordinals as nim-heaps</a></li>
+</ol>
+
+<p>[Yesterday][prev-2] I talked about the game of Nim, which involves two
+players taking beans from several piles, and an extension that
+includes green tokens that behave a bit like infinite piles:</p>
+
+<p><img class="center" style="max-width: 40vw; height:
+auto;" src="https://pic.blog.plover.com/math/ordinals/02-wellfoundedness/green_poker_chip_omega.svg" /></p>
+
+<p>When there's a pile with one or more green tokens, it's legal for a
+player to remove any or all of them, and then to add <em>any</em> number of
+beans to the pile.</p>
+
+<p>At first it might seem that Nim with !!ω!!-tokens could go on forever.
+Not so!</p>
+
+<p>If someone gives you a Nim position where all the piles contain beans,
+you can say ahead of time how long the game might last.  A game
+starting with nim-heaps of size !!\{1, 3, 4, 8\}!! simply can't last
+more than 16 turns, because each turn removes at least one bean from a
+pile, and the game ends when someone takes the last bean.</p>
+
+<p>If the game starts with nim-heaps of size !!\{1, 3, 4, 8,
+\omega\}!!, you can't know how long it might last.   If you guess it
+will be over in
+!!1,\!000!! turns, the first player might prove you wrong by
+replacing the
+!!\omega!!-token with a pile of !!10,\!000!!  beans, and then the
+game might last up to !!10,\!016!! more turns.</p>
+
+<p>If you guessed at the start that
+the game would last no more than  !!10,\!016!! turns, one of the
+players might replace the token with a
+pile of !!1,\!000,\!000,\!000,\!000,\!000,\!000!! beans, or even
+more.  Before the first move, there is no bound that can be placed on how long the
+game will take to finish.</p>
+
+<p>But what you <em>can</em> say 
+about
+!!\{1, 3, 4, 8,
+\omega\}!!
+is that after at most !!17!! moves,
+someone will have removed the !!ω!!-token and replaced it with some
+finite number of beans.  And that <em>that</em> point you'll be able to say
+when the game will end. </p>
+
+<h2>!!ω·2!!</h2>
+
+<p>Similarly, suppose there is are piles !!\{1, 3, 4, 8, \omega·2\}!!.
+Remember that !!\omega·2!! is simply a stack of two green tokens.
+What's the longest this game could last?</p>
+
+<p>As before, we can't say.  But we <em>can</em> say that after at most !!17!!
+turns, at least one of the !!ω!! tokens will have been removed, and there
+will be at most one !!ω!! token and a possibly very large number of
+beans, say !!b_1!!.  And then after at most !!b_1+1!! more moves, the last
+!!ω!! token will have been taken if it wasn't before, and only beans
+will be left, possibly a very large number of beans, say !!b_2!!.</p>
+
+<p>And at <em>that</em> point we will be certain that the game can't last more
+than !!b_2!! more moves.</p>
+
+<p>So with !!\{1, 3, 4, 8, \omega·2\}!! we can't say how long the game
+will take to finish.</p>
+
+<p>And we can't say when we will be able to say how long the game will
+take to finish.</p>
+
+<p>But we <em>can</em> say that in at most !!17!! moves, we will be able to say,
+not how long the game will take to finish, but how long it will be before we can
+say how long the game will take to finish.</p>
+
+<h2>Estimating programming tasks</h2>
+
+<p>This reminds me of a story I once heard from another programmer. He
+told me his boss had come to him to ask him if he could fix a certain
+bug.  He had replied that he could, and the boss had asked him how
+long he thought it would take.</p>
+
+<p>He said “I don't know, I have to think about it.”</p>
+
+<p>His boss, being a reasonable woman, asked him when he would be able to
+tell her.</p>
+
+<p>Again he said “I don't know, I have to think about it.”</p>
+
+<p>The boss, having dealt with this guy before, did not lose her
+temper. Instead, she asked how long it would take him to figure that
+out.</p>
+
+<p>“Not more than two days,” he said at once.</p>
+
+<p>“Okay,” she said.  “Just to make sure there is no miscommunication,
+are you telling me that in two days you may not be able to estimate
+the task, but you will be able to tell me when the estimate will be
+ready?”</p>
+
+<p>“That's right.”</p>
+
+<p>And they parted amicably, both parties satsified, at least for the
+time. Communication between management and engineering doesn't
+always turn out so well!</p>
+
+<p>My friend was apaprently playing the game !!ω·2+1!!.  There was only
+one bean, so one of the !!ω!!  tokens would have to have gone by the
+second day.  At that point there would remain !!ω + n!! for some
+finite number !!n!!, and although my friend wouldn't be able to say at
+that point how long the game would last, he <em>would</em> know that he would
+be able to deliver the estimate after at most !!n+1!! more days.</p>
+
+<h2>The game must end!</h2>
+
+<p>With !!ω·2+1!! we don't know when the game will end, or how long it
+will be before we know when the game will end.</p>
+
+<p>But we do know that in
+at most two moves we will know how long it will be before we know how
+long it will be before the game ends, and that means that <em>we do know
+that that game will end</em> even though we're quite far away from saying
+when that will happen.</p>
+
+<p>The argument is always the same: there are only a finite number of
+beans, and even if both players try to avoid the tokens, the beans will eventually run out
+and someone will be forced to replace a green token with more beans.
+Then those beans will run out and someone will be forced to take
+another token, and so on, until all the tokens are gone, and then when
+the beans run out the game is over.</p>
+
+<p>Of course, both tokens and beans might go faster than that. But go
+they will, however slowly and even if only one at a time.</p>
+
+<p>And this is true no matter how many green !!ω!! tokens there are to
+begin with.</p>
+
+<p>And the same holds true if there are any square !!ω^2!! tokens.  Even
+if the players avoid the square tokens, at
+some point all the beans and green !!ω!! tokens will be used up and
+someone will have to replace at least one square !!ω^2!! token with
+more beans and green tokens, and then those will be used up… and
+eventually the last square !!ω^2!! token will be gone, and then we're
+back to the !!ω·n+m!! case of the previous paragraph and the game must
+end.</p>
+
+<p>But at that point we have defeated English descriptions.  We have
+piled up an infinite sequence of “how long before we can say”s into
+“We can't say how long before we can say …  how long before the game
+ends”.</p>
+
+<p>Bizarre!  And yet we know that even these games must end, although
+English isn't powerful enough to say how long it will take, or even
+how long before we will be able to say how long it will take.</p>
+
+<h2>Ordinals are well-founded</h2>
+
+<p>An ordinal is a set of <em>smaller</em> ordinals.  Every move in Nim makes an
+ordinal <em>smaller</em>. If you keep making numbers <em>smaller</em> you eventually
+reach 0, and then the game is over.</p>
+
+<p>This property of ordinals is called <em>well-foundedness</em>.  We say that
+ordinals are <strong>well-founded</strong>.</p>
+
+<p>Note that this that this is a special property of ordinals, not shared by all
+types of numbers.   For example, the positive rational numbers do not
+have this property.  From !!1!! you can go down to the smaller
+!!\frac12!!, then to the smaller !!\frac13!!, and so on, downward,
+always downward to smaller and smaller numbers, but never reaching zero.  A game of Nim where the
+beans can be divided into infinitely small crumbs might never end.
+But a game of Nim with ordinals always ends, because the ordinals are well-founded.
+You can go up and up forever to crazier
+and crazier infinite ordinals, but no matter how far up you go, you
+can't go down and down forever, you must bottom out at zero after a
+<em>finite</em> time.</p>
+
+<p>Well-founded orderings are the the theoretical backbone of recursive
+programs.  When we write a recursive function, we want to be certain
+that it will terminate.  And that means that if a function calls
+itself with a different argument, the new argument must  <em>smaller</em> than it
+was.  Maybe “smaller” mans numerically less.  But it could mean many
+other things.  If the function is processing a directory tree,
+“smaller” could  mean “fewer levels deep”.  If the
+function is sorting a list, “smaller” could mean “fewer items are out
+of order”.  The essence of recursion is that the shrinking cannot
+continue forever.  The function will eventually reach the number zero,
+or the directory that contains only files, or the list with no
+unsorted elements, and then it will be done.</p>
+
+<p>In the next article we will see a way to understand infinite nim-heaps
+in a more uniform way than as a hodgepodge of variously shaped and
+colored tokens.</p>
+
+<p>Coming next: </p>
+
+<ul>
+<li><a href="https://blog.plover.com/math/ordinals/03-track-tokens.html">Infinite Nim as a coin-moving game</a></li>
+</ul>
+
+<p>And then:</p>
+
+<ul>
+<li><a href="https://blog.plover.com/math/ordinals/04-coordinates.html">Coin-moving games without the coins</a></li>
+<li><a href="https://blog.plover.com/math/ordinals/05-shortlex.html">Productive programs and well-founded orders</a></li>
+<li><a href="https://blog.plover.com/math/ordinals/06-nim-shortlex.html">Shortlex order also orders sequences of numbers</a></li>
+</ul>
+
+<p><tool-disclosure>Claude generated the green poker chip image.
+Everything else in this article was written entirely by
+me.</tool-disclosure></p>
+
+</p>
+
+<br clear=all>
+<p align="right">
+<i>[<a href="https://blog.plover.com/math/ordinals">Other articles in category /math/ordinals</a>] 
+<a href="https://blog.plover.com/math/ordinals/02-wellfoundedness.html">permanent link</a></i>
+</p>
+
+<br />
+
+</div>
+</body>
+</html>
+

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-06_1.3.0
-// @description  Preserve inline code placement during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
+// @version      2026-09-10_1.3.1
+// @description  Preserve inline code and math during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -16,6 +16,7 @@
     const convertedAttribute = 'data-tm-translatable-pre-converted';
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
+    const mathSelectors = ['.MathJax', '.MathJax_Display', '.MathJax_Preview', 'mjx-container'];
     const originalBlocks = new WeakMap();
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
@@ -221,6 +222,25 @@
         code.parentNode.removeChild(code);
     }
 
+    function protectMath(root) {
+        const mathElements = [];
+        if (root.nodeType === 1) {
+            const containingMath = mathSelectors
+                .map((selector) => root.closest(selector))
+                .find(Boolean);
+            if (containingMath) {
+                mathElements.push(containingMath);
+            }
+        }
+        if (root.querySelectorAll) {
+            mathElements.push(...root.querySelectorAll(mathSelectors.join(', ')));
+        }
+        new Set(mathElements).forEach((element) => {
+            element.classList.add('notranslate');
+            element.setAttribute('translate', 'no');
+        });
+    }
+
     function setButtonState(button, isActive, scope) {
         button.setAttribute('aria-pressed', String(isActive));
         button.style.setProperty('background-color', isActive ? 'rgba(34, 139, 34, .85)' : 'rgba(0, 0, 0, .35)', 'important');
@@ -305,6 +325,7 @@
 
     function scan(root = document) {
         revealWikipediaSections(root);
+        protectMath(root);
         const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;
         if (isCodeQuote(containingQuote)) {
             enhance(containingQuote);
