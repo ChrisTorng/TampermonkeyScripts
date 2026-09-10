@@ -88,7 +88,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 
 # Translate Preformatted Text
 Section note: automated tests use representative inline code, preformatted blocks, and mobile Wikipedia sections in the local DOM harness; live browser translation still requires manual validation.
-- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured MathJax markup is detected, and initial and dynamically rendered math containers are marked notranslate)
+- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured MathJax markup is detected; rendered math is marked notranslate while source previews remain untouched for MathJax cleanup)
 - https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (inline code elements are replaced early with styled translatable spans while their original positions, text, classes, and attributes are retained)
 - https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, dragging, and dynamically added blocks are automated)
 - https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured code-only quotations receive per-block translation controls and can be toggled without treating their code as inline content)

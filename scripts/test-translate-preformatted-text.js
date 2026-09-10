@@ -83,6 +83,27 @@ describe('Translate Preformatted Text', () => {
         assert.equal(modernMath.getAttribute('translate'), 'no');
     });
 
+    test('MathJax previews remain untouched so MathJax can remove the original TeX', () => {
+        let preview;
+        let renderedMath;
+        execute((currentHarness) => {
+            preview = currentHarness.document.createElement('span');
+            preview.className = 'MathJax_Preview';
+            preview.textContent = '\\{1, 3, 4, 8\\}';
+            currentHarness.appendToBody(preview);
+
+            renderedMath = currentHarness.document.createElement('span');
+            renderedMath.className = 'MathJax';
+            renderedMath.textContent = '{1, 3, 4, 8}';
+            currentHarness.appendToBody(renderedMath);
+        }, 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html');
+
+        assert.equal(preview.className, 'MathJax_Preview');
+        assert.equal(preview.getAttribute('translate'), null);
+        assert.equal(renderedMath.classList.contains('notranslate'), true);
+        assert.equal(renderedMath.getAttribute('translate'), 'no');
+    });
+
     test('inline code is replaced in place before automatic translation can reorder it', () => {
         let paragraph;
         const harness = execute((currentHarness) => {

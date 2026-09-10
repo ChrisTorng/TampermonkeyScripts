@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-10_1.3.1
+// @version      2026-09-10_1.3.2
 // @description  Preserve inline code and math during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
@@ -16,7 +16,9 @@
     const convertedAttribute = 'data-tm-translatable-pre-converted';
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
-    const mathSelectors = ['.MathJax', '.MathJax_Display', '.MathJax_Preview', 'mjx-container'];
+    // MathJax removes preview nodes by recognizing their unmodified class name.
+    // Protect only rendered output so the original TeX preview is not left visible.
+    const mathSelectors = ['.MathJax', '.MathJax_Display', 'mjx-container'];
     const originalBlocks = new WeakMap();
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
