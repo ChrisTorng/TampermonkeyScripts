@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-06_1.4.0
-// @description  Preserve inline code placement, add opt-in translation toggles for preformatted, source-code, code-quote, and Mermaid blocks, and keep mobile Wikipedia sections visible.
+// @version      2026-09-10_1.4.0
+// @description  Add opt-in translation controls for preformatted, GitHub source, code-quote, and Mermaid blocks while fixing inline code, Mastodon, and mobile Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -314,6 +314,7 @@
     }
 
     function scan(root = document) {
+        enableMastodonTranslation(root);
         revealWikipediaSections(root);
         if (root.nodeType === 1 && isSpecialBlock(root)) {
             enhance(root);
@@ -349,16 +350,18 @@
         updateAllButton();
     }
 
-    function isSpecialBlock(element) {
-        if (!element) {
-            return false;
+    function enableMastodonTranslation(root) {
+        const candidates = [];
+        if (root.nodeType === 1 && root.id === 'mastodon' && root.classList.contains('app-holder')) {
+            candidates.push(root);
         }
-        if (element.classList.contains('react-code-lines')) {
-            return Boolean(element.querySelector('[data-testid="code-cell"]'));
+        if (root.querySelectorAll) {
+            candidates.push(...root.querySelectorAll('#mastodon.app-holder'));
         }
-        return element.getAttribute('data-type') === 'mermaid'
-            && Array.from(element.querySelectorAll('pre'))
-                .some((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
+        candidates.forEach((app) => {
+            app.classList.remove('notranslate');
+            app.setAttribute('translate', 'yes');
+        });
     }
 
     function isCodeQuote(element) {
@@ -369,6 +372,18 @@
             .map((code) => code.textContent.trim())
             .join(' ');
         return codeText.length >= 80;
+    }
+
+    function isSpecialBlock(element) {
+        if (!element) {
+            return false;
+        }
+        if (element.classList.contains('react-code-lines')) {
+            return Boolean(element.querySelector('[data-testid="code-cell"]'));
+        }
+        return element.getAttribute('data-type') === 'mermaid'
+            && Array.from(element.querySelectorAll('pre'))
+                .some((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
     }
 
     function revealWikipediaSections(root) {

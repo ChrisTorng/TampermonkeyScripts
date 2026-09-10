@@ -34,6 +34,10 @@ const okfRenderedFixture = fs.readFileSync(
     path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'github.com_okf-memory_okf-agent-memory_blob_main_README.md.html'),
     'utf8'
 );
+const mathstodonFixture = fs.readFileSync(
+    path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'mathstodon.xyz_@tao_117237320796901560.html'),
+    'utf8'
+);
 
 function execute(setupDom, url = 'https://codex-tool-reference.simonw.chatgpt.site/') {
     const harness = createHarness({ url });
@@ -347,5 +351,20 @@ describe('Translate Preformatted Text', () => {
 
         assert.equal(initialSection.hidden, false);
         assert.equal(initialSection.hasAttribute('hidden'), false);
+    });
+
+    test('Mastodon instances allow browser translation without a host allowlist', () => {
+        assert.match(mathstodonFixture, /class="notranslate app-holder"[^>]+id="mastodon"/);
+        let app;
+        execute((currentHarness) => {
+            app = currentHarness.document.createElement('div');
+            app.id = 'mastodon';
+            app.className = 'notranslate app-holder';
+            currentHarness.appendToBody(app);
+        }, 'https://unlisted-mastodon-instance.example/@person/1234');
+
+        assert.equal(app.classList.contains('notranslate'), false);
+        assert.equal(app.classList.contains('app-holder'), true);
+        assert.equal(app.getAttribute('translate'), 'yes');
     });
 });

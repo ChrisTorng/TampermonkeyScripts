@@ -87,13 +87,14 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
-Section note: automated tests use representative inline code, preformatted blocks, and mobile Wikipedia sections in the local DOM harness; live browser translation still requires manual validation.
+Section note: automated tests use representative inline code, preformatted blocks, Mastodon app markers, and mobile Wikipedia sections in the local DOM harness; live browser translation still requires manual validation.
 - https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (inline code elements are replaced early with styled translatable spans while their original positions, text, classes, and attributes are retained)
 - https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, dragging, and dynamically added blocks are automated)
 - https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured code-only quotations receive per-block translation controls and can be toggled without treating their code as inline content)
 - https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured GitHub source view receives an opt-in translation control and preserves line breaks when toggled)
 - https://github.com/okf-memory/okf-agent-memory/blob/main/README.md [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured rendered Mermaid container receives a visible opt-in translation control)
 - https://en.wikipedia.org/wiki/Parque_Arqueol%C3%B3gico_do_Solst%C3%ADcio [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (initial and dynamically collapsed mobile sections are kept visible; machine-translation output requires manual validation)
+- https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
