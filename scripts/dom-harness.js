@@ -162,6 +162,21 @@ class BasicNode {
     }
 }
 
+class BasicTextNode extends BasicNode {
+    constructor(value) {
+        super(3);
+        this.nodeValue = String(value);
+    }
+
+    get textContent() {
+        return this.nodeValue;
+    }
+
+    set textContent(value) {
+        this.nodeValue = String(value);
+    }
+}
+
 class BasicElement extends BasicNode {
     constructor(tagName) {
         super(1);
@@ -410,16 +425,25 @@ class BasicDocument extends BasicNode {
         return element;
     }
 
+    createTextNode(value) {
+        const node = new BasicTextNode(value);
+        node.ownerDocument = this;
+        return node;
+    }
+
     createDocumentFragment() {
         const fragment = new BasicDocumentFragment();
         fragment.ownerDocument = this;
         return fragment;
     }
 
-    createTreeWalker(root) {
+    createTreeWalker(root, whatToShow = 1) {
         const nodes = [];
         const visit = (node) => {
-            if (node instanceof BasicElement) {
+            if ((whatToShow & 1) && node instanceof BasicElement) {
+                nodes.push(node);
+            }
+            if ((whatToShow & 4) && node instanceof BasicTextNode) {
                 nodes.push(node);
             }
             if (node.children) {
@@ -679,7 +703,7 @@ function createHarness(options) {
         HTMLElement: BasicElement,
         HTMLAnchorElement: BasicElement,
         ShadowRoot: BasicDocumentFragment,
-        NodeFilter: { SHOW_ELEMENT: 1 },
+        NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4 },
         innerWidth: 1280,
         innerHeight: 720,
         visualViewport: {
@@ -803,7 +827,7 @@ function createHarness(options) {
         HTMLElement: BasicElement,
         HTMLAnchorElement: BasicElement,
         ShadowRoot: BasicDocumentFragment,
-        NodeFilter: { SHOW_ELEMENT: 1 },
+        NodeFilter: { SHOW_ELEMENT: 1, SHOW_TEXT: 4 },
         console: consoleMock,
         URL,
         URLSearchParams,

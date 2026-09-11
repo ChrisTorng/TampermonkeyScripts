@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-10_1.3.2
-// @description  Preserve inline code and math during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
+// @version      2026-09-11_1.3.3
+// @description  Preserve inline code and math placement during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -16,11 +16,13 @@
     const convertedAttribute = 'data-tm-translatable-pre-converted';
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
+    const mathSourceAttribute = 'data-tm-translatable-math-source';
     // MathJax removes preview nodes by recognizing their unmodified class name.
     // Protect only rendered output so the original TeX preview is not left visible.
     const mathSelectors = ['.MathJax', '.MathJax_Display', 'mjx-container'];
     const originalBlocks = new WeakMap();
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
+    const usesBangMathDelimiter = location.hostname === 'blog.plover.com';
 
     const style = document.createElement('style');
     style.textContent = `
@@ -243,6 +245,63 @@
         });
     }
 
+    function protectMathSourceText(textNode) {
+        const parent = textNode.parentElement || textNode.parentNode;
+        if (!parent || !textNode.nodeValue || parent.closest(`[${mathSourceAttribute}]`)) {
+            return;
+        }
+        const excludedSelectors = ['script', 'style', 'textarea', 'pre', 'code', ...mathSelectors];
+        if (excludedSelectors.some((selector) => parent.closest(selector))) {
+            return;
+        }
+
+        const pattern = /!![\s\S]+?!!/g;
+        const source = textNode.nodeValue;
+        const matches = Array.from(source.matchAll(pattern));
+        if (matches.length === 0) {
+            return;
+        }
+
+        let offset = 0;
+        matches.forEach((match) => {
+            if (match.index > offset) {
+                parent.insertBefore(document.createTextNode(source.slice(offset, match.index)), textNode);
+            }
+            const wrapper = document.createElement('span');
+            wrapper.setAttribute(mathSourceAttribute, 'true');
+            wrapper.classList.add('notranslate');
+            wrapper.setAttribute('translate', 'no');
+            wrapper.textContent = match[0];
+            parent.insertBefore(wrapper, textNode);
+            offset = match.index + match[0].length;
+        });
+        if (offset < source.length) {
+            parent.insertBefore(document.createTextNode(source.slice(offset)), textNode);
+        }
+        parent.removeChild(textNode);
+    }
+
+    function protectMathSources(root) {
+        if (!usesBangMathDelimiter) {
+            return;
+        }
+        if (root.nodeType === 3) {
+            protectMathSourceText(root);
+            return;
+        }
+        if (!root.ownerDocument && root !== document) {
+            return;
+        }
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        let textNode = walker.nextNode();
+        while (textNode) {
+            textNodes.push(textNode);
+            textNode = walker.nextNode();
+        }
+        textNodes.forEach(protectMathSourceText);
+    }
+
     function setButtonState(button, isActive, scope) {
         button.setAttribute('aria-pressed', String(isActive));
         button.style.setProperty('background-color', isActive ? 'rgba(34, 139, 34, .85)' : 'rgba(0, 0, 0, .35)', 'important');
@@ -327,6 +386,7 @@
 
     function scan(root = document) {
         revealWikipediaSections(root);
+        protectMathSources(root);
         protectMath(root);
         const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;
         if (isCodeQuote(containingQuote)) {

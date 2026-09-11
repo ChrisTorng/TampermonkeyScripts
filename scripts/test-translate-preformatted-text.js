@@ -48,6 +48,41 @@ function addPre(harness, text, className = '') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('delimited math is protected in place before automatic translation starts', () => {
+        let paragraph;
+        const harness = execute((currentHarness) => {
+            paragraph = currentHarness.document.createElement('p');
+            paragraph.appendChild(currentHarness.document.createTextNode(
+                'Nim heaps of size !!\\{1, 3, 4, 8\\}!! always end.'
+            ));
+            currentHarness.appendToBody(paragraph);
+        }, 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html');
+
+        assert.equal(paragraph.children.length, 3);
+        assert.equal(paragraph.children[0].nodeValue, 'Nim heaps of size ');
+        const sourceMath = paragraph.children[1];
+        assert.equal(sourceMath.tagName, 'SPAN');
+        assert.equal(sourceMath.textContent, '!!\\{1, 3, 4, 8\\}!!');
+        assert.equal(sourceMath.classList.contains('notranslate'), true);
+        assert.equal(sourceMath.getAttribute('translate'), 'no');
+        assert.equal(sourceMath.getAttribute('data-tm-translatable-math-source'), 'true');
+        assert.equal(paragraph.children[2].nodeValue, ' always end.');
+
+        paragraph.children[0].nodeValue = '尼姆堆的大小為 ';
+        paragraph.children[2].nodeValue = '一定會結束。';
+        assert.equal(paragraph.children[1], sourceMath, 'translation must not move the protected math');
+        assert.equal(sourceMath.textContent, '!!\\{1, 3, 4, 8\\}!!');
+
+        const renderedMath = harness.document.createElement('span');
+        renderedMath.className = 'MathJax';
+        renderedMath.textContent = '{1, 3, 4, 8}';
+        sourceMath.appendChild(renderedMath);
+        harness.triggerMutation([renderedMath]);
+        assert.equal(renderedMath.classList.contains('notranslate'), true);
+        assert.equal(renderedMath.getAttribute('translate'), 'no');
+        assert.equal(paragraph.children[1], sourceMath);
+    });
+
     test('MathJax output is excluded from automatic translation', () => {
         assert.match(ploverFixture, /MathJax\.js\?config=TeX-AMS-MML_HTMLorMML/);
         assert.match(ploverFixture, /!!\\omega·2!!/);
