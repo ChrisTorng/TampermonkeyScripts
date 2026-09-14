@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-11_1.3.3
-// @description  Preserve inline code and math placement during automatic translation, add toggles for preformatted and code-quote blocks, and keep mobile Wikipedia sections visible.
+// @version      2026-09-14_1.3.4
+// @description  Preserve inline code and math placement during automatic translation, add preformatted-block toggles, enable Mastodon translation, and keep mobile Wikipedia sections visible.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -240,8 +240,25 @@
             mathElements.push(...root.querySelectorAll(mathSelectors.join(', ')));
         }
         new Set(mathElements).forEach((element) => {
+            if (element.closest(`[${mathSourceAttribute}]`)) {
+                return;
+            }
             element.classList.add('notranslate');
             element.setAttribute('translate', 'no');
+        });
+    }
+
+    function enableMastodonTranslation(root) {
+        const appHolders = [];
+        if (root.nodeType === 1 && root.matches('#mastodon.app-holder')) {
+            appHolders.push(root);
+        }
+        if (root.querySelectorAll) {
+            appHolders.push(...root.querySelectorAll('#mastodon.app-holder'));
+        }
+        appHolders.forEach((appHolder) => {
+            appHolder.classList.remove('notranslate');
+            appHolder.removeAttribute('translate');
         });
     }
 
@@ -386,6 +403,7 @@
 
     function scan(root = document) {
         revealWikipediaSections(root);
+        enableMastodonTranslation(root);
         protectMathSources(root);
         protectMath(root);
         const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;

@@ -30,6 +30,10 @@ const ploverFixture = fs.readFileSync(
     path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'blog.plover.com_math_ordinals_02-wellfoundedness.html'),
     'utf8'
 );
+const mastodonFixture = fs.readFileSync(
+    path.join(__dirname, '..', 'tests', 'Translate Preformatted Text', 'hachyderm.io_@simontatham_117201594980991062.html'),
+    'utf8'
+);
 
 function execute(setupDom, url = 'https://codex-tool-reference.simonw.chatgpt.site/') {
     const harness = createHarness({ url });
@@ -78,9 +82,33 @@ describe('Translate Preformatted Text', () => {
         renderedMath.textContent = '{1, 3, 4, 8}';
         sourceMath.appendChild(renderedMath);
         harness.triggerMutation([renderedMath]);
-        assert.equal(renderedMath.classList.contains('notranslate'), true);
-        assert.equal(renderedMath.getAttribute('translate'), 'no');
+        assert.equal(renderedMath.className, 'MathJax');
+        assert.equal(renderedMath.getAttribute('translate'), null);
+        assert.equal(sourceMath.classList.contains('notranslate'), true);
         assert.equal(paragraph.children[1], sourceMath);
+    });
+
+    test('Mastodon removes only its page-wide translation exclusion', () => {
+        assert.match(mastodonFixture, /<div class="notranslate app-holder"[^>]+id="mastodon">/);
+        assert.match(mastodonFixture, /I noticed today that an update to the/);
+
+        let appHolder;
+        let nestedProtectedContent;
+        execute((currentHarness) => {
+            appHolder = currentHarness.document.createElement('div');
+            appHolder.id = 'mastodon';
+            appHolder.className = 'notranslate app-holder';
+            appHolder.setAttribute('translate', 'no');
+            nestedProtectedContent = currentHarness.document.createElement('span');
+            nestedProtectedContent.className = 'notranslate status__content';
+            nestedProtectedContent.textContent = 'I noticed today that an update to the Linux Zoom client...';
+            appHolder.appendChild(nestedProtectedContent);
+            currentHarness.appendToBody(appHolder);
+        }, 'https://hachyderm.io/@simontatham/117201594980991062');
+
+        assert.equal(appHolder.className, 'app-holder');
+        assert.equal(appHolder.getAttribute('translate'), null);
+        assert.equal(nestedProtectedContent.className, 'notranslate status__content');
     });
 
     test('MathJax output is excluded from automatic translation', () => {
