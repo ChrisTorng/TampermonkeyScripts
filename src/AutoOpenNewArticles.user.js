@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-29_1.3.2
-// @description  Track the latest seen article and open newly listed articles on Taipei Astronomical Museum and The Neuron Daily in background tabs with a yellow star.
+// @version      2026-09-23_1.4.0
+// @description  Track newly listed articles, mark previously listed Hacker News Summary items as muted, and auto-open new items on supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -15,6 +15,7 @@
 // @match        https://www.theneurondaily.com/
 // @match        https://www.theneurondaily.com/archive*
 // @match        https://wiwi.blog/blog/
+// @match        https://hackernews.betacat.io/*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_openInTab
@@ -25,6 +26,7 @@
 
     const STORAGE_PREFIX = 'autoOpenNewArticles:lastSeen';
     const STAR_CLASS = 'auto-open-new-articles-star';
+    const SEEN_CLASS = 'auto-open-new-articles-seen';
     const STYLE_ID = 'auto-open-new-articles-style';
 
     function ensureStyles() {
@@ -41,12 +43,40 @@
                 margin-right: 0.35em;
                 text-shadow: 0 0 1px rgba(0, 0, 0, 0.25);
             }
+            .${SEEN_CLASS} {
+                opacity: 0.38 !important;
+            }
         `;
         document.head.appendChild(style);
     }
 
     function getSiteConfig() {
         const url = new URL(window.location.href);
+
+        if (url.hostname === 'hackernews.betacat.io' && url.pathname === '/') {
+            return {
+                scope: 'hackernews-summary:listings',
+                markPreviouslyListed: true,
+                collectArticleLinks: () => Array.from(document.querySelectorAll('article.post-item'))
+                    .filter((article) => !article.classList.contains('ad')),
+                getArticleId: (article) => {
+                    const commentLink = article.querySelector('a[rel="comment"]');
+                    if (commentLink) {
+                        try {
+                            const itemId = new URL(commentLink.href, window.location.href).searchParams.get('id');
+                            if (itemId) {
+                                return `hackernews:${itemId}`;
+                            }
+                        } catch (error) {
+                            // Fall through to the stable article URL below.
+                        }
+                    }
+
+                    const titleLink = article.querySelector('.post-title a[href]');
+                    return titleLink ? `hackernews:url:${titleLink.href}` : '';
+                }
+            };
+        }
 
         if (url.hostname === 'tam.gov.taipei') {
             const listId = url.searchParams.get('n');
@@ -236,7 +266,24 @@
         const articles = links.map((link) => ({
             link,
             id: siteConfig.getArticleId(link),
-        }));
+        })).filter((article) => article.id);
+
+        if (siteConfig.markPreviouslyListed) {
+            const storedIds = GM_getValue(storageKey, []);
+            const seenIds = new Set(Array.isArray(storedIds) ? storedIds : []);
+            articles.forEach((article) => {
+                if (seenIds.has(article.id)) {
+                    article.link.classList.add(SEEN_CLASS);
+                }
+            });
+
+            const updatedIds = Array.from(new Set([
+                ...articles.map((article) => article.id),
+                ...seenIds
+            ])).slice(0, 2000);
+            GM_setValue(storageKey, updatedIds);
+            return;
+        }
 
         const latestId = articles[0].id;
         if (!lastSeenId) {

@@ -69,7 +69,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Track the latest seen article, auto-open newly listed items in background tabs with a yellow star, and no-cache reload listing pages when the tab becomes active on Taipei Astronomical Museum, The Neuron Daily, and Wiwi Blog.
+Mark previously listed Hacker News Summary items as muted, and track, star, auto-open, and refresh newly listed items on Taipei Astronomical Museum, The Neuron Daily, and Wiwi Blog.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
