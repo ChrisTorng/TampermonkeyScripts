@@ -2,6 +2,10 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
+## [eBird Map Links User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdScript.user.js)
+
+Add direct recent-species and recent-checklist links to eBird hotspot map results.
+
 ## [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
 Add an article button for Hacker News comments, including pages reached through redirects.
@@ -134,6 +138,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
 
 1. Click anyone you need:
 
+  - [EBirdScript.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/EBirdScript.user.js)
   - [HackerNewsComments.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
   - [RedirectUrls.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
   - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)

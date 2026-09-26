@@ -3,6 +3,10 @@
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
 - `N/A`: reference sample with no matching userscript behavior expected.
 
+# eBird Map Links
+Section note: automated tests inject the userscript into a local hotspot-result DOM and verify that nested source URLs are normalized to direct hotspot routes.
+- https://ebird.org/hotspots [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
+
 # Hacker News Comments
 Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
