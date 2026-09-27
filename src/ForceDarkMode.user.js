@@ -22,7 +22,7 @@
 // @exclude      *://kagi.com/*
 // @exclude      *://chatgpt.com/*
 // @exclude      *://*.chatgpt.com/*
-// @exclude      *://christorng.github.io/*
+// @exclude      *://christorng.idv.tw/*
 // @exclude      *://github.com/*
 // @exclude      *://*.github.com/*
 // @exclude      *://discord.com/*
