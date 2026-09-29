@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-23_1.4.0
-// @description  Track newly listed articles, mark previously listed Hacker News Summary items as muted, and auto-open new items on supported sites.
+// @version      2026-09-29_1.6.0
+// @description  Collapse and mute previously listed Hacker News Summary items with review controls; track, star, auto-open, and refresh new items on other supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -27,6 +27,11 @@
     const STORAGE_PREFIX = 'autoOpenNewArticles:lastSeen';
     const STAR_CLASS = 'auto-open-new-articles-star';
     const SEEN_CLASS = 'auto-open-new-articles-seen';
+    const COLLAPSED_CLASS = 'auto-open-new-articles-collapsed';
+    const MANAGED_CLASS = 'auto-open-new-articles-managed';
+    const ITEM_TOGGLE_CLASS = 'auto-open-new-articles-item-toggle';
+    const ALL_TOGGLE_ID = 'auto-open-new-articles-all-toggle';
+    const DATE_NAV_CLASS = 'auto-open-new-articles-date-nav';
     const STYLE_ID = 'auto-open-new-articles-style';
 
     function ensureStyles() {
@@ -46,6 +51,38 @@
             .${SEEN_CLASS} {
                 opacity: 0.38 !important;
             }
+            .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}) {
+                display: none !important;
+            }
+            .${MANAGED_CLASS} {
+                position: relative !important;
+                padding-left: 30px !important;
+            }
+            .${ITEM_TOGGLE_CLASS} {
+                position: absolute !important;
+                left: 0 !important;
+                top: 20px !important;
+                width: 24px !important;
+                height: 24px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: 1px solid #888 !important;
+                border-radius: 4px !important;
+                background: #333 !important;
+                color: #fff !important;
+                line-height: 22px !important;
+                text-align: center !important;
+                cursor: pointer !important;
+            }
+            .${DATE_NAV_CLASS} {
+                display: grid !important;
+                grid-template-columns: 1fr auto 1fr !important;
+                align-items: center !important;
+                margin: 12px 0 !important;
+                font-weight: 700 !important;
+            }
+            .${DATE_NAV_CLASS} a:first-child { justify-self: start !important; }
+            .${DATE_NAV_CLASS} a:last-child { justify-self: end !important; }
         `;
         document.head.appendChild(style);
     }
@@ -53,10 +90,12 @@
     function getSiteConfig() {
         const url = new URL(window.location.href);
 
-        if (url.hostname === 'hackernews.betacat.io' && url.pathname === '/') {
+        const hackerNewsDateMatch = url.pathname.match(/^\/daily\/(\d{4}-\d{2}-\d{2})\/?$/);
+        if (url.hostname === 'hackernews.betacat.io' && (url.pathname === '/' || hackerNewsDateMatch)) {
             return {
                 scope: 'hackernews-summary:listings',
                 markPreviouslyListed: true,
+                displayedDate: hackerNewsDateMatch ? hackerNewsDateMatch[1] : null,
                 collectArticleLinks: () => Array.from(document.querySelectorAll('article.post-item'))
                     .filter((article) => !article.classList.contains('ad')),
                 getArticleId: (article) => {
@@ -247,6 +286,209 @@
         };
     }
 
+    function saveSeenIds(storageKey, articles, seenIds) {
+        const updatedIds = Array.from(new Set([
+            ...articles.map((article) => article.id),
+            ...seenIds
+        ])).slice(0, 2000);
+        GM_setValue(storageKey, updatedIds);
+        return new Set(updatedIds);
+    }
+
+    // Keep this shared floating-control contract synchronized as documented in AGENTS.md.
+    function applyFloatingControlStyle(button, slot) {
+        const styles = {
+            appearance: 'none', position: 'absolute', top: `${70 + (slot * 44)}px`, right: 'auto', bottom: 'auto',
+            left: 'calc(100vw - 44px)', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'center',
+            'box-sizing': 'border-box', width: '44px', 'min-width': '44px', 'max-width': '44px', height: '34px',
+            'min-height': '34px', 'max-height': '34px', margin: '0', opacity: '0.5', padding: '0', border: '0',
+            'border-radius': '6px', 'font-family': 'system-ui, sans-serif', 'font-size': '15px', 'line-height': '1',
+            'text-align': 'center', 'text-transform': 'none', 'white-space': 'nowrap', cursor: 'move',
+            'user-select': 'none', 'touch-action': 'none', 'box-shadow': '0 2px 6px rgba(0, 0, 0, 0.25)',
+            'z-index': '2147483647'
+        };
+        Object.entries(styles).forEach(([property, value]) => button.style.setProperty(property, value, 'important'));
+        button.setAttribute('data-tm-floating-control', String(slot));
+    }
+
+    function makeFloatingControlDraggable(button) {
+        let dragging = false;
+        let moved = false;
+        let startX;
+        let startY;
+        let offsetX;
+        let offsetY;
+        const point = (event) => event.touches ? event.touches[0] : event;
+
+        const start = (event) => {
+            const current = point(event);
+            dragging = true;
+            moved = false;
+            startX = current.clientX;
+            startY = current.clientY;
+            offsetX = startX - button.offsetLeft;
+            offsetY = startY - button.offsetTop;
+        };
+        const drag = (event) => {
+            if (!dragging) return;
+            const current = point(event);
+            if (!moved && Math.abs(current.clientX - startX) < 3 && Math.abs(current.clientY - startY) < 3) return;
+            moved = true;
+            event.preventDefault();
+            const maxX = Math.max(document.documentElement.clientWidth, window.innerWidth) - button.offsetWidth;
+            const maxY = Math.max(document.documentElement.clientHeight, window.innerHeight) - button.offsetHeight;
+            button.style.setProperty('left', `${Math.min(Math.max(current.clientX - offsetX, 0), maxX)}px`, 'important');
+            button.style.setProperty('top', `${Math.min(Math.max(current.clientY - offsetY, 0), maxY)}px`, 'important');
+            button.style.setProperty('right', 'auto', 'important');
+            button.style.setProperty('bottom', 'auto', 'important');
+        };
+        const end = () => { dragging = false; };
+        button.addEventListener('mousedown', start);
+        button.addEventListener('touchstart', start);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag);
+        document.addEventListener('mouseup', end);
+        document.addEventListener('touchend', end);
+        return () => {
+            const wasMoved = moved;
+            moved = false;
+            return wasMoved;
+        };
+    }
+
+    function setArticleCollapsed(article, collapsed) {
+        const button = article.querySelector(`.${ITEM_TOGGLE_CLASS}`);
+        article.classList.toggle(COLLAPSED_CLASS, collapsed);
+        article.classList.toggle(SEEN_CLASS, collapsed);
+        if (button) {
+            button.textContent = collapsed ? '▶' : '▼';
+            button.title = collapsed ? 'Expand this item' : 'Collapse this item';
+            button.setAttribute('aria-label', button.title);
+            button.setAttribute('aria-expanded', String(!collapsed));
+        }
+    }
+
+    function addArticleToggle(article, initiallyCollapsed) {
+        article.classList.add(MANAGED_CLASS);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = ITEM_TOGGLE_CLASS;
+        button.addEventListener('click', () => {
+            setArticleCollapsed(article, !article.classList.contains(COLLAPSED_CLASS));
+        });
+        article.insertBefore(button, article.firstChild);
+        setArticleCollapsed(article, initiallyCollapsed);
+    }
+
+    function createDateNavigation(displayedDate) {
+        const today = new Date();
+        const dateText = displayedDate || [
+            today.getUTCFullYear(),
+            String(today.getUTCMonth() + 1).padStart(2, '0'),
+            String(today.getUTCDate()).padStart(2, '0')
+        ].join('-');
+        const currentDate = new Date(`${dateText}T00:00:00Z`);
+        if (Number.isNaN(currentDate.getTime())) {
+            return null;
+        }
+
+        const adjacentDate = (offset) => {
+            const date = new Date(currentDate);
+            date.setUTCDate(date.getUTCDate() + offset);
+            return date.toISOString().slice(0, 10);
+        };
+        const tomorrow = adjacentDate(1);
+        const todayText = today.toISOString().slice(0, 10);
+        const navigation = document.createElement('nav');
+        navigation.className = DATE_NAV_CLASS;
+        navigation.setAttribute('aria-label', 'Hacker News Summary date navigation');
+
+        const previous = document.createElement('a');
+        previous.href = `/daily/${adjacentDate(-1)}`;
+        previous.textContent = '<';
+        previous.title = 'Previous day';
+        const current = document.createElement('a');
+        current.href = `/daily/${dateText}`;
+        current.textContent = `${dateText} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getUTCDay()]}`;
+        current.title = 'Open this daily archive';
+        const next = document.createElement('a');
+        next.href = tomorrow >= todayText ? '/' : `/daily/${tomorrow}`;
+        next.textContent = '>';
+        next.title = 'Next day';
+        navigation.append(previous, current, next);
+        return navigation;
+    }
+
+    function addDateNavigation(articles, displayedDate) {
+        const first = articles[0].link;
+        const last = articles[articles.length - 1].link;
+        const topNavigation = createDateNavigation(displayedDate);
+        const bottomNavigation = createDateNavigation(displayedDate);
+        if (!topNavigation || !bottomNavigation || !first.parentNode || !last.parentNode) {
+            return;
+        }
+        first.parentNode.insertBefore(topNavigation, first);
+        last.insertAdjacentElement('afterend', bottomNavigation);
+    }
+
+    function setupHackerNewsControls(articles, storageKey, storedIds, displayedDate) {
+        let seenIds = new Set(storedIds);
+        articles.forEach((article) => addArticleToggle(article.link, seenIds.has(article.id)));
+
+        const allToggle = document.createElement('button');
+        allToggle.id = ALL_TOGGLE_ID;
+        allToggle.type = 'button';
+        applyFloatingControlStyle(allToggle, 4);
+        const wasDragged = makeFloatingControlDraggable(allToggle);
+        const updateAllToggle = () => {
+            const hasCollapsed = articles.some((article) => article.link.classList.contains(COLLAPSED_CLASS));
+            allToggle.textContent = hasCollapsed ? '+' : '−';
+            allToggle.title = hasCollapsed ? 'Expand all items' : 'Collapse all items';
+            allToggle.setAttribute('aria-label', allToggle.title);
+            allToggle.setAttribute('aria-pressed', String(!hasCollapsed));
+            allToggle.style.setProperty('background-color', hasCollapsed ? 'rgba(0, 0, 0, 0.55)' : 'rgba(34, 139, 34, 0.85)', 'important');
+            allToggle.style.setProperty('color', hasCollapsed ? '#f0f0f0' : '#ffffff', 'important');
+        };
+        allToggle.addEventListener('click', () => {
+            if (wasDragged()) return;
+            const shouldCollapse = !articles.some((article) => article.link.classList.contains(COLLAPSED_CLASS));
+            if (shouldCollapse) {
+                seenIds = saveSeenIds(storageKey, articles, seenIds);
+            }
+            articles.forEach((article) => setArticleCollapsed(article.link, shouldCollapse));
+            updateAllToggle();
+        });
+        document.body.appendChild(allToggle);
+        updateAllToggle();
+
+        const scrollUp = document.querySelector('#scrollUp');
+        if (scrollUp) {
+            scrollUp.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (event.stopImmediatePropagation) {
+                    event.stopImmediatePropagation();
+                }
+                seenIds = saveSeenIds(storageKey, articles, seenIds);
+                articles.forEach((article) => {
+                    article.link.classList.add(SEEN_CLASS);
+                    article.link.classList.remove(COLLAPSED_CLASS);
+                    const button = article.link.querySelector(`.${ITEM_TOGGLE_CLASS}`);
+                    if (button) {
+                        button.textContent = '▼';
+                        button.title = 'Collapse this item';
+                        button.setAttribute('aria-label', button.title);
+                        button.setAttribute('aria-expanded', 'true');
+                    }
+                });
+                updateAllToggle();
+                window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            }, true);
+        }
+
+        addDateNavigation(articles, displayedDate);
+        saveSeenIds(storageKey, articles, seenIds);
+    }
+
     function handleArticles() {
         const siteConfig = getSiteConfig();
         if (!siteConfig) {
@@ -270,18 +512,12 @@
 
         if (siteConfig.markPreviouslyListed) {
             const storedIds = GM_getValue(storageKey, []);
-            const seenIds = new Set(Array.isArray(storedIds) ? storedIds : []);
-            articles.forEach((article) => {
-                if (seenIds.has(article.id)) {
-                    article.link.classList.add(SEEN_CLASS);
-                }
-            });
-
-            const updatedIds = Array.from(new Set([
-                ...articles.map((article) => article.id),
-                ...seenIds
-            ])).slice(0, 2000);
-            GM_setValue(storageKey, updatedIds);
+            setupHackerNewsControls(
+                articles,
+                storageKey,
+                Array.isArray(storedIds) ? storedIds : [],
+                siteConfig.displayedDate
+            );
             return;
         }
 
@@ -303,7 +539,7 @@
 
     function setupActiveTabReload() {
         const siteConfig = getSiteConfig();
-        if (!siteConfig) {
+        if (!siteConfig || siteConfig.markPreviouslyListed) {
             return;
         }
 

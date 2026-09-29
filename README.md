@@ -69,7 +69,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Mark previously listed Hacker News Summary items as muted, and track, star, auto-open, and refresh newly listed items on Taipei Astronomical Museum, The Neuron Daily, and Wiwi Blog.
+Collapse and mute previously listed Hacker News Summary items with review controls; track, star, auto-open, and refresh new items on other supported sites.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
