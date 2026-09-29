@@ -19,7 +19,7 @@ Supported sites:
 
 ## [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
-Add a quick Internet Archive link on any site for testing snapshots.
+Add a quick Internet Archive action in the shared floating menu and mark Archive Today links.
 
 ## [Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
 
@@ -85,7 +85,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Add subtle per-block icons and a draggable page-wide control that turn preformatted text into translatable content.
+Turn preformatted text into translatable content with per-block icons and a shared-menu page-wide action.
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
@@ -97,7 +97,7 @@ Show a top-right YouTube playback-speed overlay that hides in fullscreen until h
 
 ## [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Keep pages within the viewport width, trim excessive horizontal spacing on all enabled pages, wrap long content, and expose a draggable top-right ↔ toggle button with auto-enable for matched URLs.
+Keep enabled pages within the viewport width and offer a shared-menu ↔ toggle with URL-based auto-enable.
 
 ## [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
@@ -109,7 +109,7 @@ Hide extra Discord chat input buttons so only the send button remains.
 
 ## [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 
-Expose a draggable top-right 🌙 toggle button to force dark mode colors with auto-enable for matched URLs.
+Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ## [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 

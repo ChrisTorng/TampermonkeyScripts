@@ -39,12 +39,12 @@ describe('ForceDarkMode on captured LessWrong content', () => {
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const style = harness.document.getElementById('tm-force-dark-mode-style');
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON');
+        const button = harness.document.querySelector('[data-floating-tool="dark"]');
 
         assert(style, 'Expected dark mode style element to be inserted.');
         assert.match(style.textContent, /color-scheme: dark !important/);
         assert(button, 'Expected floating toggle button to be created.');
-        assert.equal(button.textContent, '🌙');
+        assert.equal(button.textContent, '☽');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(button.title, 'Force Dark Mode is ON (click to disable)');
     });
@@ -53,7 +53,7 @@ describe('ForceDarkMode on captured LessWrong content', () => {
         const harness = executeForceDarkMode('https://www.lesswrong.com/rationality');
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON');
+        const button = harness.document.querySelector('[data-floating-tool="dark"]');
         button.click();
         assert.equal(harness.document.getElementById('tm-force-dark-mode-style'), null);
         assert.equal(button.getAttribute('aria-pressed'), 'false');

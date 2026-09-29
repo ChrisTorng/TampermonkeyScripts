@@ -87,7 +87,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
-Section note: automated tests use the example URL with representative preformatted blocks in the local DOM harness; live browser translation still requires manual validation.
+Section note: automated tests use the example URL with representative preformatted blocks in the local DOM harness; the shared menu, page-wide action, and dragging are covered. Live browser translation still requires manual validation.
 - https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (per-block conversion, page-wide conversion, dragging, and dynamically added blocks are automated)
 
 # YouTube Tools
@@ -109,8 +109,12 @@ Section note: automated tests inject the script and mock `GM_info`.
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 
 # Force Dark Mode
-Section note: automated tests inject the script and mock `GM_info`.
-- https://www.lesswrong.com/rationality [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+Section note: automated tests inject the script, mock `GM_info`, and cover the shared menu toggle.
+- https://www.lesswrong.com/rationality [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
+
+# Shared Floating Menu
+Section note: local DOM tests run all four userscripts together and cover stable button order, missing actions, per-host drag persistence, site disablement, and the forbidden domain.
+- https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (Archive Today floating action routes to its submit URL)
 
 # Medium Auto Reload Once
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; Medium detection and reload-once/session logic only)

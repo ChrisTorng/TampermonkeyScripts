@@ -53,7 +53,7 @@ describe('AllGoInternetArchive on captured pages', () => {
         const links = harness.document.querySelectorAll('a[href]');
         const archiveLink = links[0];
         const regularLink = links[1];
-        const button = harness.document.body.children.find((element) => element.tagName === 'BUTTON' && element.textContent === '→');
+        const button = harness.document.querySelector('[data-floating-tool="archive"]');
 
         assert(archiveLink.querySelector('.agi-archive-today-icon'));
         assert.equal(regularLink.querySelector('.agi-archive-today-icon'), null);
@@ -84,14 +84,14 @@ describe('AllGoInternetArchive on captured pages', () => {
 
     test('archive.is pages are excluded entirely', () => {
         const harness = executeAllGo('https://archive.is/75aY9');
-        const button = harness.document.body.children.find((element) => element.tagName === 'BUTTON' && element.textContent === '→');
+        const button = harness.document.querySelector('[data-floating-tool="archive"]');
 
-        assert.equal(button, undefined);
+        assert.equal(button, null);
     });
 
     test('archive-today-host button opens archive submission url for the current page', () => {
         const harness = executeAllGo('https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/');
-        const button = harness.document.body.children.find((element) => element.tagName === 'BUTTON' && element.textContent === '→');
+        const button = harness.document.querySelector('[data-floating-tool="archive"]');
 
         assert(button, 'Expected floating archive button on archive-today host.');
         button.click();

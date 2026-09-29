@@ -94,7 +94,7 @@ describe('ForceMobileView on captured pages', () => {
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const style = harness.document.getElementById('tm-force-width-style');
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
 
         assert(style, 'Expected mobile view style element to be inserted.');
         assert.match(style.textContent, /max-width: 100vw !important/);
@@ -111,7 +111,7 @@ describe('ForceMobileView on captured pages', () => {
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const style = harness.document.getElementById('tm-force-width-style');
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
 
         assert(style, 'Expected Paul Bourke pages to auto-enable mobile view style.');
         assert(button, 'Expected mobile view toggle button to be created.');
@@ -134,7 +134,7 @@ describe('ForceMobileView on captured pages', () => {
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const style = harness.document.getElementById('tm-force-width-style');
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
 
         assert.equal(style, null, 'Expected style injection to remain disabled for non-matched URLs.');
         assert(button, 'Expected mobile view toggle button to be created.');
@@ -145,7 +145,7 @@ describe('ForceMobileView on captured pages', () => {
         const { harness, textElement } = executeForceMobileView('https://archive.is/75aY9');
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
         button.click();
         assert.equal(harness.document.getElementById('tm-force-width-style'), null);
         assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), null);
@@ -178,7 +178,7 @@ describe('ForceMobileView on captured pages', () => {
         });
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
-        const button = harness.document.body.children.find((child) => child.tagName === 'BUTTON' && child.textContent === '↔');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
 
         assert.equal(post.style.getPropertyValue('margin-left'), '0px');
         assert.equal(post.style.getPropertyValue('padding-left'), '2px');

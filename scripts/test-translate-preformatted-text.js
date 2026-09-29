@@ -54,9 +54,11 @@ describe('Translate Preformatted Text', () => {
         });
 
         const allButton = harness.document.getElementById('tm-translate-all-pre');
+        assert.equal(allButton.getAttribute('data-floating-available'), 'true');
+        assert.equal(allButton.hidden, true);
+        harness.document.querySelector('[data-floating-toggle]').click();
         assert.equal(allButton.hidden, false);
         assert.equal(allButton.textContent, '譯∞');
-        assert.equal(allButton.style.top, '192px');
         allButton.click();
 
         assert.equal(harness.document.querySelectorAll('pre').length, 0);
@@ -64,20 +66,17 @@ describe('Translate Preformatted Text', () => {
         assert.equal(allButton.hidden, true);
     });
 
-    test('the page-wide icon can be dragged without converting blocks', () => {
+    test('the shared menu can be dragged without converting blocks', () => {
         const harness = execute((currentHarness) => addPre(currentHarness, 'drag me'));
-        const allButton = harness.document.getElementById('tm-translate-all-pre');
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
         const preventDefault = () => {};
-        allButton.offsetTop = 192;
-
-        allButton.dispatchEvent({ type: 'mousedown', clientX: 10, clientY: 200 });
-        harness.document.dispatchEvent({ type: 'mousemove', clientX: 110, clientY: 300, preventDefault });
+        toggle.dispatchEvent({ type: 'mousedown', clientX: 1270, clientY: 80 });
+        harness.document.dispatchEvent({ type: 'mousemove', clientX: 1170, clientY: 180, preventDefault });
         harness.document.dispatchEvent({ type: 'mouseup' });
-        allButton.dispatchEvent({ type: 'click', preventDefault });
-
-        assert.equal(allButton.style.left, '100px');
-        assert.equal(allButton.style.top, '292px');
-        assert.equal(allButton.style.right, 'auto');
+        toggle.dispatchEvent({ type: 'click', preventDefault });
+        assert.equal(menu.style.left, '1142px');
+        assert.equal(menu.style.top, '170px');
         assert.equal(harness.document.querySelectorAll('pre').length, 1);
     });
 

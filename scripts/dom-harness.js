@@ -586,6 +586,7 @@ function createHarness(options) {
         computedStyle = null,
         referrer = '',
         sessionStorageSeed = {},
+        localStorageSeed = {},
         navigationType = 'navigate'
     } = options;
 
@@ -600,6 +601,7 @@ function createHarness(options) {
     let nextRafId = 1;
     const animationFrameQueue = new Map();
     const storageState = new Map(Object.entries(sessionStorageSeed));
+    const localStorageState = new Map(Object.entries(localStorageSeed));
 
     const location = {
         href: url,
@@ -650,6 +652,20 @@ function createHarness(options) {
             storageState.clear();
         }
     };
+    const localStorage = {
+        getItem(key) {
+            return localStorageState.has(key) ? localStorageState.get(key) : null;
+        },
+        setItem(key, value) {
+            localStorageState.set(String(key), String(value));
+        },
+        removeItem(key) {
+            localStorageState.delete(String(key));
+        },
+        clear() {
+            localStorageState.clear();
+        }
+    };
 
     class MutationObserver {
         constructor(callback) {
@@ -672,6 +688,7 @@ function createHarness(options) {
     const windowObject = {
         document,
         location,
+        localStorage,
         MutationObserver,
         Element: BasicElement,
         DocumentFragment: BasicDocumentFragment,
@@ -809,6 +826,7 @@ function createHarness(options) {
         URLSearchParams,
         GM_info: gmInfo,
         sessionStorage,
+        localStorage,
         performance: windowObject.performance,
         globalThis: null,
         global: null,
