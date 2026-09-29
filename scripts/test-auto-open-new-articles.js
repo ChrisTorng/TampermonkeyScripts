@@ -113,7 +113,7 @@ function buildHackerNewsArticle(harness, id, title) {
 }
 
 describe('AutoOpenNewArticles on Hacker News Summary', () => {
-    test('collapses seen items and supports individual and page-wide expansion without opening tabs', () => {
+    test('collapses seen items without marking newly listed items as read during page load or review', () => {
         const storageKey = 'autoOpenNewArticles:lastSeen:hackernews-summary:listings';
         const openCalls = [];
         const { harness, gmStore } = createAutoOpenHarness(
@@ -155,11 +155,39 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         assert.equal(allToggle.getAttribute('aria-pressed'), 'true');
         assert.equal(allToggle.style.getPropertyValue('background-color'), 'rgba(34, 139, 34, 0.85)');
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-seen'), false);
-        assert.deepEqual(
-            Array.from(gmStore.get(storageKey)),
-            ['hackernews:102', 'hackernews:101', 'hackernews:99', 'hackernews:100']
-        );
+        assert.deepEqual(Array.from(gmStore.get(storageKey)), ['hackernews:101', 'hackernews:100']);
         assert.equal(openCalls.length, 0);
+    });
+
+    test('does not mark Hacker News Summary items as read when the page is reloaded', () => {
+        const storageKey = 'autoOpenNewArticles:lastSeen:hackernews-summary:listings';
+        const storageSeed = { [storageKey]: ['hackernews:401'] };
+        const firstRun = createAutoOpenHarness(
+            'https://hackernews.betacat.io/#sort=time&order=asc',
+            storageSeed,
+            []
+        );
+        buildHackerNewsArticle(firstRun.harness, '402', 'Unread before reload');
+        buildHackerNewsArticle(firstRun.harness, '401', 'Already read');
+        runAutoOpenScript(firstRun.harness);
+        firstRun.harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.deepEqual(Array.from(firstRun.gmStore.get(storageKey)), ['hackernews:401']);
+
+        const secondRun = createAutoOpenHarness(
+            'https://hackernews.betacat.io/#sort=time&order=asc',
+            Object.fromEntries(firstRun.gmStore),
+            []
+        );
+        const unreadAfterReload = buildHackerNewsArticle(secondRun.harness, '402', 'Unread after reload');
+        const alreadyReadAfterReload = buildHackerNewsArticle(secondRun.harness, '401', 'Already read after reload');
+        runAutoOpenScript(secondRun.harness);
+        secondRun.harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(unreadAfterReload.classList.contains('auto-open-new-articles-seen'), false);
+        assert.equal(unreadAfterReload.classList.contains('auto-open-new-articles-collapsed'), false);
+        assert.equal(alreadyReadAfterReload.classList.contains('auto-open-new-articles-seen'), true);
+        assert.deepEqual(Array.from(secondRun.gmStore.get(storageKey)), ['hackernews:401']);
     });
 
     test('marks every item as seen and jumps immediately to the top when scrollUp is clicked', () => {

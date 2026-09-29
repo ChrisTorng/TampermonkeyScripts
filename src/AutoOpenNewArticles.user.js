@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-29_1.6.0
-// @description  Collapse and mute previously listed Hacker News Summary items with review controls; track, star, auto-open, and refresh new items on other supported sites.
+// @version      2026-09-29_1.6.1
+// @description  Mark Hacker News Summary items as read only from its scroll-to-top control; track, star, auto-open, and refresh new items on other supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -452,9 +452,6 @@
         allToggle.addEventListener('click', () => {
             if (wasDragged()) return;
             const shouldCollapse = !articles.some((article) => article.link.classList.contains(COLLAPSED_CLASS));
-            if (shouldCollapse) {
-                seenIds = saveSeenIds(storageKey, articles, seenIds);
-            }
             articles.forEach((article) => setArticleCollapsed(article.link, shouldCollapse));
             updateAllToggle();
         });
@@ -486,7 +483,6 @@
         }
 
         addDateNavigation(articles, displayedDate);
-        saveSeenIds(storageKey, articles, seenIds);
     }
 
     function handleArticles() {
