@@ -78,18 +78,29 @@ function runAutoOpenScript(harness) {
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
 }
 
-function assertFloatingControlLayout(button, slot) {
-    assert.equal(button.getAttribute('data-tm-floating-control'), String(slot));
-    assert.equal(button.style.getPropertyValue('position'), 'absolute');
-    assert.equal(button.style.getPropertyValue('top'), `${70 + (slot * 44)}px`);
+function assertCollapseControlLayout(button) {
+    assert.equal(button.style.getPropertyValue('position'), 'fixed');
+    assert.equal(button.style.getPropertyValue('top'), 'auto');
     assert.equal(button.style.getPropertyValue('right'), 'auto');
-    assert.equal(button.style.getPropertyValue('left'), 'calc(100vw - 44px)');
+    assert.equal(button.style.getPropertyValue('bottom'), '16px');
+    assert.equal(button.style.getPropertyValue('left'), '16px');
     assert.equal(button.style.getPropertyValue('opacity'), '0.5');
     assert.equal(button.style.getPropertyValue('width'), '44px');
     assert.equal(button.style.getPropertyValue('height'), '34px');
-    for (const property of ['position', 'top', 'right', 'left', 'opacity', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
+    for (const property of ['position', 'top', 'right', 'bottom', 'left', 'opacity', 'width', 'min-width', 'max-width', 'height', 'min-height', 'max-height']) {
         assert.equal(button.style.getPropertyPriority(property), 'important', `${property} must resist page CSS`);
     }
+}
+
+function buildHackerNewsDateMenu(harness, dates) {
+    const menu = harness.document.createElement('ul');
+    menu.id = 'daily-links-menu';
+    dates.forEach((date) => {
+        menu.appendChild(createLink(harness.document, `https://hackernews.betacat.io/daily/${date}`, {
+            textContent: date
+        }));
+    });
+    harness.appendToBody(menu);
 }
 
 function buildHackerNewsArticle(harness, id, title) {
@@ -113,7 +124,7 @@ function buildHackerNewsArticle(harness, id, title) {
 }
 
 describe('AutoOpenNewArticles on Hacker News Summary', () => {
-    test('collapses seen items and supports individual and page-wide expansion without opening tabs', () => {
+    test('collapses seen items without marking newly listed items as read during page load or review', () => {
         const storageKey = 'autoOpenNewArticles:lastSeen:hackernews-summary:listings';
         const openCalls = [];
         const { harness, gmStore } = createAutoOpenHarness(
@@ -128,6 +139,8 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
+        const injectedStyle = harness.document.getElementById('auto-open-new-articles-style').textContent;
+        assert.match(injectedStyle, /\.auto-open-new-articles-seen\s*\{\s*opacity: 0\.68 !important;/);
         assert.equal(newest.classList.contains('auto-open-new-articles-seen'), false);
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-seen'), true);
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-collapsed'), true);
@@ -143,7 +156,7 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
 
         const allToggle = harness.document.getElementById('auto-open-new-articles-all-toggle');
         assert(allToggle);
-        assertFloatingControlLayout(allToggle, 4);
+        assertCollapseControlLayout(allToggle);
         assert.equal(allToggle.getAttribute('aria-pressed'), 'false');
         assert.equal(allToggle.style.getPropertyValue('background-color'), 'rgba(0, 0, 0, 0.55)');
         allToggle.click();
@@ -155,11 +168,39 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         assert.equal(allToggle.getAttribute('aria-pressed'), 'true');
         assert.equal(allToggle.style.getPropertyValue('background-color'), 'rgba(34, 139, 34, 0.85)');
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-seen'), false);
-        assert.deepEqual(
-            Array.from(gmStore.get(storageKey)),
-            ['hackernews:102', 'hackernews:101', 'hackernews:99', 'hackernews:100']
-        );
+        assert.deepEqual(Array.from(gmStore.get(storageKey)), ['hackernews:101', 'hackernews:100']);
         assert.equal(openCalls.length, 0);
+    });
+
+    test('does not mark Hacker News Summary items as read when the page is reloaded', () => {
+        const storageKey = 'autoOpenNewArticles:lastSeen:hackernews-summary:listings';
+        const storageSeed = { [storageKey]: ['hackernews:401'] };
+        const firstRun = createAutoOpenHarness(
+            'https://hackernews.betacat.io/#sort=time&order=asc',
+            storageSeed,
+            []
+        );
+        buildHackerNewsArticle(firstRun.harness, '402', 'Unread before reload');
+        buildHackerNewsArticle(firstRun.harness, '401', 'Already read');
+        runAutoOpenScript(firstRun.harness);
+        firstRun.harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.deepEqual(Array.from(firstRun.gmStore.get(storageKey)), ['hackernews:401']);
+
+        const secondRun = createAutoOpenHarness(
+            'https://hackernews.betacat.io/#sort=time&order=asc',
+            Object.fromEntries(firstRun.gmStore),
+            []
+        );
+        const unreadAfterReload = buildHackerNewsArticle(secondRun.harness, '402', 'Unread after reload');
+        const alreadyReadAfterReload = buildHackerNewsArticle(secondRun.harness, '401', 'Already read after reload');
+        runAutoOpenScript(secondRun.harness);
+        secondRun.harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        assert.equal(unreadAfterReload.classList.contains('auto-open-new-articles-seen'), false);
+        assert.equal(unreadAfterReload.classList.contains('auto-open-new-articles-collapsed'), false);
+        assert.equal(alreadyReadAfterReload.classList.contains('auto-open-new-articles-seen'), true);
+        assert.deepEqual(Array.from(secondRun.gmStore.get(storageKey)), ['hackernews:401']);
     });
 
     test('marks every item as seen and jumps immediately to the top when scrollUp is clicked', () => {
@@ -193,9 +234,10 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         assert.equal(scrollCalls[0].behavior, 'auto');
     });
 
-    test('adds previous, dated weekday, and next navigation above and below a daily archive', () => {
+    test('adds larger short-date navigation using only dates available in the archive menu', () => {
         const openCalls = [];
         const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/daily/2026-03-07', {}, openCalls);
+        buildHackerNewsDateMenu(harness, ['2026-03-08', '2026-03-07', '2026-03-05']);
         buildHackerNewsArticle(harness, '302', 'First archive item');
         buildHackerNewsArticle(harness, '301', 'Last archive item');
 
@@ -205,13 +247,33 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         const navigation = harness.document.querySelectorAll('.auto-open-new-articles-date-nav');
         assert.equal(navigation.length, 2);
         navigation.forEach((nav) => {
-            assert.equal(nav.children[0].textContent, '<');
-            assert.equal(nav.children[0].href, '/daily/2026-03-06');
-            assert.equal(nav.children[1].textContent, '2026-03-07 Sat');
+            assert.equal(nav.children[0].textContent, '‹ 03-05');
+            assert.equal(nav.children[0].href, '/daily/2026-03-05');
+            assert.equal(nav.children[1].textContent, '03-07');
             assert.equal(nav.children[1].href, '/daily/2026-03-07');
-            assert.equal(nav.children[2].textContent, '>');
+            assert.equal(nav.children[2].textContent, '03-08 ›');
             assert.equal(nav.children[2].href, '/daily/2026-03-08');
         });
+        const injectedStyle = harness.document.getElementById('auto-open-new-articles-style').textContent;
+        assert.match(injectedStyle, /font-size: 18px !important/);
+        assert.match(injectedStyle, /min-height: 44px !important/);
+    });
+
+    test('disables navigation beyond the first and last available archive dates', () => {
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, []);
+        buildHackerNewsDateMenu(harness, ['2026-03-08', '2026-03-07', '2026-03-05']);
+        buildHackerNewsArticle(harness, '402', 'Latest archive item');
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const navigation = harness.document.querySelector('.auto-open-new-articles-date-nav');
+        assert.equal(navigation.children[0].textContent, '‹ 03-07');
+        assert.equal(navigation.children[1].textContent, '03-08');
+        assert.equal(navigation.children[2].textContent, '›');
+        assert.equal(navigation.children[2].tagName, 'SPAN');
+        assert.equal(navigation.children[2].getAttribute('aria-disabled'), 'true');
+        assert.equal(navigation.children[2].getAttribute('href'), null);
     });
 });
 

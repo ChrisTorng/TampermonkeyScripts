@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-29_1.6.0
-// @description  Collapse and mute previously listed Hacker News Summary items with review controls; track, star, auto-open, and refresh new items on other supported sites.
+// @version      2026-09-29_1.7.0
+// @description  Add clear read states, fixed collapse controls, and bounded date navigation to Hacker News Summary; track and auto-open new items on other supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -49,7 +49,7 @@
                 text-shadow: 0 0 1px rgba(0, 0, 0, 0.25);
             }
             .${SEEN_CLASS} {
-                opacity: 0.38 !important;
+                opacity: 0.68 !important;
             }
             .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}) {
                 display: none !important;
@@ -76,13 +76,27 @@
             }
             .${DATE_NAV_CLASS} {
                 display: grid !important;
-                grid-template-columns: 1fr auto 1fr !important;
+                grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
                 align-items: center !important;
+                gap: 4px !important;
                 margin: 12px 0 !important;
                 font-weight: 700 !important;
             }
-            .${DATE_NAV_CLASS} a:first-child { justify-self: start !important; }
-            .${DATE_NAV_CLASS} a:last-child { justify-self: end !important; }
+            .${DATE_NAV_CLASS} a,
+            .${DATE_NAV_CLASS} span {
+                display: inline-flex !important;
+                align-items: center !important;
+                min-height: 44px !important;
+                padding: 0 8px !important;
+                font-size: 18px !important;
+                white-space: nowrap !important;
+            }
+            .${DATE_NAV_CLASS} > :first-child { justify-self: start !important; }
+            .${DATE_NAV_CLASS} > :last-child { justify-self: end !important; }
+            .${DATE_NAV_CLASS} .disabled {
+                opacity: 0.35 !important;
+                cursor: default !important;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -295,11 +309,10 @@
         return new Set(updatedIds);
     }
 
-    // Keep this shared floating-control contract synchronized as documented in AGENTS.md.
-    function applyFloatingControlStyle(button, slot) {
+    function applyCollapseControlStyle(button) {
         const styles = {
-            appearance: 'none', position: 'absolute', top: `${70 + (slot * 44)}px`, right: 'auto', bottom: 'auto',
-            left: 'calc(100vw - 44px)', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'center',
+            appearance: 'none', position: 'fixed', top: 'auto', right: 'auto', bottom: '16px',
+            left: '16px', display: 'inline-flex', 'align-items': 'center', 'justify-content': 'center',
             'box-sizing': 'border-box', width: '44px', 'min-width': '44px', 'max-width': '44px', height: '34px',
             'min-height': '34px', 'max-height': '34px', margin: '0', opacity: '0.5', padding: '0', border: '0',
             'border-radius': '6px', 'font-family': 'system-ui, sans-serif', 'font-size': '15px', 'line-height': '1',
@@ -308,7 +321,6 @@
             'z-index': '2147483647'
         };
         Object.entries(styles).forEach(([property, value]) => button.style.setProperty(property, value, 'important'));
-        button.setAttribute('data-tm-floating-control', String(slot));
     }
 
     function makeFloatingControlDraggable(button) {
@@ -380,50 +392,69 @@
         setArticleCollapsed(article, initiallyCollapsed);
     }
 
-    function createDateNavigation(displayedDate) {
-        const today = new Date();
-        const dateText = displayedDate || [
-            today.getUTCFullYear(),
-            String(today.getUTCMonth() + 1).padStart(2, '0'),
-            String(today.getUTCDate()).padStart(2, '0')
-        ].join('-');
-        const currentDate = new Date(`${dateText}T00:00:00Z`);
-        if (Number.isNaN(currentDate.getTime())) {
+    function getAvailableDates() {
+        return Array.from(document.querySelectorAll('#daily-links-menu a[href*="/daily/"]'))
+            .map((link) => {
+                try {
+                    return new URL(link.href, window.location.href).pathname.match(/^\/daily\/(\d{4}-\d{2}-\d{2})\/?$/)?.[1];
+                } catch (error) {
+                    return null;
+                }
+            })
+            .filter(Boolean)
+            .filter((date, index, dates) => dates.indexOf(date) === index)
+            .sort();
+    }
+
+    function formatShortDate(dateText) {
+        return dateText.slice(5);
+    }
+
+    function createDateControl(dateText, direction) {
+        if (!dateText) {
+            const disabled = document.createElement('span');
+            disabled.className = 'disabled';
+            disabled.textContent = direction === 'previous' ? '‹' : '›';
+            disabled.setAttribute('aria-disabled', 'true');
+            return disabled;
+        }
+
+        const control = document.createElement('a');
+        control.href = `/daily/${dateText}`;
+        control.textContent = direction === 'previous'
+            ? `‹ ${formatShortDate(dateText)}`
+            : `${formatShortDate(dateText)} ›`;
+        control.title = direction === 'previous' ? 'Previous available day' : 'Next available day';
+        return control;
+    }
+
+    function createDateNavigation(displayedDate, availableDates) {
+        const dateText = displayedDate || availableDates[availableDates.length - 1];
+        const currentIndex = availableDates.indexOf(dateText);
+        if (!dateText || currentIndex === -1) {
             return null;
         }
 
-        const adjacentDate = (offset) => {
-            const date = new Date(currentDate);
-            date.setUTCDate(date.getUTCDate() + offset);
-            return date.toISOString().slice(0, 10);
-        };
-        const tomorrow = adjacentDate(1);
-        const todayText = today.toISOString().slice(0, 10);
         const navigation = document.createElement('nav');
         navigation.className = DATE_NAV_CLASS;
         navigation.setAttribute('aria-label', 'Hacker News Summary date navigation');
 
-        const previous = document.createElement('a');
-        previous.href = `/daily/${adjacentDate(-1)}`;
-        previous.textContent = '<';
-        previous.title = 'Previous day';
+        const previous = createDateControl(availableDates[currentIndex - 1], 'previous');
         const current = document.createElement('a');
         current.href = `/daily/${dateText}`;
-        current.textContent = `${dateText} ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][currentDate.getUTCDay()]}`;
+        current.textContent = formatShortDate(dateText);
         current.title = 'Open this daily archive';
-        const next = document.createElement('a');
-        next.href = tomorrow >= todayText ? '/' : `/daily/${tomorrow}`;
-        next.textContent = '>';
-        next.title = 'Next day';
+        const next = createDateControl(availableDates[currentIndex + 1], 'next');
         navigation.append(previous, current, next);
         return navigation;
     }
 
     function addDateNavigation(articles, displayedDate) {
+        const availableDates = getAvailableDates();
         const first = articles[0].link;
         const last = articles[articles.length - 1].link;
-        const topNavigation = createDateNavigation(displayedDate);
-        const bottomNavigation = createDateNavigation(displayedDate);
+        const topNavigation = createDateNavigation(displayedDate, availableDates);
+        const bottomNavigation = createDateNavigation(displayedDate, availableDates);
         if (!topNavigation || !bottomNavigation || !first.parentNode || !last.parentNode) {
             return;
         }
@@ -438,7 +469,7 @@
         const allToggle = document.createElement('button');
         allToggle.id = ALL_TOGGLE_ID;
         allToggle.type = 'button';
-        applyFloatingControlStyle(allToggle, 4);
+        applyCollapseControlStyle(allToggle);
         const wasDragged = makeFloatingControlDraggable(allToggle);
         const updateAllToggle = () => {
             const hasCollapsed = articles.some((article) => article.link.classList.contains(COLLAPSED_CLASS));
@@ -452,9 +483,6 @@
         allToggle.addEventListener('click', () => {
             if (wasDragged()) return;
             const shouldCollapse = !articles.some((article) => article.link.classList.contains(COLLAPSED_CLASS));
-            if (shouldCollapse) {
-                seenIds = saveSeenIds(storageKey, articles, seenIds);
-            }
             articles.forEach((article) => setArticleCollapsed(article.link, shouldCollapse));
             updateAllToggle();
         });
@@ -486,7 +514,6 @@
         }
 
         addDateNavigation(articles, displayedDate);
-        saveSeenIds(storageKey, articles, seenIds);
     }
 
     function handleArticles() {

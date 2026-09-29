@@ -69,7 +69,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Collapse and mute previously listed Hacker News Summary items with review controls; track, star, auto-open, and refresh new items on other supported sites.
+Add clear read states, fixed collapse controls, and bounded date navigation to Hacker News Summary; track and auto-open new items on other supported sites.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
