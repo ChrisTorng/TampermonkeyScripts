@@ -69,7 +69,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ## [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Track the latest seen article, auto-open newly listed items in background tabs with a yellow star, and no-cache reload listing pages when the tab becomes active on Taipei Astronomical Museum, The Neuron Daily, and Wiwi Blog.
+Add clear read states, fixed collapse controls, and bounded date navigation to Hacker News Summary; track and auto-open new items on other supported sites.
 
 ## [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
@@ -85,7 +85,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ## [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Turn preformatted text into translatable content with per-block icons and a shared-menu page-wide action.
+Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
 
 ## [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
@@ -102,6 +102,10 @@ Keep enabled pages within the viewport width and offer a shared-menu ↔ toggle 
 ## [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
 Expand Hacker News Summary article images to full width in portrait mobile view.
+
+## [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
+
+Fit embedded games within mobile screens and add a distraction-free fullscreen toggle.
 
 ## [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
@@ -148,6 +152,7 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
+  - [FullscreenGameView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
   - [BetterDiscord.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
   - [ForceDarkMode.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
   - [Medium.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)

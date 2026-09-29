@@ -31,3 +31,9 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Keep **[TestCases.md](TestCases.md)** synchronized with the current automated coverage:
   - Mark each listed item with an explicit test status.
   - Use a short reason when coverage is limited, blocked, mocked, or intentionally not direct.
+
+## 6. Shared floating controls
+- Keep the `≡` menu, its actions, dragging, active-state feedback, and page-CSS isolation consistent across floating-control scripts. Follow [FloatingMenu.md](FloatingMenu.md).
+- Edit `src/FloatingMenu.js` as the canonical shared implementation, then run `node scripts/sync-floating-menu.js` to copy it into every participating `.user.js`. Review and test all consumers after any shared change.
+- Register each action with a stable key in `FLOATING_MENU_ORDER`; do not depend on userscript startup order. Only the menu handle stores position. A missing or unavailable action must not leave an empty menu visible.
+- Keep host exclusions and the site-disable setting coordinated across the menu scripts. Preserve URL-based automatic activation independently of whether the menu is expanded.

@@ -31,12 +31,14 @@
     function floatingMenuRender(root) {
         const toggle = root.querySelector('[data-floating-toggle]');
         const close = root.querySelector('[data-floating-close]');
-        const buttons = Array.from(root.querySelectorAll('[data-floating-tool]'));
-        buttons.sort((a, b) => FLOATING_MENU_ORDER.indexOf(a.getAttribute('data-floating-tool')) - FLOATING_MENU_ORDER.indexOf(b.getAttribute('data-floating-tool')));
-        buttons.forEach((button) => {
-            root.removeChild(button);
-            root.appendChild(button);
-        });
+        const currentButtons = Array.from(root.querySelectorAll('[data-floating-tool]'));
+        const buttons = [...currentButtons].sort((a, b) => FLOATING_MENU_ORDER.indexOf(a.getAttribute('data-floating-tool')) - FLOATING_MENU_ORDER.indexOf(b.getAttribute('data-floating-tool')));
+        if (buttons.some((button, index) => button !== currentButtons[index])) {
+            buttons.forEach((button) => {
+                root.removeChild(button);
+                root.appendChild(button);
+            });
+        }
         const available = buttons.some((button) => button.getAttribute('data-floating-available') === 'true');
         root.hidden = !available;
         const expanded = root.getAttribute('data-floating-expanded') === 'true';

@@ -77,7 +77,7 @@ describe('Hacker News Comments on the captured article', () => {
         assert.equal(link.href, 'https://news.ycombinator.com/item?id=49465119');
         assert.equal(link.target, '_blank');
         assert.equal(link.rel, 'noopener noreferrer');
-        assert.equal(link.textContent, 'Y 100 · ▲68');
+        assert.equal(link.textContent, 'Y 68 · 💬 100');
         assert.equal(link.title, 'Six months of writing code exclusively with agents · 100 comments · 68 points · submitted by bryanmikaelian');
         assert.equal(link.getAttribute('aria-label'), 'Open Hacker News discussion with 100 comments and 68 points');
         assert.match(link.style.cssText, /background: #ff6600/);
@@ -153,7 +153,7 @@ describe('Hacker News Comments on the captured article', () => {
 
         const link = harness.document.querySelector('#tm-hacker-news-comments a');
         assert.equal(link.href, 'https://news.ycombinator.com/item?id=49486172');
-        assert.equal(link.textContent, 'Y 493');
+        assert.equal(link.textContent, 'Y · 💬 493');
         assert.match(requests[0], /^https:\/\/hn\.algolia\.com\/api\/v1\/search\?/);
         assert.equal(harness.context.fetch, undefined);
     });

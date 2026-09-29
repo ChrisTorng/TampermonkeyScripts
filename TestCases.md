@@ -31,6 +31,7 @@ Section note: automated tests inject the userscript into a local article DOM and
 - https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; redirect rule only)
 
 # Internet Archive
+Section note: the Wayback fallback → action uses the shared floating menu and is covered by local DOM tests.
 - https://www.lrb.co.uk/the-paper/v47/n01/fraser-macdonald/diary [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://www.rawstory.com/laura-loomer-vs-elon-musk/ [CONTENT_CLASS: VALID_AUTH_REQUIRED]
 - https://www.smh.com.au/business/the-economy/trump-is-changing-the-narratives-on-both-sides-of-the-atlantic-20250310-p5liav.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
@@ -67,6 +68,8 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.
+- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (fixed lower-left page collapse control, clearer read state, scroll-to-top read marking, reload persistence boundaries, and archive-menu date limits are validated with a local DOM harness)
+- https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (responsive top and bottom navigation uses available previous/current/next archive dates and disabled endpoints)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://www.theneurondaily.com/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: AUTOMATED] (listing detection and new-item open flow validated with local DOM harness)
@@ -87,8 +90,14 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
-Section note: automated tests use the example URL with representative preformatted blocks in the local DOM harness; the shared menu, page-wide action, and dragging are covered. Live browser translation still requires manual validation.
-- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (per-block conversion, page-wide conversion, dragging, and dynamically added blocks are automated)
+Section note: automated tests use representative inline code, preformatted blocks, Mastodon app markers, mobile Wikipedia sections, and the shared floating menu in the local DOM harness; live browser translation still requires manual validation.
+- https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (inline code elements are replaced early with styled translatable spans while their original positions, text, classes, and attributes are retained)
+- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, dragging, and dynamically added blocks are automated)
+- https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured code-only quotations receive per-block translation controls and can be toggled without treating their code as inline content)
+- https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured GitHub source view receives an opt-in translation control and preserves line breaks when toggled)
+- https://github.com/okf-memory/okf-agent-memory/blob/main/README.md [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured rendered Mermaid container receives a visible opt-in translation control)
+- https://en.wikipedia.org/wiki/Parque_Arqueol%C3%B3gico_do_Solst%C3%ADcio [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (initial and dynamically collapsed mobile sections are kept visible; machine-translation output requires manual validation)
+- https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
@@ -105,6 +114,10 @@ Section note: automated tests inject the script and mock `GM_info`.
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
+# Fullscreen Game View
+Section note: automated tests inject the userscript into a representative ARC Prize game DOM and mock the browser fullscreen API fallback.
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and clipped left D-pad repairs, fullscreen button mounting, entry, and exit are automated; visual layout still requires manual device validation)
+
 # Better Discord
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 
@@ -113,7 +126,7 @@ Section note: automated tests inject the script, mock `GM_info`, and cover the s
 - https://www.lesswrong.com/rationality [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 
 # Shared Floating Menu
-Section note: local DOM tests run all four userscripts together and cover stable button order, missing actions, per-host drag persistence, site disablement, and the forbidden domain.
+Section note: local DOM tests run the four main userscripts together, exercise the Wayback fallback, and cover stable order, missing actions, per-host drag persistence, site disablement, and the forbidden domain.
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (Archive Today floating action routes to its submit URL)
 
 # Medium Auto Reload Once

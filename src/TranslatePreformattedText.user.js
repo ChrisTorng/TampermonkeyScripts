@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-09-29_1.1.0
-// @description  Turn preformatted text into translatable content with per-block icons and a shared-menu page-wide action.
+// @version      2026-09-29_1.5.0
+// @description  Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
 // @exclude      *://*.christorng.idv.tw/*
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
@@ -48,12 +48,14 @@
     function floatingMenuRender(root) {
         const toggle = root.querySelector('[data-floating-toggle]');
         const close = root.querySelector('[data-floating-close]');
-        const buttons = Array.from(root.querySelectorAll('[data-floating-tool]'));
-        buttons.sort((a, b) => FLOATING_MENU_ORDER.indexOf(a.getAttribute('data-floating-tool')) - FLOATING_MENU_ORDER.indexOf(b.getAttribute('data-floating-tool')));
-        buttons.forEach((button) => {
-            root.removeChild(button);
-            root.appendChild(button);
-        });
+        const currentButtons = Array.from(root.querySelectorAll('[data-floating-tool]'));
+        const buttons = [...currentButtons].sort((a, b) => FLOATING_MENU_ORDER.indexOf(a.getAttribute('data-floating-tool')) - FLOATING_MENU_ORDER.indexOf(b.getAttribute('data-floating-tool')));
+        if (buttons.some((button, index) => button !== currentButtons[index])) {
+            buttons.forEach((button) => {
+                root.removeChild(button);
+                root.appendChild(button);
+            });
+        }
         const available = buttons.some((button) => button.getAttribute('data-floating-available') === 'true');
         root.hidden = !available;
         const expanded = root.getAttribute('data-floating-expanded') === 'true';
@@ -185,10 +187,14 @@
     }
     // END SHARED FLOATING MENU
 
-    if (window !== window.top || floatingMenuForbiddenHost()) return;
+    if (floatingMenuForbiddenHost()) return;
 
     const wrapperAttribute = 'data-tm-translatable-pre-wrapper';
     const convertedAttribute = 'data-tm-translatable-pre-converted';
+    const inlineCodeAttribute = 'data-tm-translatable-inline-code';
+    const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
+    const originalBlocks = new WeakMap();
+    const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
 
     const style = document.createElement('style');
     style.textContent = `
@@ -222,6 +228,10 @@
         .tm-translate-pre-button:focus-visible {
             opacity: .9 !important;
         }
+        .tm-translate-pre-button[aria-pressed="true"] {
+            background-color: rgba(34, 139, 34, .85) !important;
+            color: #fff !important;
+        }
         .tm-translate-pre-one {
             position: absolute !important;
             right: 6px !important;
@@ -232,6 +242,11 @@
             font-family: monospace;
             overflow: auto;
             white-space: pre-wrap;
+        }
+        [${inlineCodeAttribute}] {
+            display: inline;
+            font-family: monospace;
+            white-space: break-spaces;
         }
     `;
     (document.head || document.documentElement).appendChild(style);
@@ -257,69 +272,304 @@
         target.id = source.id;
     }
 
-    function updateAllButton() {
-        setFloatingButtonAvailable(allButton, document.querySelectorAll(`[${wrapperAttribute}]`).length > 0);
+    const inlineCodeStyleProperties = [
+        'background-color', 'background-image', 'border', 'border-radius', 'box-shadow',
+        'color', 'display', 'font-family', 'font-size', 'font-style', 'font-weight',
+        'letter-spacing', 'line-height', 'margin', 'padding', 'text-decoration',
+        'text-transform', 'vertical-align', 'white-space', 'word-break',
+    ];
+
+    function preserveComputedStyle(source, target) {
+        if (typeof window.getComputedStyle !== 'function') {
+            return;
+        }
+        const computedStyle = window.getComputedStyle(source);
+        if (!computedStyle || typeof computedStyle.getPropertyValue !== 'function') {
+            return;
+        }
+        inlineCodeStyleProperties.forEach((property) => {
+            const value = computedStyle.getPropertyValue(property);
+            if (value) {
+                target.style.setProperty(property, value);
+            }
+        });
     }
 
-    function convert(wrapper) {
-        if (!wrapper || !wrapper.parentNode) {
+    function getProtectedInlineCode(target) {
+        if (!target) {
+            return null;
+        }
+        if (target.nodeType === 1) {
+            if (target.hasAttribute(inlineCodeAttribute)) {
+                return target;
+            }
+            return typeof target.closest === 'function' ? target.closest(`[${inlineCodeAttribute}]`) : null;
+        }
+        const parent = target.parentElement || target.parentNode;
+        if (!parent) {
+            return null;
+        }
+        if (parent.hasAttribute && parent.hasAttribute(inlineCodeAttribute)) {
+            return parent;
+        }
+        return typeof parent.closest === 'function' ? parent.closest(`[${inlineCodeAttribute}]`) : null;
+    }
+
+    function restoreInlineCode(target) {
+        const inlineCode = getProtectedInlineCode(target);
+        if (!inlineCode) {
+            return false;
+        }
+        const originalText = inlineCode.getAttribute(inlineCodeOriginalAttribute);
+        if (originalText === null || inlineCode.textContent === originalText) {
+            return false;
+        }
+        inlineCode.textContent = originalText;
+        return true;
+    }
+
+    function makeInlineCodeTranslatable(code) {
+        if (!code || !code.parentNode || code.closest('pre') || code.closest(`[${wrapperAttribute}]`) || code.hasAttribute(inlineCodeAttribute)) {
             return;
         }
 
-        const pre = wrapper.querySelector('pre');
-        if (!pre) {
+        const replacement = document.createElement('span');
+        const originalText = code.textContent;
+        copyAttributes(code, replacement);
+        replacement.setAttribute(inlineCodeAttribute, 'true');
+        replacement.setAttribute(inlineCodeOriginalAttribute, originalText);
+        replacement.setAttribute('translate', 'no');
+        preserveComputedStyle(code, replacement);
+
+        if (code.firstChild) {
+            while (code.firstChild) {
+                replacement.appendChild(code.firstChild);
+            }
+        } else {
+            replacement.textContent = originalText;
+        }
+        code.parentNode.insertBefore(replacement, code);
+        code.parentNode.removeChild(code);
+    }
+
+    function setButtonState(button, isActive, scope) {
+        button.setAttribute('aria-pressed', String(isActive));
+        button.style.setProperty('background-color', isActive ? 'rgba(34, 139, 34, .85)' : 'rgba(0, 0, 0, .35)', 'important');
+        button.style.setProperty('color', isActive ? '#fff' : 'rgba(255, 255, 255, .75)', 'important');
+        button.title = isActive
+            ? `Show original ${scope} preformatted content`
+            : `Make ${scope} preformatted content translatable`;
+    }
+
+    function updateAllButton() {
+        const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        const hasBlocks = wrappers.length > 0;
+        const allConverted = hasBlocks && wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
+        setFloatingButtonAvailable(allButton, hasBlocks);
+        setButtonState(allButton, allConverted, 'all');
+    }
+
+    function getBlockText(node) {
+        if (node.nodeType === 1 && node.classList.contains('react-code-lines')) {
+            return Array.from(node.querySelectorAll('[data-testid="code-cell"]'))
+                .map((line) => line.textContent)
+                .join('\n');
+        }
+        if (node.nodeType === 3) {
+            return node.nodeValue || node.textContent || '';
+        }
+        if (node.nodeType === 1 && node.tagName === 'BR') {
+            return '\n';
+        }
+        const children = Array.from(node.childNodes || node.children || []);
+        if (children.length === 0) {
+            return node.textContent || '';
+        }
+        return children.map((child) => getBlockText(child)).join('');
+    }
+
+    function setConverted(wrapper, shouldConvert) {
+        if (!wrapper) {
             return;
         }
-
-        const replacement = document.createElement('div');
-        copyAttributes(pre, replacement);
-        replacement.setAttribute(convertedAttribute, 'true');
-        replacement.textContent = pre.textContent;
-        wrapper.parentNode.insertBefore(replacement, wrapper);
-        wrapper.parentNode.removeChild(wrapper);
+        const current = shouldConvert ? originalBlocks.get(wrapper) : wrapper.querySelector(`[${convertedAttribute}]`);
+        if (!current) {
+            return;
+        }
+        const replacement = shouldConvert ? document.createElement('div') : originalBlocks.get(wrapper);
+        if (!replacement) {
+            return;
+        }
+        if (shouldConvert) {
+            copyAttributes(current, replacement);
+            replacement.removeAttribute('translate');
+            replacement.classList.remove('notranslate');
+            replacement.classList.remove('react-code-lines');
+            replacement.removeAttribute('data-type');
+            replacement.setAttribute(convertedAttribute, 'true');
+            replacement.textContent = getBlockText(current);
+        } else {
+            replacement.removeAttribute(convertedAttribute);
+        }
+        wrapper.insertBefore(replacement, current);
+        wrapper.removeChild(current);
+        setButtonState(wrapper.querySelector('.tm-translate-pre-one'), shouldConvert, 'this');
         updateAllButton();
     }
 
-    function enhance(pre) {
-        if (!pre || !pre.parentNode || pre.closest(`[${wrapperAttribute}]`)) {
+    function enhance(block) {
+        if (!block || !block.parentNode || block.closest(`[${wrapperAttribute}]`)) {
             return;
         }
 
         const wrapper = document.createElement('div');
         wrapper.setAttribute(wrapperAttribute, 'true');
-        const parent = pre.parentNode;
-        parent.insertBefore(wrapper, pre);
-        parent.removeChild(pre);
-        wrapper.appendChild(pre);
+        const parent = block.parentNode;
+        parent.insertBefore(wrapper, block);
+        parent.removeChild(block);
+        block.setAttribute('translate', 'no');
+        wrapper.appendChild(block);
+        originalBlocks.set(wrapper, block);
 
         const button = document.createElement('button');
         button.className = 'tm-translate-pre-button tm-translate-pre-one';
         button.type = 'button';
         button.textContent = '譯';
         button.setAttribute('aria-label', 'Translate this preformatted block');
-        button.title = 'Turn this preformatted block into translatable content';
-        button.addEventListener('click', () => convert(wrapper));
+        setButtonState(button, false, 'this');
+        button.addEventListener('click', () => {
+            setConverted(wrapper, !wrapper.querySelector(`[${convertedAttribute}]`));
+        });
         wrapper.appendChild(button);
     }
 
     function scan(root = document) {
-        if (root.nodeType === 1 && root.tagName === 'PRE') {
+        enableMastodonTranslation(root);
+        revealWikipediaSections(root);
+        if (root.nodeType === 1 && isSpecialBlock(root)) {
+            enhance(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll('.react-code-lines, [data-type="mermaid"]').forEach((block) => {
+                if (isSpecialBlock(block)) {
+                    enhance(block);
+                }
+            });
+        }
+        const containingQuote = root.nodeType === 1 && root.closest ? root.closest('blockquote') : null;
+        if (isCodeQuote(containingQuote)) {
+            enhance(containingQuote);
+        }
+        if (root.nodeType === 1 && (root.tagName === 'PRE' || isCodeQuote(root))) {
             enhance(root);
         }
         if (root.querySelectorAll) {
             root.querySelectorAll('pre').forEach(enhance);
+            root.querySelectorAll('blockquote').forEach((blockquote) => {
+                if (isCodeQuote(blockquote)) {
+                    enhance(blockquote);
+                }
+            });
+        }
+        if (root.nodeType === 1 && root.tagName === 'CODE') {
+            makeInlineCodeTranslatable(root);
+        }
+        if (root.querySelectorAll) {
+            root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
         updateAllButton();
     }
 
+    function enableMastodonTranslation(root) {
+        const candidates = [];
+        if (root.nodeType === 1 && root.id === 'mastodon' && root.classList.contains('app-holder')) {
+            candidates.push(root);
+        }
+        if (root.querySelectorAll) {
+            candidates.push(...root.querySelectorAll('#mastodon.app-holder'));
+        }
+        candidates.forEach((app) => {
+            app.classList.remove('notranslate');
+            app.setAttribute('translate', 'yes');
+        });
+    }
+
+    function isCodeQuote(element) {
+        if (!element || element.tagName !== 'BLOCKQUOTE' || element.querySelector('pre')) {
+            return false;
+        }
+        const codeText = Array.from(element.querySelectorAll('code'))
+            .map((code) => code.textContent.trim())
+            .join(' ');
+        return codeText.length >= 80;
+    }
+
+    function isSpecialBlock(element) {
+        if (!element) {
+            return false;
+        }
+        if (element.classList.contains('react-code-lines')) {
+            return Boolean(element.querySelector('[data-testid="code-cell"]'));
+        }
+        return element.getAttribute('data-type') === 'mermaid'
+            && Array.from(element.querySelectorAll('pre'))
+                .some((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
+    }
+
+    function revealWikipediaSections(root) {
+        if (!isWikipedia) {
+            return;
+        }
+
+        const sections = [];
+        if (root.nodeType === 1 && root.classList.contains('mw-collapsible-content')) {
+            sections.push(root);
+        }
+        if (root.querySelectorAll) {
+            sections.push(...root.querySelectorAll('.mw-collapsible-content'));
+        }
+        sections.forEach((section) => {
+            section.hidden = false;
+            section.removeAttribute('hidden');
+        });
+    }
+
     allButton.addEventListener('click', (event) => {
         event.preventDefault();
-        Array.from(document.querySelectorAll(`[${wrapperAttribute}]`)).forEach(convert);
+        const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        const shouldConvert = !wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
+        wrappers.forEach((wrapper) => setConverted(wrapper, shouldConvert));
     });
-    if (!floatingMenuDisabled()) registerFloatingButton('translate', allButton, false);
+    function mountAllButton() {
+        if (!document.body || window !== window.top || floatingMenuDisabled()) return;
+        registerFloatingButton('translate', allButton, document.querySelectorAll(`[${wrapperAttribute}]`).length > 0);
+        scan();
+    }
+    mountAllButton();
+    if (!document.body) {
+        document.addEventListener('DOMContentLoaded', mountAllButton, { once: true });
+    }
     scan();
 
     new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => mutation.addedNodes.forEach(scan));
-    }).observe(document.body, { childList: true, subtree: true });
+        mutations.forEach((mutation) => {
+            if (restoreInlineCode(mutation.target)) {
+                return;
+            }
+            if (mutation.type === 'attributes') {
+                revealWikipediaSections(mutation.target);
+                return;
+            }
+            mutation.addedNodes.forEach((node) => {
+                restoreInlineCode(node);
+                scan(node);
+            });
+        });
+    }).observe(document.documentElement, {
+        attributes: isWikipedia,
+        attributeFilter: isWikipedia ? ['hidden'] : undefined,
+        characterData: true,
+        childList: true,
+        subtree: true,
+    });
 })();

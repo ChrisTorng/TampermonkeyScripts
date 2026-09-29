@@ -72,9 +72,12 @@ describe('InternetArchive redirects captured pages', () => {
         const sourceUrl = 'https://web.archive.org/web/20250106005830/https://www.rawstory.com/laura-loomer-vs-elon-musk/';
         const harness = executeInternetArchive(sourceUrl);
 
-        const goButton = harness.document.body.children.find((child) => child.tagName === 'BUTTON');
+        const goButton = harness.document.querySelector('[data-floating-tool="archive"]');
         assert(goButton, 'Expected a Go button on web.archive.org pages.');
         assert.equal(goButton.textContent, '→');
+        assert.equal(goButton.hidden, true);
+        harness.document.querySelector('[data-floating-toggle]').click();
+        assert.equal(goButton.hidden, false);
 
         goButton.click();
         assert.equal(

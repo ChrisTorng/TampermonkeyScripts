@@ -8,6 +8,7 @@ const end = '    // END SHARED FLOATING MENU';
 const block = `${start}\n${shared}\n${end}`;
 const files = [
     'AllGoInternetArchive.user.js',
+    'InternetArchive.user.js',
     'ForceMobileView.user.js',
     'ForceDarkMode.user.js',
     'TranslatePreformattedText.user.js',

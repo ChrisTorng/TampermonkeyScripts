@@ -8,6 +8,7 @@ const { createHarness } = require('./dom-harness');
 const root = path.join(__dirname, '..');
 const files = {
     archive: 'AllGoInternetArchive.user.js',
+    archiveFallback: 'InternetArchive.user.js',
     mobile: 'ForceMobileView.user.js',
     dark: 'ForceDarkMode.user.js',
     translate: 'TranslatePreformattedText.user.js',
@@ -106,6 +107,20 @@ describe('shared floating menu', () => {
             assert.match(text, /@exclude\s+\*:\/\/christorng\.idv\.tw\/\*/);
             assert.match(text, /@exclude\s+\*:\/\/\*\.christorng\.idv\.tw\/\*/);
         }
+    });
+
+    test('Wayback fallback registers the archive action in the same menu', () => {
+        const harness = run(['archive', 'archiveFallback'], {
+            url: 'https://web.archive.org/web/20250106005830/https://www.rawstory.com/story/',
+        });
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        const buttons = menuTools(harness);
+        assert(toggle);
+        assert.equal(buttons.length, 1);
+        assert.equal(buttons[0].getAttribute('data-floating-tool'), 'archive');
+        toggle.click();
+        buttons[0].click();
+        assert.equal(harness.location.href, 'https://archive.is/submit/?url=https://www.rawstory.com/story/');
     });
 
     test('copied shared code matches the canonical source', () => {
