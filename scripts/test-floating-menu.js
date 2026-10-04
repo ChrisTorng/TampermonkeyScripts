@@ -14,7 +14,7 @@ const files = {
     translate: 'TranslatePreformattedText.user.js',
 };
 const source = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, fs.readFileSync(path.join(root, 'src', file), 'utf8')]));
-const key = 'tm-floating-menu-v1:example.com';
+const key = 'tm-floating-menu-v2:example.com';
 
 function run(order, options = {}) {
     const harness = createHarness({
@@ -77,25 +77,74 @@ describe('shared floating menu', () => {
         first.document.dispatchEvent({ type: 'mousemove', clientX: 1070, clientY: 180, preventDefault() {} });
         first.document.dispatchEvent({ type: 'mouseup' });
         const saved = first.window.localStorage.getItem(key);
-        assert.deepEqual(JSON.parse(saved), { x: 1042, y: 170 });
+        assert.deepEqual(JSON.parse(saved), { x: 1032, y: 170 });
         const next = run(['mobile'], { localStorageSeed: { [key]: saved } });
         const menu = next.document.getElementById('tm-shared-floating-menu');
-        assert.equal(menu.style.left, '1042px');
+        assert.equal(menu.style.left, '1032px');
         assert.equal(menu.style.top, '170px');
     });
 
-    test('close disables floating features after reload while separate page controls survive', () => {
-        const first = run(['archive', 'translate', 'dark', 'mobile'], { pre: true });
-        first.document.querySelector('[data-floating-toggle]').click();
-        first.document.querySelector('[data-floating-close]').click();
-        assert.equal(first.location.reloadCallCount, 1);
-        const saved = first.window.localStorage.getItem(key);
-        assert.equal(JSON.parse(saved).disabled, true);
-        const next = run(['archive', 'translate', 'dark', 'mobile'], { pre: true, localStorageSeed: { [key]: saved } });
-        assert.equal(next.document.getElementById('tm-shared-floating-menu'), null);
-        assert.equal(next.document.getElementById('tm-force-dark-mode-style'), null);
-        assert.equal(next.document.getElementById('tm-force-width-style'), null);
-        assert.equal(next.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+    test('close asks for a scope and cancel keeps the menu available', () => {
+        const harness = run(['archive']);
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.document.querySelector('[data-floating-toggle]').click();
+        harness.document.querySelector('[data-floating-close]').click();
+        const dialog = harness.document.querySelector('[data-floating-dialog]');
+        assert.equal(dialog.hidden, false);
+        assert.equal(menu.getAttribute('data-floating-active'), 'true');
+        dialog.dispatchEvent({
+            type: 'click',
+            target: harness.document.querySelector('[data-floating-hide-scope="cancel"]'),
+        });
+        assert.equal(dialog.hidden, true);
+        assert.equal(harness.location.reloadCallCount, 0);
+    });
+
+    for (const scopeCase of [
+        { scope: 'page', url: 'https://example.com/articles/story?mode=reader', saved: { disabledPages: ['/articles/story?mode=reader'] }, hiddenUrl: 'https://example.com/articles/story?mode=reader', visibleUrl: 'https://example.com/articles/other' },
+        { scope: 'path', url: 'https://example.com/articles/story', saved: { disabledPaths: ['/articles/'] }, hiddenUrl: 'https://example.com/articles/other', visibleUrl: 'https://example.com/news/other' },
+        { scope: 'domain', url: 'https://example.com/articles/story', saved: { disabledDomain: true }, hiddenUrl: 'https://example.com/anything', visibleUrl: null },
+    ]) {
+        test(`hide scope ${scopeCase.scope} persists at only the selected scope`, () => {
+            const first = run(['archive', 'translate', 'dark', 'mobile'], { url: scopeCase.url, pre: true });
+            first.document.querySelector('[data-floating-toggle]').click();
+            first.document.querySelector('[data-floating-close]').click();
+            const dialog = first.document.querySelector('[data-floating-dialog]');
+            dialog.dispatchEvent({
+                type: 'click',
+                target: first.document.querySelector(`[data-floating-hide-scope="${scopeCase.scope}"]`),
+            });
+            assert.equal(first.location.reloadCallCount, 1);
+            const saved = first.window.localStorage.getItem(key);
+            assert.deepEqual(JSON.parse(saved), scopeCase.saved);
+            const hidden = run(['archive', 'translate', 'dark', 'mobile'], { url: scopeCase.hiddenUrl, pre: true, localStorageSeed: { [key]: saved } });
+            assert.equal(hidden.document.getElementById('tm-shared-floating-menu'), null);
+            assert.equal(hidden.document.getElementById('tm-force-dark-mode-style'), null);
+            assert.equal(hidden.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+            if (scopeCase.visibleUrl) {
+                const visible = run(['archive'], { url: scopeCase.visibleUrl, localStorageSeed: { [key]: saved } });
+                assert(visible.document.getElementById('tm-shared-floating-menu'));
+            }
+        });
+    }
+
+    test('clicking outside an expanded menu collapses it', () => {
+        const harness = run(['archive']);
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.document.querySelector('[data-floating-toggle]').click();
+        harness.document.dispatchEvent({ type: 'pointerdown', target: harness.document.body });
+        assert.equal(menu.getAttribute('data-floating-expanded'), 'false');
+        assert.equal(menu.getAttribute('data-floating-active'), 'false');
+    });
+
+    test('selecting a tool collapses the menu back to its subtle state', () => {
+        const harness = run(['dark']);
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.document.querySelector('[data-floating-toggle]').click();
+        assert.equal(menu.getAttribute('data-floating-active'), 'true');
+        harness.document.querySelector('[data-floating-tool="dark"]').click();
+        assert.equal(menu.getAttribute('data-floating-expanded'), 'false');
+        assert.equal(menu.getAttribute('data-floating-active'), 'false');
     });
 
     test('forbidden domain has no menu or floating effects', () => {

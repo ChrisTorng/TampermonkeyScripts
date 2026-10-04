@@ -106,6 +106,11 @@ class BasicNode {
         nodes.forEach((node) => this.appendChild(node));
     }
 
+    contains(node) {
+        if (node === this) return true;
+        return this.children.some((child) => child.contains(node));
+    }
+
     removeChild(child) {
         const index = this.children.indexOf(child);
         if (index === -1) {
