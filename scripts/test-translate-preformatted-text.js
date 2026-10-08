@@ -242,7 +242,7 @@ describe('Translate Preformatted Text', () => {
         assert.equal(buttons[0].getAttribute('aria-pressed'), 'false');
     });
 
-    test('the page-wide button toggles every PRE block and remains available', () => {
+    test('the page-wide button toggles every PRE block and remains available after reopening the menu', () => {
         const harness = execute((currentHarness) => {
             addPre(currentHarness, 'first block');
             addPre(currentHarness, 'second block');
@@ -259,10 +259,13 @@ describe('Translate Preformatted Text', () => {
 
         assert.equal(harness.document.querySelectorAll('pre').length, 0);
         assert.equal(harness.document.querySelectorAll('[data-tm-translatable-pre-converted]').length, 3);
-        assert.equal(allButton.hidden, false);
+        assert.equal(allButton.hidden, true);
+        assert.equal(allButton.getAttribute('data-floating-available'), 'true');
         assert.equal(allButton.getAttribute('aria-pressed'), 'true');
-        assert.equal(allButton.style.getPropertyValue('background-color'), 'rgba(34, 139, 34, .85)');
+        assert.equal(allButton.style.getPropertyValue('background-color'), '');
 
+        harness.document.querySelector('[data-floating-toggle]').click();
+        assert.equal(allButton.hidden, false);
         allButton.click();
         assert.equal(harness.document.querySelectorAll('pre').length, 3);
         assert.equal(harness.document.querySelectorAll('[data-tm-translatable-pre-converted]').length, 0);
