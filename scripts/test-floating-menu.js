@@ -124,7 +124,7 @@ describe('shared floating menu', () => {
         assert.equal(menu.style.left, '1000px');
     });
 
-    test('dragging on a scrolled page saves clearance rather than document position', () => {
+    test('dragging on a scrolled page stays put and preserves the page-top clearance', () => {
         const harness = run(['mobile']);
         harness.window.scrollY = 400;
         harness.dispatchWindowEvent('scroll');
@@ -132,10 +132,71 @@ describe('shared floating menu', () => {
         toggle.dispatchEvent({ type: 'mousedown', clientX: 1270, clientY: 10 });
         harness.document.dispatchEvent({ type: 'mousemove', clientX: 1070, clientY: 180, preventDefault() {} });
         harness.document.dispatchEvent({ type: 'mouseup' });
-        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { x: 1042, y: 170 });
-        harness.window.scrollY = 0;
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        assert.equal(menu.style.top, '570px');
+        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { x: 1042, y: 70 });
+        for (const [scroll, viewportTop] of [[420, 150], [500, 70], [570, 0], [800, 0], [400, 0], [20, 50], [0, 70]]) {
+            harness.window.scrollY = scroll;
+            harness.dispatchWindowEvent('scroll');
+            assert.equal(parseFloat(menu.style.top) - scroll, viewportTop);
+        }
+    });
+
+    test('upward scrolling after a temporary drag smoothly restores the saved top clearance', () => {
+        const harness = run(['dark'], { localStorageSeed: { [key]: JSON.stringify({ x: 1100, y: 100 }) } });
+        harness.window.scrollY = 400;
         harness.dispatchWindowEvent('scroll');
-        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.top, '170px');
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        toggle.dispatchEvent({ type: 'mousedown', clientX: 1110, clientY: 10 });
+        harness.document.dispatchEvent({ type: 'mousemove', clientX: 1110, clientY: 180, preventDefault() {} });
+        harness.document.dispatchEvent({ type: 'mouseup' });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        for (const [scroll, viewportTop] of [[400, 170], [200, 135], [0, 100]]) {
+            harness.window.scrollY = scroll;
+            harness.dispatchWindowEvent('scroll');
+            assert.equal(parseFloat(menu.style.top) - scroll, viewportTop);
+        }
+        assert.equal(JSON.parse(harness.window.localStorage.getItem(key)).y, 100);
+    });
+
+    test('dragging to the top edge saves and restores zero clearance', () => {
+        const harness = run(['archive']);
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        toggle.dispatchEvent({ type: 'mousedown', clientX: 1270, clientY: 80 });
+        harness.document.dispatchEvent({ type: 'mousemove', clientX: 1270, clientY: -50, preventDefault() {} });
+        harness.document.dispatchEvent({ type: 'mouseup' });
+        const saved = harness.window.localStorage.getItem(key);
+        assert.equal(JSON.parse(saved).y, 0);
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.top, '0px');
+        const next = run(['translate'], { pre: true, localStorageSeed: { [key]: saved } });
+        assert.equal(next.document.getElementById('tm-shared-floating-menu').style.top, '0px');
+    });
+
+    test('outside clicks collapse the menu while handle and action clicks stay inside', () => {
+        const harness = run(['translate', 'dark'], { pre: true });
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        toggle.click();
+        const button = harness.document.querySelector('[data-floating-tool="translate"]');
+        harness.document.dispatchEvent({ type: 'click', target: toggle });
+        assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+        button.click();
+        harness.document.dispatchEvent({ type: 'click', target: button });
+        assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+        harness.document.dispatchEvent({ type: 'click', target: harness.document.body });
+        assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+        assert(menuTools(harness).every((action) => action.hidden));
+        toggle.click();
+        harness.document.dispatchEvent({ type: 'click', target: harness.document.body, composedPath: () => [harness.document.body, harness.document] });
+        assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+    });
+
+    test('shared stylesheet isolates text decoration and provides inactive and active hover colors', () => {
+        const harness = run(['archive']);
+        const css = harness.document.getElementById('tm-shared-floating-menu-style').textContent;
+        // The local harness does not implement the browser CSS cascade or pointer hover.
+        assert.match(css, /button:active\s*\{ text-decoration: none !important;/);
+        assert.match(css, /button:hover\s*\{ background: rgba\(0,0,0,\.75\) !important;/);
+        assert.match(css, /button\[aria-pressed="true"\]:hover\s*\{ background: rgba\(34,139,34,1\) !important;/);
     });
 
     test('pinch zoom is detected on pages whose initial fit scale is below one', () => {

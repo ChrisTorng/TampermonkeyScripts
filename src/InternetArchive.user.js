@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-08_1.5.1
+// @version      2026-10-08_1.5.2
 // @description  Send most paywall articles to Internet Archive for archiving, hide fixed titles, and offer an Archive Today fallback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -114,6 +114,9 @@
             #${FLOATING_MENU_ID}[hidden], #${FLOATING_MENU_ID} button[hidden] { display: none !important; }
             #${FLOATING_MENU_ID} button { appearance: none !important; display: block !important; box-sizing: border-box !important; width: 38px !important; min-width: 38px !important; max-width: 38px !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 5px !important; box-shadow: 0 2px 6px rgba(0,0,0,.25) !important; background: rgba(0,0,0,.55) !important; color: #f0f0f0 !important; font: 600 15px/32px system-ui,sans-serif !important; text-align: center !important; cursor: pointer !important; opacity: 1 !important; user-select: none !important; touch-action: none !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"] { background: rgba(34,139,34,.85) !important; color: white !important; }
+            #${FLOATING_MENU_ID} button, #${FLOATING_MENU_ID} button:hover, #${FLOATING_MENU_ID} button:focus, #${FLOATING_MENU_ID} button:active { text-decoration: none !important; }
+            #${FLOATING_MENU_ID} button:hover { background: rgba(0,0,0,.75) !important; }
+            #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; }
         `;
@@ -142,9 +145,11 @@
 
         const settings = floatingMenuSettings();
         let anchorX = Number.isFinite(settings.x) ? settings.x : null;
-        let anchorY = Number.isFinite(settings.y) ? Math.max(36, settings.y) : 70;
+        let anchorY = Number.isFinite(settings.y) ? Math.max(0, settings.y) : 70;
         const scrollX = () => window.scrollX || 0;
         const scrollY = () => Math.max(0, window.scrollY || 0);
+        let documentY = anchorY;
+        let previousScrollY = scrollY();
         // Pages without a mobile viewport declaration can start below scale 1.
         let normalScale = Math.min(1, window.visualViewport ? window.visualViewport.scale : 1);
         const zoomed = () => {
@@ -160,8 +165,15 @@
         };
         const position = () => {
             if (zoomed() || dragging) return;
+            const currentScrollY = scrollY();
+            // A temporary placement returns smoothly to the saved clearance on the way up.
+            if (currentScrollY < previousScrollY && previousScrollY > 0) {
+                documentY = anchorY + (documentY - anchorY) * currentScrollY / previousScrollY;
+            }
+            if (currentScrollY >= Math.max(documentY, anchorY)) documentY = anchorY;
+            previousScrollY = currentScrollY;
             const x = anchorX === null ? window.innerWidth - 38 : anchorX;
-            place(scrollX() + Math.max(0, Math.min(x, window.innerWidth - 38)), Math.max(anchorY, scrollY()));
+            place(scrollX() + Math.max(0, Math.min(x, window.innerWidth - 38)), Math.max(documentY, currentScrollY));
         };
 
         let dragging = false;
@@ -188,7 +200,7 @@
             moved = true;
             event.preventDefault();
             const x = Math.max(0, Math.min(originX + point.clientX - startX, window.innerWidth - 38));
-            const y = Math.max(36, Math.min(originY + point.clientY - startY, window.innerHeight - 32));
+            const y = Math.max(0, Math.min(originY + point.clientY - startY, window.innerHeight - 32));
             place(scrollX() + x, scrollY() + y);
         };
         const onEnd = () => {
@@ -197,12 +209,13 @@
             if (moved) {
                 const next = floatingMenuSettings();
                 anchorX = parseFloat(root.style.left) - scrollX();
-                // A drag sets the clearance at page top, even when dragged farther down the page.
-                anchorY = parseFloat(root.style.top) - scrollY();
+                documentY = parseFloat(root.style.top);
+                previousScrollY = scrollY();
+                // Only a drag at page top changes the persistent top clearance.
+                if (previousScrollY === 0) anchorY = documentY;
                 next.x = anchorX;
                 next.y = anchorY;
                 floatingMenuSave(next);
-                position();
             }
         };
         const onStart = (event) => {
@@ -228,6 +241,15 @@
             root.setAttribute('data-floating-expanded', String(root.getAttribute('data-floating-expanded') !== 'true'));
             floatingMenuRender(root);
         });
+        document.addEventListener('click', (event) => {
+            if (event.composedPath && event.composedPath().includes(root)) return;
+            for (let target = event.target; target; target = target.parentNode) {
+                if (target === root) return;
+            }
+            if (root.getAttribute('data-floating-expanded') !== 'true') return;
+            root.setAttribute('data-floating-expanded', 'false');
+            floatingMenuRender(root);
+        }, true);
         close.addEventListener('click', () => {
             const next = floatingMenuSettings();
             next.disabled = true;
