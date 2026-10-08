@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-29_2.0.1
+// @version      2026-10-08_2.0.3
 // @description  Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -138,10 +138,13 @@
         const style = document.createElement('style');
         style.id = FLOATING_MENU_ID + '-style';
         style.textContent = `
-            #${FLOATING_MENU_ID} { position: fixed !important; top: 70px !important; right: 0 !important; left: auto !important; z-index: 2147483647 !important; width: 38px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; margin: 0 !important; padding: 0 !important; }
+            #${FLOATING_MENU_ID} { position: absolute !important; top: 70px !important; right: 0 !important; left: auto !important; z-index: 2147483647 !important; width: 38px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; margin: 0 !important; padding: 0 !important; }
             #${FLOATING_MENU_ID}[hidden], #${FLOATING_MENU_ID} button[hidden] { display: none !important; }
             #${FLOATING_MENU_ID} button { appearance: none !important; display: block !important; box-sizing: border-box !important; width: 38px !important; min-width: 38px !important; max-width: 38px !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 5px !important; box-shadow: 0 2px 6px rgba(0,0,0,.25) !important; background: rgba(0,0,0,.55) !important; color: #f0f0f0 !important; font: 600 15px/32px system-ui,sans-serif !important; text-align: center !important; cursor: pointer !important; opacity: 1 !important; user-select: none !important; touch-action: none !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"] { background: rgba(34,139,34,.85) !important; color: white !important; }
+            #${FLOATING_MENU_ID} button, #${FLOATING_MENU_ID} button:hover, #${FLOATING_MENU_ID} button:focus, #${FLOATING_MENU_ID} button:active { text-decoration: none !important; }
+            #${FLOATING_MENU_ID} button:hover { background: rgba(0,0,0,.75) !important; }
+            #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; }
         `;
@@ -165,16 +168,41 @@
         toggle.setAttribute('data-floating-toggle', 'true');
         root.appendChild(close);
         root.appendChild(toggle);
-        document.body.appendChild(root);
+        // Use document coordinates so pinch zoom does not anchor the menu to the visual viewport.
+        document.documentElement.appendChild(root);
 
         const settings = floatingMenuSettings();
-        if (Number.isFinite(settings.x) && Number.isFinite(settings.y)) {
-            const x = Math.max(0, Math.min(settings.x, window.innerWidth - 38));
-            const y = Math.max(36, Math.min(settings.y, window.innerHeight - 32));
+        let anchorX = Number.isFinite(settings.x) ? settings.x : null;
+        let anchorY = Number.isFinite(settings.y) ? Math.max(0, settings.y) : 70;
+        const scrollX = () => window.scrollX || 0;
+        const scrollY = () => Math.max(0, window.scrollY || 0);
+        let documentY = anchorY;
+        let previousScrollY = scrollY();
+        // Pages without a mobile viewport declaration can start below scale 1.
+        let normalScale = Math.min(1, window.visualViewport ? window.visualViewport.scale : 1);
+        const zoomed = () => {
+            if (!window.visualViewport) return false;
+            normalScale = Math.min(normalScale, window.visualViewport.scale);
+            return window.visualViewport.scale > normalScale * 1.01;
+        };
+        const place = (x, y) => {
+            root.style.setProperty('position', 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
-        }
+        };
+        const position = () => {
+            if (zoomed() || dragging) return;
+            const currentScrollY = scrollY();
+            // A temporary placement returns smoothly to the saved clearance on the way up.
+            if (currentScrollY < previousScrollY && previousScrollY > 0) {
+                documentY = anchorY + (documentY - anchorY) * currentScrollY / previousScrollY;
+            }
+            if (currentScrollY >= Math.max(documentY, anchorY)) documentY = anchorY;
+            previousScrollY = currentScrollY;
+            const x = anchorX === null ? window.innerWidth - 38 : anchorX;
+            place(scrollX() + Math.max(0, Math.min(x, window.innerWidth - 38)), Math.max(documentY, currentScrollY));
+        };
 
         let dragging = false;
         let moved = false;
@@ -182,37 +210,51 @@
         let startY = 0;
         let originX = 0;
         let originY = 0;
+        // Initialize even if the page loads with an already zoomed visual viewport.
+        place(Math.max(0, anchorX === null ? window.innerWidth - 38 : anchorX), Math.max(anchorY, scrollY()));
+        window.addEventListener('scroll', position, { passive: true });
+        window.addEventListener('resize', position);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', position);
         const pointer = (event) => event.touches ? event.touches[0] : event;
         const onMove = (event) => {
             if (!dragging) return;
+            if (event.touches && event.touches.length !== 1) {
+                dragging = false;
+                moved = false;
+                return;
+            }
             const point = pointer(event);
             if (!moved && Math.abs(point.clientX - startX) < 3 && Math.abs(point.clientY - startY) < 3) return;
             moved = true;
             event.preventDefault();
             const x = Math.max(0, Math.min(originX + point.clientX - startX, window.innerWidth - 38));
-            const y = Math.max(36, Math.min(originY + point.clientY - startY, window.innerHeight - 32));
-            root.style.setProperty('left', `${x}px`, 'important');
-            root.style.setProperty('top', `${y}px`, 'important');
-            root.style.setProperty('right', 'auto', 'important');
+            const y = Math.max(0, Math.min(originY + point.clientY - startY, window.innerHeight - 32));
+            place(scrollX() + x, scrollY() + y);
         };
         const onEnd = () => {
             if (!dragging) return;
             dragging = false;
             if (moved) {
                 const next = floatingMenuSettings();
-                next.x = parseFloat(root.style.left);
-                next.y = parseFloat(root.style.top);
+                anchorX = parseFloat(root.style.left) - scrollX();
+                documentY = parseFloat(root.style.top);
+                previousScrollY = scrollY();
+                // Only a drag at page top changes the persistent top clearance.
+                if (previousScrollY === 0) anchorY = documentY;
+                next.x = anchorX;
+                next.y = anchorY;
                 floatingMenuSave(next);
             }
         };
         const onStart = (event) => {
+            if (event.touches && event.touches.length !== 1) return;
             const point = pointer(event);
             dragging = true;
             moved = false;
             startX = point.clientX;
             startY = point.clientY;
-            originX = root.style.left ? parseFloat(root.style.left) : window.innerWidth - 38;
-            originY = root.style.top ? parseFloat(root.style.top) : 70;
+            originX = parseFloat(root.style.left) - scrollX();
+            originY = parseFloat(root.style.top) - scrollY();
         };
         toggle.addEventListener('mousedown', onStart);
         toggle.addEventListener('touchstart', onStart);
@@ -220,12 +262,22 @@
         document.addEventListener('touchmove', onMove);
         document.addEventListener('mouseup', onEnd);
         document.addEventListener('touchend', onEnd);
+        document.addEventListener('touchcancel', () => { dragging = false; moved = false; position(); });
         toggle.addEventListener('click', (event) => {
             event.preventDefault();
             if (moved) { moved = false; return; }
             root.setAttribute('data-floating-expanded', String(root.getAttribute('data-floating-expanded') !== 'true'));
             floatingMenuRender(root);
         });
+        document.addEventListener('click', (event) => {
+            if (event.composedPath && event.composedPath().includes(root)) return;
+            for (let target = event.target; target; target = target.parentNode) {
+                if (target === root) return;
+            }
+            if (root.getAttribute('data-floating-expanded') !== 'true') return;
+            root.setAttribute('data-floating-expanded', 'false');
+            floatingMenuRender(root);
+        }, true);
         close.addEventListener('click', () => {
             const next = floatingMenuSettings();
             next.disabled = true;
