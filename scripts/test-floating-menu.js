@@ -30,6 +30,7 @@ function run(order, options = {}) {
     }
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
+    if (options.scale) harness.window.visualViewport.scale = options.scale;
     for (const feature of order) {
         vm.runInNewContext(source[feature], harness.context, { filename: files[feature] });
     }
@@ -82,6 +83,84 @@ describe('shared floating menu', () => {
         const menu = next.document.getElementById('tm-shared-floating-menu');
         assert.equal(menu.style.left, '1042px');
         assert.equal(menu.style.top, '170px');
+    });
+
+    test('normal scrolling reaches the viewport top and restores the page-top clearance', () => {
+        for (const feature of Object.keys(files)) {
+            const harness = run([feature], { pre: true });
+            const menu = harness.document.getElementById('tm-shared-floating-menu');
+            if (!menu) continue; // The fallback only registers on supported Wayback pages.
+            for (const [scroll, top] of [[0, 70], [30, 70], [120, 120], [20, 70], [0, 70]]) {
+                harness.window.scrollY = scroll;
+                harness.dispatchWindowEvent('scroll');
+                assert.equal(menu.style.top, `${top}px`);
+                assert.equal(menu.style.position, 'absolute');
+            }
+        }
+    });
+
+    test('pinch zoom and panning do not reposition or save the menu', () => {
+        const saved = JSON.stringify({ x: 1000, y: 170 });
+        const harness = run(['translate', 'dark'], { pre: true, localStorageSeed: { [key]: saved } });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.window.visualViewport.scale = 3;
+        harness.window.visualViewport.offsetTop = 250;
+        harness.window.visualViewport.offsetLeft = 500;
+        harness.window.visualViewport.width = 400;
+        harness.window.innerWidth = 400;
+        harness.window.scrollY = 300;
+        harness.dispatchVisualViewportEvent('resize');
+        harness.dispatchVisualViewportEvent('scroll');
+        harness.dispatchWindowEvent('resize');
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '170px');
+        assert.equal(menu.style.left, '1000px');
+        assert.equal(harness.window.localStorage.getItem(key), saved);
+        harness.window.visualViewport.scale = 1;
+        harness.window.innerWidth = 1280;
+        harness.window.scrollY = 0;
+        harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.top, '170px');
+        assert.equal(menu.style.left, '1000px');
+    });
+
+    test('dragging on a scrolled page saves clearance rather than document position', () => {
+        const harness = run(['mobile']);
+        harness.window.scrollY = 400;
+        harness.dispatchWindowEvent('scroll');
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        toggle.dispatchEvent({ type: 'mousedown', clientX: 1270, clientY: 10 });
+        harness.document.dispatchEvent({ type: 'mousemove', clientX: 1070, clientY: 180, preventDefault() {} });
+        harness.document.dispatchEvent({ type: 'mouseup' });
+        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { x: 1042, y: 170 });
+        harness.window.scrollY = 0;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.top, '170px');
+    });
+
+    test('pinch zoom is detected on pages whose initial fit scale is below one', () => {
+        const harness = run(['archive'], { scale: 0.4 });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.window.visualViewport.scale = 0.8;
+        harness.window.scrollY = 300;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '70px');
+        harness.window.visualViewport.scale = 0.4;
+        harness.window.scrollY = 0;
+        harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.top, '70px');
+    });
+
+    test('translation action leaves both active and inactive colors to the shared stylesheet', () => {
+        const harness = run(['translate'], { pre: true });
+        const button = harness.document.querySelector('[data-floating-tool="translate"]');
+        harness.document.querySelector('[data-floating-toggle]').click();
+        for (const active of ['false', 'true', 'false']) {
+            assert.equal(button.getAttribute('aria-pressed'), active);
+            assert.equal(button.style.getPropertyValue('background-color'), '');
+            assert.equal(button.style.getPropertyValue('color'), '');
+            button.click();
+        }
     });
 
     test('close disables floating features after reload while separate page controls survive', () => {

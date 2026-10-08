@@ -261,7 +261,8 @@ describe('Translate Preformatted Text', () => {
         assert.equal(harness.document.querySelectorAll('[data-tm-translatable-pre-converted]').length, 3);
         assert.equal(allButton.hidden, false);
         assert.equal(allButton.getAttribute('aria-pressed'), 'true');
-        assert.equal(allButton.style.getPropertyValue('background-color'), 'rgba(34, 139, 34, .85)');
+        assert.equal(allButton.getAttribute('aria-pressed'), 'true');
+        assert.equal(allButton.style.getPropertyValue('background-color'), '');
 
         allButton.click();
         assert.equal(harness.document.querySelectorAll('pre').length, 3);
