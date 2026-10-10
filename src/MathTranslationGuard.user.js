@@ -14,7 +14,7 @@
 
     // Rendered output only. MathJax must remain free to discover and replace
     // TeX delimiters, previews, and its internal source <script> elements.
-    const mathSelector = '.MathJax, .MathJax_Display, mjx-container, .katex, math';
+    const mathSelectors = ['.MathJax', '.MathJax_Display', 'mjx-container', '.katex', 'math'];
     let registeredHub = null;
 
     function protect(element) {
@@ -30,13 +30,15 @@
     function scan(root) {
         if (!root) return;
         if (root.nodeType === 1) {
-            if (root.matches(mathSelector)) protect(root);
-            // MathJax may add children after creating its output container.
-            const container = root.closest(mathSelector);
-            if (container) protect(container);
+            if (mathSelectors.some((selector) => root.matches(selector))) protect(root);
+            // Cover each enclosing formula root, including nested MathJax display wrappers.
+            for (const selector of mathSelectors) {
+                const container = root.closest(selector);
+                if (container) protect(container);
+            }
         }
         if (root.querySelectorAll) {
-            root.querySelectorAll(mathSelector).forEach(protect);
+            root.querySelectorAll(mathSelectors.join(', ')).forEach(protect);
         }
     }
 
