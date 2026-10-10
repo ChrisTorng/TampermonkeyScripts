@@ -16,6 +16,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Run Node regression tests
+        run: node --test
       - name: Generate index.html and TestCases.html
         run: npm run generate:index
       - name: Verify HTML outputs were produced
