@@ -8,8 +8,39 @@ const { createHarness } = require('./dom-harness');
 const scriptPath = path.join(__dirname, '..', 'src', 'MathTranslationGuard.user.js');
 const scriptContents = fs.readFileSync(scriptPath, 'utf8');
 
-function execute(setupDom = () => {}) {
-    const harness = createHarness({ url: 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html' });
+function addTextSupport(harness) {
+    // Extend only this test harness: the shared DOM harness does not emulate
+    // text nodes or SHOW_TEXT, which this userscript needs for DOM scanning.
+    const document = harness.document;
+    const createElement = document.createElement.bind(document);
+    document.createTextNode = (value) => {
+        const node = createElement('#text');
+        node.nodeType = 3;
+        node.nodeValue = String(value);
+        Object.defineProperty(node, 'textContent', {
+            get() { return this.nodeValue; },
+            set(next) { this.nodeValue = String(next); },
+        });
+        return node;
+    };
+    const originalWalker = document.createTreeWalker.bind(document);
+    document.createTreeWalker = (root, filter) => {
+        if (filter !== 4) return originalWalker(root, filter);
+        const nodes = [];
+        const walk = (node) => {
+            if (node.nodeType === 3) nodes.push(node);
+            for (const child of node.children || []) walk(child);
+        };
+        walk(root);
+        let index = 0;
+        return { nextNode() { return nodes[index++] || null; } };
+    };
+    harness.context.NodeFilter = { SHOW_ELEMENT: 1, SHOW_TEXT: 4 };
+}
+
+function execute(setupDom = () => {}, url = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html') {
+    const harness = createHarness({ url });
+    addTextSupport(harness);
     setupDom(harness);
     harness.context.globalThis = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
@@ -17,6 +48,102 @@ function execute(setupDom = () => {}) {
 }
 
 describe('Math Translation Guard', () => {
+    test('Plover math is moved into inert MathJax 2 scripts before translation, while prose stays translatable', () => {
+        let paragraph;
+        let original;
+        const harness = execute((h) => {
+            paragraph = h.document.createElement('p');
+            original = h.document.createTextNode('Nim size !!\\{1, 3, \\omega\\}!! always ends.');
+            paragraph.appendChild(original);
+            h.appendToBody(paragraph);
+        });
+        assert.equal(original.parentNode, null, 'raw math text node should be replaced');
+        assert.equal(paragraph.children.length, 4);
+        const [before, preview, source, after] = paragraph.children;
+        assert.equal(before.nodeValue, 'Nim size ');
+        assert.equal(after.nodeValue, ' always ends.');
+        assert.equal(before.parentNode, paragraph);
+        assert.equal(before.getAttribute('translate'), null);
+        assert.equal(preview.className, 'MathJax_Preview');
+        assert.equal(preview.getAttribute('translate'), 'no');
+        assert.equal(preview.textContent, '\\{1, 3, \\omega\\}');
+        assert.equal(source.tagName, 'SCRIPT');
+        assert.equal(source.type, 'math/tex');
+        assert.equal(source.textContent, '\\{1, 3, \\omega\\}');
+        assert.equal(harness.document.querySelectorAll('.MathJax').length, 0,
+            'only MathJax should create rendered nodes');
+    });
+
+    test('Plover multiline math and multiple formulas keep exact TeX without modifying surrounding words', () => {
+        let paragraph;
+        execute((h) => {
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('Before !!1,\\!000!! then !!\\{1,\n\\omega\\}!! after'));
+            h.appendToBody(paragraph);
+        });
+        const scripts = paragraph.children.filter((node) => node.tagName === 'SCRIPT');
+        const segments = paragraph.children.filter((node) => node.nodeType === 3);
+        assert.equal(scripts.length, 2);
+        assert.deepEqual(scripts.map((node) => node.textContent), ['1,\\!000', '\\{1,\n\\omega\\}']);
+        assert.deepEqual(segments.map((node) => node.nodeValue), ['Before ', ' then ', ' after']);
+        assert.equal(paragraph.children.length, 7);
+    });
+
+    test('unrelated sites are not parsed as Plover math; code and preview source are excluded', () => {
+        let paragraph;
+        execute((h) => {
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('!!\\omega!!'));
+            h.appendToBody(paragraph);
+        }, 'https://example.net/article');
+        assert.equal(paragraph.children.length, 1);
+        assert.equal(paragraph.children[0].nodeValue, '!!\\omega!!');
+
+        let code;
+        let preview;
+        execute((h) => {
+            code = h.document.createElement('code');
+            code.appendChild(h.document.createTextNode('!!\\omega!!'));
+            h.appendToBody(code);
+            preview = h.document.createElement('span');
+            preview.className = 'MathJax_Preview';
+            preview.appendChild(h.document.createTextNode('!!\\omega!!'));
+            h.appendToBody(preview);
+        });
+        assert.equal(code.children.length, 1);
+        assert.equal(preview.children.length, 1);
+    });
+
+    test('new Plover source nodes and character-data changes are converted without touching other text', () => {
+        const harness = execute();
+        const paragraph = harness.document.createElement('p');
+        const lateText = harness.document.createTextNode('before !!\\omega!! after');
+        paragraph.appendChild(lateText);
+        harness.appendToBody(paragraph);
+        harness.triggerMutation([paragraph]);
+        assert.equal(paragraph.children.filter((node) => node.tagName === 'SCRIPT').length, 1);
+
+        const changing = harness.document.createTextNode('before ');
+        paragraph.appendChild(changing);
+        changing.nodeValue = 'another !!b_1+1!! case';
+        harness.triggerMutation([], { type: 'characterData', target: changing });
+        assert.equal(paragraph.children.filter((node) => node.tagName === 'SCRIPT').length, 2);
+    });
+
+    test('MathJax 2 typesetting is queued for newly preserved source rather than invoked synchronously', () => {
+        const queues = [];
+        let paragraph;
+        execute((h) => {
+            h.window.MathJax = { Hub: { Queue(args) { queues.push(args); } } };
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('text !!\\omega!! more'));
+            h.appendToBody(paragraph);
+        });
+        assert.equal(queues.length, 1);
+        assert.equal(queues[0][0], 'Typeset');
+        assert.equal(queues[0][2], paragraph);
+    });
+
     test('protects MathJax 2 output while leaving preview, source and parent structure untouched', () => {
         let paragraph;
         let preview;
