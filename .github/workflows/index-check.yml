@@ -18,6 +18,8 @@ jobs:
         run: npm ci
       - name: Run Node regression tests
         run: node --test
+      - name: Smoke-test MathJax 2 in headless Chrome
+        run: node scripts/smoke-mathjax-browser.js
       - name: Generate index.html and TestCases.html
         run: npm run generate:index
       - name: Verify HTML outputs were produced
