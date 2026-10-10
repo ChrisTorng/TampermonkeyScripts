@@ -107,7 +107,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
 
-Exclude rendered MathJax, KaTeX, and MathML from page translation without modifying math source text.
+Protect rendered math and preserve Plover TeX sources before browser translation without altering surrounding prose.
 
 ### [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
@@ -175,6 +175,7 @@ Update each script separately as needed.
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
   - [TranslationCrashGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
+  - [MathTranslationGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
