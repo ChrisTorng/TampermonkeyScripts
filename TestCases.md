@@ -100,8 +100,8 @@ Section note: automated tests use representative inline code, preformatted block
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # Math Translation Guard
-Section note: automated tests cover rendered MathJax 2/3/4, KaTeX, and MathML DOM protections, including dynamic insertion, with a local DOM harness. Actual native browser translation and MathJax rendering on Windows and Android Edge require manual validation.
-- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 2 site with custom !! math delimiters; synthetic DOM tests verify output protection without altering source or preview, but cannot prove native Edge translation preserves equations)
+Section note: automated tests cover rendered MathJax 2/3/4, KaTeX, and MathML DOM protections, plus Plover-specific early conversion of custom !! delimited TeX into inert MathJax 2 script nodes (including dynamic text changes). Actual native browser translation and MathJax rendering on Windows and Android Edge require manual validation.
+- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 2 site with custom !! math delimiters; synthetic DOM tests verify exact TeX is preserved inside inert script nodes before translation and prose remains independently translatable; native Edge translation and real MathJax rendering are not yet verified)
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
