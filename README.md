@@ -105,6 +105,10 @@ Show thin, fixed vertical markers that track scroll position for every scrollabl
 
 Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
+### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
+
+Exclude rendered MathJax, KaTeX, and MathML from page translation without modifying math source text.
+
 ### [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
 Toggle the current page between original and Google Translate with Ctrl+Alt+S.
