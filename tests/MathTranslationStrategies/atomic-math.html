@@ -83,7 +83,7 @@ const start=performance.now(),paintChoice=new URLSearchParams(location.search).g
 const control='The yellow taxi stopped near the old museum. People are speaking English while watching a documentary about mathematics. If this paragraph stays in English, the browser\'s page translator is not confirmed.';
 const methods=['svg','image','shadow','iframe'],copies=['first','second'];
 const $=id=>document.getElementById(id);
-const data={version:'2026-10-12.4',formulaPaint:formulaColor,engine:'MathJax 4 SVG',at:'',renderStatus:'loading',renderFinishedAtMs:null,entry:{},cases:{},beforeTranslation:{},events:[]};
+const data={version:'2026-10-12.5',formulaPaint:formulaColor,engine:'MathJax 4 SVG',at:'',renderStatus:'loading',renderFinishedAtMs:null,entry:{},cases:{},beforeTranslation:{},events:[]};
 const vis={first:null,second:null};
 const caseExposure={};
 let scrolled=false;
@@ -106,7 +106,37 @@ const casesObserver=new IntersectionObserver(es=>{
  }
 },{threshold:0.02});
 document.querySelectorAll('.case').forEach(c=>casesObserver.observe(c));
-function within(a,b){return Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)}
+const expectedOrder='T0 M0 T1 M1 T2 M2 T3';
+function mathOrderEvidence(paragraph){
+ const nodes=[...paragraph.querySelectorAll('[data-prose],.slot[data-index]')];
+ const token=node=>node.hasAttribute('data-prose')?
+   'T'+node.dataset.prose:'M'+node.dataset.index;
+ const sequence=nodes.map(token).join(' ');
+ const directChildren=[...paragraph.children].map(element=>
+   element.matches('[data-prose],.slot[data-index]')?
+     token(element):element.localName+'.'+String(element.className||'').slice(0,50));
+ const directChildSequence=directChildren.join(' ');
+ const pairs=[0,1,2].map(i=>{
+   const before=paragraph.querySelector('[data-prose="'+i+'"]');
+   const math=paragraph.querySelector('.slot[data-index="'+i+'"]');
+   const after=paragraph.querySelector('[data-prose="'+(i+1)+'"]');
+   return {formula:i,beforePresent:Boolean(before),mathPresent:Boolean(math),afterPresent:Boolean(after),
+     beforeMath:Boolean(before&&math&&(before.compareDocumentPosition(math)&Node.DOCUMENT_POSITION_FOLLOWING)),
+     mathBeforeAfter:Boolean(math&&after&&(math.compareDocumentPosition(after)&Node.DOCUMENT_POSITION_FOLLOWING)),
+     sameDirectParent:Boolean(before&&math&&after&&before.parentElement===paragraph&&
+       math.parentElement===paragraph&&after.parentElement===paragraph),
+     immediateBefore:math?.previousElementSibling?.dataset.prose??null,
+     immediateAfter:math?.nextElementSibling?.dataset.prose??null,
+     adjacentTranslatedProse:{
+       preceding:before?.textContent.slice(-110)??null,
+       following:after?.textContent.slice(0,110)??null
+     }
+   };
+ });
+ return {expected:expectedOrder,actual:sequence,exactSequence:sequence===expectedOrder,
+   directChildSequence,allDirect:nodes.every(node=>node.parentElement===paragraph),
+   pairs,paragraphChildCount:paragraph.children.length};
+}
 function getFormulaNode(slot,method){
  if(method==='svg')return slot.querySelector('svg');
  if(method==='image')return slot.querySelector('img');
@@ -140,7 +170,8 @@ function inspect(method,copy){
    const r=slots[i].getBoundingClientRect(),css=getComputedStyle(slots[i]);
    return r.width>0&&r.height>0&&css.visibility!=='hidden'&&css.display!=='none';
  }).length;
- const properOrder=spans.length===4&&slots.length===3&&slots.every((slot,i)=>within(spans[i],slot)&&within(slot,spans[i+1]));
+ const orderEvidence=mathOrderEvidence(p);
+ const properOrder=orderEvidence.exactSequence&&orderEvidence.allDirect&&spans.length===4&&slots.length===3;
  const prose=spans.map(s=>s.textContent);
  const changed=spans.length!==initialParts.length||prose.some((part,i)=>part!==initialParts[i]);
  const plain=$('control-'+copy).textContent.trim();
@@ -164,7 +195,7 @@ function inspect(method,copy){
  darkPixels?'FORMULAS_TOO_DARK_IN_SVG_IMAGE':
  !properOrder?'INLINE_FORMULA_ORDER_CHANGED':
  'TEXT_TRANSLATED_MATH_PRESENT_VERIFY_VISUALLY';
- const record={copy,method,sectionFirstVisibleMs:vis[copy],caseFirstVisible:caseExposure[method+'-'+copy]||null,plainControlTranslated:ctl,mixedTextTranslated:changed,
+ const record={copy,method,orderEvidence,sectionFirstVisibleMs:vis[copy],caseFirstVisible:caseExposure[method+'-'+copy]||null,plainControlTranslated:ctl,mixedTextTranslated:changed,
     formulas:count,visuallySizedFormulas:visible,slotCount:slots.length,properOrder,verdict,evidence};
  data.cases[method+'-'+copy]=record;
  const msg=document.querySelector('[data-verdict="'+method+'-'+copy+'"]'); if(msg)msg.textContent=verdict+' / '+count+'/3';
@@ -183,6 +214,8 @@ function inspectAll(){
      const w=Number.parseFloat(item.sourceWidth);
      return item.svgCount===1&&w>[12,9,3][i];
    }));
+ document.documentElement.dataset.atomicImageOrderCorrect=String(
+   data.cases['image-first']?.properOrder&&data.cases['image-second']?.properOrder);
  document.documentElement.dataset.atomicImageNoInitialTex=String(
    [...document.querySelectorAll('[data-case^="image-"] .slot')].every(
      slot=>!slot.querySelector('.pending-formula')));
@@ -298,6 +331,11 @@ async function render(){
 $('check').addEventListener('click',inspectAll);
 $('copy').addEventListener('click',async()=>{inspectAll();try{await navigator.clipboard.writeText($('report').value);$('copy').textContent='Copied JSON';}
 catch(e){$('report').focus();$('report').select();$('copy').textContent='Select JSON below';}});
+data.originalMathOrder=Object.fromEntries(copies.flatMap(copy=>
+ methods.map(method=>[method+'-'+copy,mathOrderEvidence($(method+'-'+copy))])));
+ document.documentElement.dataset.atomicOriginalImageOrder=String(
+  data.originalMathOrder['image-first'].exactSequence&&
+  data.originalMathOrder['image-second'].exactSequence);
 window.addEventListener('load',render);
 const focusCase=document.documentElement.dataset.focus;
 if(focusCase){
