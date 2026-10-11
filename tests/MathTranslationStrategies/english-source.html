@@ -35,21 +35,26 @@ MathJax.Hub.Config({
 <body>
 <main>
 <header>
-<h1>English mathematical article — native translation test</h1>
-<p>This entire document is written in English and its test paragraphs are already present in the original HTML response. Use Microsoft Edge's built-in Translate command to translate this page from English into Traditional Chinese.</p>
-<p>The first section is visible near the top of the page. The second identical section is far below and will only become visible after you scroll. The purpose is to compare immediate translation with translation after scrolling.</p>
-<p><a href="./index.html?mode=focus&amp;method=script&amp;late=present">Back to the ten-method comparison laboratory</a></p>
+<h1>English Math Translation Test</h1>
+<p>Use Edge's native Translate command to translate this English page into Traditional Chinese. Check the mathematics at the top and after scrolling.</p>
 </header>
 
 <section id="first" data-set="first">
 <h2>First copy — initially near the top</h2>
-<h3>English-only control, with no mathematics</h3>
-<p id="plain-first" class="plain-control" lang="en">The blue bicycle is parked beside the old library. It is raining outside, and the children are reading an interesting book. This ordinary English paragraph should become Chinese if the browser actually translates the page.</p>
 <h3>Method G — native MathJax 2 mathematical script</h3>
 <p id="math-first" class="math-example" lang="en">
 <span data-part="0">A game starting with Nim heaps of size </span><span class="math-slot" data-formula="0"><script type="math/tex">\{1,3,4,8\}</script></span><span data-part="1"> cannot last more than 16 turns. If the position contains </span><span class="math-slot" data-formula="1"><script type="math/tex">\omega</script></span><span data-part="2">, the player can replace the </span><span class="math-slot" data-formula="2"><script type="math/tex">10,\!000</script></span><span data-part="3">-token with a pile of beans. The formula must stay exactly here, between the surrounding translated words.</span>
 </p>
+<h3>English-only control, with no mathematics</h3>
+<p id="plain-first" class="plain-control" lang="en">The blue bicycle is parked beside the old library. It is raining outside, and the children are reading an interesting book. This ordinary English paragraph should become Chinese if the browser actually translates the page.</p>
 <p class="note">Verify that all three formulas remain between their correct Chinese phrases. Having 3/3 formulas without any translated prose is NOT a successful translation test.</p>
+</section>
+
+<section id="instructions">
+<h2>About this experiment</h2>
+<p>This entire document is written in English and both copies of the mathematical article are already in the original HTML response, before any JavaScript runs. If the browser does not prompt, choose Translate from Edge's menu and explicitly choose Traditional Chinese.</p>
+<p>Only the second copy is positioned offscreen at first. Its English text is present in the DOM at load time, allowing a comparison between immediate and on-scroll translation.</p>
+<p><a href="./index.html?mode=focus&amp;method=script&amp;late=present">Return to the ten-method comparison lab</a></p>
 </section>
 
 <div id="gap">
@@ -58,12 +63,12 @@ MathJax.Hub.Config({
 
 <section id="second" data-set="second">
 <h2>Second copy — initially below the viewport</h2>
-<h3>English-only control, with no mathematics</h3>
-<p id="plain-second" class="plain-control" lang="en">The blue bicycle is parked beside the old library. It is raining outside, and the children are reading an interesting book. This ordinary English paragraph should become Chinese if the browser actually translates the page.</p>
 <h3>Method G — native MathJax 2 mathematical script</h3>
 <p id="math-second" class="math-example" lang="en">
 <span data-part="0">A game starting with Nim heaps of size </span><span class="math-slot" data-formula="0"><script type="math/tex">\{1,3,4,8\}</script></span><span data-part="1"> cannot last more than 16 turns. If the position contains </span><span class="math-slot" data-formula="1"><script type="math/tex">\omega</script></span><span data-part="2">, the player can replace the </span><span class="math-slot" data-formula="2"><script type="math/tex">10,\!000</script></span><span data-part="3">-token with a pile of beans. The formula must stay exactly here, between the surrounding translated words.</span>
 </p>
+<h3>English-only control, with no mathematics</h3>
+<p id="plain-second" class="plain-control" lang="en">The blue bicycle is parked beside the old library. It is raining outside, and the children are reading an interesting book. This ordinary English paragraph should become Chinese if the browser actually translates the page.</p>
 <p class="note">This paragraph was present in the server-supplied HTML from the beginning. Compare its translation and math positioning against the first copy.</p>
 </section>
 
@@ -160,6 +165,14 @@ $('copy').addEventListener('click',async()=>{
 });
 window.__staticMathTranslationLab={report,inspectCopy};
 report();
+if(new URLSearchParams(location.search).get('selftest')==='1'){
+ $('plain-first').textContent='這個純文字對照段落已翻譯成繁體中文。';
+ $('math-first').querySelector('[data-part="0"]').textContent='尼姆堆的起始大小是 ';
+ const check=inspectCopy('first');
+ document.documentElement.dataset.englishControlSelftest=check.plainControlChanged&&check.mathTextChanged?'passed':'failed';
+ report();
+}
+
 })();
 </script>
 </body>
