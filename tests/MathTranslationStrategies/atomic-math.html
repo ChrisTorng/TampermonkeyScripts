@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>MathJax SVG Formula Isolation — Native Edge Translation Test</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,Arial,sans-serif;background:#101b2b;color:#eff3fa}
+*{box-sizing:border-box}body{margin:0}main{max-width:750px;margin:0 auto;padding:12px 13px 70px;line-height:1.5}
+h1{font-size:1.4rem}h2{font-size:1.14rem}h3{font-size:1.01rem}p{margin:12px 0}
+a{color:#94c6ff}header,section,footer{padding:14px;background:#1a2839;border:1px solid #40526d;border-radius:12px;margin:15px 0}
+.case{padding:11px;border:1px solid #506888;border-radius:9px;margin:15px 0}
+.mixed{padding:12px;background:#121d2c;border-radius:7px;line-height:2;font-size:1.06rem;font-family:Georgia,serif}
+.slot{display:inline;vertical-align:middle;white-space:nowrap}
+.slot svg{height:1.85em;max-width:95%;width:auto;vertical-align:middle;color:#f4f8ff}
+.slot img{height:1.85em;max-width:95%;vertical-align:middle}
+.slot .shadow-host{display:inline-block;vertical-align:middle}
+.slot iframe{display:inline-block;vertical-align:middle;border:0;background:transparent;max-width:95%;pointer-events:none}
+.control{padding:12px;background:#20334e;border-radius:8px}
+.pending-formula{font-size:.77em;color:#9bb0ce}
+.badge{font-size:.76rem;font-family:system-ui,sans-serif;color:#a2c9fb;overflow-wrap:anywhere}
+#gap{min-height:165vh;background:repeating-linear-gradient(145deg,#162439,#162439 16px,#101b2b 16px,#101b2b 30px);display:grid;place-items:center;border:1px dashed #516d86;border-radius:10px}
+#gap p{position:sticky;top:40vh;background:#20334e;padding:14px;border-radius:9px}
+button{background:#3279d9;color:white;border:0;border-radius:8px;padding:12px;font:inherit}
+textarea{width:100%;height:210px;resize:vertical;background:#101b2b;color:#eaf1ff;border:1px solid #536784;border-radius:8px;padding:10px;font:12px ui-monospace,monospace}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.84rem}
+</style>
+<script>
+window.MathJax={startup:{typeset:false},svg:{fontCache:'local'}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg.js"></script>
+</head>
+<body><main>
+<header>
+<h1>MathJax SVG formula isolation test</h1>
+<p>This is an English article containing three inline equations in each long paragraph. Translate it into Traditional Chinese using Microsoft Edge's built-in Translate command.</p>
+<p>Four distinct representations are repeated both near the top and far below: original SVG nodes, atomic SVG images, Shadow DOM, and an embedded document iframe. None is guaranteed to work; this page is a diagnostic experiment.</p>
+<p>Disable any Tampermonkey page-translation or math-protection scripts before testing, especially Math Translation Guard 1.2.0. If a method works with scripts disabled, you can optionally compare with them enabled.</p>
+<p><a href="inline-mathjax4-chtml.html">MathJax 4 CommonHTML baseline</a> · <a href="inline-mathjax4-svg.html">SVG baseline</a> · <a href="inline-katex.html">KaTeX baseline</a></p>
+</header>
+<section id="first" data-copy="first"><h2>First copy: initial page</h2><p class="control" id="control-first">The yellow taxi stopped near the old museum. People are speaking English while watching a documentary about mathematics. If this paragraph stays in English, the browser's page translator is not confirmed.</p><article class="case" data-case="svg-first" data-method="svg"><h3>Live SVG in page DOM</h3><p id="svg-first" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="svg-first" translate="no">Awaiting formula rendering</p></article><article class="case" data-case="image-first" data-method="image"><h3>Standalone SVG image element</h3><p id="image-first" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="image-first" translate="no">Awaiting formula rendering</p></article><article class="case" data-case="shadow-first" data-method="shadow"><h3>SVG inside an open Shadow DOM</h3><p id="shadow-first" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="shadow-first" translate="no">Awaiting formula rendering</p></article><article class="case" data-case="iframe-first" data-method="iframe"><h3>SVG in an inline iframe document</h3><p id="iframe-first" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="iframe-first" translate="no">Awaiting formula rendering</p></article></section>
+<div id="gap"><p>The second copy already exists in the HTML, but starts outside the viewport. Scroll further down.</p></div>
+<section id="second" data-copy="second"><h2>Second copy: reached after scrolling</h2><p class="control" id="control-second">The yellow taxi stopped near the old museum. People are speaking English while watching a documentary about mathematics. If this paragraph stays in English, the browser's page translator is not confirmed.</p><article class="case" data-case="svg-second" data-method="svg"><h3>Live SVG in page DOM</h3><p id="svg-second" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="svg-second" translate="no">Awaiting formula rendering</p></article><article class="case" data-case="image-second" data-method="image"><h3>Standalone SVG image element</h3><p id="image-second" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="image-second" translate="no">Awaiting formula rendering</p></article><article class="case" data-case="shadow-second" data-method="shadow"><h3>SVG inside an open Shadow DOM</h3><p id="shadow-second" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="shadow-second" translate="no">Awaiting formula rendering</p></article><article class="case" data-case="iframe-second" data-method="iframe"><h3>SVG in an inline iframe document</h3><p id="iframe-second" class="mixed" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="slot" data-tex="\sqrt{3x-1}+(1+x)^2" data-index="0"><span class="pending-formula">\(\sqrt{3x-1}+(1+x)^2\)</span></span><span data-prose="1"> in the middle of this sentence, and a different equation </span><span class="slot" data-tex="\int_0^1x^2\,dx=\frac13" data-index="1"><span class="pending-formula">\(\int_0^1x^2\,dx=\frac13\)</span></span><span data-prose="2"> immediately after these words. The third formula </span><span class="slot" data-tex="E=mc^2" data-index="2"><span class="pending-formula">\(E=mc^2\)</span></span><span data-prose="3"> must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear.</span></p><p class="badge" data-verdict="iframe-second" translate="no">Awaiting formula rendering</p></article></section>
+<footer translate="no" lang="en">
+<h2>Local diagnostic</h2>
+<p>All translation happens in your browser. This page only renders formulas and records whether plain text changed, equation elements remain visible, and their position stays between text spans.</p>
+<button id="check">Check again</button> <button id="copy">Copy JSON diagnostic</button>
+<pre id="summary">Starting…</pre>
+<textarea id="report" readonly spellcheck="false"></textarea>
+</footer>
+</main>
+<script>
+(()=>{
+'use strict';
+const start=performance.now(),tex=["\\sqrt{3x-1}+(1+x)^2","\\int_0^1x^2\\,dx=\\frac13","E=mc^2"],initialParts=["The mathematical proof uses the expression "," in the middle of this sentence, and a different equation "," immediately after these words. The third formula "," must stay inside the English paragraph when the browser translates the text to Traditional Chinese. None of these three equations should move to the end or disappear."];
+const control='The yellow taxi stopped near the old museum. People are speaking English while watching a documentary about mathematics. If this paragraph stays in English, the browser\'s page translator is not confirmed.';
+const methods=['svg','image','shadow','iframe'],copies=['first','second'];
+const $=id=>document.getElementById(id);
+const data={version:'2026-10-12.2',engine:'MathJax 4 SVG',at:'',renderStatus:'loading',renderFinishedAtMs:null,entry:{},cases:{},beforeTranslation:{},events:[]};
+const vis={first:null,second:null};
+function within(a,b){return Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)}
+function getFormulaNode(slot,method){
+ if(method==='svg')return slot.querySelector('svg');
+ if(method==='image')return slot.querySelector('img');
+ if(method==='shadow')return slot.querySelector('.shadow-host')?.shadowRoot?.querySelector('svg');
+ if(method==='iframe')return slot.querySelector('iframe')?.contentDocument?.querySelector('svg');
+ return null;
+}
+function inspect(method,copy){
+ const p=$(method+'-'+copy),spans=[...p.querySelectorAll('[data-prose]')],slots=[...p.querySelectorAll('.slot')];
+ const rendered=slots.map(slot=>getFormulaNode(slot,method));
+ const count=rendered.filter(Boolean).length;
+ const visible=rendered.filter((node,i)=>{
+   if(!node)return false;
+   const r=slots[i].getBoundingClientRect(),css=getComputedStyle(slots[i]);
+   return r.width>0&&r.height>0&&css.visibility!=='hidden'&&css.display!=='none';
+ }).length;
+ const properOrder=spans.length===4&&slots.length===3&&slots.every((slot,i)=>within(spans[i],slot)&&within(slot,spans[i+1]));
+ const prose=spans.map(s=>s.textContent);
+ const changed=spans.length!==initialParts.length||prose.some((part,i)=>part!==initialParts[i]);
+ const plain=$('control-'+copy).textContent.trim();
+ const ctl=plain!==control;
+ const evidence=slots.map((slot,i)=>{
+   const f=rendered[i];
+   return {index:i,tagNames:[...slot.children].map(n=>n.localName),hasFormula:Boolean(f),
+    mediaLoaded:method==='image'?Boolean(f?.complete&&f?.naturalWidth>0):null,
+    slotText:slot.textContent.slice(0,95),slotHtml:slot.innerHTML.slice(0,350)};
+ });
+ const verdict=!ctl?'PLAIN_CONTROL_NOT_TRANSLATED':!changed?'MIXED_TEXT_NOT_TRANSLATED':count!==3||visible!==3||evidence.some(e=>e.mediaLoaded===false)?
+ 'INLINE_FORMULAS_LOST_OR_INVISIBLE':!properOrder?'INLINE_FORMULA_ORDER_CHANGED':'TEXT_TRANSLATED_MATH_PRESENT_VERIFY_VISUALLY';
+ const record={copy,method,firstVisibleMs:vis[copy],plainControlTranslated:ctl,mixedTextTranslated:changed,
+    formulas:count,visuallySizedFormulas:visible,slotCount:slots.length,properOrder,verdict,evidence};
+ data.cases[method+'-'+copy]=record;
+ const msg=document.querySelector('[data-verdict="'+method+'-'+copy+'"]'); if(msg)msg.textContent=verdict+' / '+count+'/3';
+}
+function inspectAll(){
+ for(const copy of copies)for(const m of methods)inspect(m,copy);
+ data.at=new Date().toISOString();
+ data.entry={url:location.href,ua:navigator.userAgent,htmlLanguage:document.documentElement.lang,scrollY:window.scrollY,
+   elapsedMs:Math.round(performance.now()-start)};
+ $('report').value=JSON.stringify(data,null,2);
+ $('summary').textContent='MathJax: '+data.renderStatus+'\n'+copies.map(copy=>copy+': '+methods.map(m=>m+': '+data.cases[m+'-'+copy].verdict).join(' | ')).join('\n');
+}
+const observer=new IntersectionObserver(es=>{
+ for(const e of es)if(e.isIntersecting&&vis[e.target.dataset.copy]===null){
+  vis[e.target.dataset.copy]=Math.round(performance.now()-start);
+  data.events.push({type:'firstVisible',copy:e.target.dataset.copy,ms:vis[e.target.dataset.copy]});
+  inspectAll();
+ }
+},{threshold:0.02});
+for(const copy of copies)observer.observe($(copy));
+let scanTimer=0;
+new MutationObserver(records=>{
+ if(!records.some(r=>{const node=r.target.nodeType===1?r.target:r.target.parentElement;
+   return !!node?.closest?.('section[data-copy]');}))return;
+ clearTimeout(scanTimer);scanTimer=setTimeout(inspectAll,400);
+}).observe(document.body,{subtree:true,childList:true,characterData:true});
+async function render(){
+ try{
+  if(typeof MathJax?.tex2svgPromise!=='function')throw Error('MathJax tex2svgPromise unavailable');
+  await MathJax.startup.promise;
+  const svgs=[];
+  for(const expression of tex){
+    const output=await MathJax.tex2svgPromise(expression,{display:false});
+    const svg=output.querySelector('svg');
+    if(!svg)throw Error('No SVG returned for '+expression);
+    svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    svg.setAttribute('fill','#f4f8ff');
+    svgs.push(svg);
+  }
+  const xmls=svgs.map(svg=>new XMLSerializer().serializeToString(svg));
+  for(const copy of copies)for(const method of methods){
+   const p=$(method+'-'+copy),slots=[...p.querySelectorAll('.slot')];
+   for(let i=0;i<slots.length;i++){
+    const slot=slots[i],svg=svgs[i].cloneNode(true);
+    slot.replaceChildren();
+    if(method==='svg')slot.appendChild(svg);
+    if(method==='image'){
+      const img=document.createElement('img');
+      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xmls[i]);
+      img.alt='Mathematical formula '+(i+1);
+      img.decoding='sync';
+      slot.appendChild(img);
+    }
+    if(method==='shadow'){
+      const host=document.createElement('span');host.className='shadow-host';
+      slot.appendChild(host);
+      const root=host.attachShadow({mode:'open'});
+      const style=document.createElement('style');
+      style.textContent=':host{display:inline-block;vertical-align:middle}svg{height:1.85em;width:auto;max-width:95%;vertical-align:middle}';
+      root.append(style,svg);
+    }
+    if(method==='iframe'){
+      const frame=document.createElement('iframe');frame.setAttribute('title','Mathematical formula '+(i+1));
+      frame.setAttribute('loading','eager');
+      const w=Number.parseFloat(svg.getAttribute('width'));
+      const h=Number.parseFloat(svg.getAttribute('height'));
+      const width=Number.isFinite(w/h)&&h>0?Math.min(350,Math.max(70,Math.round(w/h*39))):160;
+      frame.style.width=width+'px';frame.style.height='41px';
+      frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#121d2c}svg{display:block;width:100%;height:39px}</style></head><body>'+xmls[i]+'</body></html>';
+      slot.appendChild(frame);
+    }
+   }
+  }
+  await Promise.all([...document.querySelectorAll('.slot img')].map(img=>img.decode().catch(()=>{})));
+  await Promise.all([...document.querySelectorAll('iframe')].map(iframe=>new Promise(resolve=>{
+    if(iframe.contentDocument?.readyState==='complete')resolve();
+    else {iframe.addEventListener('load',resolve,{once:true});setTimeout(resolve,2000);}
+  })));
+  data.renderStatus='ready';data.renderFinishedAtMs=Math.round(performance.now()-start);
+  data.events.push({type:'rendered',atMs:data.renderFinishedAtMs});
+  inspectAll();
+  for(const copy of copies)for(const method of methods){
+    const key=method+'-'+copy;
+    data.beforeTranslation[key]={formulas:data.cases[key].formulas,visible:data.cases[key].visuallySizedFormulas};
+  }
+  inspectAll();
+ }catch(e){data.renderStatus='error: '+String(e.message||e);data.events.push({type:'renderError',message:String(e)});inspectAll();}
+}
+$('check').addEventListener('click',inspectAll);
+$('copy').addEventListener('click',async()=>{inspectAll();try{await navigator.clipboard.writeText($('report').value);$('copy').textContent='Copied JSON';}
+catch(e){$('report').focus();$('report').select();$('copy').textContent='Select JSON below';}});
+window.addEventListener('load',render);
+window.__atomicMathLab={inspect:inspectAll,getData:()=>structuredClone(data)};
+inspectAll();
+})();
+</script>
+</body></html>
