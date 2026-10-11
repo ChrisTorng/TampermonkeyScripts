@@ -87,4 +87,5 @@ test('browser smoke: actual MathJax 2 renders both copies of three formulas', ()
 test('math order check uses the actual number of source text spans', () => {
     assert.match(html, /texts\.length!==pieces\.length/);
     assert.doesNotMatch(html, /texts\.length!==4/);
+    assert.match(html, /originalText:pieces\.map\(\(text,i\)=>text\+\(i<math\.length\?'\[公式\]':'\'\)\)\.join\(''\)/);
 });
