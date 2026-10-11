@@ -140,3 +140,53 @@ test('English control fixture renders six real MathJax 2 equations and detects s
     assert.ok(outputs >= 6, 'Expected six real MathJax outputs, got '+outputs+
         '\n'+result.stdout.slice(-2000)+'\n'+result.stderr.slice(-900));
 });
+
+
+const inlinePages = [
+    ['mathjax4-chtml', 'MathJax 4 / CommonHTML', 'mjx-container'],
+    ['mathjax4-svg', 'MathJax 4 / SVG', 'mjx-container'],
+    ['katex', 'KaTeX 0.19 / HTML+MathML', 'katex'],
+];
+
+for (const [engine, label, renderedSelector] of inlinePages) {
+    const fixturePath = path.join(projectRoot, 'tests', 'MathTranslationStrategies', 'inline-' + engine + '.html');
+    const fixture = fs.readFileSync(fixturePath, 'utf8');
+
+    test('static inline-math test page has valid diagnostics and duplicates: ' + label, () => {
+        assert.match(fixture, /<html lang="en">/);
+        assert.equal((fixture.match(/class="formula-paragraph"/g) || []).length, 8);
+        assert.equal((fixture.match(/class="simple-control"/g) || []).length, 2);
+        assert.equal((fixture.match(/data-math="[012]"/g) || []).length, 24);
+        assert.equal((fixture.match(/id="gap"/g) || []).length, 1);
+        assert.match(fixture, /min-height:160vh/);
+        assert.match(fixture, /INLINE_FORMULAS_MISSING_OR_INVISIBLE/);
+        assert.match(fixture, /TRANSLATION_NOT_CONFIRMED/);
+        assert.match(fixture, /FORMULA_PARAGRAPH_NOT_TRANSLATED/);
+        assert.match(fixture, /Math Translation Guard 1.2.0/);
+        assert.match(fixture, /data-inline-rendered-cases/);
+        const inlineScripts = [...fixture.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+        assert.equal(inlineScripts.length, 2);
+        for (const match of inlineScripts) assert.doesNotThrow(() => new vm.Script(match[1]));
+    });
+
+    test('real headless Chrome typesets all eight three-formula inline paragraphs: ' + label, () => {
+        const chrome = process.env.CHROME_BIN || 'google-chrome';
+        const result = spawnSync(chrome, ['--headless=new','--no-sandbox','--disable-gpu',
+            '--disable-dev-shm-usage','--no-first-run','--virtual-time-budget=27000',
+            '--dump-dom','file://' + fixturePath], {
+            encoding:'utf8',timeout:55000,maxBuffer:16*1024*1024,
+        });
+        if (result.error) throw result.error;
+        assert.equal(result.status, 0, result.stderr.slice(-3000));
+        assert.match(result.stdout, /data-inline-engine-state="rendered"/,
+            'Failed to load ' + engine + ': '+result.stdout.slice(-2300));
+        assert.match(result.stdout, /data-inline-case-count="8"/);
+        assert.match(result.stdout, /data-inline-rendered-cases="8"/,
+            engine + ' failed to produce all 24 inline formulas');
+        const formulaOutputs = engine === 'katex'
+            ? (result.stdout.match(/class="katex"/g) || []).length
+            : (result.stdout.match(/<mjx-container/g) || []).length;
+        assert.ok(formulaOutputs >= 24,
+            engine + ' rendered only ' + formulaOutputs + ' output nodes');
+    });
+}
