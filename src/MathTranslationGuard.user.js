@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-11_1.1.0
-// @description  Protect rendered math and preserve Plover TeX sources before browser translation without altering surrounding prose.
+// @version      2026-10-12_1.2.0
+// @description  Protect rendered math and preserve inline Plover TeX using tested MathJax script containers and separate text spans.
 // @author       Chris Torng
 // @match        *://*/*
 // @grant        none
@@ -19,10 +19,11 @@
     const isPlover = location.hostname === 'blog.plover.com';
     const pendingTypeset = new Set();
 
-    // Plover configures MathJax 2 with !! delimiters. Convert complete
-    // expressions into MathJax's native inert script form before browser
-    // translation can modify the TeX or insert spaces into its delimiters.
-    // Never guess math syntax on unrelated websites.
+    // The Android Edge comparison lab succeeded with an alternating sequence
+    // of translatable text spans and inline containers holding inert math/tex
+    // scripts. Do not insert custom MathJax_Preview elements: on Plover the
+    // preview was initially in place, but equations moved after translation.
+    // Only Plover uses the custom !!...!! delimiters.
     function preservePloverSource(textNode) {
         if (!isPlover || !textNode || textNode.nodeType !== 3) return;
         const parent = textNode.parentElement;
@@ -30,35 +31,38 @@
         const excluded = ['script', 'style', 'textarea', 'pre', 'code',
             '.MathJax', '.MathJax_Preview', 'mjx-container', '.katex', 'math'];
         if (excluded.some((selector) => parent.closest(selector))) return;
+
         const source = textNode.nodeValue || '';
-        const matches = Array.from(source.matchAll(/!!([\s\S]+?)!!/g));
+        const matches = Array.from(source.matchAll(/!!([\s\S]+?)!!/g))
+            .filter((match) => match[1].trim().length > 0);
         if (!matches.length) return;
 
         let offset = 0;
-        let converted = false;
         for (const match of matches) {
-            if (!match[1].trim()) continue;
+            // Make the text its own element, as in the successful static G
+            // fixture, so browser translation can handle text independently.
+            // Neither this text nor its parent is excluded from translation.
             if (match.index > offset) {
-                parent.insertBefore(document.createTextNode(source.slice(offset, match.index)), textNode);
+                const prose = document.createElement('span');
+                prose.textContent = source.slice(offset, match.index);
+                parent.insertBefore(prose, textNode);
             }
 
-            // This is the normal MathJax 2 representation. Leave the preview
-            // class name unchanged so MathJax can recognize and remove it.
-            const preview = document.createElement('span');
-            preview.className = 'MathJax_Preview';
-            preview.setAttribute('translate', 'no');
-            preview.textContent = match[1];
+            // MathJax 2 recognizes this script directly. Its container is an
+            // inline sibling of the preceding/following translatable spans.
+            const mathSlot = document.createElement('span');
+            mathSlot.className = 'math-slot';
             const mathSource = document.createElement('script');
             mathSource.type = 'math/tex';
             mathSource.textContent = match[1];
-            parent.insertBefore(preview, textNode);
-            parent.insertBefore(mathSource, textNode);
+            mathSlot.appendChild(mathSource);
+            parent.insertBefore(mathSlot, textNode);
             offset = match.index + match[0].length;
-            converted = true;
         }
-        if (!converted) return;
         if (offset < source.length) {
-            parent.insertBefore(document.createTextNode(source.slice(offset)), textNode);
+            const prose = document.createElement('span');
+            prose.textContent = source.slice(offset);
+            parent.insertBefore(prose, textNode);
         }
         parent.removeChild(textNode);
         pendingTypeset.add(parent);
