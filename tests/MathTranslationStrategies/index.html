@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Edge Math Translation: DOM Compatibility Lab</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,"Microsoft JhengHei",sans-serif;background:#111722;color:#f1f5fa}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;line-height:1.55}
+main{max-width:880px;margin:0 auto;padding:16px 14px 75px}
+header,section.toolbar,section.metrics,footer{background:#1b2534;border:1px solid #36495d;border-radius:14px;padding:15px;margin-bottom:13px}
+h1{font-size:1.36rem;line-height:1.3;margin:0 0 4px}h2{font-size:1.13rem;margin:0 0 8px}h3{font-size:1rem;margin:0 0 7px}
+p{margin:7px 0 10px}.muted,small{color:#b9c7d8}small{font-size:.8rem}
+select,button,textarea{font:inherit;color:inherit}select,textarea{width:100%;border:1px solid #596c82;border-radius:8px;padding:9px;background:#121d2c}
+textarea{min-height:130px;resize:vertical;font-family:ui-monospace,monospace;font-size:.76rem}
+button{background:#286bca;color:white;border:0;border-radius:9px;padding:10px 12px;min-height:42px;font-weight:650;cursor:pointer}
+button.secondary{background:#435874}button:focus-visible,select:focus-visible{outline:2px solid #a6cdff;outline-offset:2px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}.controls label{display:block;font-size:.84rem;color:#bacbe0;font-weight:650}
+.controls select{display:block;margin-top:4px}.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.tag{display:inline-block;background:#39485c;border-radius:20px;padding:2px 9px;font-size:.74rem;color:#e7edf7}
+.tag.ok{background:#174d37;color:#beffd4}.tag.error{background:#70313a;color:#ffe0e2}.tag.warn{background:#72511f;color:#ffedb6}
+.grid-head{margin:22px 0 9px}.probe{background:#1b2534;border:1px solid #405771;border-left:4px solid #5286d8;border-radius:10px;padding:12px;margin:10px 0}
+.probe header{padding:0;border:0;background:transparent;margin:0 0 8px}
+.probe h3{margin:0;font-size:.94rem}.probe .english{font-family:Georgia,"Times New Roman",serif;line-height:1.7;font-size:1.13rem;border-radius:7px;background:#131c2b;padding:10px 11px;color:#f7f4e8}
+.probe .english p{margin:0}.probe .indicator{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.probe .details{font-size:.8rem;color:#b9c7d8;margin:4px 0 0;overflow-wrap:anywhere}
+.mock-result{border:1px dashed #6ca6ff;border-radius:7px;margin-top:10px;padding:10px;background:#182b3a}
+.mock-result .caption{font-size:.77rem;color:#b0ccff}.mock-result p{margin:6px 0 0;font-size:1.03rem}
+.math-slot{white-space:normal}.math-image{height:1.35em;max-width:100%;vertical-align:-.19em}
+#belowGap{min-height:155vh;margin:16px 0;background:repeating-linear-gradient(145deg,rgba(64,90,117,.07),rgba(64,90,117,.07) 15px,transparent 15px,transparent 35px);border:1px dashed #4a6178;border-radius:12px;padding:24px 13px;text-align:center}
+#belowGap p{position:sticky;top:40vh;max-width:430px;margin:0 auto;background:#182438;padding:12px;border-radius:9px}
+#log{max-height:220px;overflow-y:auto;background:#0e1724;color:#b4d3f0;border-radius:9px;padding:9px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.72rem}
+a{color:#9bc7ff}.mini{font-size:.82rem}.statrow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+@media(max-width:470px){.controls{grid-template-columns:1fr}main{padding-top:12px}.buttons button{flex:1}.probe .english{font-size:1.05rem}}
+</style>
+</head>
+<body>
+<main>
+<header lang="zh-TW" translate="no">
+  <h1>Edge 數學公式 × 網頁翻譯實驗室</h1>
+  <p class="mini muted">單一測試頁，不需要 Tampermonkey。對照不同 DOM 邊界處理，並區分「首屏／捲動後」翻譯。<a href="#mode">設定方法 ↓</a></p>
+  <div class="statrow"><span class="tag" id="mathjaxStatus">MathJax：準備中</span><span class="tag" id="browserStatus">環境偵測中</span><span class="tag" id="modeStatus">載入中</span></div>
+</header>
+<section class="toolbar" lang="zh-TW" translate="no">
+  <div class="controls">
+    <label for="mode">顯示模式<select id="mode"><option value="focus">逐方法對照（建議）</option><option value="all">全部方法，各兩份</option></select></label>
+    <label for="method">要測試的方法<select id="method"></select></label>
+    <label for="lateMode">下方第二份如何載入<select id="lateMode"><option value="present">一開始就在 DOM，捲動才可見</option><option value="lazy">捲動接近時才建立 DOM</option></select></label>
+    <label for="diagnostics">紀錄方式<select id="diagnostics"><option value="normal">一般（含 DOM 變動次數）</option><option value="light">精簡（減少記錄）</option></select></label>
+  </div>
+  <div class="buttons"><button id="apply">依設定重新載入</button><button id="mockButton" class="secondary">執行模擬翻譯 API</button><button id="copyButton" class="secondary">複製診斷</button></div>
+  <p class="mini muted">請在 Edge 啟用<strong>原生網頁翻譯</strong>，然後比較公式是否仍夾在原本的句子位置。切換方法會重新載入網頁，避免殘留前一次翻譯修改的 DOM。</p>
+  <p class="mini"><strong>測試區文字故意維持英文</strong>，上方控制介面不翻譯。注意：瀏覽器可能只翻譯進入可視範圍的節點。</p>
+</section>
+<section class="metrics" lang="zh-TW" translate="no">
+  <h2>即時診斷</h2>
+  <div id="summary" class="mini">載入中…</div>
+  <details><summary>展開技術紀錄、複製 JSON</summary><textarea id="report" readonly spellcheck="false" aria-label="診斷 JSON"></textarea><pre id="log">等待事件</pre></details>
+  <small>自動檢查只衡量 DOM 結構與 MathJax 渲染，無法判斷中文語意是否通順。最後仍需肉眼確認公式是否保持在句子中。</small>
+</section>
+<div id="firstBlock" class="grid-head" lang="zh-TW" translate="no"><h2>第一份：載入時建立</h2><p class="mini muted">「首屏」一詞只對逐方法模式的第一份較準確；全部方法模式中，後面的卡片自然會超出畫面。</p></div>
+<div id="firstSet"></div>
+<div id="belowGap" lang="zh-TW" translate="no"><p><strong>刻意保留 155vh 的捲動間隔</strong><br>請繼續往下。觀察 Edge 是否在滑到第二份後才進行翻譯。<br><span id="scrollMarker">尚未捲入第二批</span></p></div>
+<div id="secondBlock" class="grid-head" lang="zh-TW" translate="no"><h2>第二份：捲動後才進入視野</h2><p class="mini muted" id="lateExplanation"></p></div>
+<div id="secondSet"></div>
+<footer lang="zh-TW" translate="no">
+  <h2>方法與驗收解讀</h2>
+  <p class="mini">比較原文、翻譯後、往下捲動後、回到頁頂後的變化。「公式順序正常」只是 DOM 層的必要條件，不能代替人工目視。<strong>整段不翻譯</strong>預期能保住公式，但不能算完成中文翻譯。</p>
+  <p class="mini">「模擬翻譯 API」是本頁內建、離線的固定中譯範本，不是真正翻譯服務。它會以公式佔位符生成新容器、保留原文 DOM，展示未來整合外部翻譯 API 時的資料流。<strong>不會把測試內容傳到任何翻譯伺服器。</strong></p>
+  <p class="mini"><a href="https://www.w3.org/International/i18n-tests/results/translation-services">W3C translate 服務比較</a> · <a href="https://docs.mathjax.org/en/v2.7/options/preprocessors/tex2jax.html">MathJax 2 tex2jax</a> · <a href="https://github.com/ChrisTorng/TampermonkeyScripts">Repository</a></p>
+</footer>
+</main>
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const methods = [
+ ['plain', 'A 原樣：未保護的 !!TeX!!', '直接讓 MathJax 2 辨識原始 !!...!!；與 Plover 的來源形式最接近'],
+ ['rendered', 'B 僅保護渲染後公式', 'MathJax 產生輸出後才補 translate=no / notranslate'],
+ ['wrapped', 'C 原始公式包 translate=no', 'TeX 在獨立 span 裡排除翻譯，正文仍可翻譯'],
+ ['nested', 'D 父 translate=no／子 translate=yes', '重測 W3C 提出的 Microsoft 巢狀覆寫問題'],
+ ['siblings', 'E 文字 translate=yes／公式 translate=no', '所有自然語言和公式是同層相鄰的元素'],
+ ['editable', 'F 公式加 contenteditable=false', '用不可編輯元素加翻譯排除保護公式'],
+ ['script', 'G MathJax script[type=math/tex]', '以原生 MathJax 2 script 作為公式來源；之前曾發生公式跑到段尾'],
+ ['svg', 'H 公式改為獨立 SVG 圖片', '公式是原子圖片，文字仍可翻譯；檢查圖片是否跟著位移'],
+ ['whole', 'I 含公式的整段 translate=no', '對照組：完整保護段落，預期周圍文字也不翻譯'],
+ ['mock', 'J 模擬 API + 獨立譯文 DOM', '不讓原生翻譯碰原始公式；使用固定模擬 API 以標記重建譯文']
+];
+const methodById = Object.fromEntries(methods.map(m=>[m[0],m]));
+const math = [String.raw`\{1,3,4,8\}`,String.raw`\omega`,String.raw`10,\!000`];
+const pieces = ['A game starting with Nim heaps of size ', ' cannot last more than 16 turns. If the position contains ', ', the player can replace the ', '-token with a pile of ', ' beans.'];
+const mockChinese = ['一場從大小為 ', ' 的尼姆堆開始的遊戲，不可能持續超過 16 回合。如果局面中包含 ', '，玩家可以把這個 ', ' 標記換成一堆 ', ' 顆豆子。'];
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') === 'all' ? 'all' : 'focus';
+const method = methodById[params.get('method')] ? params.get('method') : 'plain';
+const lateMode = params.get('late') === 'lazy' ? 'lazy' : 'present';
+const diagMode = params.get('diagnostics') === 'light' ? 'light' : 'normal';
+const state = {version:'2026-10-11.2', generatedAt:new Date().toISOString(), url:location.href, mode, method, lateMode,
+ browser:{userAgent:navigator.userAgent,lang:navigator.language,viewport:[innerWidth,innerHeight],dpr:devicePixelRatio},
+ mathJax:'loading', methods:methods.map(([id,name,description])=>({id,name,description})),
+ events:[],cases:{}};
+const nodes = new Map();
+let intersection, observer, flushHandle = 0;
+function log(type,detail){const value={t:Math.round(performance.now()),type,...detail};state.events.push(value);if(state.events.length>360)state.events.shift();if(diagMode!=='light'||['visible','mathjax','late-insert','mock-translate'].includes(type)) $('log').textContent=state.events.slice(-45).map(x=>JSON.stringify(x)).join('\n');scheduleReport();}
+function scheduleReport(){if(flushHandle)return;flushHandle=setTimeout(()=>{flushHandle=0;$('report').value=JSON.stringify(state,null,2);$('summary').textContent=Object.values(state.cases).map(c=>`${c.id}: ${c.viewed?'曾進入畫面':'尚未進入'}／公式 ${c.rendered}/3／${c.order}`).join('　｜　')||'等待樣本';},450);}
+function status(label,what){const el=$(label);el.textContent=what;}
+function el(tag,attrs={},text){const n=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==='class')n.className=v;else if(k==='text')n.textContent=v;else n.setAttribute(k,v);}if(text!==undefined)n.textContent=text;return n;}
+function imageData(tex){
+ const label=tex.includes('omega')? 'ω' : tex.includes('000')?'10,000':'{1, 3, 4, 8}';
+ const width=label.length>9?180:label.length>4?120:38;
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="36" viewBox="0 0 ${width} 36"><text x="2" y="29" fill="#eff4fb" font-family="Georgia,serif" font-size="27">${label.replaceAll('&','&amp;')}</text></svg>`;
+ return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+function mathNode(id,index,which){
+ const source=math[index];
+ if(id==='svg')return el('img',{class:'math-image',src:imageData(source),alt:'math formula '+(index+1),'data-math-image':index,translate:'no'});
+ if(id==='script'||id==='mock'){
+   const container=el('span',{'data-formula-host':String(index),class:'math-slot'});
+   const src=el('script',{type:'math/tex'});src.textContent=source;
+   container.append(src);return container;
+ }
+ const raw=document.createTextNode('!!'+source+'!!');
+ if(id==='plain'||id==='rendered')return raw;
+ const slot=el('span',{class:'math-slot','data-formula-host':String(index)});
+ if(['wrapped','siblings','nested','editable'].includes(id)){slot.setAttribute('translate','no');slot.classList.add('notranslate');}
+ if(id==='editable')slot.setAttribute('contenteditable','false');
+ slot.append(raw);return slot;
+}
+function buildEnglish(id,which){
+ const p=el('p',{'data-sentence':'true',lang:'en'});
+ if(id==='whole'||id==='nested'||id==='mock')p.setAttribute('translate','no');
+ pieces.forEach((text,i)=>{
+  const txt=el('span',{'data-text-index':String(i)},text);
+  if(id==='nested'||id==='siblings')txt.setAttribute('translate','yes');
+  p.append(txt);
+  if(i<math.length)p.append(mathNode(id,i,which));
+ });return p;
+}
+function makeProbe(id,which){
+ const key=id+'-'+which; const info=methodById[id];
+ const card=el('article',{class:'probe','data-case':key,'data-method':id,'data-copy':which});
+ const heading=el('header');heading.append(el('h3',{},info[1]),el('div',{class:'mini muted'},info[2]));
+ const kind=el('div',{class:'mini'},which==='first'?'第 1 份：載入時建立':'第 2 份：捲動後看到');
+ const english=el('div',{class:'english',lang:'en'});
+ english.append(buildEnglish(id,which));
+ const indicator=el('div',{class:'indicator'});
+ const badge=el('span',{class:'tag'},'尚未檢查');
+ const visibility=el('span',{class:'tag'},'未進入視野');
+ indicator.append(badge,visibility);
+ const details=el('div',{class:'details'},'MathJax 與 DOM 順序檢查中');
+ card.append(heading,kind,english,indicator,details);
+ nodes.set(key,{card,badge,visibility,details,english,id,which});
+ state.cases[key]={id:key,method:id,copy:which,viewed:false,firstVisibleMs:null,insertedMs:Math.round(performance.now()),rendered:0,order:'等待 MathJax',mutations:0,changes:0,originalText:pieces.join('[公式]')};
+ if(intersection)intersection.observe(card);
+ return card;
+}
+function buildStrategy(id){return makeProbe(id,'first');}
+function mathOutputs(card){
+ const host=card.querySelector('.english');
+ if(!host)return [];
+ if(card.dataset.method==='svg')return Array.from(host.querySelectorAll('img[data-math-image]'));
+ const all=Array.from(host.querySelectorAll('.MathJax'));
+ // A MathJax 2 equation has a single top-level .MathJax output; avoid nested duplicates.
+ return all.filter(x=>!x.parentElement?.closest('.MathJax'));
+}
+function assess(key){const record=nodes.get(key);if(!record)return;
+ const st=state.cases[key]; const p=record.english.querySelector('p');if(!p)return;
+ const outputs=mathOutputs(record.card);
+ if(record.id==='rendered')outputs.forEach(n=>{if(n.getAttribute('translate')!=='no')n.setAttribute('translate','no');if(!n.classList.contains('notranslate'))n.classList.add('notranslate');});
+ st.rendered=outputs.length;
+ let order='等待渲染';
+ if(outputs.length>=3){
+  const texts=Array.from(p.querySelectorAll('[data-text-index]'));
+  if(texts.length!==4)order='文字節點遭更換';
+  else {
+   const following=(a,b)=>Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);
+   const valid=outputs.slice(0,3).every((n,i)=>following(texts[i],n)&&following(n,texts[i+1]));
+   order=valid?'節點順序正常':'公式／文字順序異常';
+  }
+ }else if(st.rendered>0)order='僅部分公式渲染';
+ if(record.id==='mock'&&!st.mockOutput)order=order+'（待模擬翻譯）';
+ st.order=order;record.badge.textContent=outputs.length+'/3 · '+order;
+ record.badge.className='tag '+(order.startsWith('節點順序正常')?'ok':order.includes('異常')?'error':'warn');
+ const detailText='DOM 變動 '+st.mutations+' 次；原文公式 '+st.rendered+'/3；'+(st.mockStatus||''); if(record.details.textContent!==detailText)record.details.textContent=detailText;
+ scheduleReport();
+}
+function typeset(node){const hub=window.MathJax?.Hub;if(hub&&typeof hub.Queue==='function')hub.Queue(['Typeset',hub,node],()=>{for(const k of nodes.keys())assess(k);});}
+function setupIntersection(){
+ intersection=new IntersectionObserver(entries=>{for(const item of entries){if(!item.isIntersecting)continue;const card=item.target;const key=card.dataset.case;if(key&&state.cases[key]&&!state.cases[key].viewed){const obj=state.cases[key];obj.viewed=true;obj.firstVisibleMs=Math.round(performance.now());nodes.get(key).visibility.textContent='首次可見 '+obj.firstVisibleMs+'ms';nodes.get(key).visibility.className='tag ok';log('visible',{key,ms:obj.firstVisibleMs,scrollY:Math.round(scrollY)});assess(key);}}},{threshold:.12});
+}
+function setupObserver(){observer=new MutationObserver(changes=>{
+  const changed=new Set();
+  for(const entry of changes){
+   const target=(entry.target.nodeType===1?entry.target:entry.target.parentElement);
+   if(target?.closest?.('.indicator, .details, .mock-result')) continue;
+   const host=target?.closest?.('.probe');
+   if(host){const key=host.dataset.case;if(state.cases[key]){state.cases[key].mutations++;changed.add(key);}}
+  }
+  if(changed.size){for(const key of changed){const obj=state.cases[key];obj.changes++;if(obj.changes===1||obj.changes%25===0)log('dom-change',{key,mutations:obj.mutations});}clearTimeout(setupObserver.pending);setupObserver.pending=setTimeout(()=>{for(const key of changed)assess(key);},130);}
+ });observer.observe(document.body,{subtree:true,childList:true,characterData:true});}
+function makeSecond(id,parent){const c=makeProbe(id,'second');parent.append(c);log('late-insert',{case:id+'-second',mode:lateMode,y:Math.round(scrollY)});typeset(c);return c;}
+function initCases(){setupIntersection();if(mode==='focus')document.querySelector('main > header').after($('firstBlock'),$('firstSet'));const ids=mode==='all'?methods.map(m=>m[0]):[method];const first=$('firstSet'),second=$('secondSet');
+ for(const id of ids)first.append(buildStrategy(id));
+ if(lateMode==='present')for(const id of ids)makeSecond(id,second);
+ else {
+  const placeholder=el('div',{id:'lazyPlaceholder',class:'mini muted'},'第二份尚未建立。捲動靠近後才建立 DOM。');second.append(placeholder);
+  const lazyObserver=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){lazyObserver.disconnect();placeholder.remove();for(const id of ids)makeSecond(id,second);log('lazy-trigger',{scrollY:Math.round(scrollY)});}}, {rootMargin:'240px 0px',threshold:0});lazyObserver.observe(placeholder);
+ }
+ $('lateExplanation').textContent=lateMode==='lazy'?'接近第二批時才建立 DOM（測試動態新增節點）':'第二批在頁面剛載入就已存在 DOM（測試 Edge 捲動才逐步翻譯）';
+ setupObserver();log('rendered-cases',{count:ids.length*2,mode,lateMode});
+ for(const k of nodes.keys())assess(k);
+}
+function addMathJax(){if(params.get('noMathJax')==='1'){status('mathjaxStatus','MathJax：測試模式停用');state.mathJax='disabled';return;}
+ const cfg=el('script',{type:'text/x-mathjax-config'});cfg.textContent=String.raw`MathJax.Hub.Config({tex2jax:{inlineMath:[['!!','!!']],preview:'none',processEscapes:false},showMathMenu:false});`;
+ document.head.append(cfg);
+ const script=el('script',{src:'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML'});
+ script.async=true;
+ script.addEventListener('error',()=>{state.mathJax='script-load-error';status('mathjaxStatus','MathJax CDN 載入失敗');log('mathjax',{status:'script-load-error'});});
+ script.addEventListener('load',()=>{
+  if(!window.MathJax?.Hub){state.mathJax='script-no-hub';status('mathjaxStatus','MathJax 載入但無 Hub');return;}
+  state.mathJax='script-loaded';status('mathjaxStatus','MathJax 已載入，處理中');
+  window.MathJax.Hub.Queue(()=>{state.mathJax='typeset-done';status('mathjaxStatus','MathJax 2 已渲染');for(const k of nodes.keys())assess(k);log('mathjax',{status:'typeset-done'});});
+ });document.head.append(script);
+ setTimeout(()=>{if(state.mathJax==='loading'){state.mathJax='load-timeout-20s';status('mathjaxStatus','MathJax 20 秒未就緒');log('mathjax',{status:'load-timeout'});}},20000);
+}
+function mockTranslateAPI(template,slotCount){
+ return new Promise((resolve,reject)=>setTimeout(()=>{
+  try{const expected=Array.from({length:slotCount},(_,i)=>'⟦MATH_'+i+'⟧');
+   for(const t of expected){if(!template.includes(t))throw new Error('佔位符缺失 '+t);}
+   resolve(mockChinese.map((text,i)=>text+(i<slotCount?expected[i]:'')).join(''));
+  }catch(e){reject(e);}
+ },160));
+}
+function translateMockCase(record){
+ const st=state.cases[record.card.dataset.case];
+ if(st.mockOutput)return Promise.resolve();
+ st.mockStatus='翻譯中';const orig=pieces.map((t,i)=>t+(i<3?'⟦MATH_'+i+'⟧':'')).join('');
+ return mockTranslateAPI(orig,3).then(translated=>{
+  const marker=/⟦MATH_(\d+)⟧/g;const indexes=Array.from(translated.matchAll(marker),m=>Number(m[1]));
+  if(indexes.length!==3||new Set(indexes).size!==3||indexes.some((v,i)=>v!==i))throw new Error('翻譯服務改寫或重排公式佔位符');
+  const root=el('div',{class:'mock-result',translate:'no'});root.append(el('div',{class:'caption'},'本機模擬翻譯 API：另一個獨立容器（未改原文 DOM）'));
+  const p=el('p',{lang:'zh-Hant',translate:'no'});let last=0;
+  for(const match of translated.matchAll(marker)){
+    if(match.index>last)p.append(document.createTextNode(translated.slice(last,match.index)));
+    const slot=el('span',{'data-mock-math-slot':match[1],translate:'no'});
+    slot.append(mathNode('script',Number(match[1]),'translated'));
+    p.append(slot);last=match.index+match[0].length;
+  }
+  if(last<translated.length)p.append(document.createTextNode(translated.slice(last)));
+  root.append(p);record.card.append(root);st.mockOutput=true;st.mockStatus='完成：3/3 公式佔位符完整';st.mockSourceUnmodified=true;
+  typeset(root);log('mock-translate',{case:st.id,result:'success',slots:indexes});assess(st.id);
+ }).catch(e=>{st.mockStatus='失敗：'+e.message;log('mock-translate',{case:st.id,error:e.message});assess(st.id);});
+}
+function runMock(){const list=Array.from(nodes.values()).filter(x=>x.id==='mock');if(!list.length){log('mock-translate',{result:'method-not-visible',note:'請切換至 J 方法或全部方法模式'});alert('請先選擇「J 模擬 API + 獨立譯文 DOM」或「全部方法」');return;}Promise.all(list.map(translateMockCase));}
+function setupControls(){
+ $('mode').value=mode;$('lateMode').value=lateMode;$('diagnostics').value=diagMode;
+ for(const m of methods){const opt=el('option',{value:m[0]},m[1]);$('method').append(opt);}$('method').value=method;
+ $('method').disabled=mode==='all';$('modeStatus').textContent=mode==='all'?'所有方法 ×2':'逐方法 ×2';
+ $('browserStatus').textContent=/EdgA\//.test(navigator.userAgent)?'Android Edge':/Edg\//.test(navigator.userAgent)?'Desktop Edge':'其他瀏覽器';
+ $('mode').addEventListener('change',e=>{$('method').disabled=e.target.value==='all';});
+ $('apply').addEventListener('click',()=>{const query=new URLSearchParams({mode:$('mode').value,method:$('method').value,late:$('lateMode').value,diagnostics:$('diagnostics').value});location.search='?'+query;});
+ $('mockButton').addEventListener('click',runMock);
+ $('copyButton').addEventListener('click',async()=>{scheduleReport();$('report').value=JSON.stringify(state,null,2);try{await navigator.clipboard.writeText($('report').value);$('copyButton').textContent='已複製';}catch(e){$('report').parentElement.open=true;$('report').focus();$('report').select();$('copyButton').textContent='請手動複製文字';}});
+}
+function setupScroll(){
+ const watch=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){$('scrollMarker').textContent='已看到第二批區域（'+Math.round(performance.now())+'ms）';log('second-zone',{scrollY:Math.round(scrollY)});watch.disconnect();}}, {threshold:0});watch.observe($('secondBlock'));
+ document.addEventListener('visibilitychange',()=>log('visibility',{state:document.visibilityState}));
+}
+setupControls();initCases();setupScroll();addMathJax();scheduleReport();
+document.documentElement.dataset.labReady='true';
+document.documentElement.dataset.labCases=String(Object.keys(state.cases).length);
+window.__mathLab={snapshot:()=>structuredClone(state),runMock};
+if(params.get('selftest')==='1'){
+  runMock();
+  setTimeout(()=>{
+    const outputCount=document.querySelectorAll('.mock-result').length;
+    const slotCount=document.querySelectorAll('[data-mock-math-slot]').length;
+    const caseCount=Object.keys(state.cases).length;
+    const expectedCases=mode==='all'?20:2;
+    document.documentElement.dataset.labSelftest=caseCount===expectedCases && (method==='mock'||mode==='all') && outputCount===2 && slotCount===6?'passed':'failed';
+    document.documentElement.dataset.labSelftestDetails=JSON.stringify({caseCount,expectedCases,outputCount,slotCount});
+  },900);
+}
+
+})();
+</script>
+</body>
+</html>
