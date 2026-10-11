@@ -101,7 +101,7 @@ Section note: automated tests use representative inline code, preformatted block
 
 # Math Translation Guard
 Section note: automated tests cover rendered MathJax 2/3/4, KaTeX, and MathML DOM protections, plus Plover-specific early conversion of custom !! delimited TeX into inert MathJax 2 script nodes (including dynamic text changes). Actual native browser translation and MathJax rendering on Windows and Android Edge require manual validation.
-- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 2 site with custom !! math delimiters; synthetic DOM tests verify exact TeX is preserved inside inert script nodes before translation and prose remains independently translatable; native Edge translation and real MathJax rendering are not yet verified)
+- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 2 custom delimiter site; source is split into independent prose spans and G-style math script slots; automated DOM and browser rendering checks exist, while native Edge translation of the actual page still requires verification)
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
