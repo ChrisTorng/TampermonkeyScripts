@@ -84,12 +84,15 @@ describe('Math Translation Guard', () => {
             paragraph.appendChild(h.document.createTextNode('Before !!1,\\!000!! then !!\\{1,\n\\omega\\}!! after'));
             h.appendToBody(paragraph);
         });
-        const scripts = paragraph.children.filter((node) => node.tagName === 'SCRIPT');
-        const segments = paragraph.children.filter((node) => node.nodeType === 3);
-        assert.equal(scripts.length, 2);
-        assert.deepEqual(scripts.map((node) => node.textContent), ['1,\\!000', '\\{1,\n\\omega\\}']);
-        assert.deepEqual(segments.map((node) => node.nodeValue), ['Before ', ' then ', ' after']);
-        assert.equal(paragraph.children.length, 7);
+        const slots = paragraph.children.filter((node) => node.className === 'math-slot');
+        const prose = paragraph.children.filter((node) => node.className !== 'math-slot');
+        assert.equal(slots.length, 2);
+        assert.deepEqual(slots.map((node) => node.children[0].textContent),
+            ['1,\\!000', '\\{1,\n\\omega\\}']);
+        assert.deepEqual(prose.map((node) => node.textContent), ['Before ', ' then ', ' after']);
+        assert.equal(paragraph.children.length, 5);
+        assert.deepEqual(paragraph.children.map((node) => node.className === 'math-slot' ? 'math' : 'text'),
+            ['text', 'math', 'text', 'math', 'text']);
     });
 
     test('unrelated sites are not parsed as Plover math; code and preview source are excluded', () => {
