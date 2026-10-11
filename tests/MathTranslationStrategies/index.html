@@ -50,7 +50,8 @@ a{color:#9bc7ff}.mini{font-size:.82rem}.statrow{display:flex;gap:5px;flex-wrap:w
     <label for="diagnostics">紀錄方式<select id="diagnostics"><option value="normal">一般（含 DOM 變動次數）</option><option value="light">精簡（減少記錄）</option></select></label>
   </div>
   <div class="buttons"><button id="apply">依設定重新載入</button><button id="mockButton" class="secondary">執行模擬翻譯 API</button><button id="copyButton" class="secondary">複製診斷</button></div>
-  <p class="mini muted">請在 Edge 啟用<strong>原生網頁翻譯</strong>，然後比較公式是否仍夾在原本的句子位置。切換方法會重新載入網頁，避免殘留前一次翻譯修改的 DOM。</p>
+  <p class="mini muted"><strong>英文語言偵測對照：</strong>如果逐方法模式的 G 整段沒有翻譯，請改測 <a href="./english-source.html">英文原始 HTML 版（含純英文控制組）</a>。這個頁面在伺服器回傳時就包含英文正文，不是由 JavaScript 動態建立。</p>
+   <p class="mini muted">請在 Edge 啟用<strong>原生網頁翻譯</strong>，然後比較公式是否仍夾在原本的句子位置。切換方法會重新載入網頁，避免殘留前一次翻譯修改的 DOM。</p>
   <p class="mini"><strong>測試區文字故意維持英文</strong>，上方控制介面不翻譯。注意：瀏覽器可能只翻譯進入可視範圍的節點。</p>
 </section>
 <section class="metrics" lang="zh-TW" translate="no">
