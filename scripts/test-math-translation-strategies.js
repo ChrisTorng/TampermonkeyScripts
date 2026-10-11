@@ -234,6 +234,10 @@ test('atomic SVG/image/shadow/iframe lab is static and has its own case-level vi
     assert.match(atomicHtml, /linebreaks:\{inline:false\}/);
     assert.match(atomicHtml, /imagePixelBrightness/);
     assert.match(atomicHtml, /FORMULA_SLOT_CONTAMINATED_BY_TRANSLATION/);
+    assert.match(atomicHtml, /mathOrderEvidence/);
+    assert.match(atomicHtml, /directChildSequence/);
+    assert.match(atomicHtml, /adjacentTranslatedProse/);
+    assert.match(atomicHtml, /TRANSLATION_WRAPPED_FORMULAS_VERIFY_VISUAL/);
     assert.match(atomicHtml, /svgSourceDiagnostics/);
     assert.match(atomicHtml, /contentDocument/);
     assert.equal((atomicHtml.match(/class="mixed"/g) || []).length,8);
@@ -263,4 +267,8 @@ test('atomic isolation alternatives render all 24 math formula instances in real
         'MathJax SVG export must contain full formula, not only first line-break piece');
     assert.match(result.stdout,/data-atomic-image-no-initial-tex="true"/,
         'Translated image cases must not expose stale TeX text before scripts run');
+    assert.match(result.stdout,/data-atomic-original-image-order="true"/,
+        'Source DOM must contain T0 M0 T1 M1 T2 M2 T3 before Edge translation');
+    assert.match(result.stdout,/data-atomic-image-order-correct="true"/,
+        'Chrome must keep the correct sequence in both cases without native translation');
 });
