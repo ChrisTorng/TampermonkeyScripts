@@ -182,7 +182,7 @@ function inspectAll(){
    data.svgSourceDiagnostics.every((item,i)=>{
      const w=Number.parseFloat(item.sourceWidth);
      return item.svgCount===1&&w>[12,9,3][i];
-   })??false);
+   }));
  document.documentElement.dataset.atomicImageNoInitialTex=String(
    [...document.querySelectorAll('[data-case^="image-"] .slot')].every(
      slot=>!slot.querySelector('.pending-formula')));
