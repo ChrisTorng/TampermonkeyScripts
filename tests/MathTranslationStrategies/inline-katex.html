@@ -25,8 +25,30 @@ button{background:#337bdc;color:#fff;border:0;border-radius:8px;min-height:44px;
 textarea{width:100%;min-height:200px;font:12px ui-monospace,monospace;color:#f6f8ff;border:1px solid #61728a;background:#121c2b;padding:10px;border-radius:8px}
 #summary{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.83rem;padding:12px;background:#0f1928}
 @media(max-width:380px){.formula-paragraph{font-size:1rem}}
+/* Focus mode keeps the selected experiment near the start of the viewport. */
+html[data-focus] header{margin:2px 0;padding:5px 9px}
+html[data-focus] header h1{font-size:1rem;margin:0;line-height:1.2}
+html[data-focus] header p,html[data-focus] header a{display:none}
+html[data-focus] section[data-copy]{display:flex;flex-direction:column;padding:5px;margin:5px 0}
+html[data-focus] section[data-copy] h2{display:none}
+html[data-focus] .test-card{order:-2;padding:6px;margin:3px 0}
+html[data-focus] .test-card h3{font-size:.78rem;margin:0}
+html[data-focus] .formula-paragraph{padding:5px;margin:3px 0;font-size:1.05rem}
+html[data-focus] .simple-control{order:-1;margin:4px 0;padding:5px;font-size:.82rem}
+html[data-focus] .display-case{display:none}
+html[data-focus="bare"] .test-card:not([data-method="bare"]),
+html[data-focus="siblings"] .test-card:not([data-method="siblings"]),
+html[data-focus="protected"] .test-card:not([data-method="protected"]),
+html[data-focus="whole"] .test-card:not([data-method="whole"]){display:none}
+
 </style>
 <script>
+// The query parameter determines a CSS-only layout before article parsing.
+const focusParameters = new URLSearchParams(location.search);
+const chosenMethod = focusParameters.get('method');
+if(focusParameters.get('mode')==='focus' &&
+   ['bare','siblings','protected','whole'].includes(chosenMethod))
+  document.documentElement.dataset.focus=chosenMethod;
 window.MathJax = { startup: {typeset:false}, tex: {inlineMath:[['\\(','\\)']], displayMath:[['\\[','\\]']]} };
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/katex.min.css">
@@ -37,8 +59,14 @@ window.MathJax = { startup: {typeset:false}, tex: {inlineMath:[['\\(','\\)']], d
 <header>
 <h1>English Article: Inline Math and Browser Translation</h1>
 <p>This page uses <strong>KaTeX 0.19 / HTML+MathML</strong> and contains complete English paragraphs with three inline formulas each. Translate this page from English into Traditional Chinese using Microsoft Edge's built-in Translate command.</p>
-<p>The goal is to find formulas that disappear or move after the translation. A visible displayed equation is not proof that the inline equations survived. Four structural alternatives are included, each repeated once below the fold.</p>
+<p>In full comparison mode, the first set is only first in document order; it may also require scrolling. For a genuine first-viewport trial, use Focus mode. The goal is to find formulas that disappear or move after the translation. A visible displayed equation is not proof that the inline equations survived. Four structural alternatives are included, each repeated once below the fold.</p>
 <p><strong>Before testing:</strong> Disable installed userscripts that change MathJax, translation, or DOM, especially Math Translation Guard 1.2.0, to isolate this engine. After the baseline, repeat with it enabled and compare.</p>
+<p>Focused methods:
+<a href="?mode=focus&amp;method=bare">A: raw text</a> ·
+<a href="?mode=focus&amp;method=siblings">B: sibling spans</a> ·
+<a href="?mode=focus&amp;method=protected">C: protected slots</a> ·
+<a href="?mode=focus&amp;method=whole">D: untranslated control</a> ·
+<a href="?">Show all methods</a></p>
 <p><a href="english-source.html">MathJax 2 G method control</a> · <a href="inline-mathjax4-chtml.html">MathJax 4 HTML</a> · <a href="inline-mathjax4-svg.html">MathJax 4 SVG</a> · <a href="inline-katex.html">KaTeX</a></p>
 </header>
 <section id="first" data-copy="first">
@@ -115,6 +143,9 @@ const originalParts=["In the last part of the proof, the expression "," must rem
 const state={testVersion:'2026-10-12.1',engine,languageAtLoad:document.documentElement.lang,userAgent:navigator.userAgent,engineState:'loading',events:[],cases:{}};
 const $=id=>document.getElementById(id);
 const sections=['first','second'],methods=['bare','siblings','protected','whole'];
+state.layout= document.documentElement.dataset.focus?
+ {mode:'focus',method:document.documentElement.dataset.focus}:
+ {mode:'all',warning:'first is document order only; not proof of initial viewport visibility'};
 function proseText(p){
  const clone=p.cloneNode(true);
  clone.querySelectorAll('.math-slot').forEach(e=>e.remove());
@@ -123,6 +154,25 @@ function proseText(p){
 function originalText(){return originalParts.join('').replace(/\s+/g,' ').trim();}
 const initial=originalText();
 const visited={first:null,second:null};
+const caseVisibility={};
+let userScrolled=false;
+window.addEventListener('scroll',()=>{if(window.scrollY>2)userScrolled=true;},{passive:true});
+const caseObserver=new IntersectionObserver(entries=>{
+ for(const entry of entries){
+  if(!entry.isIntersecting)continue;
+  const id=entry.target.dataset.test;
+  if(!id||caseVisibility[id])continue;
+  const r=entry.target.getBoundingClientRect();
+  caseVisibility[id]={atMs:Math.round(performance.now()-start),
+   scrollY:Math.round(window.scrollY),
+   viewportHeight:Math.round(window.visualViewport?.height??window.innerHeight),
+   topPx:Math.round(r.top),
+   enteredWithoutScrolling:!userScrolled&&window.scrollY<=2};
+  state.events.push({type:'caseVisible',case:id,...caseVisibility[id]});
+  enqueue();
+ }
+},{threshold:0.02});
+document.querySelectorAll('.test-card').forEach(card=>caseObserver.observe(card));
 function isFollowing(a,b){return !!(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);}
 function inspect(id){
  const p=$(id),method=p.parentElement.dataset.method,which=id.endsWith('-first')?'first':'second';
@@ -142,7 +192,7 @@ function inspect(id){
  const plain=$('control-'+which).textContent.trim();
  const changedPlain=plain!==originalPlain;
  const changedProse=text!==initial;
- const result={which,method,visitedMs:visited[which],plainControlChanged:changedPlain,mathProseChanged:changedProse,
+ const result={which,method,sectionFirstVisibleMs:visited[which],caseFirstVisible:caseVisibility[id]||null,plainControlChanged:changedPlain,mathProseChanged:changedProse,
    formulasRendered:rendered,formulasVisible:visibleCount,slots:slots.length,slotsConnected:connected,slotsOrdered:ordered,
    interleaved,mathRects:rectangles,textSample:text.slice(0,450),
    slotEvidence:slots.map((slot,index)=>({
