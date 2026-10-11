@@ -228,6 +228,15 @@ $('check').addEventListener('click',inspectAll);
 $('copy').addEventListener('click',async()=>{inspectAll();try{await navigator.clipboard.writeText($('report').value);$('copy').textContent='Copied JSON';}
 catch(e){$('report').focus();$('report').select();$('copy').textContent='Select JSON below';}});
 window.addEventListener('load',render);
+const focusCase=document.documentElement.dataset.focus;
+if(focusCase){
+ const caseBox=document.getElementById(focusCase+'-first').getBoundingClientRect();
+ const visibleHeight=window.visualViewport?.height??window.innerHeight;
+ data.initialFocusedCase={topPx:Math.round(caseBox.top),bottomPx:Math.round(caseBox.bottom),
+  viewportHeight:Math.round(visibleHeight),
+  inViewportWithoutScroll:window.scrollY<=2&&caseBox.top<visibleHeight&&caseBox.bottom>0};
+ document.documentElement.dataset.focusInitiallyVisible=String(data.initialFocusedCase.inViewportWithoutScroll);
+}
 window.__atomicMathLab={inspect:inspectAll,getData:()=>structuredClone(data)};
 inspectAll();
 })();
