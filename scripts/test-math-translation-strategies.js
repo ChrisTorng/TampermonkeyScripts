@@ -83,3 +83,8 @@ test('browser smoke: actual MathJax 2 renders both copies of three formulas', ()
     assert.ok(rendered >= 6, 'Expected at least six rendered MathJax equations; got ' + rendered +
         '. ' + result.stdout.slice(-2500) + ' ' + result.stderr.slice(-1200));
 });
+
+test('math order check uses the actual number of source text spans', () => {
+    assert.match(html, /texts\.length!==pieces\.length/);
+    assert.doesNotMatch(html, /texts\.length!==4/);
+});
