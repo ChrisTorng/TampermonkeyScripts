@@ -144,7 +144,13 @@ function inspect(id){
  const changedProse=text!==initial;
  const result={which,method,visitedMs:visited[which],plainControlChanged:changedPlain,mathProseChanged:changedProse,
    formulasRendered:rendered,formulasVisible:visibleCount,slots:slots.length,slotsConnected:connected,slotsOrdered:ordered,
-   interleaved,mathRects:rectangles,textSample:text.slice(0,450)};
+   interleaved,mathRects:rectangles,textSample:text.slice(0,450),
+   slotEvidence:slots.map((slot,index)=>({
+     index,childTags:Array.from(slot.children).slice(0,7).map(child=>child.tagName.toLowerCase()),
+     markup:slot.innerHTML.slice(0,450),rawText:slot.textContent.slice(0,110),
+     expectedTex:slot.dataset.tex,
+     mathNodes:slot.querySelectorAll('mjx-container,.katex,math,svg,img').length
+   }))};
  result.verdict=!changedPlain?'TRANSLATION_NOT_CONFIRMED':!changedProse?'FORMULA_PARAGRAPH_NOT_TRANSLATED':
    rendered!==3||visibleCount!==3?'INLINE_FORMULAS_MISSING_OR_INVISIBLE':
    !ordered||!interleaved?'INLINE_FORMULA_ORDER_BROKEN':'TEXT_TRANSLATED_MATH_VISIBLE_CHECK_VISUAL';
@@ -190,6 +196,14 @@ async function typeset(){
    await MathJax.typesetPromise([document.querySelector('main')]);
   }
   state.engineState='rendered';state.events.push({type:'rendered',t:Math.round(performance.now()-start)});
+  state.renderBaseline=Object.fromEntries(
+    sections.flatMap(which=>methods.map(method=>{
+      const slot=document.getElementById(method+'-'+which);
+      return [method+'-'+which,[...slot.querySelectorAll('[data-math]')].map(node=>({
+        html:node.innerHTML.slice(0,200),rendered:Boolean(node.querySelector(engine==='katex'?'.katex':'mjx-container'))
+      }))];
+    }))
+  );
  }catch(e){state.engineState='error: '+(e.message||e);state.events.push({type:'error',error:String(e)});}
  check();
 }
