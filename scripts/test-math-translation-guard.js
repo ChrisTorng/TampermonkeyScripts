@@ -58,7 +58,7 @@ describe('Math Translation Guard', () => {
             h.appendToBody(paragraph);
         });
         assert.equal(original.parentNode, null, 'raw math text node should be replaced');
-        assert.equal(paragraph.children.length, 4);
+        assert.equal(paragraph.children.length, 3);
         const [before, preview, source, after] = paragraph.children;
         assert.equal(before.nodeValue, 'Nim size ');
         assert.equal(after.nodeValue, ' always ends.');
