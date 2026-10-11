@@ -143,6 +143,9 @@ function inspect(method,copy){
 function inspectAll(){
  for(const copy of copies)for(const m of methods)inspect(m,copy);
  data.at=new Date().toISOString();
+ document.documentElement.dataset.atomicRenderStatus=data.renderStatus;
+ document.documentElement.dataset.atomicCaseCount=String(Object.keys(data.cases).length);
+ document.documentElement.dataset.atomicCompleteCases=String(Object.values(data.cases).filter(x=>x.formulas===3).length);
  data.entry={url:location.href,ua:navigator.userAgent,htmlLanguage:document.documentElement.lang,scrollY:window.scrollY,
    elapsedMs:Math.round(performance.now()-start)};
  $('report').value=JSON.stringify(data,null,2);
