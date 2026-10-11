@@ -230,6 +230,10 @@ test('atomic SVG/image/shadow/iframe lab is static and has its own case-level vi
     assert.match(atomicHtml, /caseFirstVisible:/);
     assert.match(atomicHtml, /data\.initialFocusedCase/);
     assert.match(atomicHtml, /mediaLoaded:/);
+    assert.match(atomicHtml, /freezeSvgPaint/);
+    assert.match(atomicHtml, /imagePixelBrightness/);
+    assert.match(atomicHtml, /FORMULA_SLOT_CONTAMINATED_BY_TRANSLATION/);
+    assert.match(atomicHtml, /svgSourceDiagnostics/);
     assert.match(atomicHtml, /contentDocument/);
     assert.equal((atomicHtml.match(/class="mixed"/g) || []).length,8);
     const scripts=[...atomicHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
@@ -252,4 +256,6 @@ test('atomic isolation alternatives render all 24 math formula instances in real
     assert.match(result.stdout,/data-atomic-case-count="8"/);
     assert.match(result.stdout,/data-atomic-complete-cases="8"/,
         'Not all original SVG, image, shadow-root or iframe formulas rendered');
+    assert.match(result.stdout,/data-atomic-image-bright="true"/,
+        'Serialized SVG images must contain light painted pixels, not black currentColor');
 });
