@@ -190,3 +190,49 @@ for (const [engine, label, renderedSelector] of inlinePages) {
             engine + ' rendered only ' + formulaOutputs + ' output nodes');
     });
 }
+
+
+test('focused viewport position is measured rather than inferred from first/second', () => {
+    for (const [engine] of inlinePages) {
+        const page = fs.readFileSync(path.join(projectRoot,'tests','MathTranslationStrategies','inline-'+engine+'.html'),'utf8');
+        assert.match(page, /focusInitiallyVisible/);
+        assert.match(page, /caseFirstVisible:/);
+        assert.match(page, /enteredWithoutScrolling:/);
+        assert.match(page, /scrollY:Math\.round\(window\.scrollY\)/);
+    }
+});
+
+test('focused KaTeX method is actually visible without scrolling on mobile-sized Chrome window', () => {
+    const chrome = process.env.CHROME_BIN || 'google-chrome';
+    const target = path.join(projectRoot,'tests','MathTranslationStrategies','inline-katex.html');
+    const result = spawnSync(chrome, ['--headless=new','--no-sandbox','--disable-gpu',
+        '--disable-dev-shm-usage','--no-first-run','--window-size=288,439',
+        '--virtual-time-budget=4000','--dump-dom',
+        'file://'+target+'?mode=focus&method=siblings'], {
+        encoding:'utf8',timeout:40000,maxBuffer:16*1024*1024
+    });
+    if(result.error)throw result.error;
+    assert.equal(result.status,0,result.stderr.slice(-1000));
+    assert.match(result.stdout,/data-focus="siblings"/);
+    assert.match(result.stdout,/data-focus-initially-visible="true"/,
+        'Selected first case must reach the initial viewport; '+result.stdout.slice(0,1000));
+});
+
+const atomicPath = path.join(projectRoot, 'tests', 'MathTranslationStrategies', 'atomic-math.html');
+const atomicHtml = fs.readFileSync(atomicPath,'utf8');
+test('atomic SVG/image/shadow/iframe lab is static and has its own case-level viewport instrumentation', () => {
+    assert.match(atomicHtml, /<html lang="en">/);
+    for(const method of ['svg','image','shadow','iframe']){
+        assert.match(atomicHtml, new RegExp('data-case="'+method+'-first"'));
+        assert.match(atomicHtml, new RegExp('data-case="'+method+'-second"'));
+    }
+    assert.match(atomicHtml, /tex2svgPromise/);
+    assert.match(atomicHtml, /caseFirstVisible:/);
+    assert.match(atomicHtml, /data\.initialFocusedCase/);
+    assert.match(atomicHtml, /mediaLoaded:/);
+    assert.match(atomicHtml, /contentDocument/);
+    assert.equal((atomicHtml.match(/class="mixed"/g) || []).length,8);
+    const scripts=[...atomicHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+    assert.equal(scripts.length,2);
+    for(const script of scripts)assert.doesNotThrow(()=>new vm.Script(script[1]));
+});
