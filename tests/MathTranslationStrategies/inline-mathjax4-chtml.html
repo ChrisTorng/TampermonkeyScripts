@@ -259,6 +259,15 @@ async function typeset(){
 }
 window.addEventListener('load',typeset);
 setTimeout(()=>{if(state.engineState==='loading'){state.engineState='timeout';check();}},18000);
+const focusCase=document.documentElement.dataset.focus;
+if(focusCase){
+ const box=document.getElementById(focusCase+'-first').getBoundingClientRect();
+ const height=window.visualViewport?.height??window.innerHeight;
+ state.initialFocusedCase={topPx:Math.round(box.top),bottomPx:Math.round(box.bottom),
+  viewportHeight:Math.round(height),
+  inViewportWithoutScroll:window.scrollY<=2&&box.top<height&&box.bottom>0};
+ document.documentElement.dataset.focusInitiallyVisible=String(state.initialFocusedCase.inViewportWithoutScroll);
+}
 window.__inlineMathLab={check,snapshot:()=>structuredClone(state)};
 check();
 })();
