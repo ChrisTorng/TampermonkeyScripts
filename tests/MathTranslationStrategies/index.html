@@ -151,7 +151,7 @@ function makeProbe(id,which){
  const details=el('div',{class:'details',lang:'zh-TW',translate:'no'},'MathJax 與 DOM 順序檢查中');
  card.append(heading,kind,english,indicator,details);
  nodes.set(key,{card,badge,visibility,details,english,id,which});
- state.cases[key]={id:key,method:id,copy:which,viewed:false,firstVisibleMs:null,insertedMs:Math.round(performance.now()),rendered:0,order:'等待 MathJax',mutations:0,changes:0,originalText:pieces.join('[公式]')};
+ state.cases[key]={id:key,method:id,copy:which,viewed:false,firstVisibleMs:null,insertedMs:Math.round(performance.now()),rendered:0,order:'等待 MathJax',mutations:0,changes:0,originalText:pieces.map((text,i)=>text+(i<math.length?'[公式]':'')).join('')};
  if(intersection)intersection.observe(card);
  return card;
 }
