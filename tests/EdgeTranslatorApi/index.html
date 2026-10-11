@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Edge Translator API 相容性診斷</title>
+<style>
+:root {font-family:system-ui,"Microsoft JhengHei",sans-serif;color-scheme:dark;background:#101520;color:#e9edf5}
+*{box-sizing:border-box}
+body{margin:0;line-height:1.5}
+main{max-width:760px;margin:auto;padding:22px 16px 60px}
+h1{font-size:1.48rem;margin:0 0 7px;line-height:1.3}
+h2{font-size:1.05rem;margin:0 0 12px}
+p{margin:7px 0 12px;color:#bdc9da}
+small,.hint{color:#a8b6c9;font-size:.86rem}
+.card{background:#1b2432;border:1px solid #374457;border-radius:13px;padding:18px;margin:16px 0}
+.flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{border-radius:30px;padding:4px 10px;font-size:.82rem;background:#354256;color:#edf4ff}
+.good{background:#153e30;color:#b2f1c9}.bad{background:#5a2a31;color:#ffd9df}.warn{background:#5b4720;color:#ffe3a0}
+label{display:block;font-size:.9rem;font-weight:650;margin:10px 0 5px}
+select,textarea,button{font:inherit}
+select,textarea{width:100%;border:1px solid #536478;border-radius:8px;padding:10px;background:#131d2c;color:#f1f4f9}
+textarea{min-height:82px;resize:vertical}
+button{border:0;border-radius:9px;background:#3575df;color:white;font-weight:650;padding:11px 15px;cursor:pointer;min-height:46px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.secondary{background:#394b65}
+button.danger{background:#924954}
+button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #91b9ff;outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:420px){.two{grid-template-columns:1fr}button{width:100%}}
+dt{color:#a8b6c9;font-size:.82rem}
+dd{margin:2px 0 10px;font-size:.9rem;word-break:break-word}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d1521;border:1px solid #354257;border-radius:8px;padding:12px;max-height:370px;overflow:auto;font-size:.81rem}
+output{display:block;white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:#111b29;border:1px solid #354257;border-radius:8px;min-height:48px}
+a{color:#8fbcff}
+progress{width:100%;height:12px;accent-color:#62b7ff}
+summary{cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Edge Translator API 相容性診斷</h1>
+<p>不使用 Tampermonkey、不使用雲端翻譯服務。此頁直接在目前的瀏覽器中呼叫 <code>window.Translator</code>，協助確認 Android Edge 是否真的具備可供網站使用的翻譯 API。</p>
+<div class="flex"><span class="pill" id="supportPill">檢查中</span><span class="pill" id="securePill">安全環境：檢查中</span></div>
+</header>
+<section class="card">
+<h2>① API 與瀏覽器環境</h2>
+<dl id="environment"></dl>
+<p class="hint">僅 Edge 網頁的整頁翻譯功能正常，<strong>不等於</strong>網站能呼叫 Translator API。請使用 Android Edge 直接開啟此頁，而非 App 內建 WebView。</p>
+</section>
+<section class="card">
+<h2>② 模型可用性（不下載）</h2>
+<p>依序確認英翻繁中、其他繁中語言標籤，以及英翻西班牙文控制組。可區分 API 不存在與特定語言組合不支援。</p>
+<button id="checkButton" class="secondary">檢查三組語言</button>
+<output id="availabilityResult" aria-live="polite">尚未執行</output>
+</section>
+<section class="card">
+<h2>③ 實際翻譯（可能下載模型）</h2>
+<p>請直接點「建立工作階段並翻譯」。為保留使用者操作條件，程式會在按鈕事件中立即呼叫 <code>Translator.create()</code>，不會先等待其他 API。</p>
+<div class="two">
+<div><label for="sourceLang">來源語言</label><select id="sourceLang"><option value="en">英文 en</option><option value="ja">日文 ja</option></select></div>
+<div><label for="targetLang">目標語言</label><select id="targetLang"><option value="zh-TW">繁中 zh-TW</option><option value="zh-Hant">繁中 zh-Hant</option><option value="es">西班牙文 es</option><option value="ja">日文 ja</option></select></div>
+</div>
+<label for="inputText">原文</label>
+<textarea id="inputText" spellcheck="false">The mathematical formula must remain in the correct position in the paragraph.</textarea>
+<div class="flex" style="margin-top:10px">
+<button id="translateButton">建立工作階段並翻譯</button>
+<button id="abortButton" class="danger" disabled>取消</button>
+</div>
+<p class="hint" id="translatePhase">尚未執行。首次模型下載可能需要一段時間。</p>
+<progress id="download" max="100" value="0" hidden></progress>
+<label for="translatedText">翻譯結果</label>
+<output id="translatedText" aria-live="polite">尚未執行</output>
+</section>
+<section class="card">
+<h2>④ LanguageDetector（額外檢查）</h2>
+<p>與 Translator 是兩個獨立 API；偵測成功不代表翻譯支援。</p>
+<button id="detectorButton" class="secondary">測試語言偵測</button>
+<output id="detectorResult" aria-live="polite">尚未執行</output>
+</section>
+<section class="card">
+<h2>⑤ 結果紀錄</h2>
+<p>所有診斷都在本機執行，頁面不會上傳使用者代理字串、原文或翻譯內容。按下複製才會寫入裝置剪貼簿。</p>
+<div class="flex"><button id="copyButton" class="secondary">複製完整診斷報告</button><button id="refreshButton" class="secondary">重新整理環境</button></div>
+<label for="report">可自行選取複製的報告</label>
+<textarea id="report" readonly rows="12" spellcheck="false"></textarea>
+<details style="margin-top:14px"><summary>詳細執行紀錄</summary><pre id="log">尚未開始</pre></details>
+</section>
+<footer class="hint">規格：<a href="https://webmachinelearning.github.io/translation-api/">Translator and Language Detector APIs</a> · <a href="https://learn.microsoft.com/en-us/microsoft-edge/web-platform/translator-api">Edge 官方文件</a> · <a href="https://microsoftedge.github.io/Demos/built-in-ai/playgrounds/translator-api/">Microsoft Playground</a></footer>
+</main>
+<script>
+(function () {
+'use strict';
+const byId = id => document.getElementById(id);
+const report = {
+  version: '2026-10-11.1',
+  timestamp: new Date().toISOString(),
+  environment: {},
+  availability: {},
+  translation: { status: 'not-run' },
+  detector: { status: 'not-run' },
+  events: []
+};
+let controller = null;
+let activeSession = null;
+let busy = false;
+
+function eventLog(step, detail) {
+  const entry = { time: new Date().toISOString(), step, detail: detail === undefined ? '' : String(detail) };
+  report.events.push(entry);
+  byId('log').textContent = report.events.map(x => x.time.substring(11,19) + ' ' + x.step + ': ' + x.detail).join('\n');
+  syncReport();
+}
+function syncReport() {
+  byId('report').value = JSON.stringify(report, null, 2);
+}
+function errorObject(e) {
+  return { name: String(e && e.name || 'Error'), message: String(e && e.message || e) };
+}
+function setPhase(text) {
+  byId('translatePhase').textContent = text;
+  eventLog('translate-phase', text);
+}
+function setBusy(value) {
+  busy = value;
+  byId('translateButton').disabled = value || typeof window.Translator === 'undefined';
+  byId('abortButton').disabled = !value;
+}
+function withTimeout(promise, ms, stage) {
+  let id;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { id = setTimeout(() => reject(new Error(stage + ' 超過 ' + ms / 1000 + ' 秒')), ms); })
+  ]).finally(() => clearTimeout(id));
+}
+function permission(feature) {
+  const policy = document.permissionsPolicy || document.featurePolicy;
+  if (!policy || typeof policy.allowsFeature !== 'function') return 'unknown';
+  try { return policy.allowsFeature(feature); }
+  catch (e) { return 'error: ' + (e.message || e); }
+}
+function addDetail(parent, title, value) {
+  const dt = document.createElement('dt');
+  const dd = document.createElement('dd');
+  dt.textContent = title;
+  dd.textContent = String(value);
+  parent.append(dt, dd);
+}
+function inspect() {
+  report.timestamp = new Date().toISOString();
+  const env = {
+    location: location.origin + location.pathname,
+    https: location.protocol === 'https:',
+    secureContext: isSecureContext,
+    topLevelWindow: window.top === window.self,
+    translatorObject: typeof window.Translator,
+    translatorAvailability: typeof window.Translator?.availability,
+    translatorCreate: typeof window.Translator?.create,
+    languageDetectorObject: typeof window.LanguageDetector,
+    policyTranslator: permission('translator'),
+    policyLanguageDetector: permission('language-detector'),
+    userAgent: navigator.userAgent,
+    platform: navigator.userAgentData?.platform || navigator.platform || 'unknown',
+    mobileHint: navigator.userAgentData?.mobile ?? 'unknown',
+    language: navigator.language,
+    userActivation: navigator.userActivation ? { isActive: navigator.userActivation.isActive, hasBeenActive: navigator.userActivation.hasBeenActive } : 'unknown',
+    deviceMemoryGB: navigator.deviceMemory ?? 'unknown',
+    hardwareConcurrency: navigator.hardwareConcurrency ?? 'unknown'
+  };
+  report.environment = env;
+  const dl = byId('environment');
+  dl.replaceChildren();
+  Object.entries(env).forEach(([key, value]) => addDetail(dl, key, typeof value === 'object' ? JSON.stringify(value) : value));
+  const available = typeof window.Translator !== 'undefined' && typeof window.Translator?.create === 'function';
+  const badge = byId('supportPill');
+  badge.textContent = available ? 'Translator API 已暴露' : 'Translator API 未暴露';
+  badge.className = 'pill ' + (available ? 'good' : 'bad');
+  const security = byId('securePill');
+  security.textContent = isSecureContext ? '安全環境 HTTPS' : '非安全環境';
+  security.className = 'pill ' + (isSecureContext ? 'good' : 'bad');
+  setBusy(busy);
+  byId('detectorButton').disabled = typeof window.LanguageDetector === 'undefined';
+  byId('checkButton').disabled = typeof window.Translator?.availability !== 'function';
+  syncReport();
+}
+async function checkAvailability() {
+  const api = window.Translator;
+  if (!api || typeof api.availability !== 'function') {
+    byId('availabilityResult').textContent = '未提供 Translator.availability()';
+    return;
+  }
+  byId('checkButton').disabled = true;
+  const pairs = [['en', 'zh-TW'], ['en', 'zh-Hant'], ['en', 'es']];
+  const outcomes = [];
+  for (const [sourceLanguage, targetLanguage] of pairs) {
+    const pair = sourceLanguage + ' → ' + targetLanguage;
+    byId('availabilityResult').textContent = '檢查中：' + pair + '\n' + outcomes.join('\n');
+    try {
+      const value = await withTimeout(api.availability({sourceLanguage, targetLanguage}), 12000, 'availability ' + pair);
+      report.availability[pair] = { status: String(value) };
+      outcomes.push(pair + ': ' + value);
+      eventLog('availability ' + pair, value);
+    } catch (e) {
+      const err = errorObject(e);
+      report.availability[pair] = { error: err };
+      outcomes.push(pair + ': ' + err.name + ' ' + err.message);
+      eventLog('availability error ' + pair, err.name + ' ' + err.message);
+    }
+  }
+  byId('availabilityResult').textContent = outcomes.join('\n');
+  byId('checkButton').disabled = false;
+  syncReport();
+}
+function startTranslation() {
+  if (busy) return;
+  const api = window.Translator;
+  if (!api || typeof api.create !== 'function') {
+    byId('translatedText').textContent = '此瀏覽器沒有 Translator.create()';
+    return;
+  }
+  const sourceLanguage = byId('sourceLang').value;
+  const targetLanguage = byId('targetLang').value;
+  const input = byId('inputText').value;
+  controller = new AbortController();
+  byId('download').hidden = true;
+  byId('download').value = 0;
+  byId('translatedText').textContent = '建立工作階段中⋯';
+  report.translation = { status: 'creating', sourceLanguage, targetLanguage, inputLength: input.length };
+  setBusy(true);
+  // IMPORTANT: create() is invoked synchronously within the click handler.
+  // Do not await availability() before this call; user activation may expire.
+  let promise;
+  try {
+    promise = api.create({
+      sourceLanguage,
+      targetLanguage,
+      signal: controller.signal,
+      monitor: monitor => {
+        monitor.addEventListener('downloadprogress', event => {
+          const loaded = Number(event.loaded || 0);
+          const total = Number(event.total || 0);
+          let pct = total > 0 ? Math.round(loaded / total * 100) : 0;
+          if (!Number.isFinite(pct)) pct = 0;
+          byId('download').hidden = false;
+          byId('download').value = Math.min(100, Math.max(0, pct));
+          byId('translatePhase').textContent = '模型下載：' + (total ? pct + '%' : '進行中');
+          report.translation.download = { loaded, total, percent: pct };
+          syncReport();
+        });
+      }
+    });
+    eventLog('create', '呼叫成功，等待 Promise');
+  } catch (e) {
+    finishError('create-sync', e);
+    return;
+  }
+  (async function () {
+    const started = performance.now();
+    try {
+      activeSession = await withTimeout(promise, 120000, 'create()');
+      if (controller.signal.aborted) throw new DOMException('已取消', 'AbortError');
+      report.translation.createMs = Math.round(performance.now() - started);
+      setPhase('已建立工作階段，開始翻譯。');
+      report.translation.status = 'translating';
+      const translated = await withTimeout(activeSession.translate(input, {signal: controller.signal}), 60000, 'translate()');
+      report.translation = {
+        ...report.translation,
+        status: 'success',
+        output: String(translated),
+        totalMs: Math.round(performance.now() - started)
+      };
+      byId('translatedText').textContent = String(translated);
+      setPhase('成功：翻譯結果已由 Translator.translate() 回傳。');
+      eventLog('translate-success', String(translated));
+    } catch (e) {
+      finishError('create-or-translate', e);
+    } finally {
+      if (activeSession && typeof activeSession.destroy === 'function') {
+        try { activeSession.destroy(); } catch (e) { eventLog('destroy-error', e.message || e); }
+      }
+      activeSession = null;
+      controller = null;
+      setBusy(false);
+      syncReport();
+    }
+  })();
+}
+function finishError(stage, e) {
+  const err = errorObject(e);
+  report.translation.status = 'failed';
+  report.translation.error = { stage, ...err };
+  const detail = err.name + ': ' + err.message;
+  byId('translatedText').textContent = '失敗：' + detail;
+  setPhase('失敗階段：' + stage);
+  eventLog('translate-error', detail);
+  controller = null;
+  setBusy(false);
+}
+function abortTranslation() {
+  if (controller) {
+    controller.abort();
+    setPhase('已要求取消工作階段／模型下載');
+  }
+}
+async function testDetector() {
+  const api = window.LanguageDetector;
+  if (!api || typeof api.create !== 'function') {
+    byId('detectorResult').textContent = '未提供 LanguageDetector.create()';
+    return;
+  }
+  byId('detectorButton').disabled = true;
+  let session;
+  try {
+    const value = typeof api.availability === 'function'
+      ? await withTimeout(api.availability(), 12000, 'LanguageDetector.availability')
+      : 'method-not-present';
+    report.detector.availability = String(value);
+    session = await withTimeout(api.create(), 90000, 'LanguageDetector.create');
+    const result = await withTimeout(session.detect('This is a short English sentence.'), 30000, 'detect');
+    report.detector.status = 'success';
+    report.detector.result = Array.from(result).slice(0, 5).map(x => ({ detectedLanguage: x.detectedLanguage, confidence: x.confidence }));
+    byId('detectorResult').textContent = JSON.stringify(report.detector, null, 2);
+    eventLog('detector', '成功');
+  } catch (e) {
+    report.detector.status = 'failed';
+    report.detector.error = errorObject(e);
+    byId('detectorResult').textContent = JSON.stringify(report.detector, null, 2);
+    eventLog('detector-error', e.name + ': ' + e.message);
+  } finally {
+    try { session?.destroy?.(); } catch (e) {}
+    byId('detectorButton').disabled = false;
+    syncReport();
+  }
+}
+async function copyResult() {
+  syncReport();
+  const contents = byId('report').value;
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('clipboard API unavailable');
+    await navigator.clipboard.writeText(contents);
+    eventLog('copy', '成功');
+    byId('copyButton').textContent = '已複製';
+  } catch (e) {
+    byId('report').focus();
+    byId('report').select();
+    byId('copyButton').textContent = '請手動複製下方文字';
+  }
+}
+byId('checkButton').addEventListener('click', checkAvailability);
+byId('translateButton').addEventListener('click', startTranslation);
+byId('abortButton').addEventListener('click', abortTranslation);
+byId('detectorButton').addEventListener('click', testDetector);
+byId('refreshButton').addEventListener('click', () => { inspect(); eventLog('refresh', '環境重新讀取'); });
+byId('copyButton').addEventListener('click', copyResult);
+inspect();
+eventLog('startup', '檢查完成；如要測試模型請按按鈕');
+})();
+</script>
+</body>
+</html>
