@@ -68,3 +68,18 @@ test('browser smoke: all 10 methods are duplicated and mock translation is isola
     assert.match(result.stdout,/data-lab-selftest="passed"/,
         'Browser failed all-mode self test. '+result.stdout.slice(-3000));
 });
+
+
+test('browser smoke: actual MathJax 2 renders both copies of three formulas', () => {
+    const chrome = process.env.CHROME_BIN || 'google-chrome';
+    const url = 'file://' + sourcePath + '?mode=focus&method=plain&late=present';
+    const result = spawnSync(chrome, ['--headless=new','--no-sandbox','--disable-gpu',
+        '--disable-dev-shm-usage','--no-first-run','--virtual-time-budget=17000',
+        '--dump-dom',url], {encoding:'utf8',timeout:45000,maxBuffer:16*1024*1024});
+    if(result.error) throw result.error;
+    assert.equal(result.status,0,result.stderr.slice(-3000));
+    assert.match(result.stdout,/data-lab-cases="2"/);
+    const rendered = (result.stdout.match(/class="MathJax"/g) || []).length;
+    assert.ok(rendered >= 6, 'Expected at least six rendered MathJax equations; got ' + rendered +
+        '. ' + result.stdout.slice(-2500) + ' ' + result.stderr.slice(-1200));
+});
