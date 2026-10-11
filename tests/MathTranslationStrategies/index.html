@@ -172,7 +172,7 @@ function assess(key){const record=nodes.get(key);if(!record)return;
  let order='等待渲染';
  if(outputs.length>=3){
   const texts=Array.from(p.querySelectorAll('[data-text-index]'));
-  if(texts.length!==4)order='文字節點遭更換';
+  if(texts.length!==pieces.length)order='文字區塊數量改變';
   else {
    const following=(a,b)=>Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);
    const valid=outputs.slice(0,3).every((n,i)=>following(texts[i],n)&&following(n,texts[i+1]));
