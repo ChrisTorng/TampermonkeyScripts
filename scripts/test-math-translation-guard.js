@@ -59,19 +59,22 @@ describe('Math Translation Guard', () => {
         });
         assert.equal(original.parentNode, null, 'raw math text node should be replaced');
         assert.equal(paragraph.children.length, 3);
-        const [before, preview, source, after] = paragraph.children;
-        assert.equal(before.nodeValue, 'Nim size ');
-        assert.equal(after.nodeValue, ' always ends.');
-        assert.equal(before.parentNode, paragraph);
-        assert.equal(before.getAttribute('translate'), null);
-        assert.equal(preview.className, 'MathJax_Preview');
-        assert.equal(preview.getAttribute('translate'), 'no');
-        assert.equal(preview.textContent, '\\{1, 3, \\omega\\}');
-        assert.equal(source.tagName, 'SCRIPT');
-        assert.equal(source.type, 'math/tex');
-        assert.equal(source.textContent, '\\{1, 3, \\omega\\}');
-        assert.equal(harness.document.querySelectorAll('.MathJax').length, 0,
-            'only MathJax should create rendered nodes');
+        const [prose, slot, tail] = paragraph.children;
+        assert.equal(prose.tagName, 'SPAN');
+        assert.equal(prose.textContent, 'Nim size ');
+        assert.equal(tail.tagName, 'SPAN');
+        assert.equal(tail.textContent, ' always ends.');
+        assert.equal(prose.getAttribute('translate'), null);
+        assert.equal(paragraph.getAttribute('translate'), null);
+        assert.equal(slot.tagName, 'SPAN');
+        assert.equal(slot.className, 'math-slot');
+        assert.equal(slot.getAttribute('translate'), null);
+        assert.equal(slot.children.length, 1);
+        assert.equal(slot.children[0].tagName, 'SCRIPT');
+        assert.equal(slot.children[0].type, 'math/tex');
+        assert.equal(slot.children[0].textContent, '\\{1, 3, \\omega\\}');
+        assert.equal(harness.document.querySelectorAll('.MathJax_Preview').length, 0);
+        assert.equal(harness.document.querySelectorAll('.MathJax').length, 0);
     });
 
     test('Plover multiline math and multiple formulas keep exact TeX without modifying surrounding words', () => {
