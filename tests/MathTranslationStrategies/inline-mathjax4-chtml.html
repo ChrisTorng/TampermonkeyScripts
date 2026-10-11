@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Inline Mathematical Translation Test — MathJax 4 / CommonHTML</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color-scheme:dark;background:#121b2b;color:#eff4ff}
+*{box-sizing:border-box}body{margin:0;line-height:1.55}
+main{max-width:820px;margin:auto;padding:15px 13px 70px}
+h1{font-size:1.34rem;line-height:1.25}h2{font-size:1.2rem}h3{font-size:1rem;margin:.1rem 0 .6rem}
+a{color:#a5cfff}small{color:#bac8df}p{margin:10px 0}
+header,section,footer{background:#1c2839;border:1px solid #41546f;border-radius:12px;padding:13px;margin:14px 0}
+.test-card{border:1px solid #4d6587;border-left:4px solid #639bff;padding:12px;border-radius:9px;margin:14px 0}
+.formula-paragraph{background:#111c2c;border-radius:7px;padding:12px;font-family:Georgia,serif;font-size:1.06rem;line-height:1.85;overflow-wrap:normal}
+.math-slot{display:inline}
+.math-slot[translate=no]{background:rgba(92,149,239,.09)}
+.simple-control{padding:12px;background:#243650;border-radius:8px}
+.check-line{font:12px system-ui,sans-serif;color:#a8c1de;margin-top:8px;overflow-wrap:anywhere}
+#gap{min-height:160vh;background:repeating-linear-gradient(145deg,#17263b,#17263b 14px,#101b2c 14px,#101b2c 30px);border:1px dashed #526c88;border-radius:12px;display:grid;place-items:center;margin:20px 0}
+#gap p{position:sticky;top:35vh;background:#26374b;padding:12px;margin:15px;border-radius:9px}
+.display-output{max-width:100%;overflow-x:auto}
+button{background:#337bdc;color:#fff;border:0;border-radius:8px;min-height:44px;padding:10px 14px;font-weight:650;font:inherit}
+textarea{width:100%;min-height:200px;font:12px ui-monospace,monospace;color:#f6f8ff;border:1px solid #61728a;background:#121c2b;padding:10px;border-radius:8px}
+#summary{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.83rem;padding:12px;background:#0f1928}
+@media(max-width:380px){.formula-paragraph{font-size:1rem}}
+</style>
+<script>
+window.MathJax = { startup: {typeset:false}, tex: {inlineMath:[['\\(','\\)']], displayMath:[['\\[','\\]']]} };
+</script>
+
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js"></script>
+</head>
+<body>
+<main>
+<header>
+<h1>English Article: Inline Math and Browser Translation</h1>
+<p>This page uses <strong>MathJax 4 / CommonHTML</strong> and contains complete English paragraphs with three inline formulas each. Translate this page from English into Traditional Chinese using Microsoft Edge's built-in Translate command.</p>
+<p>The goal is to find formulas that disappear or move after the translation. A visible displayed equation is not proof that the inline equations survived. Four structural alternatives are included, each repeated once below the fold.</p>
+<p><strong>Before testing:</strong> Disable installed userscripts that change MathJax, translation, or DOM, especially Math Translation Guard 1.2.0, to isolate this engine. After the baseline, repeat with it enabled and compare.</p>
+<p><a href="english-source.html">MathJax 2 G method control</a> · <a href="inline-mathjax4-chtml.html">MathJax 4 HTML</a> · <a href="inline-mathjax4-svg.html">MathJax 4 SVG</a> · <a href="inline-katex.html">KaTeX</a></p>
+</header>
+<section id="first" data-copy="first">
+<h2>First copy: beginning of the page</h2>
+<p class="simple-control" id="control-first">The red bicycle is outside the university library. Several students are studying mathematical physics this morning. If this ordinary English paragraph does not become Chinese, the built-in page translator has not been verified.</p>
+<article class="test-card" data-test="bare-first" data-method="bare">
+<h3>A. Inline math between plain text nodes</h3>
+<p id="bare-first" class="formula-paragraph" lang="en">In the last part of the proof, the expression <span class="math-slot " data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2">\(\sqrt{3x-1}+(1+x)^2\)</span> must remain immediately after the word expression, rather than disappearing during translation. The definite integral <span class="math-slot " data-math="1" data-tex="\int_0^1x^2\,dx=\frac13">\(\int_0^1x^2\,dx=\frac13\)</span> is the next part of the same English paragraph, and the familiar identity <span class="math-slot " data-math="2" data-tex="E=mc^2">\(E=mc^2\)</span> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</p>
+<div class="check-line" data-feedback="bare-first" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="test-card" data-test="siblings-first" data-method="siblings">
+<h3>B. Separate prose and math sibling spans</h3>
+<p id="siblings-first" class="formula-paragraph" lang="en"><span class="prose" data-prose="0">In the last part of the proof, the expression </span><span class="math-slot " data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2">\(\sqrt{3x-1}+(1+x)^2\)</span><span class="prose" data-prose="1"> must remain immediately after the word expression, rather than disappearing during translation. The definite integral </span><span class="math-slot " data-math="1" data-tex="\int_0^1x^2\,dx=\frac13">\(\int_0^1x^2\,dx=\frac13\)</span><span class="prose" data-prose="2"> is the next part of the same English paragraph, and the familiar identity </span><span class="math-slot " data-math="2" data-tex="E=mc^2">\(E=mc^2\)</span><span class="prose" data-prose="3"> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</span></p>
+<div class="check-line" data-feedback="siblings-first" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="test-card" data-test="protected-first" data-method="protected">
+<h3>C. Protected math spans, translatable prose</h3>
+<p id="protected-first" class="formula-paragraph" lang="en"><span class="prose" data-prose="0">In the last part of the proof, the expression </span><span class="math-slot notranslate" data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2" translate="no">\(\sqrt{3x-1}+(1+x)^2\)</span><span class="prose" data-prose="1"> must remain immediately after the word expression, rather than disappearing during translation. The definite integral </span><span class="math-slot notranslate" data-math="1" data-tex="\int_0^1x^2\,dx=\frac13" translate="no">\(\int_0^1x^2\,dx=\frac13\)</span><span class="prose" data-prose="2"> is the next part of the same English paragraph, and the familiar identity </span><span class="math-slot notranslate" data-math="2" data-tex="E=mc^2" translate="no">\(E=mc^2\)</span><span class="prose" data-prose="3"> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</span></p>
+<div class="check-line" data-feedback="protected-first" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="test-card" data-test="whole-first" data-method="whole">
+<h3>D. Whole paragraph excluded (control)</h3>
+<p id="whole-first" class="formula-paragraph" lang="en" translate="no"><span class="prose" data-prose="0">In the last part of the proof, the expression </span><span class="math-slot " data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2">\(\sqrt{3x-1}+(1+x)^2\)</span><span class="prose" data-prose="1"> must remain immediately after the word expression, rather than disappearing during translation. The definite integral </span><span class="math-slot " data-math="1" data-tex="\int_0^1x^2\,dx=\frac13">\(\int_0^1x^2\,dx=\frac13\)</span><span class="prose" data-prose="2"> is the next part of the same English paragraph, and the familiar identity </span><span class="math-slot " data-math="2" data-tex="E=mc^2">\(E=mc^2\)</span><span class="prose" data-prose="3"> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</span></p>
+<div class="check-line" data-feedback="whole-first" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="display-case"><h3>Display equation control (not the main pass criterion)</h3>
+<p>The Maxwell equations below are displayed separately and should remain readable after native translation.</p>
+<div class="display-output"><span class="math-slot" data-tex="\nabla\cdot\vec E=4\pi\rho" data-math-display="true">\[\nabla\cdot\vec E=4\pi\rho\]</span></div>
+</article>
+</section>
+<div id="gap"><p>Continue scrolling to see the same cases for the second time. All cases already exist in the original HTML response.</p></div>
+<section id="second" data-copy="second">
+<h2>Second copy: initially offscreen</h2>
+<p class="simple-control" id="control-second">The red bicycle is outside the university library. Several students are studying mathematical physics this morning. If this ordinary English paragraph does not become Chinese, the built-in page translator has not been verified.</p>
+<article class="test-card" data-test="bare-second" data-method="bare">
+<h3>A. Inline math between plain text nodes</h3>
+<p id="bare-second" class="formula-paragraph" lang="en">In the last part of the proof, the expression <span class="math-slot " data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2">\(\sqrt{3x-1}+(1+x)^2\)</span> must remain immediately after the word expression, rather than disappearing during translation. The definite integral <span class="math-slot " data-math="1" data-tex="\int_0^1x^2\,dx=\frac13">\(\int_0^1x^2\,dx=\frac13\)</span> is the next part of the same English paragraph, and the familiar identity <span class="math-slot " data-math="2" data-tex="E=mc^2">\(E=mc^2\)</span> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</p>
+<div class="check-line" data-feedback="bare-second" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="test-card" data-test="siblings-second" data-method="siblings">
+<h3>B. Separate prose and math sibling spans</h3>
+<p id="siblings-second" class="formula-paragraph" lang="en"><span class="prose" data-prose="0">In the last part of the proof, the expression </span><span class="math-slot " data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2">\(\sqrt{3x-1}+(1+x)^2\)</span><span class="prose" data-prose="1"> must remain immediately after the word expression, rather than disappearing during translation. The definite integral </span><span class="math-slot " data-math="1" data-tex="\int_0^1x^2\,dx=\frac13">\(\int_0^1x^2\,dx=\frac13\)</span><span class="prose" data-prose="2"> is the next part of the same English paragraph, and the familiar identity </span><span class="math-slot " data-math="2" data-tex="E=mc^2">\(E=mc^2\)</span><span class="prose" data-prose="3"> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</span></p>
+<div class="check-line" data-feedback="siblings-second" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="test-card" data-test="protected-second" data-method="protected">
+<h3>C. Protected math spans, translatable prose</h3>
+<p id="protected-second" class="formula-paragraph" lang="en"><span class="prose" data-prose="0">In the last part of the proof, the expression </span><span class="math-slot notranslate" data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2" translate="no">\(\sqrt{3x-1}+(1+x)^2\)</span><span class="prose" data-prose="1"> must remain immediately after the word expression, rather than disappearing during translation. The definite integral </span><span class="math-slot notranslate" data-math="1" data-tex="\int_0^1x^2\,dx=\frac13" translate="no">\(\int_0^1x^2\,dx=\frac13\)</span><span class="prose" data-prose="2"> is the next part of the same English paragraph, and the familiar identity </span><span class="math-slot notranslate" data-math="2" data-tex="E=mc^2" translate="no">\(E=mc^2\)</span><span class="prose" data-prose="3"> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</span></p>
+<div class="check-line" data-feedback="protected-second" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="test-card" data-test="whole-second" data-method="whole">
+<h3>D. Whole paragraph excluded (control)</h3>
+<p id="whole-second" class="formula-paragraph" lang="en" translate="no"><span class="prose" data-prose="0">In the last part of the proof, the expression </span><span class="math-slot " data-math="0" data-tex="\sqrt{3x-1}+(1+x)^2">\(\sqrt{3x-1}+(1+x)^2\)</span><span class="prose" data-prose="1"> must remain immediately after the word expression, rather than disappearing during translation. The definite integral </span><span class="math-slot " data-math="1" data-tex="\int_0^1x^2\,dx=\frac13">\(\int_0^1x^2\,dx=\frac13\)</span><span class="prose" data-prose="2"> is the next part of the same English paragraph, and the familiar identity </span><span class="math-slot " data-math="2" data-tex="E=mc^2">\(E=mc^2\)</span><span class="prose" data-prose="3"> belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating.</span></p>
+<div class="check-line" data-feedback="whole-second" translate="no">Waiting for MathJax / KaTeX.</div>
+</article>
+<article class="display-case"><h3>Display equation control (not the main pass criterion)</h3>
+<p>The Maxwell equations below are displayed separately and should remain readable after native translation.</p>
+<div class="display-output"><span class="math-slot" data-tex="\nabla\cdot\vec E=4\pi\rho" data-math-display="true">\[\nabla\cdot\vec E=4\pi\rho\]</span></div>
+</article>
+</section>
+<footer lang="en" translate="no">
+<h2>Device-local diagnostic</h2>
+<p>Enable page translation, scroll through both copies, and return here to press Check again, then Copy JSON. A case passes only when text changed, three formulas are present, and the formula containers remain in the paragraph.</p>
+<button id="check" type="button">Check again</button> <button id="copy" type="button">Copy diagnostic JSON</button>
+<pre id="summary">Loading mathematical engine…</pre>
+<textarea id="report" readonly spellcheck="false" aria-label="Diagnostic JSON"></textarea>
+</footer>
+</main>
+<script>
+(()=>{
+'use strict';
+const engine='mathjax4-chtml',start=performance.now();
+const originalPlain='The red bicycle is outside the university library. Several students are studying mathematical physics this morning. If this ordinary English paragraph does not become Chinese, the built-in page translator has not been verified.';
+const originalParts=["In the last part of the proof, the expression "," must remain immediately after the word expression, rather than disappearing during translation. The definite integral "," is the next part of the same English paragraph, and the familiar identity "," belongs here near the end of the sentence. The mathematics must remain visible in its exact context even after scrolling and translating."];
+const state={testVersion:'2026-10-12.1',engine,languageAtLoad:document.documentElement.lang,userAgent:navigator.userAgent,engineState:'loading',events:[],cases:{}};
+const $=id=>document.getElementById(id);
+const sections=['first','second'],methods=['bare','siblings','protected','whole'];
+function proseText(p){
+ const clone=p.cloneNode(true);
+ clone.querySelectorAll('.math-slot').forEach(e=>e.remove());
+ return clone.textContent.replace(/\s+/g,' ').trim();
+}
+function originalText(){return originalParts.join('').replace(/\s+/g,' ').trim();}
+const initial=originalText();
+const visited={first:null,second:null};
+function isFollowing(a,b){return !!(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING);}
+function inspect(id){
+ const p=$(id),method=p.parentElement.dataset.method,which=id.endsWith('-first')?'first':'second';
+ const slots=Array.from(p.querySelectorAll('[data-math]'));
+ const outputs=slots.map(s=>engine==='katex'?s.querySelector('.katex'):s.querySelector('mjx-container'));
+ const rectangles=slots.map(s=>{const r=s.getBoundingClientRect();return {x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)};});
+ const rendered=outputs.filter(Boolean).length;
+ const connected=slots.length===3&&slots.every(s=>s.isConnected&&p.contains(s));
+ const ordered=connected&&slots.every((s,i)=>i===0||isFollowing(slots[i-1],s));
+ const text=proseText(p);
+ const prose=Array.from(p.querySelectorAll('[data-prose]'));
+ let interleaved=true;
+ if(method!=='bare'){
+   interleaved=prose.length===4&&slots.length===3&&slots.every((s,i)=>isFollowing(prose[i],s)&&isFollowing(s,prose[i+1]));
+ }
+ const visibleCount=outputs.filter(x=>x&&x.getClientRects().length>0&&x.getBoundingClientRect().width>0).length;
+ const plain=$('control-'+which).textContent.trim();
+ const changedPlain=plain!==originalPlain;
+ const changedProse=text!==initial;
+ const result={which,method,visitedMs:visited[which],plainControlChanged:changedPlain,mathProseChanged:changedProse,
+   formulasRendered:rendered,formulasVisible:visibleCount,slots:slots.length,slotsConnected:connected,slotsOrdered:ordered,
+   interleaved,mathRects:rectangles,textSample:text.slice(0,450)};
+ result.verdict=!changedPlain?'TRANSLATION_NOT_CONFIRMED':!changedProse?'FORMULA_PARAGRAPH_NOT_TRANSLATED':
+   rendered!==3||visibleCount!==3?'INLINE_FORMULAS_MISSING_OR_INVISIBLE':
+   !ordered||!interleaved?'INLINE_FORMULA_ORDER_BROKEN':'TEXT_TRANSLATED_MATH_VISIBLE_CHECK_VISUAL';
+ state.cases[id]=result;
+ const feedback=p.parentElement.querySelector('[data-feedback]');
+ if(feedback)feedback.textContent=result.verdict+' · '+visibleCount+'/3 visible · '+rendered+'/3 rendered';
+ return result;
+}
+let pending=false;
+function check(){
+ pending=false;
+ for(const which of sections)for(const method of methods)inspect(method+'-'+which);
+ state.at=new Date().toISOString();state.timeSinceLoadMs=Math.round(performance.now()-start);
+ state.currentLang=document.documentElement.lang;
+ $('report').value=JSON.stringify(state,null,2);
+ $('summary').textContent='Math engine: '+state.engineState+'\n'+sections.map(which=>
+  which+': '+methods.map(m=>m+' '+state.cases[m+'-'+which].verdict).join(' | ')).join('\n');
+}
+function enqueue(){if(pending)return;pending=true;setTimeout(check,300);}
+const see=new IntersectionObserver(es=>{for(const e of es){if(e.isIntersecting){const key=e.target.dataset.copy;
+ if(visited[key]===null){visited[key]=Math.round(performance.now()-start);state.events.push({type:'visible',copy:key,ms:visited[key]});enqueue();}}}},{threshold:0.1});
+for(const key of sections)see.observe($(key));
+const watcher=new MutationObserver(records=>{if(records.some(r=>{
+ const node=r.target.nodeType===1?r.target:r.target.parentElement;
+ return !!node?.closest?.('section[data-copy]');
+}))enqueue();});
+watcher.observe(document.body,{subtree:true,childList:true,characterData:true});
+$('check').addEventListener('click',check);
+$('copy').addEventListener('click',async()=>{check();try{await navigator.clipboard.writeText($('report').value);$('copy').textContent='Copied';}
+catch(e){$('report').focus();$('report').select();$('copy').textContent='Select and copy the JSON';}});
+async function typeset(){
+ try{
+  if(engine==='katex'){
+   if(typeof window.katex?.render!=='function')throw Error('KaTeX script not loaded');
+   for(const slot of document.querySelectorAll('.math-slot')){
+    katex.render(slot.dataset.tex,slot,{throwOnError:false,displayMode:slot.hasAttribute('data-math-display')});
+   }
+  }else{
+   if(typeof window.MathJax?.typesetPromise!=='function')throw Error('MathJax 4 script not loaded');
+   await MathJax.typesetPromise([document.querySelector('main')]);
+  }
+  state.engineState='rendered';state.events.push({type:'rendered',t:Math.round(performance.now()-start)});
+ }catch(e){state.engineState='error: '+(e.message||e);state.events.push({type:'error',error:String(e)});}
+ check();
+}
+window.addEventListener('load',typeset);
+setTimeout(()=>{if(state.engineState==='loading'){state.engineState='timeout';check();}},18000);
+window.__inlineMathLab={check,snapshot:()=>structuredClone(state)};
+check();
+})();
+</script>
+</body>
+</html>
