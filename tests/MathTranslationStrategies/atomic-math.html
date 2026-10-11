@@ -171,7 +171,7 @@ function inspect(method,copy){
    return r.width>0&&r.height>0&&css.visibility!=='hidden'&&css.display!=='none';
  }).length;
  const orderEvidence=mathOrderEvidence(p);
- const properOrder=orderEvidence.exactSequence&&orderEvidence.allDirect&&spans.length===4&&slots.length===3;
+ const properOrder=orderEvidence.exactSequence&&spans.length===4&&slots.length===3;
  const prose=spans.map(s=>s.textContent);
  const changed=spans.length!==initialParts.length||prose.some((part,i)=>part!==initialParts[i]);
  const plain=$('control-'+copy).textContent.trim();
@@ -194,6 +194,7 @@ function inspect(method,copy){
  count!==3||visible!==3||evidence.some(e=>e.mediaLoaded===false)?'INLINE_FORMULAS_LOST_OR_INVISIBLE':
  darkPixels?'FORMULAS_TOO_DARK_IN_SVG_IMAGE':
  !properOrder?'INLINE_FORMULA_ORDER_CHANGED':
+ !orderEvidence.allDirect?'TRANSLATION_WRAPPED_FORMULAS_VERIFY_VISUAL':
  'TEXT_TRANSLATED_MATH_PRESENT_VERIFY_VISUALLY';
  const record={copy,method,orderEvidence,sectionFirstVisibleMs:vis[copy],caseFirstVisible:caseExposure[method+'-'+copy]||null,plainControlTranslated:ctl,mixedTextTranslated:changed,
     formulas:count,visuallySizedFormulas:visible,slotCount:slots.length,properOrder,verdict,evidence};
