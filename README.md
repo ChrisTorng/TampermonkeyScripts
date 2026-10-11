@@ -107,7 +107,7 @@ Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
 ### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
 
-Protect rendered math and preserve Plover TeX sources before browser translation without altering surrounding prose.
+Protect rendered math and preserve Plover TeX with separate translatable text spans and MathJax scripts.
 
 ### [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
