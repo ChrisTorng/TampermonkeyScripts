@@ -236,3 +236,20 @@ test('atomic SVG/image/shadow/iframe lab is static and has its own case-level vi
     assert.equal(scripts.length,2);
     for(const script of scripts)assert.doesNotThrow(()=>new vm.Script(script[1]));
 });
+
+
+test('atomic isolation alternatives render all 24 math formula instances in real Chrome', () => {
+    const chrome = process.env.CHROME_BIN || 'google-chrome';
+    const result = spawnSync(chrome,['--headless=new','--no-sandbox','--disable-gpu',
+        '--disable-dev-shm-usage','--no-first-run','--virtual-time-budget=24000',
+        '--dump-dom','file://'+atomicPath], {
+        encoding:'utf8',timeout:55000,maxBuffer:16*1024*1024
+    });
+    if(result.error)throw result.error;
+    assert.equal(result.status,0,result.stderr.slice(-1000));
+    assert.match(result.stdout,/data-atomic-render-status="ready"/,
+        'The MathJax 4 SVG isolation fixture did not initialize: '+result.stdout.slice(-2100));
+    assert.match(result.stdout,/data-atomic-case-count="8"/);
+    assert.match(result.stdout,/data-atomic-complete-cases="8"/,
+        'Not all original SVG, image, shadow-root or iframe formulas rendered');
+});
