@@ -159,6 +159,9 @@ function check(){
  for(const which of sections)for(const method of methods)inspect(method+'-'+which);
  state.at=new Date().toISOString();state.timeSinceLoadMs=Math.round(performance.now()-start);
  state.currentLang=document.documentElement.lang;
+ document.documentElement.dataset.inlineEngineState=state.engineState;
+ document.documentElement.dataset.inlineCaseCount=String(Object.keys(state.cases).length);
+ document.documentElement.dataset.inlineRenderedCases=String(Object.values(state.cases).filter(c=>c.formulasRendered===3).length);
  $('report').value=JSON.stringify(state,null,2);
  $('summary').textContent='Math engine: '+state.engineState+'\n'+sections.map(which=>
   which+': '+methods.map(m=>m+' '+state.cases[m+'-'+which].verdict).join(' | ')).join('\n');
