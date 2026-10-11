@@ -140,15 +140,15 @@ function buildEnglish(id,which){
 function makeProbe(id,which){
  const key=id+'-'+which; const info=methodById[id];
  const card=el('article',{class:'probe','data-case':key,'data-method':id,'data-copy':which});
- const heading=el('header');heading.append(el('h3',{},info[1]),el('div',{class:'mini muted'},info[2]));
- const kind=el('div',{class:'mini'},which==='first'?'第 1 份：載入時建立':'第 2 份：捲動後看到');
+ const heading=el('header',{lang:'zh-TW',translate:'no'});heading.append(el('h3',{},info[1]),el('div',{class:'mini muted'},info[2]));
+ const kind=el('div',{class:'mini',lang:'zh-TW',translate:'no'},which==='first'?'第 1 份：載入時建立':'第 2 份：捲動後看到');
  const english=el('div',{class:'english',lang:'en'});
  english.append(buildEnglish(id,which));
- const indicator=el('div',{class:'indicator'});
+ const indicator=el('div',{class:'indicator',lang:'zh-TW',translate:'no'});
  const badge=el('span',{class:'tag'},'尚未檢查');
  const visibility=el('span',{class:'tag'},'未進入視野');
  indicator.append(badge,visibility);
- const details=el('div',{class:'details'},'MathJax 與 DOM 順序檢查中');
+ const details=el('div',{class:'details',lang:'zh-TW',translate:'no'},'MathJax 與 DOM 順序檢查中');
  card.append(heading,kind,english,indicator,details);
  nodes.set(key,{card,badge,visibility,details,english,id,which});
  state.cases[key]={id:key,method:id,copy:which,viewed:false,firstVisibleMs:null,insertedMs:Math.round(performance.now()),rendered:0,order:'等待 MathJax',mutations:0,changes:0,originalText:pieces.join('[公式]')};
