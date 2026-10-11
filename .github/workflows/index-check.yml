@@ -16,6 +16,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Verify Translator API diagnostic HTML and JavaScript
+        run: node --test scripts/test-edge-translator-diagnostic.js
       - name: Generate index.html and TestCases.html
         run: npm run generate:index
       - name: Verify HTML outputs were produced
