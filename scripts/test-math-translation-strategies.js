@@ -163,7 +163,7 @@ for (const [engine, label, renderedSelector] of inlinePages) {
         assert.match(fixture, /TRANSLATION_NOT_CONFIRMED/);
         assert.match(fixture, /FORMULA_PARAGRAPH_NOT_TRANSLATED/);
         assert.match(fixture, /Math Translation Guard 1.2.0/);
-        assert.match(fixture, /data-inline-rendered-cases/);
+        assert.match(fixture, /dataset\.inlineRenderedCases/);
         const inlineScripts = [...fixture.matchAll(/<script>([\s\S]*?)<\/script>/g)];
         assert.equal(inlineScripts.length, 2);
         for (const match of inlineScripts) assert.doesNotThrow(() => new vm.Script(match[1]));
