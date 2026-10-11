@@ -48,7 +48,7 @@ function execute(setupDom = () => {}, url = 'https://blog.plover.com/math/ordina
 }
 
 describe('Math Translation Guard', () => {
-    test('Plover math is moved into inert MathJax 2 scripts before translation, while prose stays translatable', () => {
+    test('Plover math uses successful G-style text spans and math script containers', () => {
         let paragraph;
         let original;
         const harness = execute((h) => {
@@ -127,13 +127,13 @@ describe('Math Translation Guard', () => {
         paragraph.appendChild(lateText);
         harness.appendToBody(paragraph);
         harness.triggerMutation([paragraph]);
-        assert.equal(paragraph.children.filter((node) => node.tagName === 'SCRIPT').length, 1);
+        assert.equal(paragraph.children.filter((node) => node.className === 'math-slot').length, 1);
 
         const changing = harness.document.createTextNode('before ');
         paragraph.appendChild(changing);
         changing.nodeValue = 'another !!b_1+1!! case';
         harness.triggerMutation([], { type: 'characterData', target: changing });
-        assert.equal(paragraph.children.filter((node) => node.tagName === 'SCRIPT').length, 2);
+        assert.equal(paragraph.children.filter((node) => node.className === 'math-slot').length, 2);
     });
 
     test('MathJax 2 typesetting is queued for newly preserved source rather than invoked synchronously', () => {
