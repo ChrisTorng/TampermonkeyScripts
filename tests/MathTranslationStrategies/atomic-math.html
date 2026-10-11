@@ -71,7 +71,7 @@ window.MathJax={startup:{typeset:false},output:{linebreaks:{inline:false}},svg:{
 <footer translate="no" lang="en">
 <h2>Local diagnostic</h2>
 <p>All translation happens in your browser. This page only renders formulas and records whether plain text changed, equation elements remain visible, and their position stays between text spans.</p>
-<button id="check">Check again</button> <button id="copy">Copy JSON diagnostic</button>
+<button id="check">Check again</button> <button id="copy-image">Copy image-only result</button> <button id="copy">Copy full JSON</button>
 <pre id="summary">Starting…</pre>
 <textarea id="report" readonly spellcheck="false"></textarea>
 </footer>
@@ -330,6 +330,25 @@ async function render(){
  }catch(e){data.renderStatus='error: '+String(e.message||e);data.events.push({type:'renderError',message:String(e)});inspectAll();}
 }
 $('check').addEventListener('click',inspectAll);
+$('copy-image').addEventListener('click',async()=>{
+ inspectAll();
+ const slim={version:data.version,renderStatus:data.renderStatus,formulaPaint:data.formulaPaint,
+  entry:{ua:data.entry.ua,url:data.entry.url,scrollY:data.entry.scrollY},
+  originals:{first:data.originalMathOrder['image-first']?.actual,
+    second:data.originalMathOrder['image-second']?.actual},
+  imageCases:Object.fromEntries(['image-first','image-second'].map(key=>{
+    const entry=data.cases[key];
+    return [key,{verdict:entry.verdict,properOrder:entry.properOrder,
+      orderEvidence:entry.orderEvidence,
+      translated:entry.mixedTextTranslated,formulaCount:entry.formulas,
+      imageInfo:entry.evidence.map(e=>({slotIndex:e.index,mediaLoaded:e.mediaLoaded,
+        renderedRect:e.renderedRect,slotText:e.slotText}))}];
+  }))};
+ const output=JSON.stringify(slim,null,2);
+ try{await navigator.clipboard.writeText(output);$('copy-image').textContent='Copied image comparison';}
+ catch(error){$('report').value=output;$('report').focus();$('report').select();
+   $('copy-image').textContent='Select image JSON below';}
+});
 $('copy').addEventListener('click',async()=>{inspectAll();try{await navigator.clipboard.writeText($('report').value);$('copy').textContent='Copied JSON';}
 catch(e){$('report').focus();$('report').select();$('copy').textContent='Select JSON below';}});
 data.originalMathOrder=Object.fromEntries(copies.flatMap(copy=>
