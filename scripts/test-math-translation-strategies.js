@@ -231,6 +231,7 @@ test('atomic SVG/image/shadow/iframe lab is static and has its own case-level vi
     assert.match(atomicHtml, /data\.initialFocusedCase/);
     assert.match(atomicHtml, /mediaLoaded:/);
     assert.match(atomicHtml, /freezeSvgPaint/);
+    assert.match(atomicHtml, /linebreaks:\{inline:false\}/);
     assert.match(atomicHtml, /imagePixelBrightness/);
     assert.match(atomicHtml, /FORMULA_SLOT_CONTAMINATED_BY_TRANSLATION/);
     assert.match(atomicHtml, /svgSourceDiagnostics/);
@@ -258,4 +259,8 @@ test('atomic isolation alternatives render all 24 math formula instances in real
         'Not all original SVG, image, shadow-root or iframe formulas rendered');
     assert.match(result.stdout,/data-atomic-image-bright="true"/,
         'Serialized SVG images must contain light painted pixels, not black currentColor');
+    assert.match(result.stdout,/data-atomic-complete-math="true"/,
+        'MathJax SVG export must contain full formula, not only first line-break piece');
+    assert.match(result.stdout,/data-atomic-image-no-initial-tex="true"/,
+        'Translated image cases must not expose stale TeX text before scripts run');
 });
