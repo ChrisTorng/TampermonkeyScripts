@@ -89,3 +89,54 @@ test('math order check uses the actual number of source text spans', () => {
     assert.doesNotMatch(html, /texts\.length!==4/);
     assert.match(html, /originalText:pieces\.map\(\(text,i\)=>text\+\(i<math\.length\?'\[公式\]':'\'\)\)\.join\(''\)/);
 });
+
+
+const englishSourcePath = path.join(projectRoot, 'tests', 'MathTranslationStrategies', 'english-source.html');
+const englishSource = fs.readFileSync(englishSourcePath, 'utf8');
+test('English control fixture is static English content with two MathJax G samples', () => {
+    assert.match(englishSource, /<html lang="en">/);
+    assert.match(englishSource, /<title>English Math Translation Test/);
+    assert.match(englishSource, /id="plain-first"/);
+    assert.match(englishSource, /id="plain-second"/);
+    assert.match(englishSource, /id="math-first"/);
+    assert.match(englishSource, /id="math-second"/);
+    assert.match(englishSource, /id="gap"/);
+    assert.equal((englishSource.match(/<script type="math\/tex">/g) || []).length, 6);
+    assert.equal((englishSource.match(/class="plain-control"/g) || []).length, 2);
+    const firstSectionStart = englishSource.indexOf('<section id="first"');
+    const initialScripts = englishSource.indexOf('<script>\n(function(){');
+    assert.ok(firstSectionStart > 0 && initialScripts > firstSectionStart, 'static content precedes the diagnostic JavaScript');
+    assert.ok(englishSource.indexOf('id="math-first"') < englishSource.indexOf('id="plain-first"'),
+        'math appears near the top of the first screen');
+    const scripts = [...englishSource.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+    assert.equal(scripts.length, 1, 'one inline diagnostic script');
+    assert.doesNotThrow(() => new vm.Script(scripts[0][1]));
+});
+
+test('English control fixture reports native text changes separately from formula order', () => {
+    assert.match(englishSource, /plainControlChanged:/);
+    assert.match(englishSource, /mathTextChanged:/);
+    assert.match(englishSource, /mathOrderCorrect:/);
+    assert.match(englishSource, /CONTROL_NOT_TRANSLATED/);
+    assert.match(englishSource, /CONTROL_CHANGED_BUT_MATH_TEXT_NOT_TRANSLATED/);
+    assert.match(englishSource, /MATH_TEXT_CHANGED_FORMULAS_IN_ORDER/);
+    assert.match(englishSource, /if\(touched\)report\(\)/,
+        'diagnostic elements must not recursively trigger MutationObserver');
+});
+
+test('English control fixture renders six real MathJax 2 equations and detects simulated text changes', () => {
+    const chrome = process.env.CHROME_BIN || 'google-chrome';
+    const url = 'file://' + englishSourcePath + '?selftest=1';
+    const result = spawnSync(chrome, ['--headless=new','--no-sandbox','--disable-gpu',
+        '--disable-dev-shm-usage','--no-first-run','--virtual-time-budget=17000',
+        '--dump-dom',url], {
+        encoding:'utf8',timeout:45000,maxBuffer:16*1024*1024
+    });
+    if (result.error) throw result.error;
+    assert.equal(result.status,0,result.stderr.slice(-3000));
+    assert.match(result.stdout,/data-english-control-selftest="passed"/,
+        'translation diagnostic did not recognize simulated text change');
+    const outputs = (result.stdout.match(/class="MathJax"/g) || []).length;
+    assert.ok(outputs >= 6, 'Expected six real MathJax outputs, got '+outputs+
+        '\n'+result.stdout.slice(-2000)+'\n'+result.stderr.slice(-900));
+});
