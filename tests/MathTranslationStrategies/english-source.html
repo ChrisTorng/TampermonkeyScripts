@@ -93,13 +93,13 @@ let changeCount=0;
 const $=id=>document.getElementById(id);
 function isFollowing(a,b){return Boolean(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)}
 function inspectCopy(which){
- const root=$(which),plain=$('plain-'+which),p=$('math-'+which);
+ const plain=$('plain-'+which),p=$('math-'+which);
  const currentPlain=plain.textContent.trim();
  const words=Array.from(p.querySelectorAll('[data-part]'));
  const math=Array.from(p.querySelectorAll('.MathJax')).filter(x=>!x.parentElement?.closest('.MathJax'));
  const formulas=Array.from(p.querySelectorAll('[data-formula]'));
  const parts=words.map(x=>x.textContent);
- const changed=parts.some((text,i)=>text!==ORIGINAL_PARTS[i]);
+ const changed=words.length!==ORIGINAL_PARTS.length||parts.some((text,i)=>text!==ORIGINAL_PARTS[i]);
  const mathOrder=words.length===4&&math.length===3&&math.every((item,i)=>isFollowing(words[i],item)&&isFollowing(item,words[i+1]));
  return {
    visibleAtMs:visible[which],
@@ -143,11 +143,14 @@ const watch=new IntersectionObserver(entries=>{
 },{threshold:0.05});
 watch.observe($('first'));watch.observe($('second'));
 const observer=new MutationObserver(records=>{
+ let touched=false;
  for(const record of records){
   const node=record.target.nodeType===1?record.target:record.target.parentElement;
-  if(node?.closest('#first,#second'))changeCount++;
+  if(node?.closest('#first,#second')){changeCount++;touched=true;}
  }
- report();
+ // Updating our own diagnostic panel also creates mutations. Ignore them;
+ // otherwise the MutationObserver would continuously trigger itself.
+ if(touched)report();
 });
 observer.observe(document.body,{subtree:true,childList:true,characterData:true});
 $('copy').addEventListener('click',async()=>{
