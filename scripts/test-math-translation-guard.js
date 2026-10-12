@@ -347,3 +347,21 @@ describe('Math Guard scroll restoration', () => {
         assert.equal(h.context.sessionStorage.getItem(key),null);
     });
 });
+
+
+test('shared floating-menu disabled-domain setting also disables all math transforms', () => {
+    let rendered, paragraph;
+    const h = execute((harness) => {
+        rendered = harness.document.createElement('mjx-container');
+        paragraph = harness.document.createElement('p');
+        paragraph.appendChild(harness.document.createTextNode('Nim !!\\omega!! example'));
+        harness.appendToBody(rendered);
+        harness.appendToBody(paragraph);
+    }, 'https://blog.plover.com/a', {
+        localStorageSeed: {'tm-floating-menu-v1:blog.plover.com':JSON.stringify({disabledDomain:true})}
+    });
+    assert.equal(h.document.querySelector('[data-floating-tool="math"]'),null);
+    assert.equal(rendered.getAttribute('translate'),null);
+    assert.equal(paragraph.children.length,1);
+    assert.equal(paragraph.children[0].nodeValue,'Nim !!\\omega!! example');
+});
