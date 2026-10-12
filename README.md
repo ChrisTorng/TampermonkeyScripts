@@ -4,7 +4,7 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ## Shared floating-menu scripts — update together
 
-**Update all five scripts below together** to keep their shared menu consistent. Update every installed script in this group before using the new menu.
+**Update all six scripts below together** to keep their shared menu consistent. Update every installed script in this group before using the new menu.
 
 ### [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
@@ -28,6 +28,10 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
 Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
+
+### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
+
+Protect rendered math with per-site floating-menu strategies and optional formula backups.
 
 ---
 
@@ -104,10 +108,6 @@ Show thin, fixed vertical markers that track scroll position for every scrollabl
 ### [Translation Crash Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
 
 Prevent machine-translation DOM rewrites from crashing dynamic web applications.
-
-### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
-
-Protect rendered math and preserve inline Plover TeX using tested MathJax script containers and separate text spans.
 
 ### [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
