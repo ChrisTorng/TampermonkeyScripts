@@ -365,3 +365,22 @@ test('shared floating-menu disabled-domain setting also disables all math transf
     assert.equal(paragraph.children.length,1);
     assert.equal(paragraph.children[0].nodeValue,'Nim !!\\omega!! example');
 });
+
+
+test('stored strategy remains accessible when translation already removed all formula nodes', () => {
+    const h=execute(()=>{},'https://math.example.org/formula',{
+        localStorageSeed:{'tm-math-strategy-v1':'off'}
+    });
+    assert.ok(h.document.querySelector('[data-floating-tool="math"]'),
+        'the user must be able to escape Off even without detectable math');
+});
+
+test('math library script is enough to show strategy control before rendering', () => {
+    const h=execute((harness)=>{
+        const script=harness.document.createElement('script');
+        script.setAttribute('src','https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js');
+        harness.appendToBody(script);
+    },'https://math.example.org/lesson');
+    assert.ok(h.document.querySelector('[data-floating-tool="math"]'));
+    assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'),null);
+});
