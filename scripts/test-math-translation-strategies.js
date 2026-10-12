@@ -272,3 +272,40 @@ test('atomic isolation alternatives render all 24 math formula instances in real
     assert.match(result.stdout,/data-atomic-image-order-correct="true"/,
         'Chrome must keep the correct sequence in both cases without native translation');
 });
+
+
+const anchoredPath=path.join(projectRoot,'tests','MathTranslationStrategies','anchored-math.html');
+const anchoredHtml=fs.readFileSync(anchoredPath,'utf8');
+test('anchored translation comparison contains four strategies and two separate DOM copies',()=>{
+    for(const strategy of ['baseline','nested','pseudo','grouped']){
+        assert.match(anchoredHtml,new RegExp('data-case="'+strategy+'-first"'));
+        assert.match(anchoredHtml,new RegExp('data-case="'+strategy+'-second"'));
+    }
+    assert.match(anchoredHtml,/const query=new URLSearchParams/);
+    assert.equal((anchoredHtml.match(/class="mixed"/g)||[]).length,8);
+    assert.equal((anchoredHtml.match(/data-formula="[012]"/g)||[]).length,18);
+    assert.equal((anchoredHtml.match(/data-formula-after="[012]"/g)||[]).length,6);
+    assert.match(anchoredHtml,/output:\{linebreaks:\{inline:false\}\}/);
+    assert.match(anchoredHtml,/formula-anchor|css-formula::after/);
+    assert.match(anchoredHtml,/mathAnchorAssociation/);
+    const scripts=[...anchoredHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+    assert.equal(scripts.length,2);
+    for(const script of scripts)assert.doesNotThrow(()=>new vm.Script(script[1]));
+});
+
+test('real Chrome renders separate, nested, grouped and CSS-anchored formula images twice',()=>{
+    const chrome=process.env.CHROME_BIN||'google-chrome';
+    const result=spawnSync(chrome,['--headless=new','--no-sandbox','--disable-gpu',
+        '--disable-dev-shm-usage','--no-first-run','--virtual-time-budget=26000',
+        '--dump-dom','file://'+anchoredPath+'?mode=focus&method=nested'],{
+        encoding:'utf8',timeout:60000,maxBuffer:16*1024*1024
+    });
+    if(result.error)throw result.error;
+    assert.equal(result.status,0,result.stderr.slice(-1500));
+    assert.match(result.stdout,/data-anchor-render-status="ready"/,
+        'Anchored translation lab did not load MathJax: '+result.stdout.slice(-1800));
+    assert.match(result.stdout,/data-anchor-image-methods-complete="true"/,
+        'Inline and nested SVG image methods did not render all 18 images');
+    assert.match(result.stdout,/data-anchor-pseudo-ready="true"/,
+        'CSS pseudo-elements did not receive all six SVG image backgrounds');
+});
