@@ -305,7 +305,7 @@ describe('Math Translation Guard site modes', () => {
         item.click();
         assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'), 'output');
         assert.equal(h.location.reloadCallCount, 1);
-        const offset = JSON.parse(h.window.sessionStorage.getItem('tm-math-scroll-v1'));
+        const offset = JSON.parse(h.context.sessionStorage.getItem('tm-math-scroll-v1'));
         assert.equal(offset.href, 'https://example.org/article');
         assert.equal(offset.x, 12);
         assert.equal(offset.y, 520);
