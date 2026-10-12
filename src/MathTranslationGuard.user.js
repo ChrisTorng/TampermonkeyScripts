@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-12_1.3.3
+// @version      2026-10-12_1.3.4
 // @description  Protect rendered math with per-site floating-menu strategies and optional formula backups.
 // @author       Chris Torng
 // @match        *://*/*
@@ -328,13 +328,24 @@
 
     function changeMathMode(next) {
         if (next === mathMode) { if (mathPicker) mathPicker.hidden = true; return; }
+        // Never reload into the old strategy if the new preference cannot persist.
+        let saved = false;
         try {
             localStorage.setItem(MATH_MODE_KEY, next);
+            saved = localStorage.getItem(MATH_MODE_KEY) === next;
+        } catch (_) { /* The origin may block site storage. */ }
+        if (!saved) {
+            if (mathPicker) mathPicker.setAttribute('data-storage-error', 'true');
+            if (typeof window.alert === 'function')
+                window.alert('Math strategy cannot be saved on this site. Enable site storage to switch.');
+            return;
+        }
+        try {
             sessionStorage.setItem(MATH_SCROLL_KEY, JSON.stringify({
                 href: location.href, x: window.scrollX || 0, y: window.scrollY || 0,
                 at: Date.now()
             }));
-        } catch (_) { /* Storage may be disabled by the site or browser. */ }
+        } catch (_) { /* The selected strategy still applies after reload. */ }
         window.location.reload();
     }
 
