@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-12_1.3.2
+// @version      2026-10-12_1.3.3
 // @description  Protect rendered math with per-site floating-menu strategies and optional formula backups.
 // @author       Chris Torng
 // @match        *://*/*
@@ -433,7 +433,8 @@
     function saveFormula(element) {
         if (mathMode !== 'backup' || savedFormulaNodes.has(element) || formulas.length >= 200 ||
             typeof element.cloneNode !== 'function') return;
-        if (element.matches('.MathJax_Display') && element.querySelector('.MathJax')) return;
+        // Display wrappers are structural; collect the actual rendered .MathJax child instead.
+        if (element.matches('.MathJax_Display')) return;
         if (element.matches('math') && element.closest('.katex')) return;
         if (element.closest('#tm-math-picker')) return;
         const copy = element.cloneNode(true);
