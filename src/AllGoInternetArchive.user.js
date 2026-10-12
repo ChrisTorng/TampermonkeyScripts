@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-08_1.3.4
+// @version      2026-10-12_1.3.5
 // @description  Add a quick Internet Archive action in the shared floating menu and mark Archive Today links.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -80,7 +80,7 @@
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
     const FLOATING_MENU_ID = 'tm-shared-floating-menu';
     const FLOATING_MENU_STORAGE = 'tm-floating-menu-v1:' + window.location.hostname.toLowerCase();
-    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate'];
+    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate', 'math'];
 
     function floatingMenuSettings() {
         try {
