@@ -322,3 +322,28 @@ describe('Math Translation Guard site modes', () => {
         assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'),'backup');
     });
 });
+
+
+describe('Math Guard scroll restoration', () => {
+    const key = 'tm-math-scroll-v1';
+    const url = 'https://site.example/a?chapter=5';
+    test('consumes a fresh one-time scroll marker without initiating another reload', () => {
+        const positions = [];
+        const marker = JSON.stringify({href:url,x:37,y:912,at:Date.now()});
+        const h = execute((harness) => {
+            harness.window.scrollTo = (x,y) => positions.push([x,y]);
+        },url,{sessionStorageSeed:{[key]:marker}});
+        assert.equal(h.context.sessionStorage.getItem(key),null);
+        assert.deepEqual(positions,[[37,912]]);
+        assert.equal(h.location.reloadCallCount,0);
+    });
+    test('ignores scroll markers for a different URL or too old to apply', () => {
+        const positions=[];
+        const marker=JSON.stringify({href:'https://other.example/page',x:0,y:999,at:Date.now()-40000});
+        const h=execute((harness)=>{
+            harness.window.scrollTo=(x,y)=>positions.push([x,y]);
+        },url,{sessionStorageSeed:{[key]:marker}});
+        assert.deepEqual(positions,[]);
+        assert.equal(h.context.sessionStorage.getItem(key),null);
+    });
+});
