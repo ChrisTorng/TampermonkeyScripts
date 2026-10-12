@@ -38,8 +38,8 @@ function addTextSupport(harness) {
     harness.context.NodeFilter = { SHOW_ELEMENT: 1, SHOW_TEXT: 4 };
 }
 
-function execute(setupDom = () => {}, url = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html') {
-    const harness = createHarness({ url });
+function execute(setupDom = () => {}, url = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html', options = {}) {
+    const harness = createHarness({ url, ...options });
     addTextSupport(harness);
     setupDom(harness);
     harness.context.globalThis = harness.context;
@@ -246,5 +246,79 @@ describe('Math Translation Guard', () => {
         hooks[0].callback(['New Math', 'MathJax-Element-1']);
         assert.equal(display.getAttribute('translate'), 'no');
         assert.equal(frame.getAttribute('translate'), 'no');
+    });
+});
+
+
+describe('Math Translation Guard site modes', () => {
+    const plover = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html';
+    test('automatic mode remains implicit until user explicitly chooses another strategy', () => {
+        const h = execute((harness) => {
+            const span = harness.document.createElement('span');
+            span.className = 'MathJax';
+            harness.appendToBody(span);
+        });
+        assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'), null);
+        const button = h.document.querySelector('[data-floating-tool="math"]');
+        assert.ok(button, 'math action should be registered after math is found');
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+    });
+
+    test('output-only mode does not rewrite Plover raw delimiter text', () => {
+        let paragraph;
+        execute((h) => {
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('before !!\\omega!! after'));
+            h.appendToBody(paragraph);
+        }, plover, {localStorageSeed:{'tm-math-strategy-v1':'output'}});
+        assert.equal(paragraph.children.length, 1);
+        assert.equal(paragraph.children[0].nodeValue, 'before !!\\omega!! after');
+    });
+
+    test('off mode does not rewrite raw TeX or mark MathJax output', () => {
+        let paragraph;
+        let rendered;
+        execute((h) => {
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('before !!\\omega!! after'));
+            rendered = h.document.createElement('span');
+            rendered.className = 'MathJax';
+            h.appendToBody(paragraph);
+            h.appendToBody(rendered);
+        }, plover, {localStorageSeed:{'tm-math-strategy-v1':'off'}});
+        assert.equal(paragraph.children.length, 1);
+        assert.equal(rendered.getAttribute('translate'), null);
+    });
+
+    test('manual selection persists only for current origin and triggers one reload', () => {
+        const h = execute((harness) => {
+            const math = harness.document.createElement('mjx-container');
+            harness.appendToBody(math);
+        }, 'https://example.org/article');
+        const mathAction = h.document.querySelector('[data-floating-tool="math"]');
+        assert.ok(mathAction);
+        h.window.scrollX = 12;
+        h.window.scrollY = 520;
+        mathAction.click();
+        const item = h.document.querySelector('[data-math-mode="output"]');
+        assert.ok(item);
+        item.click();
+        assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'), 'output');
+        assert.equal(h.location.reloadCallCount, 1);
+        const offset = JSON.parse(h.window.sessionStorage.getItem('tm-math-scroll-v1'));
+        assert.equal(offset.href, 'https://example.org/article');
+        assert.equal(offset.x, 12);
+        assert.equal(offset.y, 520);
+    });
+
+    test('explicit backup selection is kept per origin, not global', () => {
+        const h = execute((harness) => {
+            const math = harness.document.createElement('span');
+            math.className = 'katex';
+            harness.appendToBody(math);
+        }, 'https://foo.invalid/page', {localStorageSeed:{'tm-math-strategy-v1':'backup'}});
+        assert.equal(h.document.querySelector('[data-floating-tool="math"]').title,
+            'Math protection: backup');
+        assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'),'backup');
     });
 });
