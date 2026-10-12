@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-08_1.5.3
+// @version      2026-10-12_1.5.4
 // @description  Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
@@ -18,7 +18,7 @@
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
     const FLOATING_MENU_ID = 'tm-shared-floating-menu';
     const FLOATING_MENU_STORAGE = 'tm-floating-menu-v1:' + window.location.hostname.toLowerCase();
-    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate'];
+    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate', 'math'];
 
     function floatingMenuSettings() {
         try {
