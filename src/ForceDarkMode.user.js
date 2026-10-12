@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-08_2.0.4
+// @version      2026-10-12_2.0.5
 // @description  Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -82,7 +82,7 @@
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
     const FLOATING_MENU_ID = 'tm-shared-floating-menu';
     const FLOATING_MENU_STORAGE = 'tm-floating-menu-v1:' + window.location.hostname.toLowerCase();
-    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate'];
+    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate', 'math'];
 
     function floatingMenuSettings() {
         try {
