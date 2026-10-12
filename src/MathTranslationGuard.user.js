@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-12_1.3.0
+// @version      2026-10-12_1.3.1
 // @description  Protect rendered math with per-site floating-menu strategies and optional formula backups.
 // @author       Chris Torng
 // @match        *://*/*
@@ -316,8 +316,9 @@
         } catch (_) { return 'auto'; }
     }
     const mathMode = readMathMode();
-    const sourceRewriteEnabled = mathMode === 'auto' || mathMode === 'backup';
-    const renderedProtectionEnabled = mathMode !== 'off';
+    const mathFeatureAllowed = !floatingMenuDisabled();
+    const sourceRewriteEnabled = mathFeatureAllowed && (mathMode === 'auto' || mathMode === 'backup');
+    const renderedProtectionEnabled = mathFeatureAllowed && mathMode !== 'off';
     const formulas = [];
     const savedFormulaNodes = new WeakSet();
     let mathMenuButton = null;
