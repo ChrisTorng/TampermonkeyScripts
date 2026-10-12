@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-12_1.3.1
+// @version      2026-10-12_1.3.2
 // @description  Protect rendered math with per-site floating-menu strategies and optional formula backups.
 // @author       Chris Torng
 // @match        *://*/*
@@ -316,6 +316,8 @@
         } catch (_) { return 'auto'; }
     }
     const mathMode = readMathMode();
+    let hadExplicitMathChoice = false;
+    try { hadExplicitMathChoice = localStorage.getItem(MATH_MODE_KEY) !== null; } catch (_) { /* Storage unavailable. */ }
     const mathFeatureAllowed = !floatingMenuDisabled();
     const sourceRewriteEnabled = mathFeatureAllowed && (mathMode === 'auto' || mathMode === 'backup');
     const renderedProtectionEnabled = mathFeatureAllowed && mathMode !== 'off';
@@ -444,6 +446,22 @@
         element.setAttribute('data-tm-math-ref', id);
     }
 
+
+    // Keep the picker available when a previously configured site loses all
+    // visible formulas after browser translation. Detect common library loads
+    // even if the renderer has not yet inserted its formula nodes.
+    function hasMathLibraryLoad(root) {
+        if (!root) return false;
+        const isMathLoad = (element) => {
+            if (!element.getAttribute) return false;
+            const path = element.getAttribute('src') || element.getAttribute('href') || '';
+            return /mathjax|katex/i.test(path);
+        };
+        if (isMathLoad(root)) return true;
+        if (!root.querySelectorAll) return false;
+        return Array.from(root.querySelectorAll('script[src],link[href]')).some(isMathLoad);
+    }
+
     // Rendered output only. MathJax must remain free to discover and replace
     // TeX delimiters, previews, and its internal source <script> elements.
     const mathSelectors = ['.MathJax', '.MathJax_Display', 'mjx-container', '.katex', 'math'];
@@ -540,6 +558,7 @@
 
     function scan(root) {
         if (!root) return;
+        if (!mathMenuButton && hasMathLibraryLoad(root)) offerMathMenu();
         if (root.nodeType === 1 && !root.closest('#tm-math-picker')) {
             if (mathSelectors.some((selector) => root.matches(selector))) protect(root);
             // Cover each enclosing formula root, including nested MathJax display wrappers.
@@ -614,6 +633,7 @@
         flushTypeset();
     }, { once: true });
     restoreMathScroll();
+    if (hadExplicitMathChoice || isPlover) offerMathMenu();
     registerMathJax2();
     scanPloverSources(document);
     scan(document);
