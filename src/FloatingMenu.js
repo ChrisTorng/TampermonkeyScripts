@@ -1,7 +1,7 @@
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
     const FLOATING_MENU_ID = 'tm-shared-floating-menu';
     const FLOATING_MENU_STORAGE = 'tm-floating-menu-v1:' + window.location.hostname.toLowerCase();
-    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate'];
+    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate', 'math'];
 
     function floatingMenuSettings() {
         try {
