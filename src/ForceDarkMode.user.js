@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-12_2.0.5
+// @version      2026-10-12_2.0.6
 // @description  Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -82,7 +82,9 @@
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
     const FLOATING_MENU_ID = 'tm-shared-floating-menu';
     const FLOATING_MENU_STORAGE = 'tm-floating-menu-v1:' + window.location.hostname.toLowerCase();
-    const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate', 'math'];
+    // Every action declares its own numeric position at registration. Never add a global list.
+    // Legacy controls without an order are treated as order 0.
+    const FLOATING_MENU_DEFAULT_ORDER = 0;
 
     function floatingMenuSettings() {
         try {
@@ -136,7 +138,17 @@
         const close = root.querySelector('[data-floating-close]');
         const dialog = root.querySelector('[data-floating-dialog]');
         const currentButtons = Array.from(root.querySelectorAll('[data-floating-tool]'));
-        const buttons = [...currentButtons].sort((a, b) => FLOATING_MENU_ORDER.indexOf(a.getAttribute('data-floating-tool')) - FLOATING_MENU_ORDER.indexOf(b.getAttribute('data-floating-tool')));
+        const numericOrder = (button) => {
+            const value = Number(button.getAttribute('data-floating-order'));
+            return Number.isFinite(value) ? value : FLOATING_MENU_DEFAULT_ORDER;
+        };
+        // Tie-breaking is deterministic regardless of userscript startup order.
+        const buttons = [...currentButtons].sort((a, b) =>
+            numericOrder(a) - numericOrder(b)
+            || (a.getAttribute('data-floating-script') || a.getAttribute('data-floating-tool') || '').localeCompare(
+                b.getAttribute('data-floating-script') || b.getAttribute('data-floating-tool') || '', 'en')
+            || (a.getAttribute('data-floating-tool') || '').localeCompare(
+                b.getAttribute('data-floating-tool') || '', 'en'));
         if (buttons.some((button, index) => button !== currentButtons[index])) {
             buttons.forEach((button) => {
                 root.removeChild(button);
@@ -347,11 +359,17 @@
         return root;
     }
 
-    function registerFloatingButton(key, button, available = true) {
+    function registerFloatingButton(key, button, available = true, order = FLOATING_MENU_DEFAULT_ORDER, scriptName = key) {
         if (floatingMenuDisabled()) return;
         const root = floatingMenuRoot();
+        const rank = Number.isFinite(order) ? Math.trunc(order) : FLOATING_MENU_DEFAULT_ORDER;
         button.setAttribute('data-floating-tool', key);
+        button.setAttribute('data-floating-order', String(rank));
+        button.setAttribute('data-floating-script', scriptName);
         button.setAttribute('data-floating-available', String(available));
+        // CSS flex order wins even when a previously installed legacy userscript
+        // reorders the DOM with an obsolete hard-coded FLOATING_MENU_ORDER array.
+        button.style.setProperty('order', String(rank), 'important');
         button.addEventListener('click', () => floatingMenuCollapse(root));
         root.appendChild(button);
         floatingMenuRender(root);
@@ -530,7 +548,7 @@
             updateButtonAppearance();
         });
         updateButtonAppearance();
-        registerFloatingButton('dark', toggleButton);
+        registerFloatingButton('dark', toggleButton, true, 30, 'ForceDarkMode.user.js');
     }
 
     onDocumentReady(createFloatingToggleButton);
