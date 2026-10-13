@@ -35,6 +35,10 @@ Translate code blocks with per-block controls and a shared-menu page action; imp
 
 Update each script below separately as needed.
 
+### [Cloudflare Analytics Exclusion User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudflareAnalyticsExclude.user.js)
+
+Refresh a 400-day exclusion cookie when opening the [ChrisTorng blog](https://christorng.idv.tw/) home page. Requires a Cloudflare Configuration Rule that disables RUM when `cf_analytics_ignore=1` is present; does not exclude Traffic Analytics.
+
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
 Add an article button for Hacker News comments, including pages reached through redirects.
@@ -160,6 +164,7 @@ Click a script link, click **Install** on the Tampermonkey installation page, th
 
 Update each script separately as needed.
 
+  - [CloudflareAnalyticsExclude.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudflareAnalyticsExclude.user.js)
   - [HackerNewsComments.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
   - [RedirectUrls.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
