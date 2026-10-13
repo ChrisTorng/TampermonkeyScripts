@@ -34,6 +34,7 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 
 ## 6. Shared floating controls
 - Keep the `≡` menu, its actions, dragging, active-state feedback, and page-CSS isolation consistent across floating-control scripts. Follow [FloatingMenu.md](FloatingMenu.md).
-- Edit `src/FloatingMenu.js` as the canonical shared implementation, then run `node scripts/sync-floating-menu.js` to copy it into every participating `.user.js`. Review and test all consumers after any shared change.
-- Register each action with a stable key in `FLOATING_MENU_ORDER`; do not depend on userscript startup order. Only the menu handle stores position. A missing or unavailable action must not leave an empty menu visible.
+- Edit `src/FloatingMenu.js` as the canonical helper. Synchronize the copies when **the shared helper logic changes** using `node scripts/sync-floating-menu.js`; to update only an individual script, use `node scripts/sync-floating-menu.js MathTranslationGuard.user.js` (or another participating filename). Adding an action or changing its priority must not force unrelated userscripts to be updated.
+- Each action registers its own stable key, numeric order and source userscript name via `registerFloatingButton(key, button, available, order, scriptName)`. Never maintain a cross-script `FLOATING_MENU_ORDER` array. Sort by order and then script name; preserve CSS `order` for compatibility with legacy copies that may rewrite DOM order. An action is optional, and any subset of scripts may be installed. Only the menu handle stores position. Missing/unavailable actions must not leave an empty menu visible.
+- Review regressions for optional installations, arbitrary startup order, equal-order tie breaks, and legacy installed copies when changing the helper.
 - Keep host exclusions and the site-disable setting coordinated across the menu scripts. Preserve URL-based automatic activation independently of whether the menu is expanded.

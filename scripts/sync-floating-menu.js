@@ -12,9 +12,17 @@ const files = [
     'ForceMobileView.user.js',
     'ForceDarkMode.user.js',
     'TranslatePreformattedText.user.js',
+    'MathTranslationGuard.user.js',
 ];
 
-for (const name of files) {
+// Pass one or more script filenames to synchronize only those embedded copies.
+// Updating one action's order does not require regenerating any other script.
+const chosen = process.argv.slice(2);
+for (const name of chosen) {
+    if (!files.includes(name)) throw new Error(`Unknown shared-menu script: ${name}`);
+}
+
+for (const name of chosen.length ? chosen : files) {
     const file = path.join(root, 'src', name);
     const original = fs.readFileSync(file, 'utf8');
     const newline = original.includes('\r\n') ? '\r\n' : '\n';

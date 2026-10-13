@@ -2,9 +2,9 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
-## Shared floating-menu scripts — update together
+## Shared floating-menu scripts — install independently
 
-**Update all five scripts below together** to keep their shared menu consistent. Update every installed script in this group before using the new menu.
+Install or update **only the scripts you use**. Each action declares its own numeric menu order. Installing or updating a new action does not require updating the other scripts; common infrastructure fixes may still require compatible helper updates.
 
 ### [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
@@ -28,6 +28,10 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
 Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
+
+### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
+
+Protect rendered math with per-site floating-menu strategies and optional formula backups.
 
 ---
 
@@ -105,10 +109,6 @@ Show thin, fixed vertical markers that track scroll position for every scrollabl
 
 Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 
-### [Math Translation Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
-
-Protect rendered math and preserve inline Plover TeX using tested MathJax script containers and separate text spans.
-
 ### [Google Translate Page Toggle User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
 
 Toggle the current page between original and Google Translate with Ctrl+Alt+S.
@@ -135,7 +135,7 @@ Reload [Medium](https://medium.com/) and Medium-powered domains once per session
 
 ## Test Cases
 
-See [TestCases.md](TestCases.md) for sample URLs across the scripts.
+See [TestCases.md](TestCases.md) for script test URLs, including manual MathJax 2/4 and KaTeX compatibility checks, and [Math Translation Strategy Test Guide](tests/MathTranslationStrategies/README.md) for the retained browser translation lab and known failures.
 
 ## Installation
 
@@ -148,15 +148,16 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
 
 Click a script link, click **Install** on the Tampermonkey installation page, then reload the target page.
 
-### Shared floating-menu scripts — update together
+### Shared floating-menu scripts — install or update independently
 
-**Update every installed script in this five-script group before using the new menu.**
+Install any subset; each script contributes its own ordered action. Updating one does not require reinstalling the others.
 
   - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
   - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
   - [ForceMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
   - [ForceDarkMode.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
   - [TranslatePreformattedText.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
+  - [MathTranslationGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
 
 ---
 
@@ -175,7 +176,6 @@ Update each script separately as needed.
   - [CodingOptimizer.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
   - [ResponsiveScrollIndicator.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
   - [TranslationCrashGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
-  - [MathTranslationGuard.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/MathTranslationGuard.user.js)
   - [GoogleTranslate.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/GoogleTranslate.user.js)
   - [YouTubeTools.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
   - [BetterMobileView.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)

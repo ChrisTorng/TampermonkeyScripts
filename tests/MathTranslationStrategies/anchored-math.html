@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Anchored Math Formulas — Android Edge Native Translation</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0e1b2c;color:#f2f5fa}
+*{box-sizing:border-box}body{margin:0}main{max-width:750px;margin:0 auto;padding:9px 10px 70px;line-height:1.55}
+h1{font-size:1.28rem}h2{font-size:1.13rem}h3{font-size:.96rem}
+header,section,footer{border:1px solid #455a78;border-radius:12px;background:#1c2b41;margin:13px 0;padding:13px}
+.case{padding:10px;border:1px solid #536e90;border-radius:9px;margin:15px 0}
+.mixed{font:1.10rem/2.05 Georgia,serif;background:#101e30;border-radius:7px;padding:12px;overflow-wrap:break-word}
+.formula-slot{display:inline;vertical-align:middle;white-space:nowrap}
+.formula-slot img{display:inline-block;width:auto;height:auto;max-width:100%;max-height:2.2em;vertical-align:middle}
+.chunk{display:inline}
+.css-formula::after{content:"";display:inline-block;width:var(--formula-width,0px);height:var(--formula-height,0px);vertical-align:middle;background-image:var(--formula-image,none);background-size:contain;background-repeat:no-repeat}
+.control{background:#203954;padding:9px;border-radius:7px;font-size:.9rem}
+.status{font:.77rem/1.4 ui-monospace,monospace;color:#93bded;overflow-wrap:anywhere}
+#scroll-space{height:145vh;border:1px dashed #57728f;border-radius:11px;background:repeating-linear-gradient(140deg,#18283e 0px,#18283e 17px,#102034 17px,#102034 34px);display:grid;place-items:center}
+#scroll-space p{background:#20334f;padding:10px;border-radius:8px}
+a{color:#9dccff}button{font:inherit;padding:10px 12px;background:#2c70ca;color:white;border:0;border-radius:8px;margin:4px 2px}
+textarea{width:100%;height:250px;border:1px solid #516c8d;background:#101c2c;color:#f1f6fb;border-radius:8px;font:12px ui-monospace,monospace;padding:9px}
+html[data-focus] header{padding:5px 8px;margin:4px 0}
+html[data-focus] header h1{margin:0;font-size:1rem}
+html[data-focus] header p,html[data-focus] header nav{display:none}
+html[data-focus] section{padding:6px;margin:5px 0;display:flex;flex-direction:column}
+html[data-focus] section>h2{display:none}
+html[data-focus] .case{order:-2;margin:3px 0;padding:7px}
+html[data-focus] .case h3{font-size:.80rem;margin:0}
+html[data-focus] .control{order:-1;padding:6px;margin:5px 0;font-size:.8rem}
+html[data-focus] .mixed{font-size:1.03rem;padding:5px;margin:5px 0}
+html[data-focus="baseline"] .case:not([data-method="baseline"]),
+html[data-focus="nested"] .case:not([data-method="nested"]),
+html[data-focus="pseudo"] .case:not([data-method="pseudo"]),
+html[data-focus="grouped"] .case:not([data-method="grouped"]){display:none}
+</style>
+<script>
+const query=new URLSearchParams(location.search);
+const method=query.get('method');
+if(query.get('mode')==='focus'&&['baseline','nested','pseudo','grouped'].includes(method))
+ document.documentElement.dataset.focus=method;
+window.MathJax={startup:{typeset:false},output:{linebreaks:{inline:false}},svg:{fontCache:'local'}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg.js" defer></script>
+</head>
+<body><main>
+<header>
+<h1>Formula position: isolate SVG images from Edge translation</h1>
+<p>The earlier image approach keeps complete formulas but Android Edge 155 changed <code>T0 M0 T1 M1 T2 M2 T3</code> into <code>T0 M0 M1 T1 T2 M2 T3</code>. This test anchors formula images to their preceding prose in several different ways. The purpose is to detect actual ordering, not just count images.</p>
+<nav>Focus:
+<a href="?mode=focus&amp;method=baseline">A: separate image</a> ·
+<a href="?mode=focus&amp;method=nested">B: nested</a> ·
+<a href="?mode=focus&amp;method=pseudo">C: CSS image</a> ·
+<a href="?mode=focus&amp;method=grouped">D: inline group</a> ·
+<a href="?">Show all</a></nav>
+<p>Turn off page-modifying userscripts. Translate using Microsoft Edge. Both copies start in the HTML; the first name does not imply it is initially visible in comparison mode.</p>
+</header>
+<section id="section-first" data-zone="first"><h2>First example in document order</h2><p class="control" id="control-first">A green bicycle is parked beside the old library. Students are learning mathematics and reading a long English article. Translate this paragraph to confirm Edge is actually translating this section.</p><article class="case" data-case="baseline-first" data-method="baseline"><h3>A · Separate formula images (known reorder)</h3><p class="mixed" id="baseline-first" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="formula-slot" data-formula="0" data-tex="\sqrt{3x-1}+(1+x)^2"></span><span data-prose="1"> here in the middle of the first sentence, followed by a different equation </span><span class="formula-slot" data-formula="1" data-tex="\int_0^1x^2\,dx=\frac13"></span><span data-prose="2"> immediately after these words. The third formula </span><span class="formula-slot" data-formula="2" data-tex="E=mc^2"></span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="baseline-first">Awaiting MathJax</p></article>
+<article class="case" data-case="nested-first" data-method="nested"><h3>B · Formula image attached to preceding text</h3><p class="mixed" id="nested-first" lang="en"><span data-prose="0">The mathematical proof uses the expression <span class="formula-slot" data-formula="0" data-tex="\sqrt{3x-1}+(1+x)^2"></span></span><span data-prose="1"> here in the middle of the first sentence, followed by a different equation <span class="formula-slot" data-formula="1" data-tex="\int_0^1x^2\,dx=\frac13"></span></span><span data-prose="2"> immediately after these words. The third formula <span class="formula-slot" data-formula="2" data-tex="E=mc^2"></span></span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="nested-first">Awaiting MathJax</p></article>
+<article class="case" data-case="pseudo-first" data-method="pseudo"><h3>C · CSS-generated formula after preceding text</h3><p class="mixed" id="pseudo-first" lang="en"><span data-prose="0" class="css-formula" data-formula-after="0" data-tex="\sqrt{3x-1}+(1+x)^2">The mathematical proof uses the expression </span><span data-prose="1" class="css-formula" data-formula-after="1" data-tex="\int_0^1x^2\,dx=\frac13"> here in the middle of the first sentence, followed by a different equation </span><span data-prose="2" class="css-formula" data-formula-after="2" data-tex="E=mc^2"> immediately after these words. The third formula </span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="pseudo-first">Awaiting MathJax</p></article>
+<article class="case" data-case="grouped-first" data-method="grouped"><h3>D · Text and formula grouped in one inline unit</h3><p class="mixed" id="grouped-first" lang="en"><span class="chunk" data-chunk="0"><span data-prose="0">The mathematical proof uses the expression </span><span class="formula-slot" data-formula="0" data-tex="\sqrt{3x-1}+(1+x)^2"></span></span><span class="chunk" data-chunk="1"><span data-prose="1"> here in the middle of the first sentence, followed by a different equation </span><span class="formula-slot" data-formula="1" data-tex="\int_0^1x^2\,dx=\frac13"></span></span><span class="chunk" data-chunk="2"><span data-prose="2"> immediately after these words. The third formula </span><span class="formula-slot" data-formula="2" data-tex="E=mc^2"></span></span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="grouped-first">Awaiting MathJax</p></article></section>
+<div id="scroll-space"><p>Scroll to the repeated cases below</p></div>
+<section id="section-second" data-zone="second"><h2>Second example; reached after scrolling</h2><p class="control" id="control-second">A green bicycle is parked beside the old library. Students are learning mathematics and reading a long English article. Translate this paragraph to confirm Edge is actually translating this section.</p><article class="case" data-case="baseline-second" data-method="baseline"><h3>A · Separate formula images (known reorder)</h3><p class="mixed" id="baseline-second" lang="en"><span data-prose="0">The mathematical proof uses the expression </span><span class="formula-slot" data-formula="0" data-tex="\sqrt{3x-1}+(1+x)^2"></span><span data-prose="1"> here in the middle of the first sentence, followed by a different equation </span><span class="formula-slot" data-formula="1" data-tex="\int_0^1x^2\,dx=\frac13"></span><span data-prose="2"> immediately after these words. The third formula </span><span class="formula-slot" data-formula="2" data-tex="E=mc^2"></span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="baseline-second">Awaiting MathJax</p></article>
+<article class="case" data-case="nested-second" data-method="nested"><h3>B · Formula image attached to preceding text</h3><p class="mixed" id="nested-second" lang="en"><span data-prose="0">The mathematical proof uses the expression <span class="formula-slot" data-formula="0" data-tex="\sqrt{3x-1}+(1+x)^2"></span></span><span data-prose="1"> here in the middle of the first sentence, followed by a different equation <span class="formula-slot" data-formula="1" data-tex="\int_0^1x^2\,dx=\frac13"></span></span><span data-prose="2"> immediately after these words. The third formula <span class="formula-slot" data-formula="2" data-tex="E=mc^2"></span></span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="nested-second">Awaiting MathJax</p></article>
+<article class="case" data-case="pseudo-second" data-method="pseudo"><h3>C · CSS-generated formula after preceding text</h3><p class="mixed" id="pseudo-second" lang="en"><span data-prose="0" class="css-formula" data-formula-after="0" data-tex="\sqrt{3x-1}+(1+x)^2">The mathematical proof uses the expression </span><span data-prose="1" class="css-formula" data-formula-after="1" data-tex="\int_0^1x^2\,dx=\frac13"> here in the middle of the first sentence, followed by a different equation </span><span data-prose="2" class="css-formula" data-formula-after="2" data-tex="E=mc^2"> immediately after these words. The third formula </span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="pseudo-second">Awaiting MathJax</p></article>
+<article class="case" data-case="grouped-second" data-method="grouped"><h3>D · Text and formula grouped in one inline unit</h3><p class="mixed" id="grouped-second" lang="en"><span class="chunk" data-chunk="0"><span data-prose="0">The mathematical proof uses the expression </span><span class="formula-slot" data-formula="0" data-tex="\sqrt{3x-1}+(1+x)^2"></span></span><span class="chunk" data-chunk="1"><span data-prose="1"> here in the middle of the first sentence, followed by a different equation </span><span class="formula-slot" data-formula="1" data-tex="\int_0^1x^2\,dx=\frac13"></span></span><span class="chunk" data-chunk="2"><span data-prose="2"> immediately after these words. The third formula </span><span class="formula-slot" data-formula="2" data-tex="E=mc^2"></span></span><span data-prose="3"> appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese.</span></p><p class="status" translate="no" data-status="grouped-second">Awaiting MathJax</p></article></section>
+<footer lang="en" translate="no">
+<h2>Diagnostics</h2>
+<p>For each method, check whether the translated prose and the whole equations are visible and in the right order. A good DOM result is not a guarantee of correct semantics or screen layout.</p>
+<button id="check">Recheck now</button><button id="copy">Copy focused diagnostic</button><button id="copy-all">Copy complete JSON</button>
+<pre id="summary">Loading…</pre>
+<textarea id="report" readonly spellcheck="false"></textarea>
+</footer>
+</main>
+<script>
+(()=>{
+'use strict';
+const start=performance.now(),parts=["The mathematical proof uses the expression "," here in the middle of the first sentence, followed by a different equation "," immediately after these words. The third formula "," appears near the end. Every formula must stay in the correct sentence position when Microsoft Edge translates the English text to Traditional Chinese."],expressions=["\\sqrt{3x-1}+(1+x)^2","\\int_0^1x^2\\,dx=\\frac13","E=mc^2"];
+const control="A green bicycle is parked beside the old library. Students are learning mathematics and reading a long English article. Translate this paragraph to confirm Edge is actually translating this section.";
+const methods=['baseline','nested','pseudo','grouped'],copies=['first','second'];
+const $=id=>document.getElementById(id);
+const exposure={};
+let scrolled=false;
+const state={version:'2026-10-12.1',page:'anchored-math',engine:'MathJax 4 SVG',renderStatus:'loading',events:[],cases:{},sourceDOM:{},formulaSources:[]};
+const selectors='[data-prose],[data-formula]';
+function sourceOrder(p){
+ const nodes=[...p.querySelectorAll(selectors)];
+ const sequence=nodes.map(n=>n.hasAttribute('data-prose')?'T'+n.dataset.prose:'M'+n.dataset.formula).join(' ');
+ return {sequence,chunkCount:p.querySelectorAll('.chunk').length,
+  nestedImageAssociation:[0,1,2].map(i=>{
+   const slot=p.querySelector('[data-formula="'+i+'"]'),prose=p.querySelector('[data-prose="'+i+'"]');
+   return {index:i,underPrecedingProse:prose?.contains(slot)??false,
+    groupedWithProse:Boolean(slot?.closest('.chunk')&&slot.closest('.chunk')===prose?.closest('.chunk'))};
+  })};
+}
+for(const copy of copies)for(const method of methods)state.sourceDOM[method+'-'+copy]=sourceOrder($(method+'-'+copy));
+window.addEventListener('scroll',()=>{if(window.scrollY>2)scrolled=true;},{passive:true});
+const observer=new IntersectionObserver(entries=>{
+ for(const e of entries)if(e.isIntersecting){
+   const key=e.target.dataset.case;
+   if(!key||exposure[key])continue;
+   exposure[key]={timeMs:Math.round(performance.now()-start),scrollY:Math.round(scrollY),
+     topPx:Math.round(e.target.getBoundingClientRect().top),
+     viewportHeight:Math.round(visualViewport?.height??innerHeight),
+     enteredWithoutScroll:!scrolled&&scrollY<2};
+   state.events.push({event:'visible',key,...exposure[key]});
+ }
+},{threshold:0.02});
+document.querySelectorAll('.case').forEach(c=>observer.observe(c));
+function snapshot(method,copy){
+ const key=method+'-'+copy,p=$(key),textNodes=[...p.querySelectorAll('[data-prose]')];
+ const prose=textNodes.map(n=>n.textContent);
+ const originalChanged=prose.length!==4||prose.some((value,i)=>value!==parts[i]);
+ const plainTranslated=$('control-'+copy).textContent.trim()!==control;
+ const order=sourceOrder(p);
+ const pseudo=method==='pseudo';
+ const anchors=[0,1,2].map(i=>{
+   if(pseudo){
+    const host=p.querySelector('[data-formula-after="'+i+'"]');
+    const css=host?getComputedStyle(host,'::after'):null;
+    return {index:i,hostExists:Boolean(host),imageUrlPresent:Boolean(css?.backgroundImage&&css.backgroundImage!=='none'),
+      cssWidth:css?.width??null,cssHeight:css?.height??null,
+      associatedText:host?.textContent.slice(-110)??null};
+   }
+   const slot=p.querySelector('[data-formula="'+i+'"]'),image=slot?.querySelector('img');
+   return {index:i,slotExists:Boolean(slot),imgPresent:Boolean(image),
+     loaded:Boolean(image?.complete&&image.naturalWidth>0),
+     extraSlotText:slot?.textContent.slice(0,90)??null,
+     association:order.nestedImageAssociation[i],
+     cssRect:image?{width:Math.round(image.getBoundingClientRect().width),height:Math.round(image.getBoundingClientRect().height)}:null};
+ });
+ const expected=method==='pseudo'?'T0 T1 T2 T3':'T0 M0 T1 M1 T2 M2 T3';
+ const inOrder=order.sequence===expected;
+ const associationCorrect=method==='nested'?order.nestedImageAssociation.every(x=>x.underPrecedingProse):
+    method==='grouped'?order.nestedImageAssociation.every(x=>x.groupedWithProse):true;
+ const graphicsComplete=anchors.every(a=>pseudo?a.hostExists&&a.imageUrlPresent:a.imgPresent&&a.loaded&&!a.extraSlotText);
+ const verdict=!plainTranslated?'TRANSLATION_NOT_CONFIRMED':!originalChanged?'PROSE_NOT_TRANSLATED':
+   !graphicsComplete?'MATH_IMAGES_MISSING_OR_CONTAMINATED':!inOrder?'MATH_DOM_ORDER_CHANGED':
+   !associationCorrect?'MATH_ANCHOR_ASSOCIATION_BROKEN':'TEXT_TRANSLATED_FORMULAS_ANCHORED_CHECK_VISUAL';
+ const result={method,copy,firstVisible:exposure[key]||null,proseTranslated:originalChanged,
+  plainControlTranslated:plainTranslated,expectedOrder:expected,actualOrder:order.sequence,
+  mathAnchorAssociation:order.nestedImageAssociation,formulaNodes:anchors,verdict,
+  translatedSegments:prose.map((s,i)=>({index:i,text:s.slice(0,160)}))};
+ state.cases[key]=result;
+ const output=document.querySelector('[data-status="'+key+'"]');
+ if(output)output.textContent=verdict;
+}
+function inspectAll(){
+ for(const copy of copies)for(const method of methods)snapshot(method,copy);
+ state.at=new Date().toISOString();
+ state.browser={url:location.href,lang:document.documentElement.lang,userAgent:navigator.userAgent,
+  scrollY:window.scrollY,elapsedMs:Math.round(performance.now()-start)};
+ document.documentElement.dataset.anchorRenderStatus=state.renderStatus;
+ document.documentElement.dataset.anchorImageMethodsComplete=String(
+   ['nested','grouped','baseline'].every(m=>copies.every(c=>
+    state.cases[m+'-'+c]?.formulaNodes.every(x=>x.imgPresent&&x.loaded))));
+ document.documentElement.dataset.anchorPseudoReady=String(
+   copies.every(c=>state.cases['pseudo-'+c]?.formulaNodes.every(x=>x.imageUrlPresent)));
+ $('summary').textContent='MathJax: '+state.renderStatus+'\n'+copies.map(c=>
+  c+': '+methods.map(m=>m+': '+state.cases[m+'-'+c].verdict).join(' | ')).join('\n');
+ $('report').value=JSON.stringify(state,null,2);
+}
+function paintSvg(svg,color){
+ for(const el of [svg,...svg.querySelectorAll('*')]){
+  for(const a of ['fill','stroke','color'])if(el.getAttribute(a)?.trim().toLowerCase()==='currentcolor')
+   el.setAttribute(a,color);
+  const style=el.getAttribute('style');
+  if(style&&/currentColor/i.test(style))el.setAttribute('style',style.replace(/currentColor/gi,color));
+ }
+ svg.setAttribute('fill',color);svg.style.color=color;svg.setAttribute('color',color);
+}
+async function run(){
+ try{
+  await MathJax.startup.promise;
+  if(typeof MathJax.tex2svgPromise!=='function')throw Error('MathJax tex2svgPromise missing');
+  const images=[];
+  for(const [i,source] of expressions.entries()){
+   const output=await MathJax.tex2svgPromise(source,{display:false});
+   const svgs=[...output.querySelectorAll('svg')].filter(svg=>!svg.parentElement?.closest('svg'));
+   if(svgs.length!==1)throw Error('MathJax split formula '+i+' into '+svgs.length+' SVGs');
+   const svg=svgs[0];
+   svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
+   paintSvg(svg,'#f4f8ff');
+   const uri='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(svg));
+   const image=new Image();image.src=uri;await image.decode();
+   state.formulaSources.push({index:i,tex:source,svgWidth:svg.getAttribute('width'),
+     svgHeight:svg.getAttribute('height'),naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight});
+   images.push({uri,width:image.naturalWidth,height:image.naturalHeight});
+  }
+  for(const method of methods)for(const copy of copies){
+   const p=$(method+'-'+copy);
+   if(method==='pseudo'){
+    for(let i=0;i<3;i++){
+     const host=p.querySelector('[data-formula-after="'+i+'"]');
+     host.style.setProperty('--formula-image','url("'+images[i].uri+'")');
+     host.style.setProperty('--formula-width',images[i].width+'px');
+     host.style.setProperty('--formula-height',images[i].height+'px');
+    }
+   }else{
+    for(let i=0;i<3;i++){
+     const slot=p.querySelector('[data-formula="'+i+'"]');
+     const img=document.createElement('img');
+     img.src=images[i].uri;
+     img.alt='Formula '+(i+1);
+     img.decoding='sync';
+     slot.replaceChildren(img);
+    }
+   }
+  }
+  await Promise.all([...document.querySelectorAll('.formula-slot img')].map(img=>img.decode()));
+  state.renderStatus='ready';
+  state.renderedAtMs=Math.round(performance.now()-start);
+  state.events.push({event:'rendered',ms:state.renderedAtMs});
+  inspectAll();
+ }catch(e){
+  state.renderStatus='error: '+(e?.message||String(e));
+  state.events.push({event:'render-error',message:String(e)});
+  inspectAll();
+ }
+}
+let debounce=null;
+new MutationObserver(records=>{
+ if(!records.some(r=>r.target?.nodeType===1&&r.target.closest?.('section[data-zone]')||
+   r.target?.parentElement?.closest?.('section[data-zone]')))return;
+ clearTimeout(debounce);debounce=setTimeout(inspectAll,350);
+}).observe(document.body,{subtree:true,childList:true,characterData:true});
+function trimFocused(){
+ const key=document.documentElement.dataset.focus;
+ const methodsToShow=key?[key]:methods;
+ return {version:state.version,renderStatus:state.renderStatus,at:state.at,browser:state.browser,
+  original: Object.fromEntries(copies.flatMap(copy=>methodsToShow.map(m=>[m+'-'+copy,state.sourceDOM[m+'-'+copy]]))),
+  cases:Object.fromEntries(copies.flatMap(copy=>methodsToShow.map(m=>[m+'-'+copy,state.cases[m+'-'+copy]]))),
+  formulaSources:state.formulaSources,
+  events:state.events.filter(e=>!key||e.key?.startsWith(key)||e.event==='rendered')};
+}
+async function copyData(value,button){
+ const json=JSON.stringify(value,null,2);
+ try{await navigator.clipboard.writeText(json);button.textContent='Copied diagnostics';}
+ catch(error){$('report').value=json;$('report').focus();$('report').select();
+  button.textContent='Select diagnostic JSON';}
+}
+$('check').addEventListener('click',inspectAll);
+$('copy').addEventListener('click',()=>{inspectAll();copyData(trimFocused(),$('copy'));});
+$('copy-all').addEventListener('click',()=>{inspectAll();copyData(state,$('copy-all'));});
+window.__anchoredMathLab={inspect:inspectAll,getData:()=>structuredClone(state)};
+window.addEventListener('load',run);
+inspectAll();
+})();
+</script></body></html>

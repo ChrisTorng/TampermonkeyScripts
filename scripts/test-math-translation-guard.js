@@ -38,8 +38,8 @@ function addTextSupport(harness) {
     harness.context.NodeFilter = { SHOW_ELEMENT: 1, SHOW_TEXT: 4 };
 }
 
-function execute(setupDom = () => {}, url = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html') {
-    const harness = createHarness({ url });
+function execute(setupDom = () => {}, url = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html', options = {}) {
+    const harness = createHarness({ url, ...options });
     addTextSupport(harness);
     setupDom(harness);
     harness.context.globalThis = harness.context;
@@ -247,4 +247,140 @@ describe('Math Translation Guard', () => {
         assert.equal(display.getAttribute('translate'), 'no');
         assert.equal(frame.getAttribute('translate'), 'no');
     });
+});
+
+
+describe('Math Translation Guard site modes', () => {
+    const plover = 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html';
+    test('automatic mode remains implicit until user explicitly chooses another strategy', () => {
+        const h = execute((harness) => {
+            const span = harness.document.createElement('span');
+            span.className = 'MathJax';
+            harness.appendToBody(span);
+        });
+        assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'), null);
+        const button = h.document.querySelector('[data-floating-tool="math"]');
+        assert.ok(button, 'math action should be registered after math is found');
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+    });
+
+    test('output-only mode does not rewrite Plover raw delimiter text', () => {
+        let paragraph;
+        execute((h) => {
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('before !!\\omega!! after'));
+            h.appendToBody(paragraph);
+        }, plover, {localStorageSeed:{'tm-math-strategy-v1':'output'}});
+        assert.equal(paragraph.children.length, 1);
+        assert.equal(paragraph.children[0].nodeValue, 'before !!\\omega!! after');
+    });
+
+    test('off mode does not rewrite raw TeX or mark MathJax output', () => {
+        let paragraph;
+        let rendered;
+        execute((h) => {
+            paragraph = h.document.createElement('p');
+            paragraph.appendChild(h.document.createTextNode('before !!\\omega!! after'));
+            rendered = h.document.createElement('span');
+            rendered.className = 'MathJax';
+            h.appendToBody(paragraph);
+            h.appendToBody(rendered);
+        }, plover, {localStorageSeed:{'tm-math-strategy-v1':'off'}});
+        assert.equal(paragraph.children.length, 1);
+        assert.equal(rendered.getAttribute('translate'), null);
+    });
+
+    test('manual selection persists only for current origin and triggers one reload', () => {
+        const h = execute((harness) => {
+            const math = harness.document.createElement('mjx-container');
+            harness.appendToBody(math);
+        }, 'https://example.org/article');
+        const mathAction = h.document.querySelector('[data-floating-tool="math"]');
+        assert.ok(mathAction);
+        h.window.scrollX = 12;
+        h.window.scrollY = 520;
+        mathAction.click();
+        const item = h.document.querySelector('[data-math-mode="output"]');
+        assert.ok(item);
+        item.click();
+        assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'), 'output');
+        assert.equal(h.location.reloadCallCount, 1);
+        const offset = JSON.parse(h.context.sessionStorage.getItem('tm-math-scroll-v1'));
+        assert.equal(offset.href, 'https://example.org/article');
+        assert.equal(offset.x, 12);
+        assert.equal(offset.y, 520);
+    });
+
+    test('explicit backup selection is kept per origin, not global', () => {
+        const h = execute((harness) => {
+            const math = harness.document.createElement('span');
+            math.className = 'katex';
+            harness.appendToBody(math);
+        }, 'https://foo.invalid/page', {localStorageSeed:{'tm-math-strategy-v1':'backup'}});
+        assert.equal(h.document.querySelector('[data-floating-tool="math"]').title,
+            'Math protection: backup');
+        assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'),'backup');
+    });
+});
+
+
+describe('Math Guard scroll restoration', () => {
+    const key = 'tm-math-scroll-v1';
+    const url = 'https://site.example/a?chapter=5';
+    test('consumes a fresh one-time scroll marker without initiating another reload', () => {
+        const positions = [];
+        const marker = JSON.stringify({href:url,x:37,y:912,at:Date.now()});
+        const h = execute((harness) => {
+            harness.window.scrollTo = (x,y) => positions.push([x,y]);
+        },url,{sessionStorageSeed:{[key]:marker}});
+        assert.equal(h.context.sessionStorage.getItem(key),null);
+        assert.deepEqual(positions,[[37,912]]);
+        assert.equal(h.location.reloadCallCount,0);
+    });
+    test('ignores scroll markers for a different URL or too old to apply', () => {
+        const positions=[];
+        const marker=JSON.stringify({href:'https://other.example/page',x:0,y:999,at:Date.now()-40000});
+        const h=execute((harness)=>{
+            harness.window.scrollTo=(x,y)=>positions.push([x,y]);
+        },url,{sessionStorageSeed:{[key]:marker}});
+        assert.deepEqual(positions,[]);
+        assert.equal(h.context.sessionStorage.getItem(key),null);
+    });
+});
+
+
+test('shared floating-menu disabled-domain setting also disables all math transforms', () => {
+    let rendered, paragraph;
+    const h = execute((harness) => {
+        rendered = harness.document.createElement('mjx-container');
+        paragraph = harness.document.createElement('p');
+        paragraph.appendChild(harness.document.createTextNode('Nim !!\\omega!! example'));
+        harness.appendToBody(rendered);
+        harness.appendToBody(paragraph);
+    }, 'https://blog.plover.com/a', {
+        localStorageSeed: {'tm-floating-menu-v1:blog.plover.com':JSON.stringify({disabledDomain:true})}
+    });
+    assert.equal(h.document.querySelector('[data-floating-tool="math"]'),null);
+    assert.equal(rendered.getAttribute('translate'),null);
+    assert.equal(paragraph.children.length,1);
+    assert.equal(paragraph.children[0].nodeValue,'Nim !!\\omega!! example');
+});
+
+
+test('stored strategy remains accessible when translation already removed all formula nodes', () => {
+    const h=execute(()=>{},'https://math.example.org/formula',{
+        localStorageSeed:{'tm-math-strategy-v1':'off'}
+    });
+    assert.ok(h.document.querySelector('[data-floating-tool="math"]'),
+        'the user must be able to escape Off even without detectable math');
+});
+
+test('math library script is enough to show strategy control before rendering', () => {
+    const h=execute((harness)=>{
+        const script=harness.document.createElement('script');
+        script.setAttribute('src','https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js');
+        harness.appendToBody(script);
+    },'https://math.example.org/lesson');
+    assert.ok(h.document.querySelector('[data-floating-tool="math"]'));
+    assert.equal(h.window.localStorage.getItem('tm-math-strategy-v1'),null);
 });

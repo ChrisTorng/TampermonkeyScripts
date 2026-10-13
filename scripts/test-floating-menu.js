@@ -12,6 +12,7 @@ const files = {
     mobile: 'ForceMobileView.user.js',
     dark: 'ForceDarkMode.user.js',
     translate: 'TranslatePreformattedText.user.js',
+    math: 'MathTranslationGuard.user.js',
 };
 const source = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, fs.readFileSync(path.join(root, 'src', file), 'utf8')]));
 const key = 'tm-floating-menu-v1:example.com';
@@ -23,6 +24,10 @@ function run(order, options = {}) {
         localStorageSeed: options.localStorageSeed || {},
         gmInfo: { script: { matches: ['*://*/*'] } },
     });
+    if (options.math) {
+        const math = harness.document.createElement('mjx-container');
+        harness.appendToBody(math);
+    }
     if (options.pre) {
         const pre = harness.document.createElement('pre');
         pre.textContent = 'example';
@@ -43,6 +48,62 @@ function menuTools(harness) {
 }
 
 describe('shared floating menu', () => {
+
+    test('Math Guard alone contributes one action and needs no other installed script', () => {
+        const h = run(['math'], {math:true});
+        assert.deepEqual(menuTools(h).map(b=>b.getAttribute('data-floating-tool')), ['math']);
+        assert.equal(menuTools(h)[0].getAttribute('data-floating-order'), '50');
+        assert.equal(menuTools(h)[0].style.getPropertyValue('order'), '50');
+        assert.equal(menuTools(h)[0].style.getPropertyPriority('order'), 'important');
+    });
+
+    test('partial installations and startup orders use action-local priorities', () => {
+        for (const permutation of [
+            ['math','dark','archive','translate','mobile'],
+            ['translate','archive','math','mobile','dark'],
+            ['mobile','dark','math'],
+            ['math','translate'],
+            ['archive','math'],
+        ]) {
+            const h=run(permutation,{math:true,pre:true});
+            const expected=['archive','mobile','dark','translate','math'].filter(k=>permutation.includes(k));
+            assert.deepEqual(menuTools(h).map(b=>b.getAttribute('data-floating-tool')),expected);
+            assert.deepEqual(menuTools(h).map(b=>Number(b.getAttribute('data-floating-order'))),
+                expected.map(k=>({archive:10,mobile:20,dark:30,translate:40,math:50})[k]));
+        }
+    });
+
+    test('same-priority buttons are sorted by source userscript name, not registration time', () => {
+        const shared=fs.readFileSync(path.join(root,'src','FloatingMenu.js'),'utf8');
+        for(const keys of [['beta','alpha'],['alpha','beta']]){
+            const h=run(['dark']);
+            for(const action of keys){
+                const scriptName=action==='alpha'?'A.user.js':'Z.user.js';
+                const code="(function(){'use strict';\n"+shared+"\n"+
+                    "const b=document.createElement('button');b.textContent='"+action+"';"+
+                    "registerFloatingButton('"+action+"',b,true,25,'"+scriptName+"');})();";
+                vm.runInNewContext(code,h.context);
+            }
+            assert.deepEqual(menuTools(h).map(b=>b.getAttribute('data-floating-tool')),
+                ['alpha','beta','dark']);
+        }
+    });
+
+    test('CSS flex order survives a legacy script rearranging the DOM', () => {
+        const h=run(['math','dark','archive'],{math:true});
+        const menu=h.document.getElementById('tm-shared-floating-menu');
+        for(const item of [...menuTools(h)].reverse()){
+            menu.removeChild(item);menu.appendChild(item);
+        }
+        const math=h.document.querySelector('[data-floating-tool="math"]');
+        const archive=h.document.querySelector('[data-floating-tool="archive"]');
+        assert.equal(math.style.getPropertyValue('order'),'50');
+        assert.equal(archive.style.getPropertyValue('order'),'10');
+        assert.equal(math.style.getPropertyPriority('order'),'important');
+        assert.ok(Number(math.style.getPropertyValue('order')) >
+            Number(archive.style.getPropertyValue('order')));
+    });
+
     test('one collapsed menu owns the four controls in a stable order', () => {
         const harness = run(['translate', 'dark', 'mobile', 'archive'], { pre: true });
         const menu = harness.document.getElementById('tm-shared-floating-menu');
