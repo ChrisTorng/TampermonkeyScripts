@@ -44,7 +44,7 @@ Add an article button for Hacker News comments, including pages reached through 
 Redirect supported pages to more readable destinations while preserving back navigation.
 
 Supported sites:
-- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → the official [X embedded post viewer](https://platform.twitter.com/) for lightweight, account-free viewing
+- [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Shitter](https://shitter.thepixora.com/) for lightweight, account-free viewing
 - [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
   - On Edge mobile, add [https://rdx.overdevs.com](https://rdx.overdevs.com) as a Tracking Prevention exception so Reddit content loads correctly.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
@@ -187,3 +187,4 @@ Feel free to open an issue or submit a pull request if you encounter any bugs or
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+

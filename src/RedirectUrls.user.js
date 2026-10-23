@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         RedirectUrls
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-01_1.5.0
+// @version      2026-10-24_1.5.1
 // @description  Redirect supported pages to more readable destinations while preserving back navigation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=platform.twitter.com
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=shitter.thepixora.com
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
 // @match        https://www.reddit.com/*
@@ -95,17 +95,17 @@
         {
             name: 'x.com status',
             match: /https?:\/\/x\.com\/([^/]+)\/status\/(\d+)/,
-            buildTarget: (match) => `https://platform.twitter.com/embed/Tweet.html?id=${match[2]}`,
+            buildTarget: (match) => `https://shitter.thepixora.com/${match[1]}/status/${match[2]}`,
             sessionKey: 'redirectx-last-redirect-x',
-            skipReferrers: ['platform.twitter.com', 'twitter.com', 'x.com'],
+            skipReferrers: ['shitter.thepixora.com', 'twitter.com', 'x.com'],
             getRedirectId: (match) => match[2]
         },
         {
             name: 'twitter.com status',
             match: /https?:\/\/twitter\.com\/([^/]+)\/status\/(\d+)/,
-            buildTarget: (match) => `https://platform.twitter.com/embed/Tweet.html?id=${match[2]}`,
+            buildTarget: (match) => `https://shitter.thepixora.com/${match[1]}/status/${match[2]}`,
             sessionKey: 'redirectx-last-redirect-twitter',
-            skipReferrers: ['platform.twitter.com', 'twitter.com', 'x.com'],
+            skipReferrers: ['shitter.thepixora.com', 'twitter.com', 'x.com'],
             getRedirectId: (match) => match[2]
         },
         {
@@ -167,3 +167,4 @@
         return;
     }
 })();
+
