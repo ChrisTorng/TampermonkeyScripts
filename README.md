@@ -45,8 +45,7 @@ Redirect supported pages to more readable destinations while preserving back nav
 
 Supported sites:
 - [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Shitter](https://shitter.thepixora.com/) for lightweight, account-free viewing
-- [Reddit](https://www.reddit.com/) threads (www/old) → [rdx.overdevs.com](https://rdx.overdevs.com/) comment reader
-  - On Edge mobile, add [https://rdx.overdevs.com](https://rdx.overdevs.com) as a Tracking Prevention exception so Reddit content loads correctly.
+- [Reddit](https://www.reddit.com/) pages stay on the original www site for logged-out viewing; old.reddit.com links redirect to www.reddit.com.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
 - [arXiv](https://arxiv.org/) abs/pdf pages → arXiv HTML view
 

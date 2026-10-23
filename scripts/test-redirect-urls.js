@@ -197,6 +197,22 @@ function assertSkipByReferrerCase(testCase) {
     );
 }
 
+// Reddit's current www UI is readable without an account. In particular,
+// neither threads nor subreddit listings should be sent to broken frontends.
+const noRedirectCases = [
+    {
+        name: 'www.reddit.com thread',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/'
+    },
+    {
+        name: 'www.reddit.com subreddit listing (URL-only)',
+        // The redirect depends only on the URL; reuse the captured Reddit HTML.
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/r/robotics/'
+    }
+];
+
 const redirectCases = [
     {
         name: 'x.com status',
@@ -217,22 +233,12 @@ const redirectCases = [
         skipReferrer: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812'
     },
     {
-        name: 'reddit.com thread',
-        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
-        sourceUrl: 'https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/',
-        expectedTargetUrl: 'https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/',
-        sessionKey: 'redirectx-last-redirect-old-reddit',
-        redirectId: 'https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/',
-        skipReferrer: 'https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/'
-    },
-    {
         name: 'old.reddit.com thread',
         fixture: 'old.reddit.com_r_linux_comments_1puojsr_the_device_that_controls_my_insulin_pump_uses_the.html',
         sourceUrl: 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
-        expectedTargetUrl: 'https://rdx.overdevs.com/comments.html?url=https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
+        expectedTargetUrl: 'https://www.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
         sessionKey: 'redirectx-last-redirect-old-reddit',
-        redirectId: 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
-        skipReferrer: 'https://rdx.overdevs.com/comments.html?url=https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/'
+        redirectId: 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/'
     },
     {
         name: 'GitHub readme tab',
@@ -261,6 +267,28 @@ const redirectCases = [
 ];
 
 describe('RedirectUrls captured pages', () => {
+    for (const testCase of noRedirectCases) {
+        test(`${testCase.name} stays on Reddit without redirect`, () => {
+            const result = executeUserScript({
+                sourceUrl: testCase.sourceUrl,
+                fixtureHtml: loadFixture(testCase.fixture)
+            });
+            assert.strictEqual(result.assignedUrl, null);
+            assert.strictEqual(result.historyCalls.length, 0);
+            assert.deepStrictEqual(result.sessionStorageSnapshot, {});
+        });
+    }
+
+    test('old.reddit.com subreddit redirects to www while retaining URL parts', () => {
+        const sourceUrl = 'https://old.reddit.com/r/linux/?sort=new#overview';
+        const result = executeUserScript({
+            sourceUrl,
+            fixtureHtml: loadFixture('old.reddit.com_r_linux_comments_1puojsr_the_device_that_controls_my_insulin_pump_uses_the.html')
+        });
+        assert.strictEqual(result.assignedUrl, 'https://www.reddit.com/r/linux/?sort=new#overview');
+        assert.strictEqual(result.historyCalls.length, 1);
+    });
+
     for (const testCase of redirectCases.filter((item) => item.name.endsWith('status'))) {
         test(`${testCase.name} skips redirect after Back using sessionStorage`, () => {
             assertSkipBySessionCase(testCase);

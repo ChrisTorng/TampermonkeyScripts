@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RedirectUrls
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-24_1.5.1
+// @version      2026-10-24_1.5.2
 // @description  Redirect supported pages to more readable destinations while preserving back navigation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -10,7 +10,6 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=shitter.thepixora.com
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
-// @match        https://www.reddit.com/*
 // @match        https://old.reddit.com/*
 // @match        https://github.com/*
 // @match        https://arxiv.org/abs/*
@@ -109,11 +108,14 @@
             getRedirectId: (match) => match[2]
         },
         {
-            name: 'reddit.com',
-            match: /https?:\/\/(?:www|old)\.reddit\.com\/.+/,
-            buildTarget: (_match, url) => `https://rdx.overdevs.com/comments.html?url=${url}`,
+            name: 'old.reddit.com',
+            match: /^https?:\/\/old\.reddit\.com(?:\/|[?#]|$)/,
+            buildTarget: (_match, url) => {
+                const target = new URL(url);
+                target.hostname = 'www.reddit.com';
+                return target.toString();
+            },
             sessionKey: 'redirectx-last-redirect-old-reddit',
-            skipReferrers: ['rdx.overdevs.com'],
             getRedirectId: (_match, url) => url
         },
         {
