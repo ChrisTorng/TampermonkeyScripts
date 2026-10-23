@@ -18,6 +18,8 @@ jobs:
         run: npm ci
       - name: Verify math translation strategy lab in headless Chrome
         run: node --test scripts/test-math-translation-strategies.js
+      - name: Test Reddit redirect behavior
+        run: node --test scripts/test-redirect-urls.js
       - name: Generate index.html and TestCases.html
         run: npm run generate:index
       - name: Verify HTML outputs were produced
