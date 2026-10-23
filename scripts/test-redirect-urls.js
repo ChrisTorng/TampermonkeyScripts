@@ -197,6 +197,10 @@ function assertSkipByReferrerCase(testCase) {
     );
 }
 
+const redditOldThread = 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/';
+const redditNewThread = 'https://www.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/';
+const redditOldLogin = `https://www.reddit.com/login/?reason=lor2&dest=${encodeURIComponent(redditOldThread)}`;
+
 // Reddit's current www UI is readable without an account. In particular,
 // neither threads nor subreddit listings should be sent to broken frontends.
 const noRedirectCases = [
@@ -210,6 +214,31 @@ const noRedirectCases = [
         // The redirect depends only on the URL; reuse the captured Reddit HTML.
         fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
         sourceUrl: 'https://www.reddit.com/r/robotics/'
+    },
+    {
+        name: 'normal Reddit login remains available (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: `https://www.reddit.com/login/?dest=${encodeURIComponent(redditOldThread)}`
+    },
+    {
+        name: 'other Reddit login reasons remain unchanged (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: `https://www.reddit.com/login/?reason=other&dest=${encodeURIComponent(redditOldThread)}`
+    },
+    {
+        name: 'external login destination is not followed (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fexample.com%2F'
+    },
+    {
+        name: 'lookalike old-Reddit hostname is not followed (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fold.reddit.com.example.com%2F'
+    },
+    {
+        name: 'www-Reddit login destination is not rewritten (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: `https://www.reddit.com/login/?reason=lor2&dest=${encodeURIComponent(redditNewThread)}`
     }
 ];
 
@@ -231,6 +260,15 @@ const redirectCases = [
         sessionKey: 'redirectx-last-redirect-twitter',
         redirectId: '1860756706357022812',
         skipReferrer: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812'
+    },
+    {
+        name: 'Reddit old-site login recovery (URL-only)',
+        // Reddit's login page is auth-only; only the URL decision is tested.
+        fixture: 'old.reddit.com_r_linux_comments_1puojsr_the_device_that_controls_my_insulin_pump_uses_the.html',
+        sourceUrl: redditOldLogin,
+        expectedTargetUrl: redditNewThread,
+        sessionKey: 'redirectx-last-redirect-reddit-login',
+        redirectId: redditOldLogin
     },
     {
         name: 'old.reddit.com thread',
@@ -267,6 +305,29 @@ const redirectCases = [
 ];
 
 describe('RedirectUrls captured pages', () => {
+    test('Tampermonkey activates the script for Reddit login redirects', () => {
+        assert.match(scriptContents, /^\/\/ @match\s+https:\/\/www\.reddit\.com\/login\*$/m);
+    });
+
+    test('Reddit login recovery preserves destination path, query, and fragment', () => {
+        const destination = 'https://old.reddit.com/r/linux/comments/1puojsr/?sort=new#comments';
+        const sourceUrl = `https://www.reddit.com/login?reason=lor2&dest=${encodeURIComponent(destination)}`;
+        const result = executeUserScript({ sourceUrl, fixtureHtml: '<html></html>' });
+        assert.strictEqual(result.assignedUrl, 'https://www.reddit.com/r/linux/comments/1puojsr/?sort=new#comments');
+        assert.strictEqual(result.historyCalls.length, 1);
+    });
+
+    test('Reddit login recovery does not follow login destinations with credentials or a port', () => {
+        for (const destination of [
+            'https://attacker@old.reddit.com/r/linux/',
+            'https://old.reddit.com:8080/r/linux/'
+        ]) {
+            const sourceUrl = `https://www.reddit.com/login/?reason=lor2&dest=${encodeURIComponent(destination)}`;
+            const result = executeUserScript({ sourceUrl, fixtureHtml: '<html></html>' });
+            assert.strictEqual(result.assignedUrl, null);
+        }
+    });
+
     for (const testCase of noRedirectCases) {
         test(`${testCase.name} stays on Reddit without redirect`, () => {
             const result = executeUserScript({

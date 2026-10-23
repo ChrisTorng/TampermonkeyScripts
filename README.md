@@ -45,7 +45,7 @@ Redirect supported pages to more readable destinations while preserving back nav
 
 Supported sites:
 - [X](https://x.com/) / [Twitter](https://twitter.com/) status pages → [Shitter](https://shitter.thepixora.com/) for lightweight, account-free viewing
-- [Reddit](https://www.reddit.com/) pages stay on the original www site for logged-out viewing; old.reddit.com links redirect to www.reddit.com.
+- [Reddit](https://www.reddit.com/) stays on www.reddit.com for account-free browsing; old.reddit.com links and old-site login (`reason=lor2`) redirects recover the equivalent www URL without third-party frontends.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
 - [arXiv](https://arxiv.org/) abs/pdf pages → arXiv HTML view
 

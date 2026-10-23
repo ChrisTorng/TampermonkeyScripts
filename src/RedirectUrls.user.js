@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RedirectUrls
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-24_1.5.2
+// @version      2026-10-24_1.5.3
 // @description  Redirect supported pages to more readable destinations while preserving back navigation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -11,6 +11,7 @@
 // @match        https://x.com/*/status/*
 // @match        https://twitter.com/*/status/*
 // @match        https://old.reddit.com/*
+// @match        https://www.reddit.com/login*
 // @match        https://github.com/*
 // @match        https://arxiv.org/abs/*
 // @match        https://arxiv.org/pdf/*
@@ -80,6 +81,35 @@
         return `https://arxiv.org/html/${identifier}`;
     }
 
+    function getOldRedditLoginTarget(urlString) {
+        const loginUrl = new URL(urlString);
+        if (loginUrl.hostname !== 'www.reddit.com' ||
+            !/^\/login\/?$/.test(loginUrl.pathname) ||
+            loginUrl.searchParams.get('reason') !== 'lor2') {
+            return null;
+        }
+
+        const destination = loginUrl.searchParams.get('dest');
+        if (!destination) {
+            return null;
+        }
+
+        try {
+            const target = new URL(destination);
+            // Only recover Reddit's old-site login redirect, never general login flows.
+            if (!['http:', 'https:'].includes(target.protocol) ||
+                target.hostname !== 'old.reddit.com' ||
+                target.username || target.password || target.port) {
+                return null;
+            }
+            target.protocol = 'https:';
+            target.hostname = 'www.reddit.com';
+            return target.href;
+        } catch {
+            return null;
+        }
+    }
+
     function getMatch(rule, urlString) {
         if (rule.match instanceof RegExp) {
             return urlString.match(rule.match);
@@ -106,6 +136,13 @@
             sessionKey: 'redirectx-last-redirect-twitter',
             skipReferrers: ['shitter.thepixora.com', 'twitter.com', 'x.com'],
             getRedirectId: (match) => match[2]
+        },
+        {
+            name: 'reddit old-site login recovery',
+            match: getOldRedditLoginTarget,
+            buildTarget: (target) => target,
+            sessionKey: 'redirectx-last-redirect-reddit-login',
+            getRedirectId: (_match, url) => url
         },
         {
             name: 'old.reddit.com',
