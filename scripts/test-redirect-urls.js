@@ -197,42 +197,86 @@ function assertSkipByReferrerCase(testCase) {
     );
 }
 
+const redditOldThread = 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/';
+const redditNewThread = 'https://www.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/';
+const redditOldLogin = `https://www.reddit.com/login/?reason=lor2&dest=${encodeURIComponent(redditOldThread)}`;
+
+// Reddit's current www UI is readable without an account. In particular,
+// neither threads nor subreddit listings should be sent to broken frontends.
+const noRedirectCases = [
+    {
+        name: 'www.reddit.com thread',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/'
+    },
+    {
+        name: 'www.reddit.com subreddit listing (URL-only)',
+        // The redirect depends only on the URL; reuse the captured Reddit HTML.
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/r/robotics/'
+    },
+    {
+        name: 'normal Reddit login remains available (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: `https://www.reddit.com/login/?dest=${encodeURIComponent(redditOldThread)}`
+    },
+    {
+        name: 'other Reddit login reasons remain unchanged (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: `https://www.reddit.com/login/?reason=other&dest=${encodeURIComponent(redditOldThread)}`
+    },
+    {
+        name: 'external login destination is not followed (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fexample.com%2F'
+    },
+    {
+        name: 'lookalike old-Reddit hostname is not followed (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: 'https://www.reddit.com/login/?reason=lor2&dest=https%3A%2F%2Fold.reddit.com.example.com%2F'
+    },
+    {
+        name: 'www-Reddit login destination is not rewritten (URL-only)',
+        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
+        sourceUrl: `https://www.reddit.com/login/?reason=lor2&dest=${encodeURIComponent(redditNewThread)}`
+    }
+];
+
 const redirectCases = [
     {
         name: 'x.com status',
         fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
         sourceUrl: 'https://x.com/cocktailpeanut/status/1860756706357022812',
-        expectedTargetUrl: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812',
+        expectedTargetUrl: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812',
         sessionKey: 'redirectx-last-redirect-x',
         redirectId: '1860756706357022812',
-        skipReferrer: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812'
+        skipReferrer: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812'
     },
     {
         name: 'twitter.com status',
         fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
         sourceUrl: 'https://twitter.com/cocktailpeanut/status/1860756706357022812',
-        expectedTargetUrl: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812',
+        expectedTargetUrl: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812',
         sessionKey: 'redirectx-last-redirect-twitter',
         redirectId: '1860756706357022812',
-        skipReferrer: 'https://platform.twitter.com/embed/Tweet.html?id=1860756706357022812'
+        skipReferrer: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812'
     },
     {
-        name: 'reddit.com thread',
-        fixture: 'www.reddit.com_r_robotics_comments_1ps2aw1_in_china_robots_are_now_handling_the_solar_panels.html',
-        sourceUrl: 'https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/',
-        expectedTargetUrl: 'https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/',
-        sessionKey: 'redirectx-last-redirect-old-reddit',
-        redirectId: 'https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/',
-        skipReferrer: 'https://rdx.overdevs.com/comments.html?url=https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/'
+        name: 'Reddit old-site login recovery (URL-only)',
+        // Reddit's login page is auth-only; only the URL decision is tested.
+        fixture: 'old.reddit.com_r_linux_comments_1puojsr_the_device_that_controls_my_insulin_pump_uses_the.html',
+        sourceUrl: redditOldLogin,
+        expectedTargetUrl: redditNewThread,
+        sessionKey: 'redirectx-last-redirect-reddit-login',
+        redirectId: redditOldLogin
     },
     {
         name: 'old.reddit.com thread',
         fixture: 'old.reddit.com_r_linux_comments_1puojsr_the_device_that_controls_my_insulin_pump_uses_the.html',
         sourceUrl: 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
-        expectedTargetUrl: 'https://rdx.overdevs.com/comments.html?url=https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
+        expectedTargetUrl: 'https://www.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
         sessionKey: 'redirectx-last-redirect-old-reddit',
-        redirectId: 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/',
-        skipReferrer: 'https://rdx.overdevs.com/comments.html?url=https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/'
+        redirectId: 'https://old.reddit.com/r/linux/comments/1puojsr/the_device_that_controls_my_insulin_pump_uses_the/'
     },
     {
         name: 'GitHub readme tab',
@@ -261,6 +305,64 @@ const redirectCases = [
 ];
 
 describe('RedirectUrls captured pages', () => {
+    test('Tampermonkey activates the script for Reddit login redirects', () => {
+        assert.match(scriptContents, /^\/\/ @match\s+https:\/\/www\.reddit\.com\/login\*$/m);
+    });
+
+    test('Reddit login recovery preserves destination path, query, and fragment', () => {
+        const destination = 'https://old.reddit.com/r/linux/comments/1puojsr/?sort=new#comments';
+        const sourceUrl = `https://www.reddit.com/login?reason=lor2&dest=${encodeURIComponent(destination)}`;
+        const result = executeUserScript({ sourceUrl, fixtureHtml: '<html></html>' });
+        assert.strictEqual(result.assignedUrl, 'https://www.reddit.com/r/linux/comments/1puojsr/?sort=new#comments');
+        assert.strictEqual(result.historyCalls.length, 1);
+    });
+
+    test('Reddit login recovery does not follow login destinations with credentials or a port', () => {
+        for (const destination of [
+            'https://attacker@old.reddit.com/r/linux/',
+            'https://old.reddit.com:8080/r/linux/'
+        ]) {
+            const sourceUrl = `https://www.reddit.com/login/?reason=lor2&dest=${encodeURIComponent(destination)}`;
+            const result = executeUserScript({ sourceUrl, fixtureHtml: '<html></html>' });
+            assert.strictEqual(result.assignedUrl, null);
+        }
+    });
+
+    for (const testCase of noRedirectCases) {
+        test(`${testCase.name} stays on Reddit without redirect`, () => {
+            const result = executeUserScript({
+                sourceUrl: testCase.sourceUrl,
+                fixtureHtml: loadFixture(testCase.fixture)
+            });
+            assert.strictEqual(result.assignedUrl, null);
+            assert.strictEqual(result.historyCalls.length, 0);
+            assert.deepStrictEqual(result.sessionStorageSnapshot, {});
+        });
+    }
+
+    test('old.reddit.com subreddit redirects to www while retaining URL parts', () => {
+        const sourceUrl = 'https://old.reddit.com/r/linux/?sort=new#overview';
+        const result = executeUserScript({
+            sourceUrl,
+            fixtureHtml: loadFixture('old.reddit.com_r_linux_comments_1puojsr_the_device_that_controls_my_insulin_pump_uses_the.html')
+        });
+        assert.strictEqual(result.assignedUrl, 'https://www.reddit.com/r/linux/?sort=new#overview');
+        assert.strictEqual(result.historyCalls.length, 1);
+    });
+
+    for (const testCase of redirectCases.filter((item) => item.name.endsWith('status'))) {
+        test(`${testCase.name} skips redirect after Back using sessionStorage`, () => {
+            assertSkipBySessionCase(testCase);
+        });
+
+        test(`${testCase.name} opens the canonical Shitter post from a shared photo link`, () => {
+            assertRedirectCase({
+                ...testCase,
+                sourceUrl: `${testCase.sourceUrl}/photo/1?s=20#media`
+            });
+        });
+    }
+
     for (const testCase of redirectCases) {
         test(`${testCase.name} redirects to the expected target`, () => {
             assertRedirectCase(testCase);
@@ -291,3 +393,4 @@ describe('RedirectUrls captured pages', () => {
         });
     }
 });
+
