@@ -24,11 +24,11 @@ Verification:
 3. Drag the button with a mouse or finger. Releasing it must not translate the block. Click once to convert the block and again to restore it.
 4. Scroll the page and resize the window. The button stays within the visible part of its block. Reload to restore its default position.
 
-### Fullscreen Game View — 2026-10-26_1.0.3
+### Fullscreen Game View — 2026-10-26_1.0.4
 
 **[Install / update FullscreenGameView.user.js](src/FullscreenGameView.user.js)**
 
-**UI changes:** The fullscreen and exit icons use a dim gray foreground and subdued border. The button can be dragged within its visible game area without activating fullscreen; its position resets on reload. Ancestor scrollers also limit its visible position.
+**UI changes:** The dim gray fullscreen entry button can be dragged within its visible game area without activating fullscreen; its position resets on reload. The button disappears in native fullscreen and the expanded fallback: there is no close button. Escape exits fullscreen; Escape or browser Back restores the fallback view. Ancestor scrollers also limit the entry button's visible position.
 
 Test pages:
 
@@ -39,9 +39,9 @@ Verification:
 
 1. On the local page, find **Fullscreen**. The canvas has a dim gray `⛶` button near its upper-right corner.
 2. Drag the button with a mouse or finger. Releasing it must not enter fullscreen.
-3. Click it to enter fullscreen, then click the gray `×` to exit. If native fullscreen is unavailable, the expanded fallback should still open and close.
+3. Click it to enter fullscreen. Verify that neither `⛶` nor a close button covers the fullscreen content. Press **Esc** to exit and confirm the entry button returns at its previous location. If native fullscreen is unavailable, the expanded fallback must likewise hide its entry button and restore the page with **Esc** or browser **Back**.
 4. Reload the page: the button returns to its default location.
 
 ## Verification notes
 
-Automated coverage includes nested scrollport clipping, scrollbar clearance, translation conversion, dragging without activation or persistent storage, and source synchronization. A headless Chromium test checks real layout and hit testing at multiple horizontal scroll positions, using an explicit timer substitute for animation frames and explicit scroll-event delivery. Physical-device gestures still require manual verification.
+Automated coverage includes nested scrollport clipping, scrollbar clearance, translation conversion, dragging without activation or persistent storage, and source synchronization. A headless Chromium test checks real layout and hit testing at multiple horizontal scroll positions, plus hidden expanded-state controls and Escape/Back restoration; it explicitly substitutes frame scheduling, scroll-event delivery, and a rejected fullscreen request for fallback coverage. Native fullscreen events are mocked in DOM tests. Physical-device gestures still require manual verification.

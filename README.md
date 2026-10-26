@@ -120,7 +120,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Fit embedded games within mobile screens with a dim, draggable fullscreen toggle.
+Fit embedded games within mobile screens with a dim, draggable fullscreen button.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 

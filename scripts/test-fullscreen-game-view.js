@@ -59,13 +59,45 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         await Promise.resolve();
         assert(game.classList.contains('tm-fullscreen-game-view-fallback'));
         assert(document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
-        assert.equal(button.getAttribute('aria-label'), 'Exit fullscreen game view');
+        assert.equal(button.textContent, '⛶');
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        assert.equal(button.disabled, true);
 
-        button.click();
+        document.dispatchEvent({ type: 'keydown', key: 'Escape' });
         await Promise.resolve();
         assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
         assert(!document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
         assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
+        assert.equal(button.disabled, false);
+    });
+
+    test('browser Back exits the expanded fallback without a close button', () => {
+        const harness = executeOnArcTask();
+        const button = harness.document.getElementById('tm-fullscreen-game-view-button');
+        button.click();
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        harness.dispatchWindowEvent('popstate');
+        assert(!harness.game.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+        assert.equal(button.disabled, false);
+    });
+
+    test('native fullscreen changes hide and restore the entry control', async () => {
+        const { document, game } = executeOnArcTask();
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        game.requestFullscreen = async () => {
+            document.fullscreenElement = game;
+            document.dispatchEvent({ type: 'fullscreenchange' });
+        };
+        button.click();
+        await Promise.resolve();
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        assert.equal(button.disabled, true);
+        document.fullscreenElement = null; // The browser handles Escape for native fullscreen.
+        document.dispatchEvent({ type: 'fullscreenchange' });
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+        assert.equal(button.disabled, false);
+        assert.equal(button.textContent, '⛶');
     });
 
     test('uses the largest generic game surface outside ARC Prize', () => {

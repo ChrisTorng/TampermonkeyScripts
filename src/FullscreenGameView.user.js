@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-26_1.0.3
-// @description  Fit embedded games within mobile screens with a dim, draggable fullscreen toggle.
+// @version      2026-10-26_1.0.4
+// @description  Fit embedded games within mobile screens with a dim, draggable fullscreen button.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -190,7 +190,8 @@ html.tm-fullscreen-game-view-active body {
     text-decoration: none !important;
 }
 
-#${BUTTON_ID}[hidden] {
+#${BUTTON_ID}[hidden],
+#${BUTTON_ID}[aria-pressed="true"] {
     display: none !important;
 }
 
@@ -284,18 +285,16 @@ body:has(#task-detail-root) {
 
     function updateButton(button, target) {
         const active = isFullscreen(target);
-        button.textContent = active ? '×' : '⛶';
-        button.setAttribute('aria-label', active ? 'Exit fullscreen game view' : 'Enter fullscreen game view');
-        button.title = active ? 'Exit fullscreen' : 'Fullscreen game view';
+        button.textContent = '⛶';
+        button.setAttribute('aria-label', 'Enter fullscreen game view');
+        button.title = 'Fullscreen game view';
         button.setAttribute('aria-pressed', String(active));
+        button.disabled = active;
     }
 
-    async function toggleFullscreen(target, button) {
-        if (document.fullscreenElement === target) {
-            await document.exitFullscreen();
-        } else if (target.classList.contains(FALLBACK_CLASS)) {
-            target.classList.remove(FALLBACK_CLASS);
-        } else if (typeof target.requestFullscreen === 'function') {
+    async function enterFullscreen(target, button) {
+        if (isFullscreen(target)) return;
+        if (typeof target.requestFullscreen === 'function') {
             try {
                 await target.requestFullscreen({ navigationUI: 'hide' });
             } catch (_error) {
@@ -330,8 +329,20 @@ body:has(#task-detail-root) {
         button.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation?.();
-            void toggleFullscreen(target, button);
+            void enterFullscreen(target, button);
         });
+
+        const exitFallback = () => {
+            if (!target.classList.contains(FALLBACK_CLASS)) return;
+            target.classList.remove(FALLBACK_CLASS);
+            document.documentElement.classList.remove('tm-fullscreen-game-view-active');
+            updateButton(button, target);
+            refreshTransientControls();
+        };
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') exitFallback();
+        }, true);
+        window.addEventListener('popstate', exitFallback);
 
         document.addEventListener('fullscreenchange', () => {
             document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));

@@ -145,15 +145,17 @@ describe('transient in-content controls', () => {
         });
     }
 
-    test('fullscreen keeps the darker icon and border in both enter and exit states', () => {
+    test('fullscreen keeps a dim entry icon and hides it while active', () => {
         const harness = execute(files[1]);
         // Color rendering is outside this DOM harness; verify the emitted CSS.
         const css = harness.document.getElementById('tm-fullscreen-game-view-style').textContent;
         assert.match(css, /color: #999 !important/);
         assert.match(css, /border: 1px solid rgba\(255, 255, 255, 0\.3\) !important/);
         harness.button.click();
-        assert.equal(harness.button.textContent, '×');
-        harness.button.click();
+        assert.equal(harness.button.disabled, true);
+        assert.equal(harness.button.textContent, '⛶');
+        harness.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+        assert.equal(harness.button.disabled, false);
         assert.equal(harness.button.textContent, '⛶');
     });
 

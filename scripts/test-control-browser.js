@@ -48,8 +48,25 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     const fullscreen = document.getElementById('tm-fullscreen-game-view-button');
                     assert(fullscreen && !fullscreen.hidden, 'Fullscreen test button must be available');
                     assert(getComputedStyle(fullscreen).color === 'rgb(153, 153, 153)', 'Fullscreen icon must be dim gray');
+                    // Script-generated clicks have no user activation. Explicitly reject the native
+                    // API so the real-browser CSS check exercises the fallback deterministically.
+                    document.getElementById('test-game').requestFullscreen = () => Promise.reject(new Error('Fallback test'));
+                    fullscreen.click();
+                    await frame();
+                    assert(getComputedStyle(fullscreen).display === 'none', 'No entry or close button should appear while expanded');
+                    window.dispatchEvent(new Event('resize'));
+                    await frame();
+                    assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state button');
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                    await frame();
+                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Escape should restore the entry button');
+                    fullscreen.click();
+                    await frame();
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                    await frame();
+                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Back should restore the entry button');
                     result.setAttribute('data-test-status', 'passed');
-                    result.textContent = 'Horizontal scrolling, hit testing, conversion, and dim fullscreen checks passed';
+                    result.textContent = 'Clipping, translation, dim entry button, hidden expanded controls, Escape, and Back checks passed';
                 } catch (error) {
                     result.setAttribute('data-test-status', 'failed');
                     result.textContent = error.message;
