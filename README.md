@@ -2,6 +2,8 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
+**[Current updates: install the changed scripts and verify them](CurrentUpdates.md)**
+
 ## Shared floating-menu scripts — update together
 
 **Update all five scripts below together** to keep their shared menu consistent. Update every installed script in this group before using the new menu.

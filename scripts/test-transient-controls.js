@@ -37,6 +37,38 @@ function execute(file) {
 }
 
 describe('transient in-content controls', () => {
+    test('translation stays inside nested horizontal and vertical scrollports at every scroll position', () => {
+        const harness = execute(files[0]);
+        const horizontal = harness.document.createElement('div');
+        const vertical = harness.document.createElement('div');
+        harness.container.parentElement.insertBefore(vertical, harness.container);
+        vertical.appendChild(horizontal);
+        horizontal.appendChild(harness.container);
+        horizontal._rect = { left: 100, top: 100, right: 702, bottom: 502, width: 602, height: 402 };
+        horizontal.clientLeft = 1;
+        horizontal.clientTop = 1;
+        horizontal.clientWidth = 600;
+        horizontal.clientHeight = 380; // Excludes the horizontal scrollbar and border.
+        vertical._rect = { left: 50, top: 50, right: 850, bottom: 450, width: 800, height: 400 };
+        vertical.clientWidth = 780;
+        vertical.clientHeight = 400;
+        const originalComputedStyle = harness.window.getComputedStyle;
+        harness.window.getComputedStyle = (element) => element === horizontal
+            ? { overflowX: 'auto', overflowY: 'auto' }
+            : element === vertical ? { overflowX: 'visible', overflowY: 'hidden' } : originalComputedStyle(element);
+        for (const scrollLeft of [0, 300, 600, 0]) {
+            harness.container._rect = { left: 101 - scrollLeft, top: 101, right: 1301 - scrollLeft, bottom: 501, width: 1200, height: 400 };
+            harness.update();
+            assert.equal(harness.container._rect.left + parseFloat(harness.button.style.left), 671);
+            assert.equal(harness.container._rect.top + parseFloat(harness.button.style.top), 420);
+        }
+        harness.pointer('pointerdown', 675, 425);
+        harness.pointer('pointermove', 2000, 2000);
+        harness.pointer('pointerup', 2000, 2000);
+        assert(harness.container._rect.left + parseFloat(harness.button.style.left) + 24 <= 701);
+        assert(harness.container._rect.top + parseFloat(harness.button.style.top) + 24 <= 450);
+    });
+
     test('translation defaults to the bottom right of the visible part of a tall block', () => {
         const harness = execute(files[0]);
         assert.equal(harness.button.style.left, '570px');

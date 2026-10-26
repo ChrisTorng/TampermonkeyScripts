@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-26_1.5.4
+// @version      2026-10-26_1.5.5
 // @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, and Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
@@ -329,10 +329,34 @@
         const geometry = () => {
             const rect = container.getBoundingClientRect();
             const viewport = window.visualViewport;
-            const left = viewport ? viewport.offsetLeft : 0;
-            const top = viewport ? viewport.offsetTop : 0;
-            const right = left + (viewport ? viewport.width : window.innerWidth);
-            const lower = top + (viewport ? viewport.height : window.innerHeight);
+            let left = viewport ? viewport.offsetLeft : 0;
+            let top = viewport ? viewport.offsetTop : 0;
+            let right = left + (viewport ? viewport.width : window.innerWidth);
+            let lower = top + (viewport ? viewport.height : window.innerHeight);
+            // A block may be wider than an ancestor's scrollport even when it fits the screen.
+            // Intersect every clipping ancestor, excluding borders and scrollbar gutters.
+            for (let ancestor = container; ancestor && ancestor !== document.documentElement; ancestor = ancestor.parentElement) {
+                const css = window.getComputedStyle(ancestor);
+                const clips = (axis) => /^(auto|scroll|hidden|clip|overlay)$/.test(
+                    css[`overflow${axis}`] || css.getPropertyValue?.(`overflow-${axis.toLowerCase()}`) || css.overflow || '');
+                if (!clips('X') && !clips('Y')) {
+                    if (ancestor === document.fullscreenElement) break;
+                    continue;
+                }
+                const bounds = ancestor.getBoundingClientRect();
+                const innerLeft = bounds.left + (ancestor.clientLeft || 0);
+                const innerTop = bounds.top + (ancestor.clientTop || 0);
+                if (clips('X')) {
+                    left = Math.max(left, innerLeft);
+                    right = Math.min(right, innerLeft + ancestor.clientWidth);
+                }
+                if (clips('Y')) {
+                    top = Math.max(top, innerTop);
+                    lower = Math.min(lower, innerTop + ancestor.clientHeight);
+                }
+                // Native fullscreen content escapes clipping by ancestors outside the top layer.
+                if (ancestor === document.fullscreenElement) break;
+            }
             // Absolute child coordinates start at the container's inner border edge.
             const originX = rect.left + (container.clientLeft || 0) - (container.scrollLeft || 0);
             const originY = rect.top + (container.clientTop || 0) - (container.scrollTop || 0);
