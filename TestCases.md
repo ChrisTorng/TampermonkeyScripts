@@ -94,8 +94,9 @@ Section note: automated tests cover the DOM operation guard with a local harness
 
 # Translate Preformatted Text
 Section note: automated tests use representative inline code, preformatted blocks, Mastodon app markers, mobile Wikipedia sections, and the shared floating menu in the local DOM harness; live browser translation still requires manual validation.
-- https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (inline code elements are replaced early with styled translatable spans while their original positions, text, classes, and attributes are retained)
-- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, dragging, and dynamically added blocks are automated)
+- https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (inline code replacement is automated; nested scrollport clipping and scrollbar clearance use explicit DOM rectangles and the local browser reproduction below, not a complete live GitHub capture)
+- [Local translation and fullscreen controls](tests/ControlButtons/index.html) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (headless Chromium checks visible and clickable translation controls at left, middle, and right scroll positions, conversion/restoration, and dim fullscreen styling; the frame scheduler and scroll-event delivery are explicit test substitutions)
+- https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, and dynamically added blocks are automated; visible-bottom placement, mouse/touch dragging without activation or persistence, scrolling, and resizing use explicit mock rectangles in the DOM harness)
 - https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured code-only quotations receive per-block translation controls and can be toggled without treating their code as inline content)
 - https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured GitHub source view receives an opt-in translation control and preserves line breaks when toggled)
 - https://github.com/okf-memory/okf-agent-memory/blob/main/README.md [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured rendered Mermaid container receives a visible opt-in translation control)
@@ -119,7 +120,8 @@ Section note: automated tests inject the script and mock `GM_info`.
 
 # Fullscreen Game View
 Section note: automated tests inject the userscript into a representative ARC Prize game DOM and mock the browser fullscreen API fallback.
-- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and clipped left D-pad repairs, fullscreen button mounting, entry, and exit are automated; visual layout still requires manual device validation)
+- [Local fullscreen test canvas](tests/ControlButtons/index.html#test-game) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (headless Chromium verifies dim entry styling, hidden controls in the expanded fallback, and Escape/Back restoration; native fullscreen events and dragging use explicit runtime mocks, with manual browser steps in CurrentUpdates.md)
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and clipped left D-pad repairs, button mounting, native fullscreen state events, fallback Escape/Back exit, and entry-control restoration use explicit runtime mocks; mouse/touch dragging uses mock rectangles; visual layout still requires manual device validation)
 
 # Better Discord
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]

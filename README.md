@@ -2,6 +2,8 @@
 
 Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser tasks.
 
+**[Current updates: install the changed scripts and verify them](CurrentUpdates.md)**
+
 ## Shared floating-menu scripts — update together
 
 **Update all five scripts below together** to keep their shared menu consistent. Update every installed script in this group before using the new menu.
@@ -27,7 +29,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
+Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, and Wikipedia translation.
 
 ---
 
@@ -118,7 +120,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Fit embedded games within mobile screens and add a distraction-free fullscreen toggle.
+Fit embedded games within mobile screens with a dim, draggable fullscreen button.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 

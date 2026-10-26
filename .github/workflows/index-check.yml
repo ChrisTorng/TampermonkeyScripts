@@ -20,7 +20,11 @@ jobs:
         run: node --test scripts/test-math-translation-strategies.js
       - name: Test Reddit redirect behavior
         run: node --test scripts/test-redirect-urls.js
-      - name: Generate index.html and TestCases.html
+      - name: Test content controls and real browser clipping
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-transient-controls.js scripts/test-control-browser.js
+      - name: Generate documentation pages
         run: npm run generate:index
       - name: Verify HTML outputs were produced
-        run: test -f index.html && test -f TestCases.html
+        run: test -f index.html && test -f TestCases.html && test -f CurrentUpdates.html

@@ -11,13 +11,19 @@ const PAGES = [
     source: path.join(ROOT, 'README.md'),
     output: path.join(ROOT, 'index.html'),
     title: 'Tampermonkey Scripts',
-    transforms: [stripRawBase, rewriteTestCasesLink]
+    transforms: [stripRawBase, rewriteDocumentationLinks]
   },
   {
     source: path.join(ROOT, 'TestCases.md'),
     output: path.join(ROOT, 'TestCases.html'),
     title: 'Tampermonkey Script Test Cases',
     transforms: [stripRawBase, linkifyPlainUrls]
+  },
+  {
+    source: path.join(ROOT, 'CurrentUpdates.md'),
+    output: path.join(ROOT, 'CurrentUpdates.html'),
+    title: 'Current Userscript Updates',
+    transforms: [stripRawBase, rewriteDocumentationLinks]
   }
 ];
 
@@ -43,15 +49,9 @@ function stripRawBase(markdown) {
   return markdown.replace(rawPattern, '');
 }
 
-function rewriteTestCasesLink(markdown) {
-  const updatedLabel = markdown.replace(
-    /\[TestCases\.md\]\((?:\.\/)?TestCases\.md(#[^)]+)?\)/g,
-    '[TestCases.html](TestCases.html$1)'
-  );
-  return updatedLabel.replace(
-    /\]\((?:\.\/)?TestCases\.md(#[^)]+)?\)/g,
-    '](TestCases.html$1)'
-  );
+function rewriteDocumentationLinks(markdown) {
+  return markdown.replace(/\]\((?:\.\/)?(TestCases|CurrentUpdates)\.md(#[^)]+)?\)/g,
+    (_, name, anchor = '') => `](${name}.html${anchor})`);
 }
 
 function linkifyPlainUrls(markdown) {

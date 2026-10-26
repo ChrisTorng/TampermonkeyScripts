@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Translation and fullscreen control checks</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 20px; background: #1b2430; color: #d8e0ea; font: 16px/1.5 system-ui, sans-serif; }
+        main { max-width: 900px; margin: auto; }
+        a { color: #a8d5ff; }
+        section { margin: 24px 0; }
+        .scroll-window { width: min(100%, 580px); overflow: auto; border: 2px solid #526173; }
+        .wide-content { width: 1400px; background: #243142; }
+        pre { margin: 0; padding: 22px; font-size: 15px; }
+        .game { position: relative; width: min(100%, 580px); background: #0e1720; }
+        canvas { display: block; max-width: 100%; height: auto; }
+        #browser-result { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Translation and fullscreen control checks</h1>
+    <p><a href="../../CurrentUpdates.html">Current updates and installation links</a></p>
+    <p>Install the translation and fullscreen userscripts, then reload this page. Without them, their buttons will not appear.</p>
+    <section>
+        <h2>Translation inside a horizontal scroller</h2>
+        <p>The block is wider than its outer scroll window. Its small translation button must be visible at the lower right immediately, before scrolling sideways. Drag it, click it to convert and restore the block, then move the scrollbar left and right. The button must remain inside the visible block area.</p>
+        <div class="scroll-window" id="horizontal-scroll">
+            <div class="wide-content">
+                <pre id="wide-code">theorem example (n : Nat) (a b c : Nat) : a ^ n + b ^ n != c ^ n := by
+    -- This deliberately wide block reproduces a nested GitHub-style horizontal scroll container.
+    -- Its translation control should never require scrolling to the far right to reach it.
+    sorry</pre>
+            </div>
+        </div>
+    </section>
+    <section>
+        <h2>Fullscreen</h2>
+        <p>Look for the dim gray fullscreen icon in the canvas's upper right. Drag it with a mouse or finger: releasing must not enter fullscreen. Click to enter: the button disappears and no close button is shown. Press Esc to exit; browser Back also restores the expanded fallback. Reload to restore the default position.</p>
+        <div class="game" id="test-game"><canvas id="game-canvas" width="580" height="280" aria-label="Fullscreen test canvas"></canvas></div>
+    </section>
+    <p id="browser-result" aria-live="polite"></p>
+</main>
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#163847';
+    context.fillRect(0, 0, 580, 280);
+    context.fillStyle = '#90afbb';
+    context.font = '22px system-ui';
+    context.fillText('Fullscreen test canvas', 28, 140);
+</script>
+<!-- USERSCRIPT_TEST_INJECTION -->
+</body>
+</html>

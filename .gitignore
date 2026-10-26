@@ -1,3 +1,5 @@
 node_modules/
 npm-debug.log*
-index.html
+/index.html
+/TestCases.html
+/CurrentUpdates.html

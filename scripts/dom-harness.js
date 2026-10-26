@@ -152,7 +152,10 @@ class BasicNode {
         const listeners = this.eventListeners.get(event.type) || [];
         event.target = event.target || this;
         event.currentTarget = this;
-        listeners.forEach((listener) => listener.call(this, event));
+        for (const listener of listeners) {
+            listener.call(this, event);
+            if (event.immediatePropagationStopped) break;
+        }
         return !event.defaultPrevented;
     }
 
@@ -463,6 +466,9 @@ function createMouseEvent(type) {
         defaultPrevented: false,
         preventDefault() {
             this.defaultPrevented = true;
+        },
+        stopImmediatePropagation() {
+            this.immediatePropagationStopped = true;
         }
     };
 }
