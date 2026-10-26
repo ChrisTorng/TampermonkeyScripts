@@ -172,7 +172,7 @@ describe('shared floating menu', () => {
         assert.equal(next.document.getElementById('tm-shared-floating-menu').style.top, '0px');
     });
 
-    test('outside clicks collapse the menu while handle and action clicks stay inside', () => {
+    test('outside clicks and menu actions collapse the menu while handle clicks stay inside', () => {
         const harness = run(['translate', 'dark'], { pre: true });
         const toggle = harness.document.querySelector('[data-floating-toggle]');
         toggle.click();
@@ -180,11 +180,11 @@ describe('shared floating menu', () => {
         harness.document.dispatchEvent({ type: 'click', target: toggle });
         assert.equal(toggle.getAttribute('aria-expanded'), 'true');
         button.click();
-        harness.document.dispatchEvent({ type: 'click', target: button });
-        assert.equal(toggle.getAttribute('aria-expanded'), 'true');
-        harness.document.dispatchEvent({ type: 'click', target: harness.document.body });
         assert.equal(toggle.getAttribute('aria-expanded'), 'false');
         assert(menuTools(harness).every((action) => action.hidden));
+        toggle.click();
+        harness.document.dispatchEvent({ type: 'click', target: harness.document.body });
+        assert.equal(toggle.getAttribute('aria-expanded'), 'false');
         toggle.click();
         harness.document.dispatchEvent({ type: 'click', target: harness.document.body, composedPath: () => [harness.document.body, harness.document] });
         assert.equal(toggle.getAttribute('aria-expanded'), 'false');
@@ -224,18 +224,55 @@ describe('shared floating menu', () => {
         }
     });
 
-    test('close disables floating features after reload while separate page controls survive', () => {
-        const first = run(['archive', 'translate', 'dark', 'mobile'], { pre: true });
-        first.document.querySelector('[data-floating-toggle]').click();
-        first.document.querySelector('[data-floating-close]').click();
-        assert.equal(first.location.reloadCallCount, 1);
-        const saved = first.window.localStorage.getItem(key);
-        assert.equal(JSON.parse(saved).disabled, true);
-        const next = run(['archive', 'translate', 'dark', 'mobile'], { pre: true, localStorageSeed: { [key]: saved } });
-        assert.equal(next.document.getElementById('tm-shared-floating-menu'), null);
-        assert.equal(next.document.getElementById('tm-force-dark-mode-style'), null);
-        assert.equal(next.document.getElementById('tm-force-width-style'), null);
-        assert.equal(next.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+    test('close asks for a scope and cancel keeps the menu available', () => {
+        const harness = run(['archive']);
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        toggle.click();
+        harness.document.querySelector('[data-floating-close]').click();
+        const dialog = harness.document.querySelector('[data-floating-dialog]');
+        assert.equal(dialog.hidden, false);
+        dialog.dispatchEvent({
+            type: 'click',
+            target: harness.document.querySelector('[data-floating-hide-scope="cancel"]'),
+        });
+        assert.equal(dialog.hidden, true);
+        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+    });
+
+    for (const scopeCase of [
+        { scope: 'page', url: 'https://example.com/articles/story?mode=reader', saved: { disabledPages: ['/articles/story?mode=reader'] }, hiddenUrl: 'https://example.com/articles/story?mode=reader', visibleUrl: 'https://example.com/articles/other' },
+        { scope: 'path', url: 'https://example.com/articles/story', saved: { disabledPaths: ['/articles/'] }, hiddenUrl: 'https://example.com/articles/other', visibleUrl: 'https://example.com/news/other' },
+        { scope: 'domain', url: 'https://example.com/articles/story', saved: { disabledDomain: true }, hiddenUrl: 'https://example.com/anything', visibleUrl: null },
+    ]) {
+        test(`hide scope ${scopeCase.scope} persists only at the selected scope`, () => {
+            const first = run(['archive', 'translate', 'dark', 'mobile'], { url: scopeCase.url, pre: true });
+            first.document.querySelector('[data-floating-toggle]').click();
+            first.document.querySelector('[data-floating-close]').click();
+            const dialog = first.document.querySelector('[data-floating-dialog]');
+            dialog.dispatchEvent({
+                type: 'click',
+                target: first.document.querySelector(`[data-floating-hide-scope="${scopeCase.scope}"]`),
+            });
+            assert.equal(first.location.reloadCallCount, 1);
+            const saved = first.window.localStorage.getItem(key);
+            assert.deepEqual(JSON.parse(saved), scopeCase.saved);
+            const hidden = run(['archive', 'translate', 'dark', 'mobile'], { url: scopeCase.hiddenUrl, pre: true, localStorageSeed: { [key]: saved } });
+            assert.equal(hidden.document.getElementById('tm-shared-floating-menu'), null);
+            assert.equal(hidden.document.getElementById('tm-force-dark-mode-style'), null);
+            assert.equal(hidden.document.getElementById('tm-force-width-style'), null);
+            assert.equal(hidden.document.querySelectorAll('.tm-translate-pre-one').length, 1);
+            if (scopeCase.visibleUrl) {
+                const visible = run(['archive'], { url: scopeCase.visibleUrl, localStorageSeed: { [key]: saved } });
+                assert(visible.document.getElementById('tm-shared-floating-menu'));
+            }
+        });
+    }
+
+    test('legacy site-wide disabled setting remains supported', () => {
+        const saved = JSON.stringify({ disabled: true });
+        const harness = run(['archive'], { localStorageSeed: { [key]: saved } });
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu'), null);
     });
 
     test('forbidden domain has no menu or floating effects', () => {

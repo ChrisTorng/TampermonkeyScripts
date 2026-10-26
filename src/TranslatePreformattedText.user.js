@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-08_1.5.2
-// @description  Translate code blocks with per-block controls and a shared-menu page action; improve inline code, Mastodon, and Wikipedia translation.
+// @version      2026-10-26_1.5.4
+// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, and Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
@@ -41,13 +41,36 @@
         return host === 'christorng.idv.tw' || host.endsWith('.christorng.idv.tw');
     }
 
+    function floatingMenuFolderPath() {
+        const path = window.location.pathname || '/';
+        if (path.endsWith('/')) return path;
+        return path.slice(0, path.lastIndexOf('/') + 1) || '/';
+    }
+
+    function floatingMenuPageKey() {
+        return `${window.location.pathname}${window.location.search}`;
+    }
+
     function floatingMenuDisabled() {
-        return floatingMenuForbiddenHost() || floatingMenuSettings().disabled === true;
+        const settings = floatingMenuSettings();
+        return floatingMenuForbiddenHost()
+            || settings.disabled === true
+            || settings.disabledDomain === true
+            || (settings.disabledPaths || []).includes(floatingMenuFolderPath())
+            || (settings.disabledPages || []).includes(floatingMenuPageKey());
+    }
+
+    function floatingMenuCollapse(root) {
+        root.setAttribute('data-floating-expanded', 'false');
+        const dialog = root.querySelector('[data-floating-dialog]');
+        if (dialog) dialog.hidden = true;
+        floatingMenuRender(root);
     }
 
     function floatingMenuRender(root) {
         const toggle = root.querySelector('[data-floating-toggle]');
         const close = root.querySelector('[data-floating-close]');
+        const dialog = root.querySelector('[data-floating-dialog]');
         const currentButtons = Array.from(root.querySelectorAll('[data-floating-tool]'));
         const buttons = [...currentButtons].sort((a, b) => FLOATING_MENU_ORDER.indexOf(a.getAttribute('data-floating-tool')) - FLOATING_MENU_ORDER.indexOf(b.getAttribute('data-floating-tool')));
         if (buttons.some((button, index) => button !== currentButtons[index])) {
@@ -60,9 +83,9 @@
         root.hidden = !available;
         const expanded = root.getAttribute('data-floating-expanded') === 'true';
         toggle.setAttribute('aria-expanded', String(expanded));
-        close.hidden = !expanded;
+        close.hidden = !expanded || !dialog.hidden;
         buttons.forEach((button) => {
-            button.hidden = !expanded || button.getAttribute('data-floating-available') !== 'true';
+            button.hidden = !expanded || !dialog.hidden || button.getAttribute('data-floating-available') !== 'true';
         });
     }
 
@@ -75,7 +98,7 @@
         style.id = FLOATING_MENU_ID + '-style';
         style.textContent = `
             #${FLOATING_MENU_ID} { position: absolute !important; top: 70px !important; right: 0 !important; left: auto !important; z-index: 2147483647 !important; width: 38px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; margin: 0 !important; padding: 0 !important; }
-            #${FLOATING_MENU_ID}[hidden], #${FLOATING_MENU_ID} button[hidden] { display: none !important; }
+            #${FLOATING_MENU_ID}[hidden], #${FLOATING_MENU_ID} button[hidden], #${FLOATING_MENU_ID} [data-floating-dialog][hidden] { display: none !important; }
             #${FLOATING_MENU_ID} button { appearance: none !important; display: block !important; box-sizing: border-box !important; width: 38px !important; min-width: 38px !important; max-width: 38px !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 5px !important; box-shadow: 0 2px 6px rgba(0,0,0,.25) !important; background: rgba(0,0,0,.55) !important; color: #f0f0f0 !important; font: 600 15px/32px system-ui,sans-serif !important; text-align: center !important; cursor: pointer !important; opacity: 1 !important; user-select: none !important; touch-action: none !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"] { background: rgba(34,139,34,.85) !important; color: white !important; }
             #${FLOATING_MENU_ID} button, #${FLOATING_MENU_ID} button:hover, #${FLOATING_MENU_ID} button:focus, #${FLOATING_MENU_ID} button:active { text-decoration: none !important; }
@@ -83,6 +106,9 @@
             #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; }
+            #${FLOATING_MENU_ID} [data-floating-dialog] { position: absolute !important; top: 0 !important; right: 0 !important; width: min(290px, calc(100vw - 24px)) !important; box-sizing: border-box !important; margin: 0 !important; padding: 14px !important; border: 1px solid #777 !important; border-radius: 9px !important; box-shadow: 0 5px 18px rgba(0,0,0,.4) !important; background: #fff !important; color: #111 !important; font: 15px/1.4 system-ui,sans-serif !important; }
+            #${FLOATING_MENU_ID} [data-floating-dialog] p { margin: 0 0 10px !important; padding: 0 !important; }
+            #${FLOATING_MENU_ID} [data-floating-dialog] button { width: 100% !important; max-width: none !important; margin-top: 7px !important; background: #444 !important; color: #fff !important; }
         `;
         (document.head || document.documentElement).appendChild(style);
         root = document.createElement('div');
@@ -92,7 +118,7 @@
         const close = document.createElement('button');
         close.type = 'button';
         close.textContent = '×';
-        close.title = 'Disable floating tools on this site';
+        close.title = 'Choose where to hide floating tools';
         close.setAttribute('aria-label', close.title);
         close.setAttribute('data-floating-close', 'true');
         close.hidden = true;
@@ -102,8 +128,29 @@
         toggle.title = 'Floating tools';
         toggle.setAttribute('aria-label', toggle.title);
         toggle.setAttribute('data-floating-toggle', 'true');
+        const dialog = document.createElement('div');
+        dialog.setAttribute('data-floating-dialog', 'true');
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-label', 'Hide floating tools');
+        dialog.hidden = true;
+        const question = document.createElement('p');
+        question.textContent = 'Where should floating tools be hidden?';
+        dialog.appendChild(question);
+        [
+            ['page', 'This page'],
+            ['path', 'This folder path'],
+            ['domain', 'This entire domain'],
+            ['cancel', 'Cancel'],
+        ].forEach(([scope, label]) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+            button.setAttribute('data-floating-hide-scope', scope);
+            dialog.appendChild(button);
+        });
         root.appendChild(close);
         root.appendChild(toggle);
+        root.appendChild(dialog);
         // Use document coordinates so pinch zoom does not anchor the menu to the visual viewport.
         document.documentElement.appendChild(root);
 
@@ -202,6 +249,7 @@
         toggle.addEventListener('click', (event) => {
             event.preventDefault();
             if (moved) { moved = false; return; }
+            dialog.hidden = true;
             root.setAttribute('data-floating-expanded', String(root.getAttribute('data-floating-expanded') !== 'true'));
             floatingMenuRender(root);
         });
@@ -211,12 +259,24 @@
                 if (target === root) return;
             }
             if (root.getAttribute('data-floating-expanded') !== 'true') return;
-            root.setAttribute('data-floating-expanded', 'false');
-            floatingMenuRender(root);
+            floatingMenuCollapse(root);
         }, true);
         close.addEventListener('click', () => {
+            dialog.hidden = false;
+            floatingMenuRender(root);
+        });
+        dialog.addEventListener('click', (event) => {
+            const scope = event.target.getAttribute && event.target.getAttribute('data-floating-hide-scope');
+            if (!scope) return;
+            if (scope === 'cancel') {
+                dialog.hidden = true;
+                floatingMenuRender(root);
+                return;
+            }
             const next = floatingMenuSettings();
-            next.disabled = true;
+            if (scope === 'domain') next.disabledDomain = true;
+            if (scope === 'path') next.disabledPaths = [...new Set([...(next.disabledPaths || []), floatingMenuFolderPath()])];
+            if (scope === 'page') next.disabledPages = [...new Set([...(next.disabledPages || []), floatingMenuPageKey()])];
             floatingMenuSave(next);
             window.location.reload();
         });
@@ -228,6 +288,7 @@
         const root = floatingMenuRoot();
         button.setAttribute('data-floating-tool', key);
         button.setAttribute('data-floating-available', String(available));
+        button.addEventListener('click', () => floatingMenuCollapse(root));
         root.appendChild(button);
         floatingMenuRender(root);
     }
@@ -240,6 +301,115 @@
     // END SHARED FLOATING MENU
 
     if (floatingMenuForbiddenHost()) return;
+
+    // BEGIN SHARED TRANSIENT CONTROL
+    // Shared source for draggable in-content controls. Run scripts/sync-transient-controls.js after editing.
+    const transientControlLayouts = new Set();
+    let transientControlFrame = null;
+    function refreshTransientControls() {
+        if (transientControlFrame !== null) return;
+        transientControlFrame = window.requestAnimationFrame(() => {
+            transientControlFrame = null;
+            transientControlLayouts.forEach((layout) => layout());
+        });
+    }
+    window.addEventListener('scroll', refreshTransientControls, { capture: true, passive: true });
+    window.addEventListener('resize', refreshTransientControls);
+    document.addEventListener('fullscreenchange', refreshTransientControls);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('scroll', refreshTransientControls);
+        window.visualViewport.addEventListener('resize', refreshTransientControls);
+    }
+
+    function makeTransientControlDraggable(button, container, { bottom = false, size = 24, inset = 6 } = {}) {
+        let placement = null;
+        let drag = null;
+        let suppressClick = false;
+        let observer;
+        const geometry = () => {
+            const rect = container.getBoundingClientRect();
+            const viewport = window.visualViewport;
+            const left = viewport ? viewport.offsetLeft : 0;
+            const top = viewport ? viewport.offsetTop : 0;
+            const right = left + (viewport ? viewport.width : window.innerWidth);
+            const lower = top + (viewport ? viewport.height : window.innerHeight);
+            // Absolute child coordinates start at the container's inner border edge.
+            const originX = rect.left + (container.clientLeft || 0) - (container.scrollLeft || 0);
+            const originY = rect.top + (container.clientTop || 0) - (container.scrollTop || 0);
+            const minX = Math.max(rect.left, left) - originX;
+            const minY = Math.max(rect.top, top) - originY;
+            const maxX = Math.min(rect.right, right) - originX - size;
+            const maxY = Math.min(rect.bottom, lower) - originY - size;
+            return { originX, originY, minX, minY, maxX, maxY };
+        };
+        const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+        const place = (x, y) => {
+            button.style.setProperty('left', `${x}px`, 'important');
+            button.style.setProperty('top', `${y}px`, 'important');
+            button.style.setProperty('right', 'auto', 'important');
+            button.style.setProperty('bottom', 'auto', 'important');
+        };
+        const layout = () => {
+            if (!button.isConnected) {
+                transientControlLayouts.delete(layout);
+                if (observer) observer.disconnect();
+                return;
+            }
+            const area = geometry();
+            const hidden = area.maxX < area.minX || area.maxY < area.minY;
+            if (button.hidden !== hidden) button.hidden = hidden;
+            if (hidden || drag) return;
+            place(clamp(placement ? placement.x : area.maxX - inset, area.minX, area.maxX),
+                clamp(placement ? placement.y : bottom ? area.maxY - inset : area.minY + inset, area.minY, area.maxY));
+        };
+        button.style.setProperty('touch-action', 'none', 'important');
+        button.style.setProperty('text-decoration', 'none', 'important');
+        button.addEventListener('pointerdown', (event) => {
+            if (event.isPrimary === false || (event.button !== undefined && event.button !== 0)) return;
+            suppressClick = false;
+            drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
+                left: parseFloat(button.style.left), top: parseFloat(button.style.top), moved: false };
+            button.setPointerCapture?.(event.pointerId);
+            event.stopPropagation?.();
+        });
+        button.addEventListener('pointermove', (event) => {
+            if (!drag || event.pointerId !== drag.id) return;
+            const dx = event.clientX - drag.x;
+            const dy = event.clientY - drag.y;
+            if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+            drag.moved = true;
+            event.preventDefault();
+            event.stopPropagation?.();
+            const area = geometry();
+            placement = { x: clamp(drag.left + dx, area.minX, area.maxX), y: clamp(drag.top + dy, area.minY, area.maxY) };
+            place(placement.x, placement.y);
+        });
+        const finish = (event) => {
+            if (!drag || event.pointerId !== drag.id) return;
+            suppressClick = drag.moved;
+            drag = null;
+            if (button.hasPointerCapture?.(event.pointerId)) button.releasePointerCapture(event.pointerId);
+            layout();
+        };
+        button.addEventListener('pointerup', finish);
+        button.addEventListener('pointercancel', finish);
+        button.addEventListener('lostpointercapture', finish);
+        // Register before the action handler so a drag never activates translation or fullscreen.
+        button.addEventListener('click', (event) => {
+            if (!suppressClick) return;
+            suppressClick = false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
+        transientControlLayouts.add(layout);
+        if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver(refreshTransientControls);
+            observer.observe(container);
+        }
+        layout();
+        return layout;
+    }
+    // END SHARED TRANSIENT CONTROL
 
     const wrapperAttribute = 'data-tm-translatable-pre-wrapper';
     const convertedAttribute = 'data-tm-translatable-pre-converted';
@@ -287,7 +457,16 @@
         .tm-translate-pre-one {
             position: absolute !important;
             right: 6px !important;
-            top: 6px !important;
+            bottom: 6px !important;
+            top: auto !important;
+            box-sizing: border-box !important;
+            width: 24px !important;
+            padding: 0 !important;
+            touch-action: none !important;
+            text-decoration: none !important;
+        }
+        .tm-translate-pre-one[hidden] {
+            display: none !important;
         }
         [${convertedAttribute}] {
             box-sizing: border-box;
@@ -469,6 +648,7 @@
         wrapper.removeChild(current);
         setButtonState(wrapper.querySelector('.tm-translate-pre-one'), shouldConvert, 'this');
         updateAllButton();
+        refreshTransientControls();
     }
 
     function enhance(block) {
@@ -491,10 +671,11 @@
         button.textContent = '譯';
         button.setAttribute('aria-label', 'Translate this preformatted block');
         setButtonState(button, false, 'this');
+        wrapper.appendChild(button);
+        makeTransientControlDraggable(button, wrapper, { bottom: true });
         button.addEventListener('click', () => {
             setConverted(wrapper, !wrapper.querySelector(`[${convertedAttribute}]`));
         });
-        wrapper.appendChild(button);
     }
 
     function scan(root = document) {
