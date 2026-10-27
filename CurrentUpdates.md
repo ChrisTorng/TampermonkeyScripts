@@ -1,29 +1,44 @@
 # Current updates: install and verify
 
-Updated: 2026-10-27
+Updated: 2026-10-28
 
 Open this page on the PR's Vercel preview to install that preview's versions. After merging, the same page lists the updates in production. Click each installation link below, confirm the version in Tampermonkey, then reload the test page.
 
-## Updated userscripts (1)
+## Updated userscripts (2)
 
-### Fullscreen Game View — 2026-10-27_1.0.5
+### Fullscreen Game View — 2026-10-28_1.0.6
 
 **[Install / update FullscreenGameView.user.js](src/FullscreenGameView.user.js)**
 
-**UI changes:** The dim gray fullscreen entry button can be dragged within its visible game area without activating fullscreen; its position resets on reload. The button disappears in native fullscreen and the expanded fallback: there is no close button. Exiting restores the pre-entry page position, focus, ancestor scroll offsets, and game scroll offsets instead of jumping to the page top. Escape exits fullscreen; Escape or browser Back restores the fallback view. Ancestor scrollers also limit the entry button's visible position.
+**UI changes:** The independently draggable fullscreen entry button now matches the `≡` menu handle's 38 × 32 px size, semi-transparent background, light foreground, 5 px rounded corners, shadow, and darker hover state. Pinch zoom or pan no longer pulls the entry control into the zoomed visual viewport; inverse scaling keeps it compact on screen. When both controls occupy the same area, the fullscreen entry button moves beside the menu instead of overlapping it. The entry control remains hidden throughout native fullscreen or fallback; Escape/Back restores scrolling and focus.
 
 Test pages:
 
-- **[Local fullscreen test canvas](tests/ControlButtons/index.html#test-game)** — a stable test page requiring no account or external game.
+- **[Local fullscreen test canvas](tests/ControlButtons/index.html#test-game)** — no external game required.
 - [ARC Prize game task](https://arcprize.org/tasks/ls20)
 
 Verification:
 
-1. On the local page, find **Fullscreen**. The canvas has a dim gray `⛶` button near its upper-right corner.
-2. Drag the button with a mouse or finger. Releasing it must not enter fullscreen.
-3. Scroll down to the canvas and, on ARC Prize, move any game or outer-container scrollbars. Click to enter fullscreen. Verify that neither `⛶` nor a close button covers the fullscreen content. Press **Esc** to exit: the page must remain at the original horizontal and vertical scroll position, with the same game/container offsets and entry-button location. It must not jump to the top. If native fullscreen is unavailable, verify the same restoration after **Esc** or browser **Back** from the expanded fallback.
-4. Reload the page: the button returns to its default location.
+1. On a phone, open the test canvas or ARC Prize game. Compare the compact, translucent `⛶` entry button against the separate `≡` menu handle.
+2. Pinch zoom and pan the page. `⛶` stays at its original document position and retains a compact screen footprint rather than chasing the visible region. Return to normal zoom to resume positioning.
+3. With both controls present, drag `≡` close to `⛶`, then expand its menu. The controls must not overlap; the fullscreen button is still outside the menu and both remain independently draggable.
+4. Enter fullscreen and exit using Escape (or browser Back in fallback mode). The fullscreen entry button stays hidden while expanded. Its position, focus, and scroll offsets restore on exit. Reloading resets the fullscreen button's temporary drag position.
+
+### Translate Preformatted Text — 2026-10-28_1.5.6
+
+**[Install / update TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js)**
+
+The embedded transient-control helper was synchronized. Existing per-block translation controls retain their visual-viewport-following behavior and independent temporary drag positioning. The shared `≡` menu implementation has not changed.
+
+Test pages:
+
+- [Local translation and fullscreen controls](tests/ControlButtons/index.html)
+- [GitHub code/preformatted blocks](https://github.com/anthropics/fermats-last-theorem)
+
+Verification: Scroll through a long code block and pinch zoom. The `譯` control still tracks the visible part of the block, while the fullscreen control does not chase the zoomed visual viewport.
+
+**Update scope:** These two scripts embed the same transient-control helper and should be synchronized. The `≡` menu and its four other userscripts are unchanged: **there is no requirement to update the entire five-script floating-menu group together** for this change.
 
 ## Verification notes
 
-Automated coverage includes native fullscreen state events, page/ancestor/game scroll restoration, focus restoration, late browser resets, and rapid re-entry. Native APIs are mocked in DOM tests. A headless Chromium test checks actual fallback scrolling with smooth scrolling enabled, hidden expanded controls, and Escape/Back restoration; frame scheduling, event delivery, and the rejected native request are explicit test substitutions. Physical-device gestures still require manual verification.
+Automated DOM-harness tests cover document anchoring and inverse scaling during zoom, collision avoidance, unchanged translation behavior, fullscreen state transitions, and scroll/focus restoration. Headless browser assertions cover native CSS appearance and fallback controls. Phone pinch gestures still require manual validation.
