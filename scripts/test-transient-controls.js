@@ -176,10 +176,13 @@ describe('transient in-content controls', () => {
         const harness = execute(files[1]);
         const menu = harness.document.createElement('div');
         menu.id = 'tm-shared-floating-menu';
-        menu._rect = { left: 650, top: 105, right: 688, bottom: 137, width: 38, height: 32 };
+        const left = 100 + parseFloat(harness.button.style.left) + 2;
+        const top = 100 + parseFloat(harness.button.style.top) + 1;
+        menu._rect = { left, top, right: left + 38, bottom: top + 32, width: 38, height: 32 };
         harness.document.documentElement.appendChild(menu);
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu'), menu);
         harness.update();
-        assert.equal(harness.button.style.left, '508px'); // Leaves a 4 px gap.
+        assert.equal(harness.button.style.left, `${left - 100 - 38 - 4}px`); // Leaves a 4 px gap.
         menu._rect = { left: 600, top: 105, right: 638, bottom: 137, width: 38, height: 32 };
         harness.update();
         assert.equal(harness.button.style.left, '558px'); // Restores the default when clear.
