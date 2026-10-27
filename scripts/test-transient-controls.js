@@ -181,7 +181,12 @@ describe('transient in-content controls', () => {
         menu._rect = { left, top, right: left + 38, bottom: top + 32, width: 38, height: 32 };
         harness.document.documentElement.appendChild(menu);
         assert.equal(harness.document.getElementById('tm-shared-floating-menu'), menu);
+        let reads = 0;
+        const getRect = menu.getBoundingClientRect.bind(menu);
+        menu.getBoundingClientRect = () => { reads++; return getRect(); };
+        harness.triggerMutation([menu], { target: harness.document.documentElement });
         harness.update();
+        assert(reads > 0, 'Fullscreen layout must measure the menu after it mounts');
         assert.equal(harness.button.style.left, `${left - 100 - 38 - 4}px`); // Leaves a 4 px gap.
         menu._rect = { left: 600, top: 105, right: 638, bottom: 137, width: 38, height: 32 };
         harness.update();
