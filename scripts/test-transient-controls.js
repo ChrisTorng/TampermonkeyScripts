@@ -177,8 +177,7 @@ describe('transient in-content controls', () => {
         const menu = harness.document.createElement('div');
         menu.id = 'tm-shared-floating-menu';
         const left = 100 + parseFloat(harness.button.style.left) + 2;
-        const top = 100 + parseFloat(harness.button.style.top) + 1;
-        menu._rect = { left, top, right: left + 38, bottom: top + 32, width: 38, height: 32 };
+        menu._rect = { left, top: 0, right: left + 38, bottom: 720, width: 38, height: 720 };
         harness.document.documentElement.appendChild(menu);
         assert.equal(harness.document.getElementById('tm-shared-floating-menu'), menu);
         let reads = 0;
