@@ -120,8 +120,8 @@ Section note: automated tests inject the script and mock `GM_info`.
 
 # Fullscreen Game View
 Section note: automated tests inject the userscript into a representative ARC Prize game DOM and mock the browser fullscreen API fallback.
-- [Local fullscreen test canvas](tests/ControlButtons/index.html#test-game) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (headless Chromium verifies dim entry styling, hidden controls in the expanded fallback, and Escape/Back restoration; native fullscreen events and dragging use explicit runtime mocks, with manual browser steps in CurrentUpdates.md)
-- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and clipped left D-pad repairs, button mounting, native fullscreen state events, fallback Escape/Back exit, and entry-control restoration use explicit runtime mocks; mouse/touch dragging uses mock rectangles; visual layout still requires manual device validation)
+- [Local fullscreen test canvas](tests/ControlButtons/index.html#test-game) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (headless Chromium verifies dim entry styling, hidden expanded controls, and pre-entry page scroll restoration after Escape/Back even with smooth scrolling enabled; native fullscreen events and dragging use explicit runtime mocks, with manual browser steps in CurrentUpdates.md)
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and D-pad repairs, fullscreen state events, Escape/Back exit, scroll/focus restoration, delayed layout resets, and rapid re-entry use explicit runtime mocks; mouse/touch dragging uses mock rectangles; visual layout still requires manual device validation)
 
 # Better Discord
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
