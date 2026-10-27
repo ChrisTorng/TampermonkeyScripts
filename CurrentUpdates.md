@@ -37,7 +37,7 @@ Test pages:
 
 Verification: Scroll through a long code block and pinch zoom. The `譯` control still tracks the visible part of the block, while the fullscreen control does not chase the zoomed visual viewport.
 
-**Update scope:** These two scripts embed the same transient-control helper and should be synchronized. The `≡` menu and its four other userscripts are unchanged: **there is no requirement to update the entire five-script floating-menu group together** for this change.
+**Update scope:** These two scripts share a canonical transient-control helper, so both generated source copies were synchronized in the repository. Installed scripts can be updated independently. The `≡` menu and its four other userscripts are unchanged: **there is no requirement to update the entire five-script floating-menu group together** for this change.
 
 ## Verification notes
 
