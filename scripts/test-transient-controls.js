@@ -145,12 +145,63 @@ describe('transient in-content controls', () => {
         });
     }
 
-    test('fullscreen keeps a dim entry icon and hides it while active', () => {
+    test('fullscreen remains document-anchored and compact during pinch zoom', () => {
+        const harness = execute(files[1]);
+        const left = harness.button.style.left;
+        const top = harness.button.style.top;
+        const viewport = harness.window.visualViewport;
+        viewport.scale = 2;
+        viewport.offsetLeft = 300;
+        viewport.offsetTop = 200;
+        viewport.width = 350;
+        viewport.height = 260;
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(harness.button.style.left, left);
+        assert.equal(harness.button.style.top, top);
+        assert.equal(harness.button.style.transform, 'scale(0.5)');
+        harness.dispatchVisualViewportEvent('scroll');
+        harness.flushAnimationFrames();
+        assert.equal(harness.button.style.left, left);
+        assert.equal(harness.button.style.top, top);
+        viewport.scale = 1;
+        viewport.offsetLeft = 0;
+        viewport.offsetTop = 0;
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(harness.button.style.transform || '', '');
+    });
+
+    test('fullscreen moves beside the independently mounted floating menu', () => {
+        const harness = execute(files[1]);
+        const menu = harness.document.createElement('div');
+        menu.id = 'tm-shared-floating-menu';
+        const left = 100 + parseFloat(harness.button.style.left) + 2;
+        const top = 100 + parseFloat(harness.button.style.top) + 1;
+        menu._rect = { left, top, right: left + 38, bottom: top + 32, width: 38, height: 32 };
+        harness.document.documentElement.appendChild(menu);
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu'), menu);
+        let reads = 0;
+        const getRect = menu.getBoundingClientRect.bind(menu);
+        menu.getBoundingClientRect = () => { reads++; return getRect(); };
+        harness.triggerMutation([menu], { target: harness.document.documentElement });
+        harness.update();
+        assert(reads > 0, 'Fullscreen layout must measure the menu after it mounts');
+        assert.equal(harness.button.style.left, `${left - 100 - 38 - 4}px`); // Leaves a 4 px gap.
+        menu._rect = { left: 600, top: 105, right: 638, bottom: 137, width: 38, height: 32 };
+        harness.update();
+        assert.equal(harness.button.style.left, '558px'); // Restores the default when clear.
+    });
+
+    test('fullscreen shares menu-like translucent styling and hides while active', () => {
         const harness = execute(files[1]);
         // Color rendering is outside this DOM harness; verify the emitted CSS.
         const css = harness.document.getElementById('tm-fullscreen-game-view-style').textContent;
-        assert.match(css, /color: #999 !important/);
-        assert.match(css, /border: 1px solid rgba\(255, 255, 255, 0\.3\) !important/);
+        assert.match(css, /color: #f0f0f0 !important/);
+        assert.match(css, /background: rgba\(0, 0, 0, \.55\) !important/);
+        assert.match(css, /width: 38px !important/);
+        assert.match(css, /height: 32px !important/);
+        assert.match(css, /border-radius: 5px !important/);
         harness.button.click();
         assert.equal(harness.button.disabled, true);
         assert.equal(harness.button.textContent, '⛶');

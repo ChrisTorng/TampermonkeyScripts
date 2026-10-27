@@ -37,6 +37,7 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Edit `src/FloatingMenu.js` as the canonical shared implementation, then run `node scripts/sync-floating-menu.js` to copy it into every participating `.user.js`. Review and test all consumers after any shared change.
 - Register each action with a stable key in `FLOATING_MENU_ORDER`; do not depend on userscript startup order. Only the menu handle stores position. A missing or unavailable action must not leave an empty menu visible.
 - Keep host exclusions and the site-disable setting coordinated across the menu scripts. Preserve URL-based automatic activation independently of whether the menu is expanded.
+- The independent fullscreen entry button follows `≡` document anchoring during pinch zoom, matches its dimensions and translucent styling, and avoids overlapping any visible menu. Do not place it in `FLOATING_MENU_ORDER` or couple its releases to the five menu scripts; see [FloatingMenu.md](FloatingMenu.md).
 
 ## 7. Current update installation and verification
 - For every functional change, update the fixed **[CurrentUpdates.md](CurrentUpdates.md)** page in the same change. Keep **README.md** linked to this page near the top. Replace stale entries when starting a new change; keep all modified userscripts listed while extending the same pull request.

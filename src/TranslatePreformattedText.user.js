@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-26_1.5.5
+// @version      2026-10-28_1.5.6
 // @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, and Wikipedia translation.
 // @author       Chris Torng
 // @match        *://*/*
@@ -321,14 +321,22 @@
         window.visualViewport.addEventListener('resize', refreshTransientControls);
     }
 
-    function makeTransientControlDraggable(button, container, { bottom = false, size = 24, inset = 6 } = {}) {
+    function makeTransientControlDraggable(button, container, { bottom = false, size = 24, height = size, inset = 6,
+        stationaryOnPinchZoom = false, avoidFloatingMenu = false } = {}) {
         let placement = null;
         let drag = null;
         let suppressClick = false;
         let observer;
+        let positioned = false;
+        let normalScale = Math.min(1, window.visualViewport?.scale || 1);
+        const isPinchZoomed = () => {
+            if (!window.visualViewport) return false;
+            normalScale = Math.min(normalScale, window.visualViewport.scale);
+            return window.visualViewport.scale > normalScale * 1.01;
+        };
         const geometry = () => {
             const rect = container.getBoundingClientRect();
-            const viewport = window.visualViewport;
+            const viewport = stationaryOnPinchZoom ? null : window.visualViewport;
             let left = viewport ? viewport.offsetLeft : 0;
             let top = viewport ? viewport.offsetTop : 0;
             let right = left + (viewport ? viewport.width : window.innerWidth);
@@ -363,7 +371,7 @@
             const minX = Math.max(rect.left, left) - originX;
             const minY = Math.max(rect.top, top) - originY;
             const maxX = Math.min(rect.right, right) - originX - size;
-            const maxY = Math.min(rect.bottom, lower) - originY - size;
+            const maxY = Math.min(rect.bottom, lower) - originY - height;
             return { originX, originY, minX, minY, maxX, maxY };
         };
         const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
@@ -373,18 +381,58 @@
             button.style.setProperty('right', 'auto', 'important');
             button.style.setProperty('bottom', 'auto', 'important');
         };
+        const avoidMenuOverlap = (x, y, area) => {
+            if (!avoidFloatingMenu) return { x, y };
+            const menu = document.getElementById('tm-shared-floating-menu');
+            if (!menu || menu.hidden) return { x, y };
+            const elements = [menu, menu.querySelector('[data-floating-close]'),
+                menu.querySelector('[data-floating-dialog]')];
+            const obstacles = elements.filter((element) => element && !element.hidden)
+                .map((element) => element.getBoundingClientRect())
+                .filter((rect) => rect.width > 0 && rect.height > 0);
+            const gap = 4;
+            const overlaps = (px, py) => obstacles.some((rect) =>
+                area.originX + px < rect.right + gap && area.originX + px + size > rect.left - gap &&
+                area.originY + py < rect.bottom + gap && area.originY + py + height > rect.top - gap);
+            if (!overlaps(x, y)) return { x, y };
+            const candidates = obstacles.flatMap((rect) => [
+                { x: rect.left - area.originX - size - gap, y },
+                { x: rect.right - area.originX + gap, y },
+                { x, y: rect.top - area.originY - height - gap },
+                { x, y: rect.bottom - area.originY + gap },
+            ]);
+            // Prefer placing the independent button beside the menu, never on top of it.
+            candidates.sort((a, b) => (Number(a.x === x) - Number(b.x === x)) ||
+                (Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)));
+            return candidates.find((candidate) =>
+                candidate.x >= area.minX && candidate.x <= area.maxX &&
+                candidate.y >= area.minY && candidate.y <= area.maxY &&
+                !overlaps(candidate.x, candidate.y)) || { x, y };
+        };
         const layout = () => {
             if (!button.isConnected) {
                 transientControlLayouts.delete(layout);
                 if (observer) observer.disconnect();
                 return;
             }
+            // Pinch zoom must neither reposition the button nor enlarge its screen footprint.
+            const zoomed = stationaryOnPinchZoom && isPinchZoomed();
+            if (zoomed) {
+                button.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+                button.style.setProperty('transform-origin', 'top left', 'important');
+                if (positioned) return;
+            } else if (stationaryOnPinchZoom) {
+                button.style.removeProperty('transform');
+            }
             const area = geometry();
             const hidden = area.maxX < area.minX || area.maxY < area.minY;
             if (button.hidden !== hidden) button.hidden = hidden;
             if (hidden || drag) return;
-            place(clamp(placement ? placement.x : area.maxX - inset, area.minX, area.maxX),
-                clamp(placement ? placement.y : bottom ? area.maxY - inset : area.minY + inset, area.minY, area.maxY));
+            const x = clamp(placement ? placement.x : area.maxX - inset, area.minX, area.maxX);
+            const y = clamp(placement ? placement.y : bottom ? area.maxY - inset : area.minY + inset, area.minY, area.maxY);
+            const clear = avoidMenuOverlap(x, y, area);
+            place(clear.x, clear.y);
+            positioned = true;
         };
         button.style.setProperty('touch-action', 'none', 'important');
         button.style.setProperty('text-decoration', 'none', 'important');

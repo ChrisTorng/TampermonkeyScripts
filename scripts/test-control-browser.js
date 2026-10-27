@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
-test('real browser keeps translation inside its horizontal scrollport and renders the dim fullscreen control', {
+test('real browser keeps translation inside its horizontal scrollport and renders the compact fullscreen control', {
     skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to a Chromium browser executable',
 }, () => {
     const root = path.join(__dirname, '..');
@@ -47,7 +47,9 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     assert(button.getAttribute('aria-pressed') === 'false', 'Translation should restore');
                     const fullscreen = document.getElementById('tm-fullscreen-game-view-button');
                     assert(fullscreen && !fullscreen.hidden, 'Fullscreen test button must be available');
-                    assert(getComputedStyle(fullscreen).color === 'rgb(153, 153, 153)', 'Fullscreen icon must be dim gray');
+                    assert(getComputedStyle(fullscreen).color === 'rgb(240, 240, 240)', 'Fullscreen icon must match the menu foreground');
+                    assert(getComputedStyle(fullscreen).width === '38px', 'Fullscreen width must match the menu');
+                    assert(getComputedStyle(fullscreen).height === '32px', 'Fullscreen height must match the menu');
                     // Script-generated clicks have no user activation. Explicitly reject the native
                     // API so the real-browser CSS check exercises the fallback deterministically.
                     document.getElementById('test-game').requestFullscreen = () => Promise.reject(new Error('Fallback test'));
@@ -77,7 +79,7 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Back should restore the entry button');
                     assert(window.scrollY === originalScroll.y, 'Back must restore the pre-entry page scroll position');
                     result.setAttribute('data-test-status', 'passed');
-                    result.textContent = 'Clipping, translation, dim entry button, hidden expanded controls, Escape, and Back checks passed';
+                    result.textContent = 'Clipping, translation, compact entry button, hidden expanded controls, Escape, and Back checks passed';
                 } catch (error) {
                     result.setAttribute('data-test-status', 'failed');
                     result.textContent = error.message;
