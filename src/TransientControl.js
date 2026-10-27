@@ -96,7 +96,9 @@
                 { x, y: rect.top - area.originY - height - gap },
                 { x, y: rect.bottom - area.originY + gap },
             ]);
-            candidates.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+            // Prefer placing the independent button beside the menu, never on top of it.
+            candidates.sort((a, b) => (Number(a.x === x) - Number(b.x === x)) ||
+                (Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)));
             return candidates.find((candidate) =>
                 candidate.x >= area.minX && candidate.x <= area.maxX &&
                 candidate.y >= area.minY && candidate.y <= area.maxY &&
