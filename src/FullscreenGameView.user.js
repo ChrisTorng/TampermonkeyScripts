@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-26_1.0.4
-// @description  Fit embedded games within mobile screens with a dim, draggable fullscreen button.
+// @version      2026-10-27_1.0.5
+// @description  Fit embedded games to mobile screens with a dim, draggable fullscreen button; restore page position on exit.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -292,8 +292,53 @@ body:has(#task-detail-root) {
         button.disabled = active;
     }
 
+    let savedPageState = null;
+    let restorationEpoch = 0;
+
+    function rememberPageState(target) {
+        restorationEpoch += 1;
+        const ancestors = [];
+        for (let element = target; element; element = element.parentElement) ancestors.unshift(element);
+        const elements = new Set([...ancestors, ...target.querySelectorAll('*')]);
+        savedPageState = {
+            target,
+            x: window.scrollX || 0,
+            y: window.scrollY || 0,
+            focus: document.activeElement,
+            scroll: Array.from(elements).map((element) => ({
+                element, left: element.scrollLeft || 0, top: element.scrollTop || 0,
+            })),
+        };
+    }
+
+    function restorePageState(target) {
+        if (!savedPageState || savedPageState.target !== target) return;
+        const saved = savedPageState;
+        savedPageState = null;
+        const epoch = restorationEpoch;
+        if (saved.focus && saved.focus.isConnected) saved.focus.focus?.({ preventScroll: true });
+        const restore = () => {
+            if (epoch !== restorationEpoch || document.fullscreenElement || target.classList.contains(FALLBACK_CLASS)) return;
+            saved.scroll.forEach(({ element, left, top }) => {
+                if (!element.isConnected) return;
+                if (typeof element.scrollTo === 'function') element.scrollTo({ left, top, behavior: 'instant' });
+                else { element.scrollLeft = left; element.scrollTop = top; }
+            });
+            if (typeof window.scrollTo === 'function') window.scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' });
+            refreshTransientControls();
+        };
+        // Fullscreen exit and overflow removal can reset scrolling after fullscreenchange.
+        // Restore immediately and across two layout frames; a new entry invalidates old callbacks.
+        restore();
+        window.requestAnimationFrame(() => {
+            restore();
+            window.requestAnimationFrame(restore);
+        });
+    }
+
     async function enterFullscreen(target, button) {
         if (isFullscreen(target)) return;
+        rememberPageState(target);
         if (typeof target.requestFullscreen === 'function') {
             try {
                 await target.requestFullscreen({ navigationUI: 'hide' });
@@ -337,7 +382,7 @@ body:has(#task-detail-root) {
             target.classList.remove(FALLBACK_CLASS);
             document.documentElement.classList.remove('tm-fullscreen-game-view-active');
             updateButton(button, target);
-            refreshTransientControls();
+            restorePageState(target);
         };
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') exitFallback();
@@ -347,6 +392,7 @@ body:has(#task-detail-root) {
         document.addEventListener('fullscreenchange', () => {
             document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
             updateButton(button, target);
+            if (!isFullscreen(target)) restorePageState(target);
         });
     }
 

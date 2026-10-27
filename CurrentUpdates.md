@@ -1,34 +1,16 @@
 # Current updates: install and verify
 
-Updated: 2026-10-26
+Updated: 2026-10-27
 
 Open this page on the PR's Vercel preview to install that preview's versions. After merging, the same page lists the updates in production. Click each installation link below, confirm the version in Tampermonkey, then reload the test page.
 
-## Updated userscripts (2)
+## Updated userscripts (1)
 
-### Translate Preformatted Text — 2026-10-26_1.5.5
-
-**[Install / update TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js)**
-
-**UI changes:** The small `譯` button appears at the bottom right of the visible part of each code block, including blocks inside horizontal or vertical scrollers. It can be dragged without triggering translation; its position resets on reload.
-
-Test pages:
-
-- [GitHub: Fermat's Last Theorem](https://github.com/anthropics/fermats-last-theorem)
-- [Local control test page](tests/ControlButtons/index.html)
-
-Verification:
-
-1. On GitHub, find **The statement**. Before moving its horizontal scrollbar, verify that the first code block's `譯` is visible and clickable near its lower-right visible corner.
-2. Scroll the block left, halfway, all the way right, then back left. The button stays in the visible block area, above the scrollbar.
-3. Drag the button with a mouse or finger. Releasing it must not translate the block. Click once to convert the block and again to restore it.
-4. Scroll the page and resize the window. The button stays within the visible part of its block. Reload to restore its default position.
-
-### Fullscreen Game View — 2026-10-26_1.0.4
+### Fullscreen Game View — 2026-10-27_1.0.5
 
 **[Install / update FullscreenGameView.user.js](src/FullscreenGameView.user.js)**
 
-**UI changes:** The dim gray fullscreen entry button can be dragged within its visible game area without activating fullscreen; its position resets on reload. The button disappears in native fullscreen and the expanded fallback: there is no close button. Escape exits fullscreen; Escape or browser Back restores the fallback view. Ancestor scrollers also limit the entry button's visible position.
+**UI changes:** The dim gray fullscreen entry button can be dragged within its visible game area without activating fullscreen; its position resets on reload. The button disappears in native fullscreen and the expanded fallback: there is no close button. Exiting restores the pre-entry page position, focus, ancestor scroll offsets, and game scroll offsets instead of jumping to the page top. Escape exits fullscreen; Escape or browser Back restores the fallback view. Ancestor scrollers also limit the entry button's visible position.
 
 Test pages:
 
@@ -39,9 +21,9 @@ Verification:
 
 1. On the local page, find **Fullscreen**. The canvas has a dim gray `⛶` button near its upper-right corner.
 2. Drag the button with a mouse or finger. Releasing it must not enter fullscreen.
-3. Click it to enter fullscreen. Verify that neither `⛶` nor a close button covers the fullscreen content. Press **Esc** to exit and confirm the entry button returns at its previous location. If native fullscreen is unavailable, the expanded fallback must likewise hide its entry button and restore the page with **Esc** or browser **Back**.
+3. Scroll down to the canvas and, on ARC Prize, move any game or outer-container scrollbars. Click to enter fullscreen. Verify that neither `⛶` nor a close button covers the fullscreen content. Press **Esc** to exit: the page must remain at the original horizontal and vertical scroll position, with the same game/container offsets and entry-button location. It must not jump to the top. If native fullscreen is unavailable, verify the same restoration after **Esc** or browser **Back** from the expanded fallback.
 4. Reload the page: the button returns to its default location.
 
 ## Verification notes
 
-Automated coverage includes nested scrollport clipping, scrollbar clearance, translation conversion, dragging without activation or persistent storage, and source synchronization. A headless Chromium test checks real layout and hit testing at multiple horizontal scroll positions, plus hidden expanded-state controls and Escape/Back restoration; it explicitly substitutes frame scheduling, scroll-event delivery, and a rejected fullscreen request for fallback coverage. Native fullscreen events are mocked in DOM tests. Physical-device gestures still require manual verification.
+Automated coverage includes native fullscreen state events, page/ancestor/game scroll restoration, focus restoration, late browser resets, and rapid re-entry. Native APIs are mocked in DOM tests. A headless Chromium test checks actual fallback scrolling with smooth scrolling enabled, hidden expanded controls, and Escape/Back restoration; frame scheduling, event delivery, and the rejected native request are explicit test substitutions. Physical-device gestures still require manual verification.

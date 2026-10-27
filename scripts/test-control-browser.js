@@ -51,20 +51,31 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     // Script-generated clicks have no user activation. Explicitly reject the native
                     // API so the real-browser CSS check exercises the fallback deterministically.
                     document.getElementById('test-game').requestFullscreen = () => Promise.reject(new Error('Fallback test'));
+                    document.body.style.minHeight = '1800px';
+                    document.documentElement.style.scrollBehavior = 'smooth';
+                    window.scrollTo({ top: 300, behavior: 'instant' });
+                    scroller.scrollLeft = 175;
+                    await frame();
+                    const originalScroll = { x: window.scrollX, y: window.scrollY, code: scroller.scrollLeft };
                     fullscreen.click();
                     await frame();
                     assert(getComputedStyle(fullscreen).display === 'none', 'No entry or close button should appear while expanded');
                     window.dispatchEvent(new Event('resize'));
                     await frame();
                     assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state button');
+                    window.scrollTo({ top: 0, behavior: 'instant' });
                     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
                     await frame();
                     assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Escape should restore the entry button');
+                    assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Escape must restore the pre-entry page scroll position');
+                    assert(scroller.scrollLeft === originalScroll.code, 'Other page scrollers must stay unchanged');
                     fullscreen.click();
                     await frame();
+                    window.scrollTo({ top: 0, behavior: 'instant' });
                     window.dispatchEvent(new PopStateEvent('popstate'));
                     await frame();
                     assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Back should restore the entry button');
+                    assert(window.scrollY === originalScroll.y, 'Back must restore the pre-entry page scroll position');
                     result.setAttribute('data-test-status', 'passed');
                     result.textContent = 'Clipping, translation, dim entry button, hidden expanded controls, Escape, and Back checks passed';
                 } catch (error) {

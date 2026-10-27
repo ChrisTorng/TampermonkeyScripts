@@ -115,4 +115,72 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert(wrapper.classList.contains('tm-fullscreen-game-view-target'));
         assert.equal(harness.document.getElementById('tm-fullscreen-game-view-button').parentElement, wrapper);
     });
+
+    for (const mode of ['native', 'fallback-escape', 'fallback-back']) {
+        test(`${mode} restores document, ancestor, game scrolling, and focus after exit`, async () => {
+            const harness = executeOnArcTask();
+            const { window, document, game } = harness;
+            // The harness does not implement browser window scrolling or focus.
+            window.scrollX = 120;
+            window.scrollY = 950;
+            window.scrollTo = ({ left, top, behavior }) => {
+                assert.equal(behavior, 'instant');
+                window.scrollX = left;
+                window.scrollY = top;
+            };
+            const shell = game.querySelector('.shell-root');
+            const parent = game.parentElement;
+            parent.scrollLeft = 35;
+            parent.scrollTop = 80;
+            game.scrollLeft = 14;
+            game.scrollTop = 28;
+            shell.scrollLeft = 60;
+            shell.scrollTop = 75;
+            const button = document.getElementById('tm-fullscreen-game-view-button');
+            document.activeElement = button;
+            let focusOptions;
+            button.focus = (options) => { focusOptions = options; };
+            if (mode === 'native') game.requestFullscreen = async () => {
+                document.fullscreenElement = game;
+                document.dispatchEvent({ type: 'fullscreenchange' });
+            };
+            button.click();
+            await Promise.resolve();
+            window.scrollX = 0;
+            window.scrollY = 0;
+            for (const element of [parent, game, shell]) { element.scrollLeft = 0; element.scrollTop = 0; }
+            if (mode === 'native') {
+                document.fullscreenElement = null;
+                document.dispatchEvent({ type: 'fullscreenchange' });
+            } else if (mode === 'fallback-back') harness.dispatchWindowEvent('popstate');
+            else document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+            assert.equal(window.scrollX, 120);
+            assert.equal(window.scrollY, 950);
+            assert.equal(focusOptions.preventScroll, true);
+            // Simulate a late browser layout reset after the exit event.
+            window.scrollY = 0;
+            harness.flushAnimationFrames();
+            harness.flushAnimationFrames();
+            assert.equal(window.scrollY, 950);
+            assert.deepEqual([parent.scrollLeft, parent.scrollTop, game.scrollLeft, game.scrollTop, shell.scrollLeft, shell.scrollTop], [35, 80, 14, 28, 60, 75]);
+        });
+    }
+
+    test('pending restoration cannot overwrite a new fullscreen session', () => {
+        const harness = executeOnArcTask();
+        const { window, document } = harness;
+        window.scrollY = 900;
+        window.scrollTo = ({ top }) => { window.scrollY = top; };
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        button.click();
+        document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+        window.scrollY = 500;
+        button.click();
+        harness.flushAnimationFrames();
+        assert.equal(window.scrollY, 500);
+        document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+        harness.flushAnimationFrames();
+        harness.flushAnimationFrames();
+        assert.equal(window.scrollY, 500);
+    });
 });
