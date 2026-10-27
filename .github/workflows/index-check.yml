@@ -18,6 +18,8 @@ jobs:
         run: npm ci
       - name: Verify math translation strategy lab in headless Chrome
         run: node --test scripts/test-math-translation-strategies.js
+      - name: Test Hacker News article navigation and read states
+        run: node --test scripts/test-auto-open-new-articles.js
       - name: Test Reddit redirect behavior
         run: node --test scripts/test-redirect-urls.js
       - name: Test content controls and real browser clipping

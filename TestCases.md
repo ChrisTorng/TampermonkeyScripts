@@ -71,8 +71,8 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.
-- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (fixed lower-left page collapse control, clearer read state, scroll-to-top read marking, reload persistence boundaries, and archive-menu date limits are validated with a local DOM harness)
-- https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (responsive top and bottom navigation uses available previous/current/next archive dates and disabled endpoints)
+- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (fixed lower-left page collapse control, clearer read state, scroll-to-top read marking, reload persistence boundaries, and Latest-versus-dated-archive navigation are validated with a local DOM harness)
+- https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (responsive top and bottom navigation uses available archive dates, keeps Latest separate after the newest date, and disables only the true endpoints)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://www.theneurondaily.com/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: AUTOMATED] (listing detection and new-item open flow validated with local DOM harness)
