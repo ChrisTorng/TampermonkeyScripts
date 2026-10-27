@@ -4,9 +4,9 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 **[Current updates: install the changed scripts and verify them](CurrentUpdates.md)**
 
-## Shared floating-menu scripts — update together
+## Shared floating-menu scripts — update together when the menu changes
 
-**Update all five scripts below together** to keep their shared menu consistent. Update every installed script in this group before using the new menu.
+**When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. Independent feature updates (such as Fullscreen Game View or an individual block control) do not require a five-script menu update.
 
 ### [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
@@ -145,9 +145,9 @@ See [TestCases.md](TestCases.md) for sample URLs across the scripts.
 
 Click a script link, click **Install** on the Tampermonkey installation page, then reload the target page.
 
-### Shared floating-menu scripts — update together
+### Shared floating-menu scripts — update together when the menu changes
 
-**Update every installed script in this five-script group before using the new menu.**
+**After a shared-menu change, update every installed script in this five-script group.** Standalone fullscreen and transient-control changes do not require a group update.
 
   - [AllGoInternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
   - [InternetArchive.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js)
