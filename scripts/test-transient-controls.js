@@ -193,7 +193,7 @@ describe('transient in-content controls', () => {
         // Color rendering is outside this DOM harness; verify the emitted CSS.
         const css = harness.document.getElementById('tm-fullscreen-game-view-style').textContent;
         assert.match(css, /color: #f0f0f0 !important/);
-        assert.match(css, /background: rgba\\(0, 0, 0, \\.55\\) !important/);
+        assert.match(css, /background: rgba\(0, 0, 0, \.55\) !important/);
         assert.match(css, /width: 38px !important/);
         assert.match(css, /height: 32px !important/);
         assert.match(css, /border-radius: 5px !important/);
