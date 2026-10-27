@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-27_1.0.5
-// @description  Fit embedded games to mobile screens with a dim, draggable fullscreen button; restore page position on exit.
+// @version      2026-10-28_1.0.6
+// @description  Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -35,14 +35,22 @@
         window.visualViewport.addEventListener('resize', refreshTransientControls);
     }
 
-    function makeTransientControlDraggable(button, container, { bottom = false, size = 24, inset = 6 } = {}) {
+    function makeTransientControlDraggable(button, container, { bottom = false, size = 24, height = size, inset = 6,
+        stationaryOnPinchZoom = false, avoidFloatingMenu = false } = {}) {
         let placement = null;
         let drag = null;
         let suppressClick = false;
         let observer;
+        let positioned = false;
+        let normalScale = Math.min(1, window.visualViewport?.scale || 1);
+        const isPinchZoomed = () => {
+            if (!window.visualViewport) return false;
+            normalScale = Math.min(normalScale, window.visualViewport.scale);
+            return window.visualViewport.scale > normalScale * 1.01;
+        };
         const geometry = () => {
             const rect = container.getBoundingClientRect();
-            const viewport = window.visualViewport;
+            const viewport = stationaryOnPinchZoom ? null : window.visualViewport;
             let left = viewport ? viewport.offsetLeft : 0;
             let top = viewport ? viewport.offsetTop : 0;
             let right = left + (viewport ? viewport.width : window.innerWidth);
@@ -77,7 +85,7 @@
             const minX = Math.max(rect.left, left) - originX;
             const minY = Math.max(rect.top, top) - originY;
             const maxX = Math.min(rect.right, right) - originX - size;
-            const maxY = Math.min(rect.bottom, lower) - originY - size;
+            const maxY = Math.min(rect.bottom, lower) - originY - height;
             return { originX, originY, minX, minY, maxX, maxY };
         };
         const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
@@ -87,18 +95,56 @@
             button.style.setProperty('right', 'auto', 'important');
             button.style.setProperty('bottom', 'auto', 'important');
         };
+        const avoidMenuOverlap = (x, y, area) => {
+            if (!avoidFloatingMenu) return { x, y };
+            const menu = document.getElementById('tm-shared-floating-menu');
+            if (!menu || menu.hidden) return { x, y };
+            const elements = [menu, menu.querySelector('[data-floating-close]'),
+                menu.querySelector('[data-floating-dialog]')];
+            const obstacles = elements.filter((element) => element && !element.hidden)
+                .map((element) => element.getBoundingClientRect())
+                .filter((rect) => rect.width > 0 && rect.height > 0);
+            const gap = 4;
+            const overlaps = (px, py) => obstacles.some((rect) =>
+                area.originX + px < rect.right + gap && area.originX + px + size > rect.left - gap &&
+                area.originY + py < rect.bottom + gap && area.originY + py + height > rect.top - gap);
+            if (!overlaps(x, y)) return { x, y };
+            const candidates = obstacles.flatMap((rect) => [
+                { x: rect.left - area.originX - size - gap, y },
+                { x: rect.right - area.originX + gap, y },
+                { x, y: rect.top - area.originY - height - gap },
+                { x, y: rect.bottom - area.originY + gap },
+            ]);
+            candidates.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y));
+            return candidates.find((candidate) =>
+                candidate.x >= area.minX && candidate.x <= area.maxX &&
+                candidate.y >= area.minY && candidate.y <= area.maxY &&
+                !overlaps(candidate.x, candidate.y)) || { x, y };
+        };
         const layout = () => {
             if (!button.isConnected) {
                 transientControlLayouts.delete(layout);
                 if (observer) observer.disconnect();
                 return;
             }
+            // Pinch zoom must neither reposition the button nor enlarge its screen footprint.
+            const zoomed = stationaryOnPinchZoom && isPinchZoomed();
+            if (zoomed) {
+                button.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+                button.style.setProperty('transform-origin', 'top left', 'important');
+                if (positioned) return;
+            } else if (stationaryOnPinchZoom) {
+                button.style.removeProperty('transform');
+            }
             const area = geometry();
             const hidden = area.maxX < area.minX || area.maxY < area.minY;
             if (button.hidden !== hidden) button.hidden = hidden;
             if (hidden || drag) return;
-            place(clamp(placement ? placement.x : area.maxX - inset, area.minX, area.maxX),
-                clamp(placement ? placement.y : bottom ? area.maxY - inset : area.minY + inset, area.minY, area.maxY));
+            const x = clamp(placement ? placement.x : area.maxX - inset, area.minX, area.maxX);
+            const y = clamp(placement ? placement.y : bottom ? area.maxY - inset : area.minY + inset, area.minY, area.maxY);
+            const clear = avoidMenuOverlap(x, y, area);
+            place(clear.x, clear.y);
+            positioned = true;
         };
         button.style.setProperty('touch-action', 'none', 'important');
         button.style.setProperty('text-decoration', 'none', 'important');
@@ -169,22 +215,23 @@ html.tm-fullscreen-game-view-active body {
 
 #${BUTTON_ID} {
     align-items: center !important;
-    background: rgba(0, 0, 0, 0.72) !important;
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    border-radius: 8px !important;
+    background: rgba(0, 0, 0, .55) !important;
+    border: 0 !important;
+    border-radius: 5px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .25) !important;
     box-sizing: border-box !important;
-    color: #999 !important;
+    color: #f0f0f0 !important;
     cursor: pointer !important;
     display: flex !important;
-    font: 700 22px/1 sans-serif !important;
-    height: 42px !important;
+    font: 600 15px/32px system-ui, sans-serif !important;
+    height: 32px !important;
     justify-content: center !important;
     margin: 0 !important;
     padding: 0 !important;
     position: absolute !important;
-    right: max(8px, env(safe-area-inset-right)) !important;
-    top: max(8px, env(safe-area-inset-top)) !important;
-    width: 42px !important;
+    right: max(4px, env(safe-area-inset-right)) !important;
+    top: max(4px, env(safe-area-inset-top)) !important;
+    width: 38px !important;
     z-index: 2147483647 !important;
     touch-action: none !important;
     text-decoration: none !important;
@@ -193,6 +240,13 @@ html.tm-fullscreen-game-view-active body {
 #${BUTTON_ID}[hidden],
 #${BUTTON_ID}[aria-pressed="true"] {
     display: none !important;
+}
+
+#${BUTTON_ID}:hover {
+    background: rgba(0, 0, 0, .75) !important;
+}
+#${BUTTON_ID}:hover, #${BUTTON_ID}:focus, #${BUTTON_ID}:active {
+    text-decoration: none !important;
 }
 
 #${BUTTON_ID}:focus-visible {
@@ -370,7 +424,8 @@ body:has(#task-detail-root) {
         button.type = 'button';
         updateButton(button, target);
         target.appendChild(button);
-        makeTransientControlDraggable(button, target, { size: 42, inset: 8 });
+        makeTransientControlDraggable(button, target, { size: 38, height: 32, inset: 4,
+            stationaryOnPinchZoom: true, avoidFloatingMenu: true });
         button.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation?.();
@@ -396,6 +451,27 @@ body:has(#task-detail-root) {
         });
     }
 
+    let watchedFloatingMenu = null;
+    let menuObserver = null;
+    function watchFloatingMenu() {
+        const menu = document.getElementById('tm-shared-floating-menu');
+        if (menu === watchedFloatingMenu) return;
+        menuObserver?.disconnect();
+        watchedFloatingMenu = menu;
+        if (menu) {
+            menuObserver = new MutationObserver(refreshTransientControls);
+            menuObserver.observe(menu, {
+                attributes: true, attributeFilter: ['style', 'hidden', 'data-floating-expanded'],
+                childList: true, subtree: true,
+            });
+        }
+        refreshTransientControls();
+    }
     mountButton();
-    new MutationObserver(mountButton).observe(document.documentElement, { childList: true, subtree: true });
+    watchFloatingMenu();
+    // Menu integration is optional: both userscripts work independently.
+    new MutationObserver(() => {
+        mountButton();
+        watchFloatingMenu();
+    }).observe(document.documentElement, { childList: true, subtree: true });
 })();
