@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-09-29_1.7.0
-// @description  Add clear read states, fixed collapse controls, and bounded date navigation to Hacker News Summary; track and auto-open new items on other supported sites.
+// @version      2026-10-28_1.7.1
+// @description  Add clear read states, fixed collapse controls, and separate dated archive/Latest navigation to Hacker News Summary; track and auto-open new items on other supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -428,10 +428,19 @@
         return control;
     }
 
+    function createLatestControl() {
+        const control = document.createElement('a');
+        control.href = '/';
+        control.textContent = 'Latest ›';
+        control.title = 'Open latest articles';
+        return control;
+    }
+
     function createDateNavigation(displayedDate, availableDates) {
-        const dateText = displayedDate || availableDates[availableDates.length - 1];
-        const currentIndex = availableDates.indexOf(dateText);
-        if (!dateText || currentIndex === -1) {
+        // The home page is a live Latest view, not the newest dated archive.
+        const isLatest = displayedDate === null;
+        const currentIndex = isLatest ? availableDates.length : availableDates.indexOf(displayedDate);
+        if (availableDates.length === 0 || currentIndex === -1) {
             return null;
         }
 
@@ -441,10 +450,14 @@
 
         const previous = createDateControl(availableDates[currentIndex - 1], 'previous');
         const current = document.createElement('a');
-        current.href = `/daily/${dateText}`;
-        current.textContent = formatShortDate(dateText);
-        current.title = 'Open this daily archive';
-        const next = createDateControl(availableDates[currentIndex + 1], 'next');
+        current.href = isLatest ? '/' : `/daily/${displayedDate}`;
+        current.textContent = isLatest ? 'Latest' : formatShortDate(displayedDate);
+        current.title = isLatest ? 'Open latest articles' : 'Open this daily archive';
+        const next = isLatest
+            ? createDateControl(null, 'next')
+            : currentIndex === availableDates.length - 1
+                ? createLatestControl()
+                : createDateControl(availableDates[currentIndex + 1], 'next');
         navigation.append(previous, current, next);
         return navigation;
     }
