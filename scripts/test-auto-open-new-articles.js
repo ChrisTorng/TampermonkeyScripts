@@ -259,21 +259,62 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         assert.match(injectedStyle, /min-height: 44px !important/);
     });
 
-    test('disables navigation beyond the first and last available archive dates', () => {
-        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, []);
+    test('treats the homepage as Latest rather than the newest dated archive', () => {
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/#sort=time&order=asc', {}, []);
         buildHackerNewsDateMenu(harness, ['2026-03-08', '2026-03-07', '2026-03-05']);
-        buildHackerNewsArticle(harness, '402', 'Latest archive item');
+        buildHackerNewsArticle(harness, '402', 'Live latest item');
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const navigations = harness.document.querySelectorAll('.auto-open-new-articles-date-nav');
+        assert.equal(navigations.length, 2);
+        navigations.forEach((navigation) => {
+            assert.equal(navigation.children[0].textContent, '‹ 03-08');
+            assert.equal(navigation.children[0].href, '/daily/2026-03-08');
+            assert.equal(navigation.children[1].textContent, 'Latest');
+            assert.equal(navigation.children[1].href, '/');
+            assert.equal(navigation.children[2].textContent, '›');
+            assert.equal(navigation.children[2].tagName, 'SPAN');
+            assert.equal(navigation.children[2].getAttribute('aria-disabled'), 'true');
+            assert.equal(navigation.children[2].getAttribute('href'), null);
+        });
+    });
+
+    test('links the newest dated archive forward to the separate Latest view', () => {
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/daily/2026-10-28', {}, []);
+        buildHackerNewsDateMenu(harness, ['2026-10-28', '2026-10-27', '2026-10-26']);
+        buildHackerNewsArticle(harness, '403', 'Newest dated archive item');
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const navigations = harness.document.querySelectorAll('.auto-open-new-articles-date-nav');
+        assert.equal(navigations.length, 2);
+        navigations.forEach((navigation) => {
+            assert.equal(navigation.children[0].textContent, '‹ 10-27');
+            assert.equal(navigation.children[0].href, '/daily/2026-10-27');
+            assert.equal(navigation.children[1].textContent, '10-28');
+            assert.equal(navigation.children[1].href, '/daily/2026-10-28');
+            assert.equal(navigation.children[2].textContent, 'Latest ›');
+            assert.equal(navigation.children[2].href, '/');
+        });
+    });
+
+    test('disables navigation before the earliest available dated archive', () => {
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/daily/2026-03-05', {}, []);
+        buildHackerNewsDateMenu(harness, ['2026-03-08', '2026-03-07', '2026-03-05']);
+        buildHackerNewsArticle(harness, '404', 'Oldest archive item');
 
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const navigation = harness.document.querySelector('.auto-open-new-articles-date-nav');
-        assert.equal(navigation.children[0].textContent, '‹ 03-07');
-        assert.equal(navigation.children[1].textContent, '03-08');
-        assert.equal(navigation.children[2].textContent, '›');
-        assert.equal(navigation.children[2].tagName, 'SPAN');
-        assert.equal(navigation.children[2].getAttribute('aria-disabled'), 'true');
-        assert.equal(navigation.children[2].getAttribute('href'), null);
+        assert.equal(navigation.children[0].tagName, 'SPAN');
+        assert.equal(navigation.children[0].getAttribute('aria-disabled'), 'true');
+        assert.equal(navigation.children[1].textContent, '03-05');
+        assert.equal(navigation.children[2].textContent, '03-07 ›');
+        assert.equal(navigation.children[2].href, '/daily/2026-03-07');
     });
 });
 
