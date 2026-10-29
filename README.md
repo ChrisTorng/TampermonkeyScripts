@@ -51,6 +51,10 @@ Supported sites:
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
 - [arXiv](https://arxiv.org/) abs/pdf pages → arXiv HTML view
 
+### [Reddit Hide App Popup User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedditHideAppPopup.user.js)
+
+Hide Reddit mobile-app blocking prompts and restore scrolling without redirecting.
+
 ### [Archive Today User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
 
 Redirect selected paywall pages to [Archive Today](https://archive.is), hide prompts, and jump into the content.
@@ -163,6 +167,7 @@ Update each script separately as needed.
 
   - [HackerNewsComments.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
   - [RedirectUrls.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
+  - [RedditHideAppPopup.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedditHideAppPopup.user.js)
   - [ArchiveToday.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArchiveToday.user.js)
   - [TheNeuronDaily.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TheNeuronDaily.user.js)
   - [HideBanner.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HideBanner.user.js)
