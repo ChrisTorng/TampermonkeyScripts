@@ -219,4 +219,93 @@ describe('BetterDiscord on captured Discord pages', () => {
         assert.equal(composer.form.style.getPropertyValue('translate'), '');
     });
 
+    test('Android Edge expands a short Discord app root instead of moving a clipped form', () => {
+        const harness = executeBetterDiscord('https://discord.com/channels/1/2', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('div');
+        editor.setAttribute('contenteditable', 'true');
+        editor.isContentEditable = true;
+        composer.textArea.appendChild(editor);
+
+        const app = harness.document.createElement('div');
+        app.id = 'app-mount';
+        harness.document.body.removeChild(composer.form);
+        app.appendChild(composer.form);
+        harness.appendToBody(app);
+
+        app.getBoundingClientRect = () => {
+            const height = Number.parseFloat(app.style.getPropertyValue('height')) || 280;
+            return { top: 0, bottom: height, height };
+        };
+        composer.form.getBoundingClientRect = () => ({
+            bottom: app.getBoundingClientRect().bottom,
+        });
+
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.document.activeElement = editor;
+        harness.window.visualViewport.height = 360;
+        harness.dispatchDocumentEvent('focusin');
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+
+        assert.equal(app.style.getPropertyValue('height'), '360px');
+        assert.equal(app.style.getPropertyValue('min-height'), '360px');
+        assert.equal(app.style.getPropertyValue('max-height'), 'none');
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+
+        // Repeated scroll/resize events must not accumulate a correction.
+        harness.dispatchVisualViewportEvent('scroll');
+        harness.flushAnimationFrames();
+        assert.equal(app.style.getPropertyValue('height'), '360px');
+
+        harness.document.activeElement = null;
+        harness.dispatchDocumentEvent('focusout');
+        harness.flushAnimationFrames();
+        assert.equal(app.style.getPropertyValue('height'), '');
+        assert.equal(app.style.getPropertyValue('min-height'), '');
+        assert.equal(app.style.getPropertyValue('max-height'), '');
+    });
+
+    test('Android Edge expands the short chat container when its app root is full height', () => {
+        const harness = executeBetterDiscord('https://discord.com/channels/1/2', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('div');
+        editor.setAttribute('contenteditable', 'true');
+        editor.isContentEditable = true;
+        composer.textArea.appendChild(editor);
+
+        const app = harness.document.createElement('div');
+        app.id = 'app-mount';
+        const chat = harness.document.createElement('section');
+        chat.className = 'chat_f75fb0';
+        harness.document.body.removeChild(composer.form);
+        chat.appendChild(composer.form);
+        app.appendChild(chat);
+        harness.appendToBody(app);
+
+        app.getBoundingClientRect = () => ({ top: 0, bottom: 360, height: 360 });
+        chat.getBoundingClientRect = () => {
+            const height = Number.parseFloat(chat.style.getPropertyValue('height')) || 260;
+            return { top: 20, bottom: 20 + height, height };
+        };
+        composer.form.getBoundingClientRect = () => ({
+            bottom: chat.getBoundingClientRect().bottom,
+        });
+
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.document.activeElement = editor;
+        harness.window.visualViewport.height = 360;
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+
+        assert.equal(app.style.getPropertyValue('height'), '');
+        assert.equal(chat.style.getPropertyValue('height'), '340px');
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+
+        harness.document.activeElement = null;
+        harness.dispatchDocumentEvent('focusout');
+        harness.flushAnimationFrames();
+        assert.equal(chat.style.getPropertyValue('height'), '');
+    });
+
 });
