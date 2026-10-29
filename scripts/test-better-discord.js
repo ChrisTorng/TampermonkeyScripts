@@ -73,6 +73,8 @@ function buildDiscordComposer(harness, options = {}) {
     harness.appendToBody(form);
 
     return {
+        form,
+        textArea,
         buttonsArea,
         emojiWrapper,
         appsWrapper,
@@ -83,8 +85,11 @@ function buildDiscordComposer(harness, options = {}) {
     };
 }
 
-function executeBetterDiscord(url) {
+function executeBetterDiscord(url, userAgent = '') {
     const harness = createHarness({ url, readyState: 'loading' });
+    if (userAgent) {
+        harness.context.navigator = { userAgent };
+    }
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
@@ -160,4 +165,58 @@ describe('BetterDiscord on captured Discord pages', () => {
         assert.equal(composer.sendButtonContainer.style.getPropertyValue('width'), '');
         assert.equal(composer.sendButton.style.getPropertyValue('display'), '');
     });
+
+    test('Android Edge closes the measured gap above the software keyboard', () => {
+        const harness = executeBetterDiscord('https://discord.com/channels/1475861167476965439/1475861168412164149', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('div');
+        editor.setAttribute('contenteditable', 'true');
+        editor.isContentEditable = true;
+        composer.textArea.appendChild(editor);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.flushAnimationFrames();
+
+        harness.document.activeElement = editor;
+        let unadjustedBottom = 280;
+        composer.form.getBoundingClientRect = () => {
+            const translate = composer.form.style.getPropertyValue('translate');
+            const shift = Number.parseFloat(translate.split(' ')[1]) || 0;
+            return { bottom: unadjustedBottom + shift };
+        };
+        harness.window.visualViewport.height = 360;
+        harness.dispatchDocumentEvent('focusin');
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '0 80.0px');
+
+        harness.dispatchVisualViewportEvent('scroll');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '0 80.0px');
+
+        unadjustedBottom = 285;
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '0 75.0px');
+
+        harness.document.activeElement = null;
+        harness.dispatchDocumentEvent('focusout');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+    });
+
+    test('Windows Edge does not apply any Android keyboard positioning', () => {
+        const harness = executeBetterDiscord('https://discord.com/channels/1475861167476965439/1475861168412164149', 'Mozilla/5.0 (Windows NT 10.0) Edg/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('div');
+        editor.setAttribute('contenteditable', 'true');
+        editor.isContentEditable = true;
+        composer.textArea.appendChild(editor);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.document.activeElement = editor;
+        harness.window.visualViewport.height = 360;
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+    });
+
 });
