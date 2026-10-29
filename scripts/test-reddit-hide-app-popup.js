@@ -16,8 +16,8 @@ class FakeClassList {
         this.values.add(value);
     }
 
-    remove(value) {
-        this.values.delete(value);
+    remove(...values) {
+        for (const value of values) this.values.delete(value);
     }
 
     contains(value) {
