@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Better Discord
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.0.8
-// @description  Hide extra Discord chat input buttons; fix the chat composer gap above the Android Edge keyboard.
+// @version      2026-10-30_1.0.9
+// @description  Hide extra Discord chat input buttons and repair Android Edge keyboard layout gaps.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js
@@ -75,10 +75,13 @@
     }
 
 
-    // Edge Android sometimes leaves an unused strip between Discord's composer
-    // and the keyboard. Use the visible viewport, not a fixed keyboard height.
+    // Android Edge can leave Discord's app or chat panel shorter than the
+    // visible viewport when the software keyboard opens. Repair the containing
+    // layout first: translating the form alone can be clipped by that panel.
     function initAndroidEdgeKeyboardFix() {
-        if (typeof navigator === 'undefined' || !/Android/i.test(navigator.userAgent) || !/EdgA?\//i.test(navigator.userAgent)) {
+        if (typeof navigator === 'undefined' ||
+            !/Android/i.test(navigator.userAgent) ||
+            !/EdgA?\//i.test(navigator.userAgent)) {
             return () => {};
         }
 
@@ -87,26 +90,41 @@
             return () => {};
         }
 
-        const KEYBOARD_SHRINK = 120;
-        const GAP_TOLERANCE = 12;
-        let normalViewportHeight = viewport.height;
+        const MIN_GAP = 24;
+        const MAX_GAP = 360;
         let adjustedForm = null;
-        let appliedShift = 0;
+        let formShift = 0;
         let originalTranslate = '';
-        let originalPriority = '';
+        let originalTranslatePriority = '';
+        let resizedPanel = null;
+        let panelStyles = null;
         let frameId = 0;
 
-        function restoreComposerPosition() {
-            if (!adjustedForm) {
-                return;
-            }
-            if (originalTranslate) {
-                adjustedForm.style.setProperty('translate', originalTranslate, originalPriority);
+        function restoreProperty(element, property, value, priority) {
+            if (value) {
+                element.style.setProperty(property, value, priority);
             } else {
-                adjustedForm.style.removeProperty('translate');
+                element.style.removeProperty(property);
+            }
+        }
+
+        function restoreForm() {
+            if (adjustedForm) {
+                restoreProperty(adjustedForm, 'translate', originalTranslate, originalTranslatePriority);
             }
             adjustedForm = null;
-            appliedShift = 0;
+            formShift = 0;
+        }
+
+        function restorePanel() {
+            if (resizedPanel && panelStyles) {
+                for (const property of ['height', 'min-height', 'max-height']) {
+                    restoreProperty(resizedPanel, property,
+                        panelStyles[property].value, panelStyles[property].priority);
+                }
+            }
+            resizedPanel = null;
+            panelStyles = null;
         }
 
         function focusedComposer() {
@@ -118,66 +136,103 @@
             if (!composer) {
                 return null;
             }
-            // Discord uses contenteditable for the message editor.
             const isEditor = active.isContentEditable ||
                 active.matches('textarea, input, [contenteditable], [role="textbox"]') ||
                 !!active.closest('[contenteditable="true"]');
             return isEditor ? composer : null;
         }
 
+        function findShortLayoutPanel(form, visibleBottom) {
+            let highestShortPanel = null;
+            // Exclude the composer itself and other small controls. The target
+            // is an actual full-height chat/app wrapper, never the input row.
+            const minimumHeight = Math.min(300, viewport.height * 0.45);
+            for (let element = form.parentElement;
+                element && element !== document.body && element !== document.documentElement;
+                element = element.parentElement) {
+                const rect = element.getBoundingClientRect();
+                if (!Number.isFinite(rect.bottom) ||
+                    !Number.isFinite(rect.height) ||
+                    rect.height < minimumHeight ||
+                    visibleBottom - rect.bottom < MIN_GAP) {
+                    continue;
+                }
+                highestShortPanel = element;
+                const parent = element.parentElement;
+                if (parent && parent !== document.body &&
+                    parent.getBoundingClientRect().bottom - rect.bottom >= MIN_GAP) {
+                    return element;
+                }
+            }
+            return highestShortPanel;
+        }
+
+        function repairLayoutHeight(form, visibleBottom) {
+            // Measure without our last correction so repeated resize/scroll
+            // events cannot accumulate offsets or lock in an obsolete height.
+            restorePanel();
+            const panel = findShortLayoutPanel(form, visibleBottom);
+            if (!panel) {
+                return;
+            }
+            const rect = panel.getBoundingClientRect();
+            const gap = visibleBottom - rect.bottom;
+            if (gap < MIN_GAP || gap > Math.min(MAX_GAP, viewport.height * 0.6)) {
+                return;
+            }
+            panelStyles = {};
+            for (const property of ['height', 'min-height', 'max-height']) {
+                panelStyles[property] = {
+                    value: panel.style.getPropertyValue(property),
+                    priority: panel.style.getPropertyPriority(property),
+                };
+            }
+            resizedPanel = panel;
+            const height = Math.ceil(rect.height + gap) + 'px';
+            panel.style.setProperty('height', height, 'important');
+            panel.style.setProperty('min-height', height, 'important');
+            panel.style.setProperty('max-height', 'none', 'important');
+        }
+
         function adjustComposerPosition() {
             frameId = 0;
             const composer = focusedComposer();
-            if (!composer) {
-                restoreComposerPosition();
-                normalViewportHeight = Math.max(normalViewportHeight, viewport.height);
+            const form = composer ? composer.closest('form') : null;
+            if (!form || !form.isConnected || viewport.scale > 1.1) {
+                restoreForm();
+                restorePanel();
                 return;
             }
 
-            const keyboardShrink = normalViewportHeight - viewport.height;
-            if (keyboardShrink < KEYBOARD_SHRINK || viewport.scale > 1.1) {
-                restoreComposerPosition();
+            const visibleBottom = viewport.offsetTop + viewport.height;
+            if (!Number.isFinite(visibleBottom)) {
+                restoreForm();
+                restorePanel();
                 return;
             }
 
-            const form = composer.closest('form');
-            if (!form || !form.isConnected) {
-                restoreComposerPosition();
-                return;
-            }
-            if (form !== adjustedForm) {
-                restoreComposerPosition();
-                originalTranslate = form.style.getPropertyValue('translate');
-                originalPriority = form.style.getPropertyPriority('translate');
-                // Preserve positioning explicitly set by other features.
-                if (originalTranslate && originalTranslate !== 'none') {
-                    return;
-                }
-                adjustedForm = form;
-            }
+            // Remove the old form correction before measuring the layout.
+            restoreForm();
+            repairLayoutHeight(form, visibleBottom);
 
             const rect = form.getBoundingClientRect();
-            const visibleBottom = viewport.offsetTop + viewport.height;
-            if (!Number.isFinite(rect.bottom) || !Number.isFinite(visibleBottom)) {
-                restoreComposerPosition();
+            const gap = visibleBottom - rect.bottom;
+            // Do not shift forms that are already aligned or below the
+            // keyboard. Never manufacture a fixed keyboard-height offset.
+            if (!Number.isFinite(gap) || gap < MIN_GAP ||
+                gap > Math.min(MAX_GAP, viewport.height * 0.6)) {
                 return;
             }
-
-            // BoundingClientRect already includes our previous CSS translation.
-            const unadjustedBottom = rect.bottom - appliedShift;
-            const gap = visibleBottom - unadjustedBottom;
-            if (gap < GAP_TOLERANCE) {
-                restoreComposerPosition();
+            const initialTranslate = form.style.getPropertyValue('translate');
+            // Do not override positioning installed by Discord or other scripts.
+            if (initialTranslate && initialTranslate !== 'none') {
                 return;
             }
-
-            // Adjust only positive gaps; never push an input behind the keyboard.
-            const maxShift = Math.min(320, viewport.height * 0.48);
-            const nextShift = Math.min(gap, maxShift);
-            if (Math.abs(nextShift - appliedShift) >= 1) {
-                appliedShift = nextShift;
-                form.style.setProperty('translate', '0 ' + nextShift.toFixed(1) + 'px', 'important');
-            }
+            adjustedForm = form;
+            originalTranslate = initialTranslate;
+            originalTranslatePriority = form.style.getPropertyPriority('translate');
+            formShift = gap;
+            form.style.setProperty('translate', '0 ' + formShift.toFixed(1) + 'px', 'important');
         }
 
         function scheduleAdjust() {
@@ -188,23 +243,27 @@
 
         document.addEventListener('focusin', () => {
             scheduleAdjust();
-            // Edge reports intermediate viewport sizes during IME animation.
-            window.setTimeout(scheduleAdjust, 120);
-            window.setTimeout(scheduleAdjust, 350);
+            // Edge can report intermediate viewport sizes during IME animation.
+            for (const delay of [100, 300, 600]) {
+                window.setTimeout(scheduleAdjust, delay);
+            }
         });
         document.addEventListener('focusout', () => {
             scheduleAdjust();
-            window.setTimeout(scheduleAdjust, 120);
+            window.setTimeout(scheduleAdjust, 150);
         });
         viewport.addEventListener('resize', scheduleAdjust);
         viewport.addEventListener('scroll', scheduleAdjust);
         window.addEventListener('resize', scheduleAdjust);
         window.addEventListener('orientationchange', () => {
-            restoreComposerPosition();
-            normalViewportHeight = viewport.height;
+            restoreForm();
+            restorePanel();
             scheduleAdjust();
         });
-        window.addEventListener('pagehide', restoreComposerPosition);
+        window.addEventListener('pagehide', () => {
+            restoreForm();
+            restorePanel();
+        });
         return scheduleAdjust;
     }
 
