@@ -22,6 +22,8 @@ jobs:
         run: node --test scripts/test-auto-open-new-articles.js
       - name: Test Reddit redirect behavior
         run: node --test scripts/test-redirect-urls.js
+      - name: Test Reddit app popup suppression
+        run: node --test scripts/test-reddit-hide-app-popup.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
