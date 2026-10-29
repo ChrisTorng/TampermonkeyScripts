@@ -165,8 +165,10 @@
         }
         const screenWidth = window.screen?.width;
         const pageWidth = window.innerWidth;
-        if (window.visualViewport?.scale > 1.05 ||
-            !Number.isFinite(screenWidth) || !Number.isFinite(pageWidth) || pageWidth <= 0) {
+        if (window.visualViewport?.scale > 1.05) {
+            return 1;
+        }
+        if (!Number.isFinite(screenWidth) || !Number.isFinite(pageWidth) || pageWidth <= 0) {
             return null;
         }
         const ratio = screenWidth / pageWidth;
