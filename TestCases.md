@@ -20,6 +20,10 @@ Section note: X/Twitter tests validate Shitter post targets, referrer skips, and
 - https://arxiv.org/abs/2402.07939v1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://arxiv.org/pdf/2402.07939v1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 
+# Reddit Hide App Popup
+Section note: Node.js runtime DOM-harness tests simulate known and localized Reddit app popups, late injection, scroll-lock recovery, non-app dialogs, and early script startup. The mobile app-blocker DOM is not yet captured from a live session, so Android browser behavior requires manual validation.
+- https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (automated runtime tests use synthetic popup and scroll-lock DOM; actual blocking prompt and phone touch scrolling require live validation)
+
 # Archive Today
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://www.economist.com/interactive/christmas-specials/2024/12/21/the-chart-of-everything [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; redirect rule only)
