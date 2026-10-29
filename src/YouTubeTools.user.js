@@ -234,7 +234,7 @@
         style.setProperty('height', `${(zoom * 100).toFixed(2)}vh`, 'important');
         style.setProperty('transform-origin', 'top left', 'important');
         style.setProperty('transform',
-            `translate(${left}px, ${top}px) scale(${(1 / zoom).toFixed(5)})`, 'important');
+            `translate(${left}px, ${top}px) scale(${Number((1 / zoom).toFixed(5))})`, 'important');
     }
 
     function scheduleFullscreenCorrection() {
