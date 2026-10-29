@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-07-23_1.0.6
-// @description  Show a top-right YouTube playback-speed overlay that hides in fullscreen until hovered.
+// @version      2026-10-30_1.1.0
+// @description  Show YouTube playback-speed controls and compensate Android Edge fullscreen video at non-default page zoom.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -21,12 +21,19 @@
     const minRate = 0.25;
     const maxRate = 2;
     const rateStep = 0.25;
+    const isAndroidEdge = /Android/i.test(window.navigator?.userAgent || '') && /EdgA\//i.test(window.navigator?.userAgent || '');
+    const fallbackPageZoom = 1.25;
+    const correctedProperties = ['width', 'height', 'transform', 'transform-origin'];
 
     let overlay = null;
     let speedValue = null;
     let currentVideo = null;
     let videoObserver = null;
     let videoCheckPending = false;
+    let cachedPageZoom = 1;
+    let correctedFullscreen = null;
+    let savedFullscreenStyles = null;
+    let fullscreenCorrectionPending = false;
 
     function isWatchPage() {
         return window.location.pathname === '/watch';
@@ -130,12 +137,135 @@
         videoObserver = null;
     }
 
+
+    // A page cannot read the browser's Accessibility slider directly. Before
+    // fullscreen, compare the unzoomed screen width with the layout viewport.
+    // preferred-text-scale is a separate signal where Chromium exposes it.
+    function detectPageZoom() {
+        if (!isAndroidEdge || !document.body) {
+            return 1;
+        }
+
+        let textScale = 1;
+        const probe = document.createElement('div');
+        probe.style.setProperty('position', 'absolute');
+        probe.style.setProperty('visibility', 'hidden');
+        probe.style.setProperty('pointer-events', 'none');
+        probe.style.setProperty('width', 'calc(100px * env(preferred-text-scale, 1))');
+        document.body.appendChild(probe);
+        const measured = parseFloat(window.getComputedStyle(probe).width);
+        probe.remove();
+        if (Number.isFinite(measured) && measured >= 100 && measured <= 200) {
+            textScale = measured / 100;
+        }
+
+        // Do not mistake pinch zoom for the browser's page zoom setting.
+        if (textScale > 1.05) {
+            return textScale;
+        }
+        const screenWidth = window.screen?.width;
+        const pageWidth = window.innerWidth;
+        if (window.visualViewport?.scale > 1.05 ||
+            !Number.isFinite(screenWidth) || !Number.isFinite(pageWidth) || pageWidth <= 0) {
+            return null;
+        }
+        const ratio = screenWidth / pageWidth;
+        if (ratio >= 0.94 && ratio <= 1.06) {
+            return 1;
+        }
+        if (ratio > 1.06 && ratio <= 2) {
+            return ratio;
+        }
+        return null;
+    }
+
+    function capturePageZoom() {
+        if (!isAndroidEdge || document.fullscreenElement || !isWatchPage()) {
+            return;
+        }
+        // Only use 125% as the Android Edge fallback when measurements are
+        // unavailable, never after positively detecting the default 100%.
+        cachedPageZoom = detectPageZoom() ?? fallbackPageZoom;
+    }
+
+    function restoreFullscreenCorrection() {
+        if (!correctedFullscreen || !savedFullscreenStyles) {
+            return;
+        }
+        for (const name of correctedProperties) {
+            const original = savedFullscreenStyles[name];
+            if (original.value) {
+                correctedFullscreen.style.setProperty(name, original.value, original.priority);
+            } else {
+                correctedFullscreen.style.removeProperty(name);
+            }
+        }
+        correctedFullscreen = null;
+        savedFullscreenStyles = null;
+    }
+
+    function applyFullscreenCorrection() {
+        restoreFullscreenCorrection();
+        const element = document.fullscreenElement;
+        if (!isAndroidEdge || !element || cachedPageZoom <= 1.05 || !isWatchPage()) {
+            return;
+        }
+
+        // A full-page zoom can push the fullscreen layer down/right. Offset the
+        // player origin and inversely scale its box while keeping the viewport
+        // filled. This is experimental: compositor-only offsets may be invisible
+        // to getBoundingClientRect() and still require browser-side correction.
+        const rect = element.getBoundingClientRect();
+        const left = Number.isFinite(rect.left) && Math.abs(rect.left) > 2 ? -rect.left : 0;
+        const top = Number.isFinite(rect.top) && Math.abs(rect.top) > 2 ? -rect.top : 0;
+        const zoom = cachedPageZoom;
+        const style = element.style;
+        savedFullscreenStyles = {};
+        for (const name of correctedProperties) {
+            savedFullscreenStyles[name] = {
+                value: style.getPropertyValue(name),
+                priority: style.getPropertyPriority(name)
+            };
+        }
+        correctedFullscreen = element;
+        style.setProperty('width', `${(zoom * 100).toFixed(2)}vw`, 'important');
+        style.setProperty('height', `${(zoom * 100).toFixed(2)}vh`, 'important');
+        style.setProperty('transform-origin', 'top left', 'important');
+        style.setProperty('transform',
+            `translate(${left}px, ${top}px) scale(${(1 / zoom).toFixed(5)})`, 'important');
+    }
+
+    function scheduleFullscreenCorrection() {
+        if (fullscreenCorrectionPending) {
+            return;
+        }
+        fullscreenCorrectionPending = true;
+        window.requestAnimationFrame(() => {
+            fullscreenCorrectionPending = false;
+            applyFullscreenCorrection();
+        });
+    }
+
+    function onViewportChange() {
+        if (document.fullscreenElement) {
+            scheduleFullscreenCorrection();
+        } else {
+            capturePageZoom();
+        }
+    }
+
     function updateFullscreenState() {
         if (!overlay) {
             return;
         }
         const isFullscreen = Boolean(document.fullscreenElement);
         overlay.classList.toggle('tm-yt-speed-overlay--fullscreen', isFullscreen);
+        if (isFullscreen) {
+            scheduleFullscreenCorrection();
+        } else {
+            restoreFullscreenCorrection();
+            capturePageZoom();
+        }
         const host = document.fullscreenElement || document.body;
         if (host && overlay.parentElement !== host) {
             host.appendChild(overlay);
@@ -372,14 +502,18 @@
 
     function handleRouteChange() {
         if (isWatchPage()) {
+            capturePageZoom();
             createOverlay();
         } else {
+            restoreFullscreenCorrection();
             removeOverlay();
         }
     }
 
     window.addEventListener('yt-navigate-finish', handleRouteChange);
     window.addEventListener('fullscreenchange', updateFullscreenState);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('orientationchange', onViewportChange);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', handleRouteChange, { once: true });
