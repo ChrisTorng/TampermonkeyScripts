@@ -26,6 +26,8 @@ jobs:
         run: node --test scripts/test-reddit-hide-app-popup.js
       - name: Test Better Discord keyboard layout
         run: node --test scripts/test-better-discord.js
+      - name: Test YouTube speed controls and Android Edge fullscreen zoom
+        run: node --test scripts/test-youtube-tools.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
