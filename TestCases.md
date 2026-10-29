@@ -108,7 +108,8 @@ Section note: automated tests use representative inline code, preformatted block
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
-- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls and fullscreen hover visibility validated with a local DOM harness)
+- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (playback controls, fullscreen hover, and Android Edge zoom compensation are tested with a local DOM harness; actual compositor behavior requires a device)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (manual Android Edge fullscreen check at 100% and 125%; browser GPU compositor offset cannot be replicated by the local harness)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
