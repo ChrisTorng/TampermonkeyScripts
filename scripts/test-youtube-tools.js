@@ -42,7 +42,17 @@ function executeYouTubeTools(url, options = {}) {
     if ('videoWidth' in options) video.videoWidth = options.videoWidth;
     if ('videoHeight' in options) video.videoHeight = options.videoHeight;
     player.appendChild(video);
-    harness.appendToBody(player);
+    if (options.watchWrapper || options.metadataGroup) {
+        const section = harness.document.createElement(options.watchWrapper ? 'ytm-watch' : 'div');
+        section.className = 'ytm-watch-content';
+        section.appendChild(player);
+        const metadata = harness.document.createElement('ytm-slim-video-metadata-section-renderer');
+        metadata.textContent = 'Sample title and details';
+        section.appendChild(metadata);
+        harness.appendToBody(section);
+    } else {
+        harness.appendToBody(player);
+    }
     if (options.history) {
         harness.window.history = options.history;
     }
@@ -113,12 +123,31 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.equal(bar.querySelector('.tm-yt-speed-overlay__value').textContent, '1x');
         assert.equal(harness.document.getElementById('tm-yt-fullscreen-game-view-button'), null);
         const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
-        assert.match(css, /#tm-yt-speed-overlay \{[^}]*position: relative !important;[^}]*display: flex !important;/s);
-        assert.match(css, /#tm-yt-speed-overlay button,[\s\S]*min-width: 43px !important;/);
-        assert.match(css, /height: 44px !important;/);
-        assert.match(css, /overflow-x: auto !important;/);
-        assert.match(css, /tm-yt-toolbar__fullscreen[^{]*\{[^}]*flex: 0 0 44px !important;/s);
-        assert.doesNotMatch(css.slice(css.lastIndexOf('/* In-flow controls:')), /position: fixed !important;/);
+        const v15 = css.slice(css.indexOf('/* V1.5 normal layout:'));
+        assert.match(v15, /#tm-yt-speed-overlay \{[^}]*position: relative !important;/s);
+        assert.match(v15, /height: 44px !important;/);
+        assert.match(v15, /\.tm-yt-speed-overlay__stepper \{[^}]*flex: 0 0 88px !important;/s);
+        assert.match(v15, /\.tm-yt-speed-overlay__value \{[^}]*position: absolute !important;/s);
+        assert.match(v15, /\.tm-yt-speed-overlay__value \{[^}]*pointer-events: none !important;/s);
+        assert.match(v15, /\.tm-yt-toolbar__fullscreen \{[^}]*flex: 0 0 44px !important;/s);
+        const stepper = bar.querySelector('.tm-yt-speed-overlay__stepper');
+        assert.equal(stepper.querySelectorAll('button').length, 2);
+        assert.equal(stepper.querySelector('.tm-yt-speed-overlay__value').textContent, '1x');
+        assert.equal(stepper.children.length, 3);
+    });
+
+    test('watch container and metadata move together when toolbar reserves document height', () => {
+        for (const option of [{watchWrapper: true}, {metadataGroup: true}]) {
+            const { harness, bar, player } = load(option);
+            const wrapper = player.parentElement;
+            const meta = wrapper.querySelector('ytm-slim-video-metadata-section-renderer');
+            assert(meta, 'Expected test metadata beside the player.');
+            assert.equal(bar.parentElement, wrapper.parentElement);
+            assert.equal(bar.nextElementSibling, wrapper);
+            assert.equal(meta.parentElement, wrapper);
+            assert.notEqual(bar.parentElement, player.parentElement);
+            assert.equal(harness.document.querySelectorAll('#tm-yt-speed-overlay').length, 1);
+        }
     });
 
     test('speed controls retain step behavior, current-value display and presets', () => {
@@ -174,7 +203,14 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.equal(video.playbackRate, 1.5);
         assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), true);
         assert.equal(fullscreen.getAttribute('aria-pressed'), 'true');
-
+        assert.equal(bar.classList.contains('tm-yt-toolbar--custom-fullscreen'), true);
+        const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        const fullscreenCSS = css.slice(css.indexOf('/* Fullscreen: player occupies 100%'));
+        assert.match(fullscreenCSS, /position: absolute !important;/);
+        assert.match(fullscreenCSS, /top: 56% !important;/);
+        assert.match(fullscreenCSS, /opacity: \.35 !important;/);
+        assert.match(fullscreenCSS, /tm-yt-toolbar--custom-fullscreen \.tm-yt-toolbar__fullscreen \{\s*display: none !important;/);
+        assert.match(fullscreenCSS, /height: 100% !important;/);
         bar.querySelector('.tm-yt-speed-overlay__click--right').click();
         assert.equal(video.playbackRate, 1.75);
         harness.document.dispatchEvent({type: 'keydown', key: 'Escape'});
@@ -186,6 +222,7 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.equal(video.currentTime, 42);
         assert.equal(video.playbackRate, 1.75);
         assert.equal(fullscreen.getAttribute('aria-pressed'), 'false');
+        assert.equal(bar.classList.contains('tm-yt-toolbar--custom-fullscreen'), false);
     });
 
     test('rotation switches with viewport direction while landscape video stays within stage', () => {
