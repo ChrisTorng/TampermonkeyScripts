@@ -398,14 +398,12 @@
     let currentMinFontSizePx = null;
     let resizeTimer;
     let autoMode = false;
-    let automaticViewport = null;
     let autoRestoreError = false;
     let autoTimer = null;
     const AUTO_STYLE_ID = 'tm-force-mobile-auto-style';
     const AUTO_STORAGE = 'tm-force-mobile-auto-v2:' + location.hostname.toLowerCase();
     const AUTO_FAILURE = 'tm-force-mobile-failed:' + location.pathname + location.search;
 
-    const AUTO_PREPARE_KEY = 'tm-force-mobile-prepared-v2:' + location.pathname + location.search;
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
     let earlyReflow = false;
@@ -436,7 +434,6 @@
             meta.setAttribute('content', 'width=device-width, initial-scale=1');
             meta.setAttribute('data-tm-force-mobile-auto', 'true');
             document.head.appendChild(meta);
-            automaticViewport = meta;
         }
         const style = document.createElement('style');
         style.id = AUTO_STYLE_ID;
@@ -578,17 +575,6 @@
         }
     }
 
-    function installAutoViewport() {
-        if (document.querySelector('meta[name="viewport"]')) return;
-        const meta = document.createElement('meta');
-        meta.setAttribute('name', 'viewport');
-        meta.setAttribute('content', 'width=device-width, initial-scale=1');
-        meta.setAttribute('data-tm-force-mobile-auto', 'true');
-        (document.head || document.documentElement).appendChild(meta);
-        automaticViewport = meta;
-    }
-
-
     function applyAutomaticReadability(detection) {
         // Do not inject a viewport after rendering: browser font boosting can become enormous.
         // Unknown desktop-only layouts are intentionally left unchanged in this safe pilot.
@@ -626,10 +612,6 @@
         const style = document.getElementById(AUTO_STYLE_ID);
         if (style) style.remove();
         clearAutoFontOverrides();
-        if (automaticViewport) {
-            automaticViewport.remove();
-            automaticViewport = null;
-        }
         if (userDisabled) setAutomaticPreference(true);
         setAutomaticButtonState();
     }
