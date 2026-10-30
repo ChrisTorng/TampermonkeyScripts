@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Better Discord
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.0.10
-// @description  Simplify Discord input buttons; repair Android Edge keyboard gaps and provide opt-in layout diagnostics.
+// @version      2026-10-30_1.0.11
+// @description  Simplify Discord input buttons; keep Android Edge keyboard geometry intact by default, with opt-in diagnostics and experimental repair.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js
@@ -18,8 +18,9 @@
     // Diagnostics are opt-in and never alter Windows Edge's keyboard handling.
     const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
     const diagnosticsRequested = isAndroid && /[?&]bddebug=1(?:&|#|$)/.test(document.URL);
-    // Collect unmodified layout geometry first; the panel can re-enable the fix.
-    let keyboardFixEnabled = !diagnosticsRequested;
+    // Live Android screenshots show the automatic height/translate repair can create a gap.
+    // Keep Discord's native keyboard layout intact until repair is explicitly opted into.
+    let keyboardFixEnabled = false;
 
     function hideElement(element) {
         if (!element) {
@@ -275,6 +276,14 @@
             restoreForm();
             restorePanel();
         });
+        scheduleAdjust.getState = () => ({
+            formShift: Math.round(formShift * 10) / 10,
+            resizedPanel: resizedPanel ? (
+                resizedPanel.tagName.toLowerCase() + '.' +
+                (typeof resizedPanel.className === 'string' ? resizedPanel.className : '')
+            ).slice(0, 120) : null,
+            panelHeightOverride: resizedPanel ? resizedPanel.style.getPropertyValue('height') : null,
+        });
         return scheduleAdjust;
     }
 
@@ -383,6 +392,7 @@
                     bottom: round(vvBottom),
                 } : null,
                 form: form ? inspect(form, vvBottom) : null,
+                repair: typeof scheduleKeyboardFix.getState === 'function' ? scheduleKeyboardFix.getState() : null,
                 ancestors: chain,
             };
             return { snapshot, composer, form };
@@ -403,7 +413,7 @@
         ].join(';');
 
         const header = document.createElement('div');
-        header.textContent = 'Discord layout debug 1.0.10 (Android only)';
+        header.textContent = 'Discord layout debug 1.0.11 (Android only)';
         header.style.cssText = 'font-weight:700!important;margin-bottom:6px!important';
         panel.appendChild(header);
         const controls = document.createElement('div');
@@ -438,12 +448,14 @@
             fixButton.textContent = keyboardFixEnabled ? 'Fix: ON' : 'Fix: OFF';
             scheduleKeyboardFix();
             schedule('toggle-fix');
-            window.setTimeout(() => schedule('toggle-settled'), 180);
+            for (const delay of [180, 800, 1500]) {
+                window.setTimeout(() => schedule('toggle+' + delay + 'ms'), delay);
+            }
         });
 
         function exportReport() {
             return JSON.stringify({
-                tool: 'Better Discord Android layout diagnostics 1.0.10',
+                tool: 'Better Discord Android layout diagnostics 1.0.11',
                 note: 'Geometry and styles only; no messages, URL, cookies or tokens are collected.',
                 samples,
             }, null, 2);
@@ -488,8 +500,8 @@
                 layer.remove();
             }
             panel.remove();
-            // Restore normal behavior for the remainder of this page visit.
-            keyboardFixEnabled = true;
+            // Closing diagnostics must not re-enable the experimental layout repair.
+            keyboardFixEnabled = false;
             scheduleKeyboardFix();
         });
 
@@ -574,7 +586,7 @@
             }
             const result = inspectNow(reason);
             samples.push(result.snapshot);
-            if (samples.length > 16) {
+            if (samples.length > 64) {
                 samples.shift();
             }
             const s = result.snapshot;
@@ -589,6 +601,8 @@
                     ' | vvBottom ' + currentBottom,
                 'colors: orange composer, cyan form, purple chat, green app',
                 'yellow dashed line = visual viewport bottom',
+                'repair shift ' + (s.repair && s.repair.formShift) +
+                    ' | panel ' + (s.repair && s.repair.resizedPanel || 'none'),
                 '--- ancestor bottoms (gap to viewport) ---',
                 ...s.ancestors.slice(0, 10).map((item) =>
                     item.element.slice(0, 31) + ': ' +
@@ -617,7 +631,7 @@
 
         document.addEventListener('focusin', () => {
             schedule('focusin');
-            for (const delay of [120, 350, 800]) {
+            for (const delay of [120, 350, 800, 1500, 2500]) {
                 window.setTimeout(() => schedule('focus+' + delay + 'ms'), delay);
             }
         });

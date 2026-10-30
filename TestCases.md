@@ -108,18 +108,18 @@ Section note: automated tests use representative inline code, preformatted block
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
-- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (opaque normal-page speed bar below the player, ± step controls, 0.5x/1x/1.5x/2x presets and current playback rate tested in local DOM harness)
-- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Edge Android native fullscreen/restore button suppression, 1-second tap-to-reveal speed toolbar, expanded separate fullscreen step arrows and speed label, orientation and Back/Escape restoration tested with DOM harness; real mobile YouTube button markup and GPU compositor require physical-device validation)
+- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (desktop/landscape arrow, current-rate and arrow regions are separate; compact overlapping label is used only on narrow portrait touch screens; hover feedback, selected preset highlighting/disabled state and native ratechange synchronization are covered by the DOM harness)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge alternative fullscreen, centered one-second speed reveal, native fullscreen control suppression, playback and orientation restoration are covered by the DOM harness; real mobile compositor and touch layout require physical-device verification)
 
 # Force Mobile View
-Section note: 18 DOM-harness regression tests cover Android text sampling, early document-start viewport, preserved 980px legacy detection, v2 per-site preference, fail-safe reload, manual reflow, and tiny-caption exclusion. A representative CSS layout has been checked in headless mobile Chromium; actual translated Android Edge rendering remains unverified.
-- https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (early viewport and layout rules are AUTOMATED in mocks; a representative Chromium layout test passes, but live translated Android Edge and CodeMirror/SlickGrid behavior still require manual confirmation)
+Section note: 18 DOM-harness tests cover detection, viewport, rollback, and manual toggle; Android Edge needs further refinement.
+- https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (simulated layout; live editor/graph needs verification)
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
-- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (a small, insufficient text sample stays off; larger sustained small-font pages are now eligible after delayed analysis)
-- https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mobile spacing logic is AUTOMATED via synthetic DOM harness, including minimal side-whitespace enforcement; full live-page capture coverage is still limited)
-- https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height overlap regression is simulated with local DOM harness against captured page content)
-- https://paulbourke.net/geometry/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (URL match auto-enable behavior is validated with a local DOM harness)
+- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (tiny text alone does not always trigger)
+- https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (spacing tested in DOM mocks)
+- https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height regression via DOM mocks)
+- https://paulbourke.net/geometry/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (URL auto-enable)
 
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
@@ -130,7 +130,7 @@ Section note: automated tests inject the userscript into a representative ARC Pr
 - https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and D-pad repairs, fullscreen state events, Escape/Back exit, scroll/focus restoration, delayed layout resets, and rapid re-entry use explicit runtime mocks; mouse/touch dragging uses mock rectangles; visual layout still requires manual device validation)
 
 # Better Discord
-Section note: automated DOM tests cover composer cleanup, Android Edge viewport gap repair, opt-in geometry diagnostics, fix-on/off comparison, and Windows Edge exclusion. Actual viewport values and blank-gap causes require Android Edge screenshots or exported JSON from the live website. No chat contents, cookies, tokens, or complete URLs are logged.
+Section note: automated DOM tests cover composer cleanup, default-off Android Edge layout preservation, opt-in experimental viewport repair, diagnostic open/close restoration, and Windows Edge exclusion. Actual viewport values and blank-gap causes still require live Android Edge screenshots and settled (1.5–2.5 second) JSON samples. No chat contents, cookies, tokens, or complete URLs are logged.
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED_WITH_MOCKS]
 - https://discord.com/channels/1475861167476965439/1475861168412164149?bddebug=1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED_WITH_MOCKS_AND_LIVE_ANDROID_REQUIRED]
 

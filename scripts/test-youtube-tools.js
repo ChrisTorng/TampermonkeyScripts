@@ -217,6 +217,68 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         }
     });
 
+
+    test('responsive layout separates desktop speed controls and compresses only portrait touch screens', () => {
+        const desktop = load({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0' });
+        const css = desktop.harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        const responsive = css.slice(css.indexOf('/* Wide by default (desktop or landscape):'));
+        assert(responsive.length > 0);
+        assert.match(responsive, /#tm-yt-speed-overlay:not\(\.tm-yt-toolbar--custom-fullscreen\) \.tm-yt-speed-overlay__stepper \{[^}]*width: 144px !important;/s);
+        assert.match(responsive, /\.tm-yt-speed-overlay__stepper \.tm-yt-speed-overlay__click--left \{[^}]*order: 0 !important;/s);
+        assert.match(responsive, /\.tm-yt-speed-overlay__stepper \.tm-yt-speed-overlay__click--right \{[^}]*order: 2 !important;/s);
+        assert.match(responsive, /\.tm-yt-speed-overlay__stepper \.tm-yt-speed-overlay__value \{[^}]*position: static !important;[^}]*order: 1 !important;/s);
+        assert.match(responsive, /@media \(max-width: 600px\) and \(orientation: portrait\) and \(pointer: coarse\)/);
+        assert.match(responsive, /@media [^{]*\{[\s\S]*?\.tm-yt-speed-overlay__stepper \{[^}]*width: 88px !important;/);
+        assert.match(responsive, /@media [^{]*\{[\s\S]*?\.tm-yt-speed-overlay__value \{[^}]*position: absolute !important;/);
+        assert.match(responsive, /button:not\(:disabled\):hover \{[^}]*background: #676767 !important;/s);
+        assert.match(responsive, /\.tm-yt-speed-overlay__stepper button:not\(:disabled\):hover \{[^}]*background: rgba\(255,255,255,\.24\) !important;/s);
+    });
+
+    test('selected speed presets are highlighted, disabled, and synced with manual and native rate changes', () => {
+        const { video, bar } = load();
+        const display = bar.querySelector('.tm-yt-speed-overlay__value');
+        const preset = (rate) => bar.querySelector('.tm-yt-speed-overlay__preset[data-rate="' + rate + '"]');
+        const presets = [...bar.querySelectorAll('.tm-yt-speed-overlay__preset')];
+        const selected = () => presets.filter(b => b.disabled);
+        assert.equal(selected().length, 1);
+        assert.equal(selected()[0].getAttribute('data-rate'), '1');
+        assert.equal(preset(1).getAttribute('aria-pressed'), 'true');
+        assert(preset(1).classList.contains('tm-yt-speed-overlay__preset--selected'));
+        assert.equal(preset(0.5).disabled, false);
+        let rate = video.playbackRate;
+        let writes = 0;
+        Object.defineProperty(video, 'playbackRate', {
+            configurable: true,
+            get() { return rate; },
+            set(value) { writes++; rate = value; }
+        });
+        preset(1).click();
+        assert.equal(writes, 0, 'Clicking the selected speed must not write the same rate.');
+        preset(1.5).click();
+        assert.equal(writes, 1);
+        assert.equal(video.playbackRate, 1.5);
+        assert.equal(display.textContent, '1.5x');
+        assert.equal(preset(1.5).disabled, true);
+        assert.equal(preset(1).disabled, false);
+        assert.equal(preset(1.5).getAttribute('aria-pressed'), 'true');
+        assert.equal(preset(1).getAttribute('aria-pressed'), 'false');
+        preset(1.5).click();
+        assert.equal(writes, 1);
+        // A user choosing a rate in YouTube's own native speed settings
+        // produces ratechange without calling our button handlers.
+        video.playbackRate = 2;
+        video.dispatchEvent({ type:'ratechange' });
+        assert.equal(selected().length, 1);
+        assert.equal(preset(2).disabled, true);
+        assert.equal(preset(1.5).disabled, false);
+        assert.equal(display.textContent, '2x');
+        video.playbackRate = 1.25;
+        video.dispatchEvent({ type:'ratechange' });
+        assert.equal(selected().length, 0);
+        assert.equal(display.textContent, '1.25x');
+        assert(presets.every(b => b.getAttribute('aria-pressed') === 'false'));
+    });
+
     test('desktop and Android Chrome use the same inline toolbar without custom fullscreen', () => {
         for (const userAgent of [
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0',
@@ -272,6 +334,12 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         const fullscreenCSS = css.slice(css.indexOf('/* Fullscreen: player occupies 100%'));
         assert.match(fullscreenCSS, /position: absolute !important;/);
         assert.match(css, /top: 12px !important;/);
+        const centeredCSS = css.slice(css.indexOf('/* The alternative fullscreen player uses real, separately sized step controls.'));
+        assert.match(centeredCSS, /#tm-yt-speed-overlay\.tm-yt-toolbar--custom-fullscreen \{[^}]*left: 50% !important;[^}]*transform: translateX\(-50%\) !important;/s);
+        assert.match(centeredCSS, /width: min\(410px, calc\(100% - 24px\)\) !important;/);
+        // At 844px landscape width, a 410px centered overlay begins at 217px:
+        // the left-side YouTube mute control retains its own touch region.
+        assert.equal((844 - 410) / 2, 217);
         assert.match(css, /opacity: 0 !important;/);
         assert.match(css, /visibility: hidden !important;/);
         assert.match(css, /pointer-events: none !important;/);

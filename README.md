@@ -116,7 +116,7 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Keep opaque YouTube speed controls below the player, with one-second fullscreen reveal and Edge-native fullscreen buttons hidden.
+Show responsive YouTube playback-speed controls with highlighted active presets and Android Edge alternative fullscreen.
 
 ### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
@@ -128,7 +128,7 @@ Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fulls
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
-Simplify Discord input buttons; repair Android Edge keyboard gaps and provide opt-in layout diagnostics.
+Simplify Discord input buttons; keep Android Edge keyboard layout unchanged by default, with opt-in diagnostics and experimental repair.
 
 ### [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
