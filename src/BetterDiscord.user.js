@@ -537,8 +537,10 @@
                 entry.node.style.outline = '2px solid ' + entry.color;
             });
             const bottom = snapshot.visualViewport ? snapshot.visualViewport.bottom : snapshot.window.innerHeight;
-            viewportLine.style.cssText += ';left:0!important;top:' + bottom +
-                'px!important;width:100vw!important;border-top:3px dashed #facc15!important';
+            viewportLine.style.left = '0px';
+            viewportLine.style.top = bottom + 'px';
+            viewportLine.style.width = '100vw';
+            viewportLine.style.borderTop = '3px dashed #facc15';
             const composerBottom = box(form) && box(form).bottom;
             const gap = bottom - composerBottom;
             gapLayer.style.display = Number.isFinite(gap) && gap > 8 ? 'block' : 'none';
