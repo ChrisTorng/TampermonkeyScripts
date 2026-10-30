@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-08_2.0.4
-// @description  Keep enabled pages within the viewport width and offer a shared-menu ↔ toggle with URL-based auto-enable.
+// @version      2026-10-30_2.1.0
+// @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -397,6 +397,212 @@
     let isObserving = false;
     let currentMinFontSizePx = null;
     let resizeTimer;
+    let autoMode = false;
+    let automaticViewport = null;
+    let autoRestoreError = false;
+    let autoTimer = null;
+    const AUTO_STYLE_ID = 'tm-force-mobile-auto-style';
+    const AUTO_STORAGE = 'tm-force-mobile-auto-v1:' + location.hostname.toLowerCase();
+    const AUTO_FAILURE = 'tm-force-mobile-failed:' + location.pathname + location.search;
+
+
+    // The automatic path deliberately avoids the legacy body * layout overrides.
+    // A reversible viewport adjustment is only attempted for a scaled-down desktop layout.
+    function mobileAutoEligible() {
+        if (!shouldEnforceMinFontSize() || !document.body || document.hidden) return false;
+        const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
+        return /Android/i.test(agent) || (!agent && window.innerWidth <= 1100);
+    }
+
+    function autoDisabledByUser() {
+        try {
+            return window.localStorage.getItem(AUTO_STORAGE) === 'off'
+                || sessionStorage.getItem(AUTO_FAILURE) === 'failed';
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function setAutomaticPreference(disabled) {
+        try {
+            if (disabled) window.localStorage.setItem(AUTO_STORAGE, 'off');
+            else window.localStorage.removeItem(AUTO_STORAGE);
+        } catch (_) { /* Ignore unavailable site storage. */ }
+    }
+
+    function scaledPageMetrics() {
+        const vv = window.visualViewport;
+        const scale = vv && Number.isFinite(vv.scale) ? vv.scale : 1;
+        const layoutWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+        const physicalWidth = (window.screen && window.screen.width)
+            || (vv && vv.width && vv.scale ? vv.width * vv.scale : 0)
+            || layoutWidth;
+        return { scale, layoutWidth, physicalWidth,
+            legacy: scale < 0.85 && layoutWidth > physicalWidth * 1.4 };
+    }
+
+    function ownReadableText(element) {
+        if (element.childNodes) {
+            return Array.from(element.childNodes).filter((child) => child.nodeType === 3)
+                .map((child) => child.textContent || '').join('').trim();
+        }
+        return (element.textContent || '').trim();
+    }
+
+    function isReadingElement(element) {
+        if (!element || !element.tagName) return false;
+        for (let parent = element; parent && parent !== document.body; parent = parent.parentElement) {
+            const tag = parent.tagName;
+            if (['NAV', 'FOOTER', 'BUTTON', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'CANVAS', 'IFRAME', 'INPUT', 'TEXTAREA'].includes(tag)) return false;
+            if (parent.id === FLOATING_MENU_ID || parent.id === AUTO_STYLE_ID ||
+                (parent.classList && (parent.classList.contains('CodeMirror') || parent.classList.contains('monaco-editor')))) return false;
+        }
+        const css = window.getComputedStyle(element);
+        if (css.display === 'none' || css.visibility === 'hidden') return false;
+        if (typeof element.getClientRects === 'function' && element.getClientRects().length === 0) return false;
+        return true;
+    }
+
+    function sampleReadingText(scale) {
+        const candidates = document.body.querySelectorAll('p, li, td, th, blockquote, pre, span, div, a, label, h1, h2, h3');
+        let all = 0, tiny = 0, count = 0;
+        for (const element of candidates) {
+            if (count >= 260 || all >= 10000) break;
+            if (!isReadingElement(element)) continue;
+            const content = ownReadableText(element).replace(/\s+/g, ' ');
+            if (content.length < 8) continue;
+            const size = Number.parseFloat(window.getComputedStyle(element).fontSize);
+            if (!Number.isFinite(size) || size <= 0) continue;
+            const weight = Math.min(content.length, 300);
+            all += weight;
+            if (size * scale < 13.5) tiny += weight;
+            count += 1;
+        }
+        return { all, tiny, count, ratio: all ? tiny / all : 0 };
+    }
+
+    function detectUnreadableMobilePage() {
+        const geometry = scaledPageMetrics();
+        const text = sampleReadingText(geometry.scale);
+        // Desktop pages shrunk by the browser need less text to establish confidence.
+        const legacy = geometry.legacy && text.all >= 60 && text.count >= 2 && text.ratio >= 0.55;
+        // Normal mobile pages require sustained, text-heavy evidence; never trigger on a tiny caption.
+        const tinyText = !geometry.legacy && geometry.scale >= 0.95
+            && text.all >= 180 && text.count >= 3 && text.ratio >= 0.8;
+        return { needed: legacy || tinyText, legacy, geometry, text };
+    }
+
+    function setAutomaticButtonState() {
+        const button = document.querySelector('[data-floating-tool="mobile"]');
+        if (!button) return;
+        button.setAttribute('aria-pressed', String(isEnabled));
+        button.title = isEnabled ? 'Force Mobile View is ON (click to disable)' : 'Force Mobile View is OFF (click to enable)';
+    }
+
+    function clearAutoFontOverrides() {
+        clearMinimumFontSize();
+    }
+
+    function applyAutoTextSize(root) {
+        if (!root) return;
+        const elements = root.querySelectorAll('p, li, td, th, blockquote, span, div, a, label');
+        const targets = [];
+        for (const element of elements) {
+            if (targets.length >= 300 || !isReadingElement(element) || ownReadableText(element).length < 8) continue;
+            targets.push(element);
+        }
+        for (const element of targets) {
+            if (element.hasAttribute(MIN_FONT_FLAG_ATTR)) continue;
+            const current = Number.parseFloat(window.getComputedStyle(element).fontSize);
+            if (!Number.isFinite(current) || current >= 15) continue;
+            const lineHeight = window.getComputedStyle(element).lineHeight;
+            element.setAttribute(MIN_FONT_FLAG_ATTR, 'true');
+            element.setAttribute(MIN_FONT_VALUE_ATTR, element.style.getPropertyValue('font-size'));
+            element.setAttribute(MIN_FONT_PRIORITY_ATTR, element.style.getPropertyPriority('font-size'));
+            element.setAttribute(MIN_LINE_HEIGHT_VALUE_ATTR, element.style.getPropertyValue('line-height'));
+            element.setAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR, element.style.getPropertyPriority('line-height'));
+            element.style.setProperty('font-size', '15px', 'important');
+            if (!Number.isFinite(Number.parseFloat(lineHeight)) || Number.parseFloat(lineHeight) < 21) {
+                element.style.setProperty('line-height', '21px', 'important');
+            }
+        }
+    }
+
+    function installAutoViewport() {
+        if (document.querySelector('meta[name="viewport"]')) return;
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', 'viewport');
+        meta.setAttribute('content', 'width=device-width, initial-scale=1');
+        meta.setAttribute('data-tm-force-mobile-auto', 'true');
+        (document.head || document.documentElement).appendChild(meta);
+        automaticViewport = meta;
+    }
+
+    function applyAutomaticReadability(detection) {
+        autoMode = true;
+        isEnabled = true;
+        if (detection.legacy) installAutoViewport();
+        const style = document.createElement('style');
+        style.id = AUTO_STYLE_ID;
+        style.textContent = `
+            :root, body { max-width: 100% !important; }
+            body { font-size: 16px !important; line-height: 1.5 !important; }
+            body > .page, #topbar .page { box-sizing: border-box !important; width: 100% !important; max-width: 100% !important; }
+            body > .page { padding-left: 6px !important; padding-right: 6px !important; }
+            pre, .CodeMirror, .slick-viewport { max-width: 100% !important; overflow-x: auto !important; }
+            img, video { max-width: 100% !important; height: auto !important; }
+            #${FLOATING_MENU_ID} { width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }
+            #${FLOATING_MENU_ID} > button { box-sizing: border-box !important; width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; min-height: 44px !important; font-size: 20px !important; line-height: 44px !important; }
+            #${FLOATING_MENU_ID} > [data-floating-close] { top: -50px !important; }
+            #${FLOATING_MENU_ID} [data-floating-dialog] button { min-height: 44px !important; height: auto !important; line-height: 1.4 !important; }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+        applyAutoTextSize(document.body);
+        setAutomaticButtonState();
+        setTimeout(() => validateAutomaticReadability(detection), 700);
+    }
+
+    function undoAutomaticReadability(userDisabled = false) {
+        autoMode = false;
+        isEnabled = false;
+        const style = document.getElementById(AUTO_STYLE_ID);
+        if (style) style.remove();
+        clearAutoFontOverrides();
+        if (automaticViewport) {
+            automaticViewport.remove();
+            automaticViewport = null;
+        }
+        if (userDisabled) setAutomaticPreference(true);
+        setAutomaticButtonState();
+    }
+
+    function validateAutomaticReadability(before) {
+        if (!autoMode) return;
+        const after = scaledPageMetrics();
+        const measuredText = sampleReadingText(after.scale);
+        const viewport = Math.max(1, window.innerWidth || after.layoutWidth);
+        const horizontalOverflow = document.documentElement.scrollWidth || 0;
+        const overflowing = horizontalOverflow > viewport * 1.18;
+        const failedViewport = before.legacy && after.legacy &&
+            measuredText.all >= 60 && measuredText.ratio > 0.55;
+        if (overflowing || failedViewport) {
+            undoAutomaticReadability();
+            try { sessionStorage.setItem(AUTO_FAILURE, 'failed'); } catch (_) { /* Session only. */ }
+            autoRestoreError = true;
+        }
+    }
+
+    function scheduleAutomaticDetection() {
+        if (isEnabled || autoMode || !mobileAutoEligible() || autoDisabledByUser() || autoRestoreError) return;
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => {
+            autoTimer = null;
+            if (isEnabled || autoDisabledByUser() || !mobileAutoEligible()) return;
+            const detection = detectUnreadableMobilePage();
+            if (detection.needed) applyAutomaticReadability(detection);
+        }, 250);
+    }
+
 
     function buildStyleContent() {
         return `:root, body {\n` +
@@ -521,6 +727,10 @@
     }
 
     function disableForceWidth() {
+        if (autoMode) {
+            undoAutomaticReadability(true);
+            return;
+        }
         if (!isEnabled) {
             return;
         }
@@ -536,6 +746,7 @@
         if (isEnabled) {
             disableForceWidth();
         } else {
+            setAutomaticPreference(false);
             enableForceWidth();
         }
     }
@@ -861,6 +1072,9 @@
 
     if (shouldAutoEnableForUrl()) {
         enableForceWidth();
+    } else {
+        onDocumentReady(scheduleAutomaticDetection);
+        window.addEventListener('load', scheduleAutomaticDetection, { once: true });
     }
 
     window.addEventListener('resize', scheduleMinimumFontRefresh);
