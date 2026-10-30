@@ -108,8 +108,8 @@ Section note: automated tests use representative inline code, preformatted block
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
-- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (compact in-flow speed bar is placed after the player and before metadata without shifting the video; 0.5x/1x/1.5x/2x, +/- stepping and live speed value are tested with a DOM harness)
-- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge custom fullscreen uses the outer mobile player host to retain native captions/settings/seek controls; speed overlay is hidden until screen tap; CSS orientation and Back/Escape restoration simulated, actual Android Edge compositor and YouTube's live DOM still require device verification)
+- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (opaque normal-page speed bar below the player, ± step controls, 0.5x/1x/1.5x/2x presets and current playback rate tested in local DOM harness)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Edge Android native fullscreen/restore button suppression, 1-second tap-to-reveal speed toolbar, expanded separate fullscreen step arrows and speed label, orientation and Back/Escape restoration tested with DOM harness; real mobile YouTube button markup and GPU compositor require physical-device validation)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
