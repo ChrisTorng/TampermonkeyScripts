@@ -728,6 +728,11 @@
             `    max-width: 100% !important;\n` +
             `    width: 100% !important;\n` +
             `    box-sizing: border-box !important;\n` +
+            `}\n` +
+            `@media (max-width: 768px), (pointer: coarse) {\n` +
+            `  p, li, article, blockquote, h1, h2, h3, h4, h5, h6 {\n` +
+            `    line-height: 1.45 !important; height: auto !important; max-height: none !important;\n` +
+            `  }\n` +
             `}`;
     }
 
