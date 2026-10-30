@@ -112,13 +112,14 @@ Section note: automated tests use representative inline code, preformatted block
 - https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge alternative fullscreen, centered one-second speed reveal, native fullscreen control suppression, playback and orientation restoration are covered by the DOM harness; real mobile compositor and touch layout require physical-device verification)
 
 # Force Mobile View
-Section note: automated tests inject the script and mock `GM_info`.
+Section note: 18 DOM-harness tests cover detection, viewport, rollback, and manual toggle; Android Edge needs further refinement.
+- https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (simulated layout; live editor/graph needs verification)
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
-- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (non-matched URL remains off by default even with tiny fonts)
-- https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mobile spacing logic is AUTOMATED via synthetic DOM harness, including minimal side-whitespace enforcement; full live-page capture coverage is still limited)
-- https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height overlap regression is simulated with local DOM harness against captured page content)
-- https://paulbourke.net/geometry/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (URL match auto-enable behavior is validated with a local DOM harness)
+- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (tiny text alone does not always trigger)
+- https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (spacing tested in DOM mocks)
+- https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height regression via DOM mocks)
+- https://paulbourke.net/geometry/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (URL auto-enable)
 
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]

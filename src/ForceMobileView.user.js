@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-08_2.0.4
-// @description  Keep enabled pages within the viewport width and offer a shared-menu ↔ toggle with URL-based auto-enable.
+// @version      2026-10-31_2.1.2
+// @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -397,6 +397,265 @@
     let isObserving = false;
     let currentMinFontSizePx = null;
     let resizeTimer;
+    let autoMode = false;
+    let autoRestoreError = false;
+    let autoTimer = null;
+    const AUTO_STYLE_ID = 'tm-force-mobile-auto-style';
+    const AUTO_STORAGE = 'tm-force-mobile-auto-v2:' + location.hostname.toLowerCase();
+    const AUTO_FAILURE = 'tm-force-mobile-failed:' + location.pathname + location.search;
+
+    const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
+    const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
+    let earlyReflow = false;
+
+    function isAndroidBrowser() {
+        return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
+    }
+
+    function canStartEarlyReflow() {
+        if (!isAndroidBrowser()) return false;
+        try {
+            if (localStorage.getItem(AUTO_STORAGE) === 'off'
+                || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
+            return isDataExplorer;
+        } catch (_) {
+            return isDataExplorer;
+        }
+    }
+
+    function installEarlyReflow() {
+        if (!document.head) return false;
+        // If Data Explorer adopts a genuine mobile layout later, leave that authored viewport alone.
+        const authored = document.querySelector('meta[name="viewport"]');
+        if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return true;
+        if (!authored) {
+            const meta = document.createElement('meta');
+            meta.setAttribute('name', 'viewport');
+            meta.setAttribute('content', 'width=device-width, initial-scale=1');
+            meta.setAttribute('data-tm-force-mobile-auto', 'true');
+            document.head.appendChild(meta);
+        }
+        const style = document.createElement('style');
+        style.id = AUTO_STYLE_ID;
+        style.textContent = "\nhtml, body { max-width: 100% !important; min-width: 0 !important;\n  -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }\nbody { font-size: 15px !important; line-height: 1.45 !important; }\nbody p, body li, body blockquote, body article, body section,\nbody h1, body h2, body h3, body h4, body h5, body h6 {\n  line-height: 1.45 !important; height: auto !important; max-height: none !important;\n  overflow-wrap: break-word !important; }\nbody img, body video { max-width: 100% !important; height: auto !important; }\nbody .page, body #topbar .page, body .footerwrap,\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #query, body #queryText, body #queryText #queryInfo,\nbody #query #aboutSite, body #queryText #aboutSite,\nbody #query-results, body #query-results .subheader .group, body #execution-stats,\nbody #resultsetStats, body #footer-menu, body #metadata .info, body #graph {\n  box-sizing: border-box !important; width: 100% !important;\n  min-width: 0 !important; max-width: 100% !important;\n  margin-left: 0 !important; margin-right: 0 !important; }\nbody .page { padding-left: 6px !important; padding-right: 6px !important; }\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #queryText #queryInfo, body #query #aboutSite, body #queryText #aboutSite {\n  float: none !important; clear: both !important; }\nbody #header, body #queryText, body #queryText .title,\nbody #query-results .subheader {\n  display: flow-root !important; height: auto !important; min-height: 0 !important; }\nbody #header #logo { max-width: 100% !important; }\nbody #header #menu, body #header .menu,\nbody #header .navigation-links, body #topbar .topbar-links {\n  max-width: 100% !important; height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; }\nbody #queryText .title h2, body #queryText .title p {\n  float: none !important; clear: both !important; max-width: 100% !important;\n  height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; overflow-wrap: anywhere !important; }\nbody #query-results .panel, body #query-results .slick-viewport,\nbody .CodeMirror, body .CodeMirror-wrapping, body #sql {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody pre, body .CodeMirror-scroll, body .slick-viewport {\n  max-width: 100% !important; overflow-x: auto !important; }\nbody .CodeMirror { font-size: 14px !important; line-height: 1.4 !important; }\nbody #graph { overflow-x: auto !important; }\nbody #topbar .page, body #topbar .topbar-links,\nbody #topbar .search-form, body #header #search { max-width: 100% !important; }\nbody #header #search, body #topbar .search-form { float: none !important; clear: both !important; }\nbody #topbar input[type=\"text\"], body #topbar input {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody #footer, body .footerwrap { overflow-wrap: anywhere !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu {\n  width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu > button {\n  width: 44px !important; min-width: 44px !important; max-width: 44px !important;\n  height: 44px !important; min-height: 44px !important;\n  font: 600 20px/44px system-ui,sans-serif !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu [data-floating-dialog] button {\n  min-height: 44px !important; height: auto !important; line-height: 1.4 !important; }\n\n/* Header CSS has an independent 710px-wide, floated navigation bar. */\nbody #header #logo {\n  float: none !important; clear: both !important;\n  width: min(230px, 100%) !important; max-width: 100% !important;\n  margin-top: 4px !important; margin-bottom: 4px !important;\n}\nbody nav.primary {\n  box-sizing: border-box !important; float: none !important; clear: both !important;\n  display: block !important; width: 100% !important; min-width: 0 !important;\n  max-width: 100% !important; padding: 0 !important; margin: 0 !important;\n}\nbody nav.primary .nav {\n  float: none !important; width: 100% !important; max-width: 100% !important;\n  font-size: 100% !important;\n}\nbody nav.primary .nav ul {\n  display: flex !important; flex-wrap: wrap !important; gap: 4px !important;\n  margin: 0 !important; padding: 0 !important; width: 100% !important;\n  line-height: normal !important;\n}\nbody nav.primary .nav li {\n  float: none !important; display: inline-block !important;\n  margin: 0 !important; line-height: 1.45 !important;\n  width: auto !important; max-width: 100% !important;\n}\nbody nav.primary .nav a {\n  display: block !important; height: auto !important; min-height: 0 !important;\n  font-size: 15px !important; line-height: 1.45 !important;\n  padding: 5px 8px !important; white-space: normal !important;\n}\nbody .subheader, body .subheader h2 {\n  height: auto !important; min-height: 0 !important; line-height: 1.45 !important;\n}\nbody .subheader h2, body #tabs, body .miniTabs { float: none !important; clear: both !important; }\nbody #tabs a, body .miniTabs a {\n  display: inline-block !important; float: none !important;\n  width: auto !important; height: auto !important; min-height: 0 !important;\n  line-height: 1.4 !important; margin: 3px !important; padding: 4px 6px !important;\n}\n/* Keep very long result table cells inside their own scrolling region. */\nbody #query-results .panel { max-width: 100% !important; overflow-x: auto !important; }\n\nbody #topbar .page { display: flow-root !important; }\n";
+        document.head.appendChild(style);
+        earlyReflow = true;
+        autoMode = true;
+        isEnabled = true;
+        return true;
+    }
+
+    // Set the viewport before the first browser layout to avoid a second text-inflation pass.
+    if (canStartEarlyReflow() && !installEarlyReflow()) {
+        const earlyObserver = new MutationObserver(() => {
+            if (installEarlyReflow()) earlyObserver.disconnect();
+        });
+        earlyObserver.observe(document, { childList: true, subtree: true });
+    }
+
+
+
+    // The automatic path deliberately avoids the legacy body * layout overrides.
+    // A reversible viewport adjustment is only attempted for a scaled-down desktop layout.
+    function mobileAutoEligible() {
+        if (!shouldEnforceMinFontSize() || !document.body || document.hidden) return false;
+        const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
+        return /Android/i.test(agent) || (!agent && window.innerWidth <= 1100);
+    }
+
+    function autoDisabledByUser() {
+        try {
+            return window.localStorage.getItem(AUTO_STORAGE) === 'off'
+                || sessionStorage.getItem(AUTO_FAILURE) === 'failed';
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function setAutomaticPreference(disabled) {
+        try {
+            if (disabled) window.localStorage.setItem(AUTO_STORAGE, 'off');
+            else window.localStorage.removeItem(AUTO_STORAGE);
+        } catch (_) { /* Ignore unavailable site storage. */ }
+    }
+
+    function scaledPageMetrics() {
+        const vv = window.visualViewport;
+        const scale = vv && Number.isFinite(vv.scale) ? vv.scale : 1;
+        const layoutWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+        const physicalWidth = (window.screen && window.screen.width)
+            || (vv && vv.width && vv.scale ? vv.width * vv.scale : 0)
+            || layoutWidth;
+        return { scale, layoutWidth, physicalWidth,
+            legacy: scale < 0.85 && layoutWidth > physicalWidth * 1.4 };
+    }
+
+    function ownReadableText(element) {
+        if (element.childNodes) {
+            return Array.from(element.childNodes).filter((child) => child.nodeType === 3)
+                .map((child) => child.textContent || '').join('').trim();
+        }
+        return (element.textContent || '').trim();
+    }
+
+    function isReadingElement(element) {
+        if (!element || !element.tagName) return false;
+        for (let parent = element; parent && parent !== document.body; parent = parent.parentElement) {
+            const tag = parent.tagName;
+            if (['NAV', 'FOOTER', 'BUTTON', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'CANVAS', 'IFRAME', 'INPUT', 'TEXTAREA'].includes(tag)) return false;
+            if (parent.id === FLOATING_MENU_ID || parent.id === AUTO_STYLE_ID ||
+                (parent.classList && (parent.classList.contains('CodeMirror') || parent.classList.contains('monaco-editor')))) return false;
+        }
+        const css = window.getComputedStyle(element);
+        if (css.display === 'none' || css.visibility === 'hidden') return false;
+        if (typeof element.getClientRects === 'function' && element.getClientRects().length === 0) return false;
+        return true;
+    }
+
+    function sampleReadingText(scale) {
+        const candidates = document.body.querySelectorAll('p, li, td, th, blockquote, pre, span, div, a, label, h1, h2, h3');
+        let all = 0, tiny = 0, count = 0;
+        for (const element of candidates) {
+            if (count >= 260 || all >= 10000) break;
+            if (!isReadingElement(element)) continue;
+            const content = ownReadableText(element).replace(/\s+/g, ' ');
+            if (content.length < 8) continue;
+            const size = Number.parseFloat(window.getComputedStyle(element).fontSize);
+            if (!Number.isFinite(size) || size <= 0) continue;
+            const weight = Math.min(content.length, 300);
+            all += weight;
+            if (size * scale < 13.5) tiny += weight;
+            count += 1;
+        }
+        return { all, tiny, count, ratio: all ? tiny / all : 0 };
+    }
+
+    function detectUnreadableMobilePage() {
+        const geometry = scaledPageMetrics();
+        const text = sampleReadingText(geometry.scale);
+        // Desktop pages shrunk by the browser need less text to establish confidence.
+        const legacy = geometry.legacy && text.all >= 60 && text.count >= 2 && text.ratio >= 0.55;
+        // Normal mobile pages require sustained, text-heavy evidence; never trigger on a tiny caption.
+        const tinyText = !geometry.legacy && geometry.scale >= 0.95
+            && text.all >= 180 && text.count >= 3 && text.ratio >= 0.8;
+        return { needed: legacy || tinyText, legacy, geometry, text };
+    }
+
+    function setAutomaticButtonState() {
+        const button = document.querySelector('[data-floating-tool="mobile"]');
+        if (!button) return;
+        button.setAttribute('aria-pressed', String(isEnabled));
+        button.title = isEnabled ? 'Force Mobile View is ON (click to disable)' : 'Force Mobile View is OFF (click to enable)';
+    }
+
+    function clearAutoFontOverrides() {
+        clearMinimumFontSize();
+    }
+
+    function applyAutoTextSize(root) {
+        if (!root) return;
+        const elements = root.querySelectorAll('p, li, td, th, blockquote, span, div, a, label');
+        const targets = [];
+        for (const element of elements) {
+            if (targets.length >= 300 || !isReadingElement(element) || ownReadableText(element).length < 8) continue;
+            targets.push(element);
+        }
+        for (const element of targets) {
+            if (element.hasAttribute(MIN_FONT_FLAG_ATTR)) continue;
+            const current = Number.parseFloat(window.getComputedStyle(element).fontSize);
+            if (!Number.isFinite(current) || current >= 15) continue;
+            const lineHeight = window.getComputedStyle(element).lineHeight;
+            element.setAttribute(MIN_FONT_FLAG_ATTR, 'true');
+            element.setAttribute(MIN_FONT_VALUE_ATTR, element.style.getPropertyValue('font-size'));
+            element.setAttribute(MIN_FONT_PRIORITY_ATTR, element.style.getPropertyPriority('font-size'));
+            element.setAttribute(MIN_LINE_HEIGHT_VALUE_ATTR, element.style.getPropertyValue('line-height'));
+            element.setAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR, element.style.getPropertyPriority('line-height'));
+            element.style.setProperty('font-size', '15px', 'important');
+            element.style.setProperty('line-height', '1.45', 'important');
+        }
+    }
+
+    function applyAutomaticReadability(detection) {
+        // Do not inject a viewport after rendering: browser font boosting can become enormous.
+        // Unknown desktop-only layouts are intentionally left unchanged in this safe pilot.
+        if (detection.legacy) return;
+        autoMode = true;
+        isEnabled = true;
+        const style = document.createElement('style');
+        style.id = AUTO_STYLE_ID;
+        style.textContent = [
+            'body p, body li, body blockquote, body article, body section,',
+            'body h1, body h2, body h3, body h4, body h5, body h6 {',
+            'line-height: 1.45 !important; height: auto !important; max-height: none !important;',
+            'overflow-wrap: break-word !important; }',
+            '#tm-shared-floating-menu#tm-shared-floating-menu { width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }',
+            '#tm-shared-floating-menu#tm-shared-floating-menu > button { width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; min-height: 44px !important; font: 600 20px/44px system-ui,sans-serif !important; }',
+            '#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }'
+        ].join(String.fromCharCode(10));
+        (document.head || document.documentElement).appendChild(style);
+        applyAutoTextSize(document.body);
+        setAutomaticButtonState();
+        setTimeout(() => validateAutomaticReadability(detection), 700);
+    }
+
+    function undoAutomaticReadability(userDisabled = false) {
+        if (earlyReflow) {
+            // A navigation is required to restore the pre-viewport desktop layout.
+            if (userDisabled) setAutomaticPreference(true);
+            autoMode = false;
+            isEnabled = false;
+            window.location.reload();
+            return;
+        }
+        autoMode = false;
+        isEnabled = false;
+        const style = document.getElementById(AUTO_STYLE_ID);
+        if (style) style.remove();
+        clearAutoFontOverrides();
+        if (userDisabled) setAutomaticPreference(true);
+        setAutomaticButtonState();
+    }
+
+    function validateAutomaticReadability(before = { legacy: false, text: { ratio: 0 } }) {
+        if (!autoMode) return;
+        // CodeMirror caches text and line geometry; refresh only when its API is available.
+        for (const element of document.querySelectorAll('.CodeMirror')) {
+            if (element.CodeMirror && typeof element.CodeMirror.refresh === 'function') {
+                try { element.CodeMirror.refresh(); } catch (_) { /* Keep the rest of the page usable. */ }
+            }
+        }
+        const after = scaledPageMetrics();
+        const measuredText = sampleReadingText(after.scale);
+        const viewport = Math.max(1, window.innerWidth || after.layoutWidth);
+        const horizontalOverflow = document.documentElement.scrollWidth || 0;
+        const overflowing = horizontalOverflow > viewport + Math.max(24, viewport * 0.05);
+        const failedViewport = before.legacy && after.legacy &&
+            measuredText.all >= 60 && measuredText.ratio > 0.55;
+        const unreadableStill = !before.legacy && measuredText.all >= 180
+            && measuredText.ratio > 0.8 && measuredText.ratio > before.text.ratio - 0.1;
+        if (overflowing || failedViewport || unreadableStill) {
+            if (earlyReflow) {
+                try { sessionStorage.setItem(AUTO_FAILURE_V2, 'failed'); } catch (_) { /* Session only. */ }
+                window.location.reload();
+                return;
+            }
+            undoAutomaticReadability();
+            try { sessionStorage.setItem(AUTO_FAILURE, 'failed'); } catch (_) { /* Session only. */ }
+            autoRestoreError = true;
+        }
+    }
+
+    function scheduleAutomaticDetection() {
+        if (isEnabled || autoMode || !mobileAutoEligible() || autoDisabledByUser() || autoRestoreError) return;
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => {
+            autoTimer = null;
+            if (isEnabled || autoDisabledByUser() || !mobileAutoEligible()) return;
+            const detection = detectUnreadableMobilePage();
+            if (detection.needed) applyAutomaticReadability(detection);
+        }, 250);
+    }
+
 
     function buildStyleContent() {
         return `:root, body {\n` +
@@ -454,6 +713,11 @@
             `    max-width: 100% !important;\n` +
             `    width: 100% !important;\n` +
             `    box-sizing: border-box !important;\n` +
+            `}\n` +
+            `@media (max-width: 768px), (pointer: coarse) {\n` +
+            `  p, li, article, blockquote, h1, h2, h3, h4, h5, h6 {\n` +
+            `    line-height: 1.45 !important; height: auto !important; max-height: none !important;\n` +
+            `  }\n` +
             `}`;
     }
 
@@ -521,6 +785,10 @@
     }
 
     function disableForceWidth() {
+        if (autoMode) {
+            undoAutomaticReadability(true);
+            return;
+        }
         if (!isEnabled) {
             return;
         }
@@ -535,7 +803,13 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
+        } else if (isDataExplorer && isAndroidBrowser()) {
+            // Restore the early mobile viewport instead of running the destructive legacy CSS.
+            setAutomaticPreference(false);
+            try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
+            window.location.reload();
         } else {
+            setAutomaticPreference(false);
             enableForceWidth();
         }
     }
@@ -857,10 +1131,19 @@
         });
         updateButtonAppearance();
         registerFloatingButton('mobile', toggleButton);
+        if (autoMode) setAutomaticButtonState();
     }
 
-    if (shouldAutoEnableForUrl()) {
+    if (!autoMode && shouldAutoEnableForUrl()) {
         enableForceWidth();
+    } else if (!autoMode) {
+        onDocumentReady(scheduleAutomaticDetection);
+        window.addEventListener('load', scheduleAutomaticDetection, { once: true });
+    } else {
+        onDocumentReady(() => {
+            setAutomaticButtonState();
+            setTimeout(validateAutomaticReadability, 1600);
+        });
     }
 
     window.addEventListener('resize', scheduleMinimumFontRefresh);

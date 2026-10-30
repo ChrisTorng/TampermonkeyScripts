@@ -21,7 +21,7 @@ Send most paywall articles to [Internet Archive](https://web.archive.org) for ar
 
 ### [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Keep enabled pages within the viewport width and offer a shared-menu ↔ toggle with URL-based auto-enable.
+Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
 
 ### [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 

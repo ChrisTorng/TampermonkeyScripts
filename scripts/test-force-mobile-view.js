@@ -22,6 +22,7 @@ function executeForceMobileView(url, options = {}) {
     const harness = createHarness({
         url,
         readyState: 'loading',
+        localStorageSeed: options.localStorageSeed || {},
         gmInfo: {
             script: {
                 matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', 'https://paulbourke.net/*', 'https://www.paulbourke.net/*', '*://*/*']
@@ -71,6 +72,7 @@ function executeForceMobileView(url, options = {}) {
     textElement.textContent = 'small text';
     harness.appendToBody(textElement);
 
+    if (options.userAgent) harness.context.navigator = { userAgent: options.userAgent };
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
@@ -98,6 +100,7 @@ describe('ForceMobileView on captured pages', () => {
 
         assert(style, 'Expected mobile view style element to be inserted.');
         assert.match(style.textContent, /max-width: 100vw !important/);
+        assert.match(style.textContent, /line-height: 1[.]45 !important; height: auto !important/);
         assert(button, 'Expected mobile view toggle button to be created.');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
@@ -118,7 +121,7 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(button.getAttribute('aria-pressed'), 'true');
     });
 
-    test('non-matched URLs no longer auto-enable mobile view even on tiny-font pages', () => {
+    test('non-matched URL with insufficient sampled text remains off', () => {
         const { harness } = executeForceMobileView('https://lcamtuf.coredump.cx/prep/index-old.shtml', {
             fixtureHtml: lcamtufFixtureHtml,
             computedFontSize(element) {
@@ -250,5 +253,222 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(span.style.getPropertyValue('line-height'), '25.2px');
         assert.equal(paragraph.getAttribute('data-tm-force-width-min-line-height-only'), 'true');
         assert.equal(paragraph.style.getPropertyValue('line-height'), '28px');
+    });
+});
+
+
+describe('Force Mobile View automatic readability pilot', () => {
+    const readable = 'A representative paragraph that fills enough of the mobile page to measure meaningful body text rather than a small icon or caption.';
+
+    function addParagraphs(harness, count, text = readable) {
+        for (let i = 0; i < count; i++) {
+            const paragraph = harness.document.createElement('p');
+            paragraph.textContent = text;
+            harness.appendToBody(paragraph);
+        }
+    }
+
+
+    test('applies a responsive viewport and width overrides before DOMContentLoaded on Data Explorer', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36',
+            setupBody(harness) {
+                harness.window.screen = { width: 360 };
+                harness.window.innerWidth = 980;
+                harness.document.documentElement.clientWidth = 980;
+                harness.document.body.clientWidth = 980;
+                harness.window.visualViewport.width = 980;
+                harness.window.visualViewport.scale = 0.36;
+                addParagraphs(harness, 4);
+            }
+        });
+        // These exist already, before the browser finishes its first layout.
+        const style = harness.document.getElementById('tm-force-mobile-auto-style');
+        assert(style);
+        assert(harness.document.querySelector('meta[name="viewport"]'));
+        assert.match(style.textContent, /text-size-adjust: 100% !important/);
+        assert.match(style.textContent, /body #query-results/);
+        assert.match(style.textContent, /body #resultsetStats/);
+        assert.match(style.textContent, /body #footer-menu/);
+        assert.match(style.textContent, /height: auto !important/);
+        assert.match(style.textContent, /line-height: 1\.45 !important/);
+        assert.equal(harness.location.reloadCallCount, 0);
+        harness.window.innerWidth = 360;
+        harness.document.documentElement.clientWidth = 360;
+        harness.document.body.clientWidth = 360;
+        harness.window.visualViewport.width = 360;
+        harness.window.visualViewport.scale = 1;
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(harness.document.querySelector('[data-floating-tool="mobile"]').getAttribute('aria-pressed'), 'true');
+    });
+
+    test('tap OFF on Data Explorer stores opt-out and reloads to recover original viewport', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)'
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        button.click();
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:data.stackexchange.com'), 'off');
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+    });
+
+
+    test('a failed v1 pilot opt-out does not silently prevent corrected v2 reflow', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            localStorageSeed: { 'tm-force-mobile-auto-v1:data.stackexchange.com': 'off' }
+        });
+        assert(harness.document.querySelector('meta[name="viewport"]'));
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+    });
+
+    test('severe full-document overflow in early reflow reloads safely without repeat attempts', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) {
+                harness.window.innerWidth = 360;
+                harness.document.documentElement.clientWidth = 360;
+                harness.document.body.clientWidth = 360;
+                addParagraphs(harness, 4);
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.document.documentElement.scrollWidth = 600;
+        harness.runAllTimeouts();
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.sessionStorage.getItem('tm-force-mobile-failed-v2:/stackoverflow/query/1926661'), 'failed');
+    });
+
+    test('after opt-out Data Explorer stays untouched until user re-enables via reload', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            localStorageSeed: { 'tm-force-mobile-auto-v2:data.stackexchange.com': 'off' }
+        });
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+        button.click();
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:data.stackexchange.com'), null);
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+    });
+
+    test('unverified legacy layouts do not dynamically inject viewport after load', () => {
+        const { harness } = executeForceMobileView('https://example.org/legacy', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) {
+                harness.window.screen = { width: 360 };
+                harness.window.innerWidth = 980;
+                harness.document.documentElement.clientWidth = 980;
+                harness.window.visualViewport.width = 980;
+                harness.window.visualViewport.scale = 0.36;
+                addParagraphs(harness, 4);
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.location.reloadCallCount, 0);
+    });
+
+    test('does not auto-enable for a normal-sized mobile article with one small caption', () => {
+        const { harness } = executeForceMobileView('https://example.org/article', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) {
+                addParagraphs(harness, 4);
+                const caption = harness.document.createElement('span');
+                caption.textContent = 'footnote text';
+                caption.id = 'caption';
+                harness.appendToBody(caption);
+            },
+            computedStyle(element) {
+                return { fontSize: element.id === 'caption' ? '9px' : '16px', lineHeight: '24px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+    });
+
+    test('auto-enables on Android with sustained tiny article text and preserves the original viewport', () => {
+        const { harness } = executeForceMobileView('https://example.org/tiny', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) { addParagraphs(harness, 4); },
+            computedStyle(element) {
+                const inlineSize = element.style.getPropertyValue('font-size');
+                return { fontSize: inlineSize || (element.tagName === 'P' ? '10px' : '16px'),
+                    lineHeight: element.style.getPropertyValue('line-height') || '14px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
+        const firstParagraph = harness.document.querySelector('p');
+        assert.equal(firstParagraph.style.getPropertyValue('font-size'), '15px');
+        assert.equal(firstParagraph.style.getPropertyValue('line-height'), '1.45');
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+    });
+
+    test('never auto-enables on Windows even if a page is tiny', () => {
+        const { harness } = executeForceMobileView('https://example.org/tiny', {
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            setupBody(harness) { addParagraphs(harness, 4); },
+            computedStyle() { return { fontSize: '8px', lineHeight: '12px' }; }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+    });
+
+    test('rolls back a layout producing horizontal overflow without a retry loop', () => {
+        const { harness } = executeForceMobileView('https://example.org/overflow', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) { addParagraphs(harness, 5); },
+            computedStyle(element) {
+                return { fontSize: element.style.getPropertyValue('font-size') || (element.tagName === 'P' ? '9px' : '16px'),
+                    lineHeight: '24px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+        harness.document.documentElement.scrollWidth = 550;
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.document.querySelector('p').style.getPropertyValue('font-size'), '');
+        harness.dispatchWindowEvent('load');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+    });
+
+    test('manual OFF is persistent per site, manual ON remains available', () => {
+        const { harness } = executeForceMobileView('https://example.org/tiny', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) { addParagraphs(harness, 4); },
+            computedStyle(element) {
+                return { fontSize: element.style.getPropertyValue('font-size') || (element.tagName === 'P' ? '9px' : '16px'),
+                    lineHeight: '24px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        button.click();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:example.org'), 'off');
+        harness.dispatchWindowEvent('load');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        button.click();
+        assert(harness.document.getElementById('tm-force-width-style'));
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v1:example.org'), null);
     });
 });
