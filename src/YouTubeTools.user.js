@@ -332,6 +332,7 @@
         }
         const isFullscreen = Boolean(document.fullscreenElement || fullscreenSession);
         overlay.classList.toggle('tm-yt-speed-overlay--fullscreen', isFullscreen);
+        if (fullscreenButton) fullscreenButton.hidden = isFullscreen;
         const host = fullscreenSession?.root || document.fullscreenElement || document.body;
         if (host && overlay.parentElement !== host) {
             host.appendChild(overlay);
