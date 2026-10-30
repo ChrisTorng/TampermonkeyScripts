@@ -3,6 +3,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { describe, test } = require('node:test');
+const { webcrypto } = require('node:crypto');
 const { BasicElement, createHarness, createLink } = require('./dom-harness');
 
 const root = path.join(__dirname, '..');
@@ -45,12 +46,20 @@ function addArticle(harness, entry = captured[0]) {
     return { article, heading, link, summary };
 }
 
-function setup({ settings = fakeConfig, url = 'https://hackernews.betacat.io/', entries = captured } = {}) {
+function setup({ v2 = null, settings = fakeConfig, url = 'https://hackernews.betacat.io/', entries = captured } = {}) {
     const h = createHarness({ url });
     const state = { requests: [], aborts: 0, menu: null, shadows: [], storage: new Map(settings ? [[key, { ...settings }]] : []), handler: null };
+    if (v2) state.storage.set('cloudmark.settings.v2', v2);
+    h.context.crypto = webcrypto;
     const createElement = h.document.createElement.bind(h.document);
     h.document.createElement = (name) => {
         const element = createElement(name);
+        element.focus = () => {};
+        element.replaceChildren = (...children) => {
+            for (const child of [...element.children]) element.removeChild(child);
+            element.append(...children);
+        };
+        element.showPopover = () => { element.open = true; };
         element.attachShadow = (options) => {
             assert.equal(options.mode, 'closed');
             const shadow = new BasicElement('shadow-root');
@@ -81,6 +90,7 @@ function setup({ settings = fakeConfig, url = 'https://hackernews.betacat.io/', 
     state.settings = () => {
         const dialog = state.shadows.at(-1).querySelector('dialog');
         return { dialog, inputs: Object.fromEntries(dialog.querySelectorAll('input').map((input) => [input.name, input])),
+            mode: dialog.querySelector('select'),
             apply: dialog.querySelectorAll('button').find((button) => button.textContent.startsWith('Save settings')),
             cancel: dialog.querySelectorAll('button').find((button) => button.textContent === 'Cancel'),
             error: dialog.querySelector('.error') };
@@ -90,197 +100,202 @@ function setup({ settings = fakeConfig, url = 'https://hackernews.betacat.io/', 
 
 async function settle() { for (let i = 0; i < 15; i++) await Promise.resolve(); }
 
-describe('CloudMark on captured BetaCat articles', () => {
-    test('adds one adjacent button for every captured topic on latest, Chinese, and dated pages', () => {
-        assert(captured.length >= 20, 'Use the real captured article list.');
+function panel(state) { return state.shadows.at(-1).querySelector('.panel'); }
+function item(state, text) { return panel(state).querySelectorAll('button').find((button) => button.textContent === text); }
+async function open(state, index = 0) { const event = state.buttons()[index].click(); await settle(); return event; }
+async function save(state, category = 'reading', index = 0) {
+    const event = await open(state, index);
+    const button = item(state, category);
+    assert(button, 'Category must appear in dropdown: ' + category);
+    button.click(); await settle(); return event;
+}
+function change(element, value) { element.value = value; element.dispatchEvent({ type: 'change' }); }
+const postCalls = (state) => state.requests.filter((call) => call.url.endsWith('/bookmarks'));
+
+describe('CloudMark category dropdown on captured BetaCat articles', () => {
+    test('renders icon-only adjacent buttons on latest, Chinese and archive pages', () => {
+        assert(captured.length >= 20);
         for (const url of ['https://hackernews.betacat.io/', 'https://hackernews.betacat.io/zh', 'https://hackernews.betacat.io/daily/2026-10-29/']) {
-            const { h, state } = setup({ url, settings: null });
-            createLink(h.document, 'https://example.com/footer');
-            state.run();
+            const { state } = setup({ url, settings: null }); state.run();
             assert.equal(state.buttons().length, captured.length);
-            for (const { link } of state.entries) assert.equal(link.nextElementSibling.className, 'tm-cloudmark-save');
-            assert.equal(state.requests.length, 0, 'No request before configuration.');
+            for (const { link } of state.entries) {
+                assert.equal(link.nextElementSibling.textContent, '☆');
+                assert.equal(link.nextElementSibling.getAttribute('aria-haspopup'), 'dialog');
+            }
+            assert.equal(state.requests.length, 0);
         }
     });
-
-    test('saves original URL, title and summary without navigation, credentials in URLs, or repeat submissions', async () => {
+    test('opens dropdown without saving and saves original metadata only after a category tap', async () => {
         const { h, state } = setup(); state.run(); await settle();
-        const event = state.buttons()[0].click(); await settle();
-        const call = state.requests.find((request) => request.url.endsWith('/bookmarks'));
-        const data = JSON.parse(call.data);
-        assert.equal(data.url, captured[0].url);
-        assert.equal(data.title, captured[0].title);
-        assert.equal(data.description, captured[0].summary);
-        assert.equal(data.category, 'reading');
-        assert.equal(data.token, fakeConfig.token);
-        assert.equal(call.url, server + '/api/bookmarks');
-        assert.equal(call.anonymous, true);
-        assert.equal(call.redirect, 'error');
-        assert(!call.url.includes(fakeConfig.token));
-        assert.equal(event.defaultPrevented, true);
-        assert.equal(event.immediatePropagationStopped, true);
-        assert.equal(h.location.assignedUrl, null);
-        assert.equal(h.window.openCalls.length, 0);
-        assert.equal(state.buttons()[0].textContent, '✓ Saved');
-        state.buttons()[0].click(); await settle();
-        assert.equal(state.requests.filter((request) => request.method === 'POST').length, 1);
+        const event = await open(state);
+        assert.equal(postCalls(state).length, 0);
+        assert(item(state, 'reading'));
+        item(state, 'reading').click(); await settle();
+        const call = postCalls(state)[0]; const data = JSON.parse(call.data);
+        assert.equal(data.url, captured[0].url); assert.equal(data.title, captured[0].title);
+        assert.equal(data.description, captured[0].summary); assert.equal(data.category, 'reading');
+        assert.equal(data.token, fakeConfig.token); assert(!call.url.includes(fakeConfig.token));
+        assert.equal(call.anonymous, true); assert.equal(call.redirect, 'error');
+        assert.equal(event.defaultPrevented, true); assert.equal(event.immediatePropagationStopped, true);
+        assert.equal(h.location.assignedUrl, null); assert.equal(h.window.openCalls.length, 0);
+        assert.equal(state.buttons()[0].textContent, '✓');
+        assert.equal(state.buttons()[0].disabled, false, 'Saved topics can still switch collections.');
     });
-
-    test('shows saved state from the server for duplicate links and prevents simultaneous taps', async () => {
-        const { state } = setup({ entries: [captured[0], captured[0]] });
-        state.handler = (call) => { if (call.method === 'GET') state.respond(call, { bookmarksData: { bookmarks: [] } }); };
-        state.run(); await settle();
-        state.buttons()[0].click(); state.buttons()[1].click(); await settle();
-        const calls = state.requests.filter((call) => call.method === 'POST');
-        assert.equal(calls.length, 1);
-        assert(state.buttons().every((button) => button.textContent === 'Saving…'));
-        state.respond(calls[0], { uuid: 'confirmed' }, 201); await settle();
-        assert(state.buttons().every((button) => button.textContent === '✓ Saved' && button.disabled));
-        const existing = setup();
-        existing.state.handler = (call) => existing.state.respond(call, { bookmarksData: { bookmarks: [{ url: captured[0].url }] } });
-        existing.state.run(); await settle();
-        assert.equal(existing.state.buttons()[0].textContent, '✓ Saved');
-    });
-
-    test('does not let a slow initial collection read erase a newly saved article', async () => {
+    test('loads existing categories and persists newly named empty categories across reloads', async () => {
         const { state } = setup();
-        state.handler = (call) => { if (call.method === 'POST') state.respond(call, { uuid: 'confirmed' }, 201); };
-        state.run(); await settle();
-        state.buttons()[0].click(); await settle();
-        state.respond(state.requests[0], { bookmarksData: { bookmarks: [] } }); await settle();
-        assert.equal(state.buttons()[0].textContent, '✓ Saved');
+        state.handler = (call) => call.method === 'GET'
+            ? state.respond(call, { exists: true, settings: { defaultCategory: 'reading' }, bookmarksData: { bookmarks: [{ url: 'https://other.example/', category: 'AI' }] } })
+            : state.respond(call, { uuid: 'created' }, 201);
+        state.run(); await settle(); await open(state);
+        item(state, 'AI').click(); await settle();
+        assert.equal(JSON.parse(postCalls(state)[0].data).category, 'AI');
+        await open(state, 1); item(state, '+ New category').click();
+        const form = panel(state).querySelector('form'); form.querySelector('input').value = 'Music';
+        form.dispatchEvent({ type: 'submit', preventDefault() {} }); await settle();
+        assert.equal(JSON.parse(postCalls(state)[1].data).category, 'Music');
+        const v2 = state.storage.get('cloudmark.settings.v2');
+        assert(v2.collections[0].categories.includes('Music'));
+        const next = setup({ v2 }); next.state.run(); await settle(); await open(next.state);
+        assert(item(next.state, 'Music'));
     });
-
-    test('keeps failures retryable and never reports unconfirmed writes as saved', async () => {
+    test('switches collections with independent tokens, categories and saved states', async () => {
+        const other = { mark: 'other-collection', token: 'other_fake_token_for_tests_123', category: 'Music' };
+        const { state } = setup({ v2: { collections: [fakeConfig, other], selectedMark: fakeConfig.mark } });
+        state.handler = (call) => call.method === 'GET'
+            ? state.respond(call, { exists: true, bookmarksData: { bookmarks: call.url.endsWith(fakeConfig.mark) ? [{ url: captured[0].url, category: 'AI' }] : [] } })
+            : state.respond(call, { uuid: 'other-saved' });
+        state.run(); await settle(); assert.equal(state.buttons()[0].textContent, '✓');
+        await open(state); change(panel(state).querySelector('select'), other.mark); await settle();
+        assert.equal(state.buttons()[0].textContent, '☆'); assert(!item(state, 'AI'));
+        item(state, 'Music').click(); await settle();
+        const payload = JSON.parse(postCalls(state)[0].data);
+        assert.equal(payload.mark, other.mark); assert.equal(payload.token, other.token); assert.equal(payload.category, 'Music');
+        assert.equal(state.storage.get('cloudmark.settings.v2').selectedMark, other.mark);
+    });
+    test('deduplicates rapid taps and duplicate article URLs while showing only star/check', async () => {
+        const { state } = setup({ entries: [captured[0], captured[0]] }); state.run(); await settle(); await open(state);
+        state.handler = () => {};
+        const category = item(state, 'reading'); category.click(); category.click(); await settle();
+        assert.equal(postCalls(state).length, 1);
+        assert(state.buttons().every((button) => button.textContent === '☆' && button.disabled));
+        state.respond(postCalls(state)[0], { uuid: 'confirmed' }); await settle();
+        assert(state.buttons().every((button) => button.textContent === '✓'));
+    });
+    test('retains errors in menu and retries without claiming unconfirmed writes succeeded', async () => {
         for (const failure of ['token', 'network', 'timeout', 'malformed', 'unconfirmed']) {
-            const { state } = setup(); state.run(); await settle();
+            const { state } = setup(); state.run(); await settle(); await open(state);
             state.handler = (call) => {
                 if (failure === 'token') state.respond(call, { error: 'Invalid write token' }, 400);
                 else if (failure === 'network') call.onerror();
                 else if (failure === 'timeout') call.ontimeout();
-                else if (failure === 'malformed') call.onload({ status: 502, responseText: '<html>Unavailable</html>' });
+                else if (failure === 'malformed') call.onload({ status: 502, responseText: '<html>Error</html>' });
                 else state.respond(call, {});
             };
-            state.buttons()[0].click(); await settle();
-            assert.equal(state.buttons()[0].textContent, '↻ Retry');
-            assert.equal(state.buttons()[0].disabled, false);
+            item(state, 'reading').click(); await settle();
+            assert.equal(state.buttons()[0].textContent, '☆'); assert(panel(state).querySelector('.error'));
             assert(!state.buttons()[0].title.includes(fakeConfig.token));
-            state.handler = (call) => state.respond(call, { uuid: 'retry-confirmed' }, 201);
-            state.buttons()[0].click(); await settle();
-            assert.equal(state.buttons()[0].textContent, '✓ Saved');
+            state.handler = (call) => state.respond(call, { uuid: 'retry' });
+            item(state, 'reading').click(); await settle(); assert.equal(state.buttons()[0].textContent, '✓');
         }
     });
-
-    test('tracks dynamically added/remounted topics without duplicate controls or controls on metadata links', async () => {
+    test('enforces timeout when the native GM timeout is ignored and ignores late success', async () => {
+        const { h, state } = setup(); state.run(); await settle(); await open(state); state.handler = () => {};
+        item(state, 'reading').click(); await settle(); const call = postCalls(state)[0];
+        h.runAllTimeouts(); await settle(); assert.equal(state.aborts, 1);
+        state.respond(call, { uuid: 'late' }); await settle(); assert.equal(state.buttons()[0].textContent, '☆');
+    });
+    test('adds and remounts dynamic topic controls without touching metadata links', () => {
         const { h, state } = setup({ entries: [captured[0]], settings: null }); state.run();
         const extra = addArticle(h, captured[1]);
         const author = createLink(h.document, 'https://news.ycombinator.com/user?id=example', { className: 'post-url' });
-        extra.article.appendChild(author);
-        h.triggerMutation([extra.article]); h.flushAnimationFrames();
-        h.triggerMutation([extra.article]); h.flushAnimationFrames();
-        assert.equal(state.buttons().length, 2);
-        state.buttons()[0].remove();
-        h.triggerMutation([]); h.flushAnimationFrames();
-        assert.equal(state.buttons().length, 2);
-        assert.equal(author.nextElementSibling, null);
-        extra.article.remove(); h.triggerMutation([]); h.flushAnimationFrames();
-        assert.equal(state.buttons().length, 1);
+        extra.article.appendChild(author); h.triggerMutation([extra.article]); h.flushAnimationFrames();
+        h.triggerMutation([]); h.flushAnimationFrames(); assert.equal(state.buttons().length, 2);
+        state.buttons()[0].remove(); h.triggerMutation([]); h.flushAnimationFrames();
+        assert.equal(state.buttons().length, 2); assert.equal(author.nextElementSibling, null);
     });
-
-    test('enforces a timeout even when Chrome fetch mode ignores the native GM timeout', async () => {
-        const { h, state } = setup(); state.run(); await settle();
-        state.handler = () => {};
-        state.buttons()[0].click(); await settle();
-        const call = state.requests.at(-1);
-        h.runAllTimeouts(); await settle();
-        assert.equal(state.aborts, 1);
-        assert.equal(state.buttons()[0].textContent, '↻ Retry');
-        state.respond(call, { uuid: 'late-response' }, 201); await settle();
-        assert.equal(state.buttons()[0].textContent, '↻ Retry');
+    test('connects an existing collection without discarding previous settings and reopens the menu', async () => {
+        const { state } = setup(); state.run(); await settle(); await open(state); item(state, '+ Add collection').click();
+        const ui = state.settings(); assert.equal(ui.inputs.mark.value, ''); assert.equal(ui.inputs.token.type, 'password');
+        ui.inputs.mark.value = server + '/connected-collection/'; ui.inputs.token.value = fakeConfig.token;
+        ui.inputs.category.value = 'news'; ui.apply.click(); await settle();
+        const stored = state.storage.get('cloudmark.settings.v2'); assert.equal(stored.collections.length, 2);
+        assert.equal(stored.selectedMark, 'connected-collection'); assert.equal(postCalls(state).length, 0);
+        assert.equal(ui.inputs.token.value, ''); assert(item(state, 'news'));
     });
-
-    test('rejects non-HTTP links and respects API field limits and explicit categories', async () => {
-        const long = { url: 'https://example.com/article', title: 'T'.repeat(240), summary: 'S'.repeat(2400) };
-        const { state } = setup({ settings: { ...fakeConfig, category: 'hacker-news' }, entries: [long, { ...long, url: 'javascript:alert(1)' }] });
-        state.run(); await settle();
-        assert.equal(state.buttons().length, 1);
-        state.buttons()[0].click(); await settle();
-        const data = JSON.parse(state.requests.at(-1).data);
-        assert.equal(data.title.length, 200);
-        assert.equal(data.description.length, 2000);
-        assert.equal(data.category, 'hacker-news');
-    });
-
-    test('first click verifies and stores settings in Tampermonkey, then saves the pending article', async () => {
-        const { state } = setup({ settings: null, entries: [captured[0]] }); state.run();
-        state.buttons()[0].click();
-        const ui = state.settings();
-        assert.equal(ui.inputs.token.type, 'password');
-        ui.inputs.mark.value = server + '/my-collection/';
-        ui.inputs.token.value = fakeConfig.token;
-        ui.inputs.category.value = 'news';
+    test('creates a collection with a secure generated token and retains it locally', async () => {
+        const { state } = setup({ settings: null }); state.run(); await open(state); item(state, '+ Add collection').click();
+        const ui = state.settings(); change(ui.mode, 'create');
+        assert.match(ui.inputs.token.value, /^[a-f0-9]{64}$/); const token = ui.inputs.token.value;
+        ui.inputs.mark.value = 'brand-new-collection';
+        state.handler = (call) => call.method === 'GET'
+            ? state.respond(call, { exists: false }) : state.respond(call, { created: true });
         ui.apply.click(); await settle();
-        const stored = state.storage.get(key);
-        assert.equal(stored.mark, 'my-collection');
-        assert.equal(stored.token, fakeConfig.token);
-        assert.equal(stored.category, 'news');
-        assert.deepEqual(state.requests.map((call) => call.method), ['GET', 'POST', 'POST']);
-        assert(state.requests[1].url.endsWith('/collections/claim'));
-        assert.equal(ui.inputs.token.value, '', 'Clear the detached token field.');
-        assert.equal(state.buttons()[0].textContent, '✓ Saved');
+        const claim = state.requests.find((call) => call.url.endsWith('/claim'));
+        assert.equal(JSON.parse(claim.data).token, token);
+        assert.equal(state.storage.get('cloudmark.settings.v2').collections[0].token, token);
+        assert.equal(postCalls(state).length, 0, 'Creating does not silently save the pending article.');
     });
-
-    test('rejects foreign servers, reserved collections, missing collections and wrong tokens without changing settings', async () => {
-        for (const scenario of ['foreign', 'reserved', 'missing', 'wrong-token']) {
-            const { state } = setup(); state.run(); await settle(); state.menu();
-            const before = state.storage.get(key);
-            const ui = state.settings();
+    test('rejects foreign URLs, reserved marks, missing collections and wrong tokens without replacing settings', async () => {
+        for (const scenario of ['foreign', 'reserved', 'missing', 'wrong-token', 'existing-create']) {
+            const { state } = setup(); state.run(); await settle(); state.menu(); const ui = state.settings();
+            if (scenario === 'existing-create') change(ui.mode, 'create');
             ui.inputs.mark.value = scenario === 'foreign' ? 'https://example.com/private' : scenario === 'reserved' ? 'demo' : 'another-collection';
             ui.inputs.token.value = fakeConfig.token;
-            const count = state.requests.length;
-            state.handler = (call) => {
-                if (call.method === 'GET') state.respond(call, { exists: scenario !== 'missing', bookmarksData: { bookmarks: [] } });
-                else state.respond(call, { error: 'Invalid write token' }, 400);
-            };
-            ui.apply.click(); await settle();
-            assert(ui.error.textContent.length > 0);
-            assert.equal(state.storage.get(key), before);
-            assert.equal(ui.apply.disabled, false);
-            if (['foreign', 'reserved'].includes(scenario)) assert.equal(state.requests.length, count);
+            state.handler = (call) => call.method === 'GET'
+                ? state.respond(call, { exists: scenario !== 'missing' })
+                : state.respond(call, { error: 'Invalid write token' }, 400);
+            ui.apply.click(); await settle(); assert(ui.error.textContent.length > 0);
+            assert.equal(state.storage.has('cloudmark.settings.v2'), false); assert.equal(ui.apply.disabled, false);
+            if (scenario === 'existing-create') assert(!state.requests.some((call) => call.url.endsWith('/claim')));
         }
     });
-
-    test('cancelling settings during verification neither persists settings nor saves an article', async () => {
-        const { state } = setup({ settings: null }); state.run(); state.buttons()[0].click();
-        const ui = state.settings();
-        ui.inputs.mark.value = fakeConfig.mark; ui.inputs.token.value = fakeConfig.token;
-        state.handler = () => {};
-        ui.apply.click(); await settle(); ui.cancel.click();
-        state.respond(state.requests[0], { exists: true }); await settle();
-        assert.equal(state.requests.length, 1);
-        assert.equal(state.storage.has(key), false);
+    test('cancel during connection verification does not persist credentials', async () => {
+        const { state } = setup({ settings: null }); state.run(); state.menu(); const ui = state.settings();
+        ui.inputs.mark.value = fakeConfig.mark; ui.inputs.token.value = fakeConfig.token; state.handler = () => {};
+        ui.apply.click(); await settle(); ui.cancel.click(); state.respond(state.requests[0], { exists: true }); await settle();
+        assert.equal(state.requests.length, 1); assert.equal(state.storage.has('cloudmark.settings.v2'), false);
         assert.equal(ui.inputs.token.value, '');
     });
-
-    test('coexists with the existing background-tab and article-collapse scripts in either startup order', async () => {
+    test('uses native popover light-dismiss and keeps only one dropdown open', async () => {
+        const { state } = setup(); state.run(); await settle(); await open(state);
+        const first = panel(state); await open(state, 1); assert.notEqual(panel(state), first);
+        const current = panel(state); current.dispatchEvent({ type: 'toggle', newState: 'closed' });
+        assert.equal(state.buttons()[1].getAttribute('aria-expanded'), 'false');
+    });
+    test('keeps a new-category form open while the mobile keyboard resizes the viewport', async () => {
+        const { h, state } = setup(); state.run(); await settle(); await open(state);
+        item(state, '+ New category').click(); const form = panel(state).querySelector('form');
+        h.window.innerHeight = 380; h.window.dispatchEvent({ type: 'resize' });
+        h.window.dispatchEvent({ type: 'scroll' });
+        assert.equal(panel(state).querySelector('form'), form);
+        assert.equal(state.buttons()[0].getAttribute('aria-expanded'), 'true');
+    });
+    test('does not let a delayed startup read erase a confirmed new save', async () => {
+        const { state } = setup();
+        state.handler = (call) => {
+            if (state.requests.length > 1) state.respond(call, call.method === 'GET'
+                ? { exists: true, settings: { defaultCategory: 'reading' }, bookmarksData: { bookmarks: [] } }
+                : { uuid: 'confirmed' });
+        };
+        state.run(); await settle(); await save(state);
+        state.respond(state.requests[0], { exists: true, bookmarksData: { bookmarks: [] } }); await settle();
+        assert.equal(state.buttons()[0].textContent, '✓');
+    });
+    test('respects API limits and ignores unsupported URLs', async () => {
+        const long = { url: 'https://example.com/article', title: 'T'.repeat(240), summary: 'S'.repeat(2400) };
+        const { state } = setup({ settings: { ...fakeConfig, category: 'hacker-news' }, entries: [long, { ...long, url: 'javascript:alert(1)' }] });
+        state.run(); await settle(); assert.equal(state.buttons().length, 1); await save(state, 'hacker-news');
+        const data = JSON.parse(postCalls(state)[0].data); assert.equal(data.title.length, 200); assert.equal(data.description.length, 2000);
+    });
+    test('coexists with background-tab and collapse scripts in either startup order', async () => {
         for (const cloudmarkFirst of [false, true]) {
-            const { h, state } = setup({ entries: [captured[0], captured[1]] });
-            const opened = [];
+            const { h, state } = setup({ entries: [captured[0], captured[1]] }); const opened = [];
             h.context.GM_openInTab = (url) => opened.push(url);
-            const runOthers = () => {
-                for (const name of ['ArticlesExternalNewTab', 'AutoOpenNewArticles']) {
-                    vm.runInNewContext(fs.readFileSync(path.join(root, 'src', name + '.user.js'), 'utf8'), h.context);
-                }
-            };
-            if (cloudmarkFirst) { state.run(); runOthers(); }
-            else { runOthers(); state.run(); }
-            h.flushAnimationFrames(); await settle();
-            assert.equal(state.buttons().length, 2);
-            const count = opened.length;
-            state.buttons()[0].click(); await settle();
-            assert.equal(opened.length, count, 'Saving must not open the article in a background tab.');
-            assert.equal(state.buttons()[0].textContent, '✓ Saved');
-            assert.equal(JSON.parse(state.requests.at(-1).data).title, captured[0].title);
+            const runOthers = () => { for (const name of ['ArticlesExternalNewTab', 'AutoOpenNewArticles'])
+                vm.runInNewContext(fs.readFileSync(path.join(root, 'src', name + '.user.js'), 'utf8'), h.context); };
+            if (cloudmarkFirst) { state.run(); runOthers(); } else { runOthers(); state.run(); }
+            h.flushAnimationFrames(); await settle(); const count = opened.length; await save(state);
+            assert.equal(opened.length, count); assert.equal(state.buttons()[0].textContent, '✓');
         }
     });
 });

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CloudMark
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-31_1.0.0
-// @description  Add Cloudmark save buttons after Hacker News Summary topic links, preserving article titles and summaries.
+// @version      2026-10-31_1.1.0
+// @description  Save Hacker News Summary topics with icon buttons, collection switching, and category menus.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudMark.user.js
@@ -25,12 +25,28 @@
     const BUTTON_CLASS = 'tm-cloudmark-save';
     const controls = new Map();
     const pending = new Set();
-    let saved = new Set();
-    let savedRevision = 0;
-    let config = GM_getValue(CONFIG_KEY, null);
-    let defaultCategory = 'default';
+    const SETTINGS_KEY = 'cloudmark.settings.v2';
+    const previous = GM_getValue(CONFIG_KEY, null);
+    const stored = GM_getValue(SETTINGS_KEY, null);
+    const collections = Array.isArray(stored?.collections) ? stored.collections : previous?.mark ? [previous] : [];
+    let config = collections.find((item) => item.mark === stored?.selectedMark) || collections[0] || null;
+    const snapshots = new Map();
     let settingsHost = null;
+    let menu = null;
     let scheduled = false;
+
+    function persist() {
+        GM_setValue(SETTINGS_KEY, { collections, selectedMark: config?.mark });
+    }
+
+    function snapshot(settings = config) {
+        if (!settings) return { saved: new Set(), categories: new Set(), defaultCategory: 'default', revision: 0 };
+        if (!snapshots.has(settings.mark)) snapshots.set(settings.mark, {
+            saved: new Set(), categories: new Set([...(settings.categories || []), ...(settings.category ? [settings.category] : [])]),
+            defaultCategory: 'default', revision: 0,
+        });
+        return snapshots.get(settings.mark);
+    }
 
     function request(method, path, body, settings = config) {
         return new Promise((resolve, reject) => {
@@ -104,57 +120,217 @@
             if (!link.isConnected) { controls.delete(link); continue; }
             let url;
             try { url = articleData(link).url; } catch { continue; }
-            const isSaved = saved.has(url);
+            const isSaved = snapshot().saved.has(url);
             const isPending = pending.has(config?.mark + '\n' + url);
-            const label = isSaved ? '✓ Saved' : isPending ? 'Saving…' : control.error ? '↻ Retry' : '☆ Cloudmark';
+            const label = isSaved ? '✓' : '☆';
             if (control.button.textContent !== label) control.button.textContent = label;
-            control.button.disabled = isSaved || isPending;
+            control.button.disabled = isPending;
             control.button.setAttribute('aria-pressed', String(isSaved));
-            control.button.title = control.error || (isSaved ? 'Already in this Cloudmark collection' : 'Save this article to Cloudmark');
+            control.button.setAttribute('aria-busy', String(isPending));
+            control.button.setAttribute('aria-expanded', String(menu?.link === link));
+            const hint = control.error || (isSaved ? 'Saved in ' + config.mark + '. Choose another collection.' : 'Choose a Cloudmark category');
+            control.button.title = hint;
+            control.button.setAttribute('aria-label', hint);
         }
     }
 
-    function useCollection(data) {
-        savedRevision += 1;
-        saved = new Set((data.bookmarksData?.bookmarks || []).map((bookmark) => bookmark.url));
-        defaultCategory = data.settings?.defaultCategory || 'default';
+    function useCollection(data, settings = config) {
+        const state = snapshot(settings);
+        state.revision += 1;
+        state.saved = new Set((data.bookmarksData?.bookmarks || []).map((bookmark) => bookmark.url));
+        state.defaultCategory = data.settings?.defaultCategory || 'default';
+        for (const bookmark of data.bookmarksData?.bookmarks || []) {
+            if (bookmark.category) state.categories.add(bookmark.category);
+        }
+        state.categories.add(state.defaultCategory);
         render();
     }
 
-    async function refreshSaved() {
-        if (!config?.mark || !config?.token) return;
-        const current = config;
-        const revision = savedRevision;
-        try {
-            const data = await request('GET', '/collections/' + encodeURIComponent(current.mark), null, current);
-            if (current === config && revision === savedRevision) useCollection(data);
-        } catch { /* Saving reports connection and token errors on the affected button. */ }
+    async function refreshSaved(settings = config) {
+        if (!settings?.mark || !settings?.token) return;
+        const state = snapshot(settings);
+        const revision = state.revision;
+        const data = await request('GET', '/collections/' + encodeURIComponent(settings.mark), null, settings);
+        if (revision === state.revision) useCollection(data, settings);
     }
 
-    async function saveArticle(link) {
-        if (!config?.mark || !config?.token) { openSettings(() => saveArticle(link)); return; }
+    async function saveArticle(link, category) {
+        if (!config?.mark || !config?.token) return;
         const control = controls.get(link);
         const settings = config;
+        const state = snapshot(settings);
         let article;
         try { article = articleData(link); }
         catch (error) { control.error = error.message; render(); return; }
         const key = settings.mark + '\n' + article.url;
-        if (saved.has(article.url) || pending.has(key)) return;
+        if (state.saved.has(article.url) || pending.has(key)) return;
         pending.add(key);
         control.error = '';
         render();
+        if (menu?.link === link) drawMenu();
         try {
             const result = await request('POST', '/bookmarks', {
-                ...article,
-                mark: settings.mark,
-                token: settings.token,
-                category: settings.category || defaultCategory,
+                ...article, mark: settings.mark, token: settings.token,
+                category: category || settings.category || state.defaultCategory,
             }, settings);
             if (!result.uuid) throw new Error('Cloudmark did not confirm that the article was saved.');
-            if (config === settings) { saved.add(article.url); savedRevision += 1; }
+            state.saved.add(article.url);
+            state.categories.add(category || settings.category || state.defaultCategory);
+            state.revision += 1;
+            if (menu?.link === link && config === settings) closeMenu();
         } catch (error) {
-            if (config === settings) control.error = error.message + ' Use Tampermonkey → CloudMark settings to change the collection or token.';
-        } finally { pending.delete(key); render(); }
+            if (config === settings) control.error = error.message;
+        } finally {
+            pending.delete(key);
+            render();
+            if (menu?.link === link && config === settings) drawMenu();
+        }
+    }
+
+    function closeMenu() {
+        if (!menu) return;
+        const current = menu;
+        menu = null;
+        current.host.remove();
+        render();
+    }
+
+    function drawMenu() {
+        if (!menu) return;
+        const { panel, link } = menu;
+        panel.replaceChildren();
+        const add = (tag, text, className) => {
+            const node = document.createElement(tag);
+            node.textContent = text;
+            if (className) node.className = className;
+            panel.appendChild(node);
+            return node;
+        };
+        const action = (text, callback, className) => {
+            const button = add('button', text, className);
+            button.type = 'button';
+            button.addEventListener('click', callback);
+            return button;
+        };
+        add('div', 'Collection', 'caption');
+        if (collections.length) {
+            const select = add('select', '', 'collections');
+            select.setAttribute('aria-label', 'Collection');
+            for (const settings of collections) {
+                const option = document.createElement('option');
+                option.value = settings.mark;
+                option.textContent = settings.mark;
+                option.selected = settings === config;
+                select.appendChild(option);
+            }
+            select.value = config.mark;
+            select.addEventListener('change', () => {
+                config = collections.find((item) => item.mark === select.value);
+                for (const control of controls.values()) control.error = '';
+                persist(); render(); drawMenu(); void loadMenu();
+            });
+            add('div', menu.loading ? 'Loading categories…' : 'Category — tap to save', 'caption');
+            const state = snapshot();
+            const url = articleData(link).url;
+            const busy = pending.has(config.mark + '\n' + url);
+            const alreadySaved = state.saved.has(url);
+            for (const category of [...new Set([state.defaultCategory, ...state.categories])]) {
+                const button = action(category + (alreadySaved ? ' ✓' : ''), () => void saveArticle(link, category), 'category');
+                button.disabled = busy || alreadySaved || menu.loading;
+            }
+            const error = controls.get(link).error;
+            if (error) add('p', error, 'error');
+            action('+ New category', (event) => {
+                event.currentTarget.disabled = true;
+                const form = add('form', '', 'new-category');
+                const input = document.createElement('input');
+                input.placeholder = 'Category name'; input.maxLength = 50;
+                input.setAttribute('aria-label', 'New category');
+                const submit = document.createElement('button');
+                submit.type = 'submit'; submit.textContent = 'Add and save';
+                form.append(input, submit);
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    const value = input.value.trim();
+                    if (!value || value.length > 50) return;
+                    if (!state.categories.has(value)) {
+                        state.categories.add(value);
+                        config.categories = [...state.categories];
+                        persist();
+                    }
+                    void saveArticle(link, value);
+                });
+                input.focus();
+                positionMenu();
+            }, 'new-category-action').disabled = busy || alreadySaved || menu.loading;
+        }
+        action('+ Add collection', () => {
+            closeMenu();
+            openSettings(() => openMenu(link), true);
+        });
+        if (config) action('Collection settings', () => { closeMenu(); openSettings(() => openMenu(link)); });
+        positionMenu();
+    }
+
+    async function loadMenu() {
+        if (!menu || !config) return;
+        const current = menu;
+        const settings = config;
+        current.loading = true; drawMenu();
+        try { await refreshSaved(settings); }
+        catch (error) {
+            if (menu === current && config === settings) controls.get(current.link).error = error.message;
+        } finally {
+            if (menu === current && config === settings) { current.loading = false; drawMenu(); }
+        }
+    }
+
+    function positionMenu() {
+        if (!menu) return;
+        const { panel, link } = menu;
+        const rect = controls.get(link).button.getBoundingClientRect();
+        const bounds = panel.getBoundingClientRect();
+        panel.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8)) + 'px';
+        panel.style.top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - bounds.height - 8)) + 'px';
+    }
+
+    function openMenu(link) {
+        if (menu?.link === link) { closeMenu(); return; }
+        closeMenu();
+        const host = document.createElement('div');
+        const root = host.attachShadow({ mode: 'closed' });
+        const style = document.createElement('style');
+        style.textContent = `
+            :host { all: initial; }
+            .panel { box-sizing: border-box; position: fixed; margin: 0; padding: 8px; width: min(300px, calc(100vw - 16px));
+                max-height: min(420px, calc(100dvh - 16px)); overflow: auto; border: 1px solid #91a4b8; border-radius: 10px;
+                background: #fff; color: #18212b; box-shadow: 0 6px 24px #0003; font: 15px/1.5 system-ui,sans-serif; }
+            .panel::backdrop { background: transparent; }
+            button, select, input { box-sizing: border-box; display: block; width: 100%; min-height: 42px; margin: 3px 0;
+                padding: 8px 10px; border: 1px solid #c1cbd5; border-radius: 6px; background: #fff; color: #18212b;
+                font: inherit; text-align: left; overflow-wrap: anywhere; }
+            button { cursor: pointer; } button:hover, button:focus-visible { background: #e5f1ff; }
+            button:disabled { opacity: .55; cursor: default; } .caption { color: #53667b; font-size: 13px; padding: 4px; }
+            .error { margin: 6px; color: #a21616; overflow-wrap: anywhere; } .new-category { margin: 8px 0; }
+        `;
+        const panel = document.createElement('div');
+        panel.className = 'panel';
+        panel.setAttribute('popover', 'auto');
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', 'Save to Cloudmark');
+        root.append(style, panel);
+        document.body.appendChild(host);
+        menu = { host, panel, link, loading: false };
+        panel.addEventListener('toggle', (event) => {
+            if (event.newState === 'closed' && menu?.host === host) closeMenu();
+        });
+        panel.addEventListener('click', (event) => event.stopPropagation());
+        drawMenu();
+        panel.showPopover();
+        positionMenu();
+        panel.querySelector('select, button')?.focus();
+        render();
+        void loadMenu();
     }
 
     function parseSettings(markValue, tokenValue, categoryValue) {
@@ -174,7 +350,8 @@
         return { mark, token, category };
     }
 
-    function openSettings(onReady) {
+    function openSettings(onReady, adding = false) {
+        closeMenu();
         if (settingsHost) return;
         settingsHost = document.createElement('div');
         const host = settingsHost;
@@ -187,7 +364,7 @@
                 background: #fff; color: #18212b; font: 16px/1.5 system-ui, sans-serif; }
             dialog::backdrop { background: #0007; }
             h2 { margin: 0 0 12px; font-size: 20px; } p { margin: 8px 0; overflow-wrap: anywhere; }
-            label { display: block; margin: 12px 0; } input { box-sizing: border-box; display: block; width: 100%;
+            label { display: block; margin: 12px 0; } input, select { box-sizing: border-box; display: block; width: 100%;
                 min-height: 42px; margin-top: 4px; padding: 8px; font: inherit; border: 1px solid #8996a3; border-radius: 6px; }
             .actions { display: flex; gap: 10px; justify-content: flex-end; } button { min-height: 42px; padding: 6px 12px;
                 font: inherit; border: 1px solid #8996a3; border-radius: 6px; cursor: pointer; } a { color: #1666a7; }
@@ -206,6 +383,14 @@
         collectionLink.rel = 'noopener noreferrer';
         collectionLink.textContent = 'Open Cloudmark';
         dialog.append(heading, help, collectionLink);
+        const modeLabel = document.createElement('label');
+        modeLabel.textContent = 'Collection action';
+        const mode = document.createElement('select');
+        mode.name = 'mode';
+        for (const [value, text] of [['connect', 'Connect existing collection'], ['create', 'Create new collection']]) {
+            const option = document.createElement('option'); option.value = value; option.textContent = text; mode.appendChild(option);
+        }
+        mode.value = 'connect'; modeLabel.appendChild(mode); dialog.appendChild(modeLabel);
         function field(labelText, name, value, type = 'text') {
             const label = document.createElement('label');
             label.textContent = labelText;
@@ -220,9 +405,21 @@
             dialog.appendChild(label);
             return input;
         }
-        const mark = field('Collection URL or name', 'mark', config?.mark);
-        const token = field('Write token', 'token', config?.token, 'password');
-        const category = field('Category (blank = collection default)', 'category', config?.category);
+        const mark = field('Collection URL or name', 'mark', adding ? '' : config?.mark);
+        const token = field('Write token', 'token', adding ? '' : config?.token, 'password');
+        const category = field('Category (blank = collection default)', 'category', adding ? '' : config?.category);
+        mode.addEventListener('change', () => {
+            if (mode.value === 'create') {
+                const bytes = new Uint8Array(32);
+                crypto.getRandomValues(bytes);
+                token.value = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+                token.type = 'text';
+                help.textContent = 'A new write token has been generated. Back it up; it is also stored in Tampermonkey after creation.';
+            } else {
+                token.value = ''; token.type = 'password';
+                help.textContent = 'Paste the existing collection write token.';
+            }
+        });
         const errorBox = document.createElement('p');
         errorBox.className = 'error';
         errorBox.setAttribute('role', 'status');
@@ -231,7 +428,7 @@
         const cancel = document.createElement('button');
         cancel.textContent = 'Cancel';
         const apply = document.createElement('button');
-        apply.textContent = onReady ? 'Save settings and article' : 'Save settings';
+        apply.textContent = 'Save settings';
         actions.append(cancel, apply);
         dialog.append(errorBox, actions);
         root.append(style, dialog);
@@ -243,28 +440,37 @@
             host.remove();
             settingsHost = null;
         }
-        cancel.addEventListener('click', close);
-        dialog.addEventListener('cancel', (event) => { event.preventDefault(); close(); });
+        cancel.addEventListener('click', () => { if (!cancel.disabled) close(); });
+        dialog.addEventListener('cancel', (event) => { event.preventDefault(); if (!cancel.disabled) close(); });
         apply.addEventListener('click', async () => {
             if (apply.disabled) return;
             apply.disabled = true;
+            for (const input of [mode, mark, token, category]) input.disabled = true;
             errorBox.textContent = 'Checking collection…';
             try {
                 const next = parseSettings(mark.value, token.value, category.value);
                 const data = await request('GET', '/collections/' + encodeURIComponent(next.mark), null, next);
-                if (!data.exists) throw new Error('Create this collection in Cloudmark first, then return here.');
+                if (mode.value === 'create' && data.exists) throw new Error('This collection already exists. Connect it with its existing write token.');
+                if (mode.value !== 'create' && !data.exists) throw new Error('Collection not found. Choose Create new collection to create it.');
                 if (!active) return;
+                cancel.disabled = mode.value === 'create';
                 await request('POST', '/collections/claim', { mark: next.mark, token: next.token }, next);
                 if (!active) return;
-                GM_setValue(CONFIG_KEY, next);
+                const index = collections.findIndex((item) => item.mark === next.mark);
+                next.categories = [...new Set([...(collections[index]?.categories || []), ...(next.category ? [next.category] : [])])];
+                if (index >= 0) collections[index] = next; else collections.push(next);
                 config = next;
+                persist();
                 for (const control of controls.values()) control.error = '';
                 useCollection(data);
                 close();
                 if (onReady) void onReady();
             } catch (error) {
                 if (active) errorBox.textContent = error.message;
-            } finally { apply.disabled = false; }
+            } finally {
+                apply.disabled = false; cancel.disabled = false;
+                for (const input of [mode, mark, token, category]) input.disabled = false;
+            }
         });
         dialog.showModal();
     }
@@ -277,10 +483,11 @@
             button.type = 'button';
             button.className = BUTTON_CLASS;
             button.setAttribute('aria-live', 'polite');
+            button.setAttribute('aria-haspopup', 'dialog');
             button.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                void saveArticle(link);
+                openMenu(link);
             });
             link.insertAdjacentElement('afterend', button);
             controls.set(link, { button, error: '' });
@@ -294,7 +501,7 @@
             .${BUTTON_CLASS} { all: unset !important; display: inline-flex !important; align-items: center !important;
                 box-sizing: border-box !important; min-height: 36px !important; margin: 3px 0 3px .6em !important;
                 padding: 4px 8px !important; border: 1px solid #87a6c2 !important; border-radius: 6px !important;
-                font: 500 .65em/1.4 system-ui, sans-serif !important; color: #145486 !important;
+                font: 500 20px/1.2 system-ui, sans-serif !important; color: #145486 !important;
                 background: #f1f7ff !important; white-space: nowrap !important; vertical-align: middle !important;
                 cursor: pointer !important; touch-action: manipulation !important; }
             .${BUTTON_CLASS}:hover, .${BUTTON_CLASS}:focus-visible { background: #dbeaff !important; outline: 2px solid #3777b7 !important; }
@@ -308,8 +515,11 @@
             scheduled = true;
             requestAnimationFrame(() => { scheduled = false; scan(); });
         }).observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('resize', positionMenu);
+        window.addEventListener('scroll', positionMenu);
+        window.visualViewport?.addEventListener('resize', positionMenu);
         GM_registerMenuCommand('CloudMark settings', () => openSettings());
-        void refreshSaved();
+        void refreshSaved().catch(() => {});
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });

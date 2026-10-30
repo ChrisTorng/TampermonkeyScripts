@@ -2,13 +2,13 @@
 
 Updated: 2026-10-31
 
-## CloudMark — 2026-10-31_1.0.0
+## CloudMark — 2026-10-31_1.1.0
 
-[Install CloudMark.user.js](src/CloudMark.user.js) · Reload BetaCat after installing.
+[Install CloudMark.user.js](src/CloudMark.user.js) · Reload BetaCat after updating.
 
-- Save each topic's original URL, title, and summary without leaving the page; show saved/retry states.
-- First save: enter your Cloudmark collection URL/name and write token. Change them later via Tampermonkey → CloudMark settings.
+- Icon-only ☆/✓ buttons open category menus; select a category to save.
+- Switch collections, connect/create collections, and add categories; existing settings are retained.
 
 **Test pages:**
-- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) / [Dated](https://hackernews.betacat.io/daily/2026-10-29/) — one save button after each topic.
-- [Local demo](tests/CloudMark/index.html) — test save/settings with an in-memory API; no real writes.
+- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) / [Dated](https://hackernews.betacat.io/daily/2026-10-29/) — tap ☆, choose a category, expect ✓.
+- [Local demo](tests/CloudMark/index.html) — try collection switching and new categories without real writes.

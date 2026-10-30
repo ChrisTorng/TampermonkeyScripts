@@ -5,10 +5,10 @@
 
 # CloudMark
 Section note: Node runtime tests inject the userscript into article DOM reconstructed from the existing BetaCat capture. GM storage/requests, closed Shadow DOM, and native dialogs are mocked; Android Edge touch layout and real Tampermonkey permissions require device verification.
-- https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED_WITH_MOCKS] (one save button per topic; setup, title/summary payload, saved state, duplicates, retries, and dynamic articles)
+- https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED_WITH_MOCKS] (one save button per topic; icon-only dropdown, existing/new categories, collection switching/creation, token migration, title/summary payload, duplicates, retries, and dynamic articles)
 - https://hackernews.betacat.io/zh [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED_WITH_MOCKS] (Chinese listing URL with captured article DOM)
 - https://hackernews.betacat.io/daily/2026-10-29/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED_WITH_MOCKS] (dated listing URL with captured article DOM)
-- [Local CloudMark demo](tests/CloudMark/index.html) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: MANUAL] (interactive save/settings demo using a fake token and in-memory API; no network writes)
+- [Local CloudMark demo](tests/CloudMark/index.html) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: MANUAL] (interactive dropdown/collection/category demo using a fake token and in-memory API; no network writes)
 
 # Hacker News Comments
 Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.

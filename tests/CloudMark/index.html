@@ -11,7 +11,7 @@
     #result { overflow-wrap: anywhere; }
 </style>
 <h1>CloudMark · BetaCat save buttons</h1>
-<p class="note">Local demo only: a fake token and an in-memory Cloudmark API. Clicking Save sends no network request and does not open an article.</p>
+<p class="note">Local demo only: a fake token and an in-memory Cloudmark API. Choosing a category sends no network request and does not open an article.</p>
 <button id="settings" type="button">CloudMark settings</button>
 <p id="result" role="status">Ready. Tap a Cloudmark button after either topic.</p>
 <article class="post-item">
@@ -20,23 +20,36 @@
 </article>
 <article class="post-item">
     <div class="post-title"><h3><a class="post-url" href="https://example.com/second-topic">A second article for testing independent save states</a></h3></div>
-    <div class="summary-text">Each topic gets its own save button. Saved buttons are disabled to avoid repeat submissions.</div>
+    <div class="summary-text">Each topic gets its own save button. Saved icons remain clickable so you can choose another collection.</div>
 </article>
 <script>
-    const storedSettings = { mark: 'local-demo', token: 'fake_token_for_local_tests_only_123', category: '' };
-    const bookmarks = [];
-    window.GM_getValue = () => storedSettings;
-    window.GM_setValue = (_key, value) => Object.assign(storedSettings, value);
+    const settings = new Map([['cloudmark.settings.v1', { mark: 'local-demo', token: 'fake_token_for_local_tests_only_123', category: '' }]]);
+    const collections = new Map([
+        ['local-demo', [{ url: 'https://example.com/existing', category: 'AI' }]],
+        ['music-demo', [{ url: 'https://example.com/music', category: 'Music' }]],
+    ]);
+    settings.set('cloudmark.settings.v2', { selectedMark: 'local-demo', collections: [
+        settings.get('cloudmark.settings.v1'), { mark: 'music-demo', token: 'other_fake_token_for_tests_123', category: 'Music' },
+    ] });
+    window.GM_getValue = (key, fallback) => settings.get(key) ?? fallback;
+    window.GM_setValue = (key, value) => settings.set(key, value);
     window.GM_registerMenuCommand = (_name, callback) => document.getElementById('settings').addEventListener('click', callback);
     window.GM_xmlhttpRequest = (options) => {
         let data;
-        if (options.method === 'GET') data = { exists: true, bookmarksData: { bookmarks }, settings: { defaultCategory: 'reading' } };
-        else if (options.url.endsWith('/claim')) data = { created: false };
-        else {
+        if (options.method === 'GET') {
+            const mark = decodeURIComponent(new URL(options.url).pathname.split('/').pop());
+            data = { exists: collections.has(mark), bookmarksData: { bookmarks: collections.get(mark) || [] }, settings: { defaultCategory: 'reading' } };
+        } else if (options.url.endsWith('/claim')) {
             const body = JSON.parse(options.data);
-            data = { uuid: 'local-' + (bookmarks.length + 1), url: body.url, title: body.title };
+            const created = !collections.has(body.mark);
+            if (created) collections.set(body.mark, []);
+            data = { created };
+        } else {
+            const body = JSON.parse(options.data);
+            const bookmarks = collections.get(body.mark);
+            data = { uuid: 'local-' + (bookmarks.length + 1), url: body.url, title: body.title, category: body.category };
             bookmarks.push(data);
-            document.getElementById('result').textContent = 'Saved locally: ' + body.title + ' · ' + body.url;
+            document.getElementById('result').textContent = 'Saved locally: ' + body.title + ' · ' + body.mark + ' / ' + body.category;
         }
         const responseText = JSON.stringify(data);
         setTimeout(() => options.onload({ status: 200, finalUrl: options.url, responseText }), 250);
