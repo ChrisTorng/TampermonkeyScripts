@@ -345,7 +345,7 @@
                 chain.push(inspect(element, vvBottom));
             }
             for (const element of [document.body, document.documentElement]) {
-                if (element && !(composer && composer.contains(element))) {
+                if (element) {
                     if (!chain.some((item) => item.element === elementName(element))) {
                         chain.push(inspect(element, vvBottom));
                     }
@@ -356,7 +356,8 @@
                 timestamp: new Date().toISOString(),
                 fixEnabled: keyboardFixEnabled,
                 userAgent: navigator.userAgent,
-                focusedEditor: !!(active && composer && composer.contains(active)),
+                focusedEditor: !!(active && composer && typeof active.closest === 'function' &&
+                    active.closest('[class*="channelTextArea"]') === composer),
                 editor: active && active.tagName ? active.tagName.toLowerCase() : 'none',
                 window: {
                     innerHeight: round(window.innerHeight),
