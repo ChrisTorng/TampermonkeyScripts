@@ -893,7 +893,13 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="全螢幕"],
 html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="全屏"],
 html.tm-yt-edge-alt-fullscreen ytm-player button:has(.fullscreen-icon),
 html.tm-yt-edge-alt-fullscreen ytm-player button:has([class*="fullscreen-icon"]),
-html.tm-yt-edge-alt-fullscreen ytm-player-controls button[aria-label*="full screen" i] {
+html.tm-yt-edge-alt-fullscreen ytm-player-controls button[aria-label*="full screen" i],
+html.tm-yt-edge-alt-fullscreen ytm-custom-control button[aria-label*="full screen" i],
+html.tm-yt-edge-alt-fullscreen ytm-custom-control button[aria-label*="fullscreen" i],
+html.tm-yt-edge-alt-fullscreen ytm-custom-control [class*="fullscreen-button"],
+html.tm-yt-edge-alt-fullscreen ytm-custom-control button:has(.fullscreen-icon),
+html.tm-yt-edge-alt-fullscreen ytm-player [data-control="fullscreen"],
+html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
     display: none !important;
 }
 
