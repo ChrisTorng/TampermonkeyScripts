@@ -779,6 +779,59 @@ html.tm-yt-alternative-fullscreen-active body {
     display: none !important;
 }
 
+/* The row follows the mobile player; its 50px height does not shift video. */
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) {
+    position: relative !important;
+    margin: 0 !important;
+    background: rgba(24,24,24,.78) !important;
+    min-height: 50px !important;
+    z-index: 1 !important;
+}
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-toolbar__controls {
+    overflow: visible !important;
+}
+/* Fullscreen uses the whole player host including YouTube native controls. */
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target .html5-video-player,
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target ytm-player,
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target .player-container {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+#tm-yt-alternative-fullscreen-root .ytp-chrome-bottom,
+#tm-yt-alternative-fullscreen-root ytm-custom-control,
+#tm-yt-alternative-fullscreen-root #player-controls {
+    z-index: 10 !important;
+}
+/* Default: no visible speed buttons and no invisible tap blockers. */
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen {
+    top: 12px !important;
+    left: 12px !important;
+    bottom: auto !important;
+    transform: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity .15s ease, visibility .15s ease !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen * {
+    pointer-events: none !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen.tm-yt-toolbar--revealed {
+    opacity: .95 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen.tm-yt-toolbar--revealed button {
+    pointer-events: auto !important;
+}
+html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-toolbar__fullscreen {
+    display: none !important;
+}
+
 `;
         document.head.appendChild(style);
     }
