@@ -618,6 +618,171 @@ html.tm-yt-alternative-fullscreen-active body {
     overflow: hidden !important;
 }
 
+
+/* V1.5 normal layout: one compact speed stepper; no independent label cell. */
+#tm-yt-speed-overlay {
+    position: relative !important;
+    display: flex !important;
+    flex-flow: row nowrap !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 50px !important;
+    margin: 0 !important;
+    padding: 3px 5px !important;
+    gap: 3px !important;
+    inset: auto !important;
+    transform: none !important;
+    opacity: 1 !important;
+    z-index: 1 !important;
+    background: #202020 !important;
+}
+#tm-yt-speed-overlay .tm-yt-toolbar__controls {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    gap: 3px !important;
+}
+#tm-yt-speed-overlay button {
+    position: static !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    min-width: 0 !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 3px !important;
+    border: 0 !important;
+    border-radius: 7px !important;
+    font: 500 13px/1 Roboto, Arial, sans-serif !important;
+    color: #fff !important;
+    background: #3b3b3b !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+}
+#tm-yt-speed-overlay button:active { background: #606060 !important; }
+#tm-yt-speed-overlay .tm-yt-speed-overlay__stepper {
+    position: relative !important;
+    display: flex !important;
+    flex: 0 0 88px !important;
+    align-items: center !important;
+    width: 88px !important;
+    height: 44px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    background: #343434 !important;
+    border-radius: 7px !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__stepper button {
+    flex: 0 0 50% !important;
+    width: 50% !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    font: 700 22px/1 Roboto, Arial, sans-serif !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__click--left {
+    justify-content: flex-start !important;
+    padding-left: 5px !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__click--right {
+    justify-content: flex-end !important;
+    padding-right: 5px !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__stepper button:active {
+    background: rgba(255,255,255,.25) !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__value {
+    position: absolute !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 44px !important;
+    height: 28px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: translate(-50%, -50%) !important;
+    border-radius: 5px !important;
+    color: #fff !important;
+    background: rgba(28,28,28,.93) !important;
+    font: 600 12px/1 Roboto, Arial, sans-serif !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__presets {
+    position: static !important;
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    align-items: center !important;
+    gap: 3px !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__preset {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 0 2px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+}
+#tm-yt-speed-overlay .tm-yt-toolbar__fullscreen {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    margin-left: auto !important;
+    background: #505050 !important;
+    font-size: 22px !important;
+}
+#tm-yt-speed-overlay .tm-yt-toolbar__fullscreen[hidden],
+#tm-yt-speed-overlay .tm-yt-toolbar__fullscreen[aria-pressed="true"] {
+    display: none !important;
+}
+/* Fullscreen: player occupies 100%, speed buttons hover over the picture. */
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-stage > .tm-yt-alternative-fullscreen-target {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    min-height: 0 !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen {
+    position: absolute !important;
+    display: flex !important;
+    left: 12px !important;
+    top: 56% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    width: min(300px, calc(100% - 24px)) !important;
+    max-width: calc(100% - 24px) !important;
+    min-height: 0 !important;
+    padding: 3px !important;
+    border-radius: 8px !important;
+    background: rgba(0,0,0,.24) !important;
+    z-index: 2147483647 !important;
+    opacity: .35 !important;
+    transition: opacity .18s ease !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen:hover,
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen:focus-within,
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen:active {
+    opacity: .98 !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-toolbar__fullscreen {
+    display: none !important;
+}
+
 `;
         document.head.appendChild(style);
     }
