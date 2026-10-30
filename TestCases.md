@@ -108,8 +108,9 @@ Section note: automated tests use representative inline code, preformatted block
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
-- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (speed controls, fullscreen hover behavior, and Android Edge alternate button tested in the DOM harness)
-- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (compact speed controls and non-overlapping fullscreen entry; wide/portrait video detection, 90-degree CSS fallback, screen.orientation lock/denial and viewport changes are simulated; Android Edge live rotation/compositor behavior still requires device verification)
+- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (in-flow toolbar inserted before player, touch-sized speed controls, 0.5x/1x/1.5x/2x and current rate verified by a local DOM harness)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge in-flow fullscreen control, preserved player and speed row, landscape/CSS rotation, restoration, orientation-lock success/denial and SPA cleanup are automated; actual mobile layout and compositor behavior require device verification)
+
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
