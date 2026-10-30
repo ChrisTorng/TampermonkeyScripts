@@ -23,6 +23,15 @@ function executeYouTubeTools(url, options = {}) {
     if ('viewportWidth' in options) {
         harness.window.innerWidth = options.viewportWidth;
     }
+    if ('viewportHeight' in options) {
+        harness.window.innerHeight = options.viewportHeight;
+    }
+    if (options.orientation) {
+        harness.window.screen = {
+            ...(harness.window.screen || {}),
+            orientation: options.orientation
+        };
+    }
     if ('pinchScale' in options) {
         harness.window.visualViewport.scale = options.pinchScale;
     }
@@ -30,6 +39,8 @@ function executeYouTubeTools(url, options = {}) {
     player.className = 'html5-video-player';
     const video = harness.document.createElement('video');
     video.playbackRate = 1;
+    if ('videoWidth' in options) video.videoWidth = options.videoWidth;
+    if ('videoHeight' in options) video.videoHeight = options.videoHeight;
     player.appendChild(video);
     harness.appendToBody(player);
     if (options.history) {
@@ -239,6 +250,113 @@ describe('Android Edge alternative YouTube fullscreen', () => {
         // The lightweight DOM harness does not detach the old child when
         // appendChild reparents a node. The player and route restoration
         // assertions above check the meaningful user-facing behavior.
+    });
+
+
+    test('speed overlay reserves the rightmost corner and uses compact hit targets', () => {
+        const { harness } = load();
+        const overlay = harness.document.getElementById('tm-yt-speed-overlay');
+        const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        assert(overlay.classList.contains('tm-yt-speed-overlay--android-edge'));
+        assert.match(css, /tm-yt-speed-overlay--android-edge \{\s*right: calc\(50px \+ max\(4px, env\(safe-area-inset-right\)\)\);/);
+        assert.match(css, /pointer-events: none;/);
+        assert.match(css, /tm-yt-speed-overlay__click \{[^}]*width: 30px;[^}]*height: 30px;/s);
+        assert.match(css, /tm-yt-speed-overlay__preset \{[^}]*pointer-events: auto;/s);
+        const controls = overlay.querySelectorAll('button');
+        assert.equal(controls.length, 5);
+    });
+
+    test('landscape video rotates by 90 degrees when the portrait viewport remains locked', () => {
+        const { harness, button, video } = load({
+            viewportWidth: 390, viewportHeight: 844,
+            videoWidth: 1920, videoHeight: 1080
+        });
+        button.click();
+        const root = harness.document.getElementById(rootId);
+        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
+        const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        assert.match(css, /tm-yt-alternative-fullscreen-rotated > .tm-yt-alternative-fullscreen-target/);
+        assert.match(css, /left: 100dvw !important;/);
+        assert.match(css, /width: 100dvh !important;/);
+        assert.match(css, /height: 100dvw !important;/);
+        assert.match(css, /transform: rotate\(90deg\) !important;/);
+        assert.equal(video.parentElement.parentElement, root);
+        harness.window.innerWidth = 844;
+        harness.window.innerHeight = 390;
+        harness.dispatchWindowEvent('resize');
+        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
+        harness.window.innerWidth = 390;
+        harness.window.innerHeight = 844;
+        harness.dispatchWindowEvent('orientationchange');
+        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
+        harness.document.dispatchEvent({type:'keydown',key:'Escape'});
+        assert.equal(harness.document.getElementById(rootId), null);
+    });
+
+    test('portrait video stays upright and metadata updates an initially unknown aspect ratio', () => {
+        const portrait = load({
+            viewportWidth: 390, viewportHeight: 844,
+            videoWidth: 1080, videoHeight: 1920
+        });
+        portrait.button.click();
+        assert.equal(portrait.harness.document.getElementById(rootId)
+            .classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
+        const unknown = load({viewportWidth:390, viewportHeight:844});
+        unknown.button.click();
+        const root = unknown.harness.document.getElementById(rootId);
+        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
+        unknown.video.videoWidth = 1920;
+        unknown.video.videoHeight = 1080;
+        unknown.video.dispatchEvent({type:'loadedmetadata'});
+        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
+    });
+
+    test('tries the Screen Orientation API in our fullscreen wrapper; unlocks on exit', async () => {
+        let locks = 0, unlocks = 0;
+        const orientation = {
+            lock(value) {
+                assert.equal(value, 'landscape');
+                locks++;
+                return Promise.resolve();
+            },
+            unlock() { unlocks++; }
+        };
+        const { harness, button } = load({
+            viewportWidth:390, viewportHeight:844,
+            videoWidth:1920, videoHeight:1080,
+            orientation, nativeFullscreen:true
+        });
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(locks, 1);
+        const root = harness.document.getElementById(rootId);
+        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
+        harness.window.innerWidth = 844;
+        harness.window.innerHeight = 390;
+        harness.dispatchWindowEvent('resize');
+        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
+        harness.document.dispatchEvent({type:'keydown',key:'Escape'});
+        assert.equal(unlocks, 1);
+    });
+
+    test('a denied screen-orientation lock retains CSS rotation', async () => {
+        let calls = 0;
+        const orientation = {
+            lock() { calls++; return Promise.reject(new Error('NotSupportedError')); },
+            unlock() { assert.fail('Rejected locks must not be unlocked.'); }
+        };
+        const { harness, button } = load({
+            viewportWidth:390, viewportHeight:844,
+            videoWidth:1920, videoHeight:1080,
+            orientation, nativeFullscreen:true
+        });
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(calls, 1);
+        const root = harness.document.getElementById(rootId);
+        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
     });
 
     test('the generic Fullscreen Game View button is temporarily suppressed', () => {
