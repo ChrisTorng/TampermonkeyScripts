@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_2.1.0
+// @version      2026-10-30_2.1.1
 // @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -404,6 +404,55 @@
     const AUTO_STYLE_ID = 'tm-force-mobile-auto-style';
     const AUTO_STORAGE = 'tm-force-mobile-auto-v1:' + location.hostname.toLowerCase();
     const AUTO_FAILURE = 'tm-force-mobile-failed:' + location.pathname + location.search;
+
+    const AUTO_PREPARE_KEY = 'tm-force-mobile-prepared-v2:' + location.pathname + location.search;
+    const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
+    const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
+    let earlyReflow = false;
+
+    function isAndroidBrowser() {
+        return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
+    }
+
+    function canStartEarlyReflow() {
+        if (!isAndroidBrowser()) return false;
+        try {
+            if (localStorage.getItem(AUTO_STORAGE) === 'off'
+                || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
+            return isDataExplorer || sessionStorage.getItem(AUTO_PREPARE_KEY) === 'ready';
+        } catch (_) {
+            return isDataExplorer;
+        }
+    }
+
+    function installEarlyReflow() {
+        if (!document.head) return false;
+        if (!document.querySelector('meta[name="viewport"]')) {
+            const meta = document.createElement('meta');
+            meta.setAttribute('name', 'viewport');
+            meta.setAttribute('content', 'width=device-width, initial-scale=1');
+            meta.setAttribute('data-tm-force-mobile-auto', 'true');
+            document.head.appendChild(meta);
+            automaticViewport = meta;
+        }
+        const style = document.createElement('style');
+        style.id = AUTO_STYLE_ID;
+        style.textContent = "\nhtml, body { max-width: 100% !important; min-width: 0 !important;\n  -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }\nbody { font-size: 15px !important; line-height: 1.45 !important; }\nbody p, body li, body blockquote, body article, body section,\nbody h1, body h2, body h3, body h4, body h5, body h6 {\n  line-height: 1.45 !important; height: auto !important; max-height: none !important;\n  overflow-wrap: break-word !important; }\nbody img, body video { max-width: 100% !important; height: auto !important; }\nbody .page, body #topbar .page, body .footerwrap,\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #query, body #queryText, body #queryText #queryInfo,\nbody #query #aboutSite, body #queryText #aboutSite,\nbody #query-results, body #query-results .subheader .group, body #execution-stats,\nbody #resultsetStats, body #footer-menu, body #metadata .info, body #graph {\n  box-sizing: border-box !important; width: 100% !important;\n  min-width: 0 !important; max-width: 100% !important;\n  margin-left: 0 !important; margin-right: 0 !important; }\nbody .page { padding-left: 6px !important; padding-right: 6px !important; }\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #queryText #queryInfo, body #query #aboutSite, body #queryText #aboutSite {\n  float: none !important; clear: both !important; }\nbody #header, body #queryText, body #queryText .title,\nbody #query-results .subheader {\n  display: flow-root !important; height: auto !important; min-height: 0 !important; }\nbody #header #logo { max-width: 100% !important; }\nbody #header #menu, body #header .menu,\nbody #header .navigation-links, body #topbar .topbar-links {\n  max-width: 100% !important; height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; }\nbody #queryText .title h2, body #queryText .title p {\n  float: none !important; clear: both !important; max-width: 100% !important;\n  height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; overflow-wrap: anywhere !important; }\nbody #query-results .panel, body #query-results .slick-viewport,\nbody .CodeMirror, body .CodeMirror-wrapping, body #sql {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody pre, body .CodeMirror-scroll, body .slick-viewport {\n  max-width: 100% !important; overflow-x: auto !important; }\nbody .CodeMirror { font-size: 14px !important; line-height: 1.4 !important; }\nbody #graph { overflow-x: auto !important; }\nbody #topbar .page, body #topbar .topbar-links,\nbody #topbar .search-form, body #header #search { max-width: 100% !important; }\nbody #header #search, body #topbar .search-form { float: none !important; clear: both !important; }\nbody #topbar input[type=\"text\"], body #topbar input {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody #footer, body .footerwrap { overflow-wrap: anywhere !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu {\n  width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu > button {\n  width: 44px !important; min-width: 44px !important; max-width: 44px !important;\n  height: 44px !important; min-height: 44px !important;\n  font: 600 20px/44px system-ui,sans-serif !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu [data-floating-dialog] button {\n  min-height: 44px !important; height: auto !important; line-height: 1.4 !important; }\n";
+        document.head.appendChild(style);
+        earlyReflow = true;
+        autoMode = true;
+        isEnabled = true;
+        return true;
+    }
+
+    // Set the viewport before the first browser layout to avoid a second text-inflation pass.
+    if (canStartEarlyReflow() && !installEarlyReflow()) {
+        const earlyObserver = new MutationObserver(() => {
+            if (installEarlyReflow()) earlyObserver.disconnect();
+        });
+        earlyObserver.observe(document, { childList: true, subtree: true });
+    }
+
 
 
     // The automatic path deliberately avoids the legacy body * layout overrides.
