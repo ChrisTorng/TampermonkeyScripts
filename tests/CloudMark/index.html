@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudMark · local BetaCat demo</title>
+<style>
+    body { margin: 24px auto; padding: 0 16px; max-width: 780px; color: #243243; background: #fff; font: 16px/1.6 system-ui,sans-serif; }
+    h1 { font-size: 24px; } h3 { font-size: 22px; line-height: 1.5; margin-bottom: 10px; }
+    article { border-top: 1px solid #cbd5df; padding: 16px 0; } a { color: #185c96; }
+    button { padding: 8px 14px; font: inherit; } .note { background: #eef5fb; padding: 12px; border-radius: 8px; }
+    #result { overflow-wrap: anywhere; }
+</style>
+<h1>CloudMark · BetaCat save buttons</h1>
+<p class="note">Local demo only: a fake token and an in-memory Cloudmark API. Clicking Save sends no network request and does not open an article.</p>
+<button id="settings" type="button">CloudMark settings</button>
+<p id="result" role="status">Ready. Tap a Cloudmark button after either topic.</p>
+<article class="post-item">
+    <div class="post-title"><h3><a class="post-url" href="https://lars.ingebrigtsen.no/2026/02/02/whats-up-with-all-those-equals-signs-anyway/">What's up with all those equals signs anyway?</a></h3></div>
+    <div class="summary-text">People are posting old emails with equals signs left over from quoted-printable decoding.</div>
+</article>
+<article class="post-item">
+    <div class="post-title"><h3><a class="post-url" href="https://example.com/second-topic">A second article for testing independent save states</a></h3></div>
+    <div class="summary-text">Each topic gets its own save button. Saved buttons are disabled to avoid repeat submissions.</div>
+</article>
+<script>
+    const storedSettings = { mark: 'local-demo', token: 'fake_token_for_local_tests_only_123', category: '' };
+    const bookmarks = [];
+    window.GM_getValue = () => storedSettings;
+    window.GM_setValue = (_key, value) => Object.assign(storedSettings, value);
+    window.GM_registerMenuCommand = (_name, callback) => document.getElementById('settings').addEventListener('click', callback);
+    window.GM_xmlhttpRequest = (options) => {
+        let data;
+        if (options.method === 'GET') data = { exists: true, bookmarksData: { bookmarks }, settings: { defaultCategory: 'reading' } };
+        else if (options.url.endsWith('/claim')) data = { created: false };
+        else {
+            const body = JSON.parse(options.data);
+            data = { uuid: 'local-' + (bookmarks.length + 1), url: body.url, title: body.title };
+            bookmarks.push(data);
+            document.getElementById('result').textContent = 'Saved locally: ' + body.title + ' · ' + body.url;
+        }
+        const responseText = JSON.stringify(data);
+        setTimeout(() => options.onload({ status: 200, finalUrl: options.url, responseText }), 250);
+    };
+</script>
+<script src="../../src/CloudMark.user.js"></script>
+</html>

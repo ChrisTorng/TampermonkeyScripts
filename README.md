@@ -37,6 +37,10 @@ Translate code blocks with draggable per-block controls and a shared-menu action
 
 Update each script below separately as needed.
 
+### [CloudMark User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudMark.user.js)
+
+Add Cloudmark save buttons after Hacker News Summary topic links, preserving article titles and summaries.
+
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
 Add an article button for Hacker News comments, including pages reached through redirects.
@@ -165,6 +169,7 @@ Click a script link, click **Install** on the Tampermonkey installation page, th
 
 Update each script separately as needed.
 
+  - [CloudMark.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudMark.user.js)
   - [HackerNewsComments.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
   - [RedirectUrls.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
   - [RedditHideAppPopup.user.js](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedditHideAppPopup.user.js)

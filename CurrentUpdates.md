@@ -2,16 +2,13 @@
 
 Updated: 2026-10-31
 
-## Force Mobile View — 2026-10-31_2.1.2
+## CloudMark — 2026-10-31_1.0.0
 
-[Install ForceMobileView.user.js](src/ForceMobileView.user.js) · Reload the page after updating.
+[Install CloudMark.user.js](src/CloudMark.user.js) · Reload BetaCat after installing.
 
-- Android: detect tiny text; apply early mobile layout on Stack Exchange Data Explorer.
-- Improve line heights, reduce excessive page overflow, and preserve the ↔ manual switch. Further layout refinement may be needed.
+- Save each topic's original URL, title, and summary without leaving the page; show saved/retry states.
+- First save: enter your Cloudmark collection URL/name and write token. Change them later via Tampermonkey → CloudMark settings.
 
 **Test pages:**
-- [Data Explorer query](https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1) — check text size, wrapping, scrolling, and ↔ on/off.
-- [Tiny-font example](https://lcamtuf.coredump.cx/prep/index-old.shtml) — check readable text.
-- [Hacker News](https://news.ycombinator.com/item?id=46255285) / [Archive Today](https://archive.is/75aY9) — verify existing URL-based behavior.
-
-Only `ForceMobileView.user.js` needs updating; shared floating-menu scripts are unchanged.
+- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) / [Dated](https://hackernews.betacat.io/daily/2026-10-29/) — one save button after each topic.
+- [Local demo](tests/CloudMark/index.html) — test save/settings with an in-memory API; no real writes.
