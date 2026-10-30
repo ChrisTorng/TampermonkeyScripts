@@ -161,7 +161,7 @@
         // controls and metadata, rather than moving only the video element.
         for (const selector of [
             'ytm-watch', 'ytm-watch-flexy', 'ytm-watch-page',
-            'ytd-watch-flexy', 'ytm-watch-video'
+            'ytd-watch-flexy'
         ]) {
             const wrapper = video.closest?.(selector);
             if (wrapper?.parentElement) return wrapper;
@@ -179,6 +179,10 @@
                 return common;
             }
         }
+        // A video-only wrapper is a fallback, never ahead of the shared
+        // player-and-metadata container.
+        const videoSection = video.closest?.('ytm-watch-video');
+        if (videoSection?.parentElement) return videoSection;
         for (const selector of ['ytm-player', '#player-container-outer',
             '#player-container', '#player', '.html5-video-player']) {
             const wrapper = video.closest?.(selector);
