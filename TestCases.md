@@ -109,7 +109,7 @@ Section note: automated tests use representative inline code, preformatted block
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (opaque normal-page speed bar below the player, ± step controls, 0.5x/1x/1.5x/2x presets and current playback rate tested in local DOM harness)
-- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Edge Android native fullscreen/restore button suppression, 1-second tap-to-reveal speed toolbar, expanded separate fullscreen step arrows and speed label, orientation and Back/Escape restoration tested with DOM harness; real mobile YouTube button markup and GPU compositor require physical-device validation)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Edge Android native fullscreen/restore button suppression, horizontally centered 1-second tap-to-reveal fullscreen speed toolbar away from left mute control, expanded independent step arrows and rate label, orientation and Back/Escape restoration tested with DOM harness; real mobile YouTube layout and GPU compositor require device verification)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.

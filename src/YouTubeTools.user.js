@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.7.0
-// @description  Keep opaque YouTube speed controls below the player, with one-second fullscreen reveal and Edge-native fullscreen buttons hidden.
+// @version      2026-10-30_1.7.1
+// @description  Keep opaque YouTube speed controls below the player, with a centered one-second fullscreen reveal and Edge-native fullscreen buttons hidden.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -840,6 +840,10 @@ html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
 /* The alternative fullscreen player uses real, separately sized step controls.
    Speed text is a normal center cell here, never laid over the arrow targets. */
 #tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen {
+    /* Center the entire expanded speed toolbar, clear of left-side mute. */
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
     width: min(410px, calc(100% - 24px)) !important;
     background: rgba(0,0,0,.6) !important;
 }

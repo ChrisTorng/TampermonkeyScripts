@@ -272,6 +272,12 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         const fullscreenCSS = css.slice(css.indexOf('/* Fullscreen: player occupies 100%'));
         assert.match(fullscreenCSS, /position: absolute !important;/);
         assert.match(css, /top: 12px !important;/);
+        const centeredCSS = css.slice(css.indexOf('/* The alternative fullscreen player uses real, separately sized step controls.'));
+        assert.match(centeredCSS, /#tm-yt-speed-overlay\.tm-yt-toolbar--custom-fullscreen \{[^}]*left: 50% !important;[^}]*transform: translateX\(-50%\) !important;/s);
+        assert.match(centeredCSS, /width: min\(410px, calc\(100% - 24px\)\) !important;/);
+        // At 844px landscape width, a 410px centered overlay begins at 217px:
+        // the left-side YouTube mute control retains its own touch region.
+        assert.equal((844 - 410) / 2, 217);
         assert.match(css, /opacity: 0 !important;/);
         assert.match(css, /visibility: hidden !important;/);
         assert.match(css, /pointer-events: none !important;/);
