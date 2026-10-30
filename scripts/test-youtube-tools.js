@@ -74,213 +74,131 @@ function executeYouTubeTools(url, options = {}) {
     return { harness, video };
 }
 
-describe('YouTubeTools on captured watch pages', () => {
-    test('fixture contains captured YouTube watch content', () => {
+
+describe('YouTube Tools in-flow playback toolbar', () => {
+    const url = 'https://m.youtube.com/watch?v=zeWBx3AePow';
+    const androidEdge = 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150.0 Mobile Safari/537.36 EdgA/150.0';
+    const androidChrome = 'Mozilla/5.0 (Linux; Android 16) Chrome/150.0 Mobile Safari/537.36';
+    const barId = 'tm-yt-speed-overlay';
+    const fullscreenId = 'tm-yt-alternative-fullscreen-button';
+    const rootId = 'tm-yt-alternative-fullscreen-root';
+
+    function load(options = {}) {
+        const { harness, video } = executeYouTubeTools(url, {
+            userAgent: androidEdge, ...options
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.flushAnimationFrames();
+        return {
+            harness, video, player: video.parentElement,
+            bar: harness.document.getElementById(barId),
+            fullscreen: harness.document.getElementById(fullscreenId),
+        };
+    }
+
+    test('captured watch fixture remains available', () => {
         assert.match(fixtureHtml, /CONTENT_CLASS:\s*VALID_/);
         assert.match(fixtureHtml, /ytPageType.*watch|youtube/i);
     });
 
-    test('watch page creates overlay and updates playback rate controls', () => {
-        const { harness, video } = executeYouTubeTools('https://www.youtube.com/watch?v=nCg3aXn5F3M');
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        harness.flushAnimationFrames();
+    test('toolbar sits immediately before the video in the normal document flow', () => {
+        const { harness, bar, player, fullscreen } = load();
+        assert(bar, 'Expected the toolbar.');
+        assert(fullscreen, 'Expected the Android Edge fullscreen button.');
+        assert.equal(bar.parentElement, player.parentElement);
+        assert.equal(bar.nextElementSibling, player);
+        assert.equal(fullscreen.parentElement, bar);
+        assert.equal(bar.querySelector('.tm-yt-toolbar__controls').parentElement, bar);
+        assert.equal(bar.querySelectorAll('button').length, 7);
+        assert.equal(bar.querySelector('.tm-yt-speed-overlay__value').textContent, '1x');
+        assert.equal(harness.document.getElementById('tm-yt-fullscreen-game-view-button'), null);
+        const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        assert.match(css, /#tm-yt-speed-overlay \{[^}]*position: relative !important;[^}]*display: flex !important;/s);
+        assert.match(css, /#tm-yt-speed-overlay button,[\s\S]*min-width: 43px !important;/);
+        assert.match(css, /height: 44px !important;/);
+        assert.match(css, /overflow-x: auto !important;/);
+        assert.match(css, /tm-yt-toolbar__fullscreen[^{]*\{[^}]*flex: 0 0 44px !important;/s);
+        assert.doesNotMatch(css.slice(css.lastIndexOf('/* In-flow controls:')), /position: fixed !important;/);
+    });
 
-        const overlay = harness.document.getElementById('tm-yt-speed-overlay');
-        const buttons = overlay.querySelectorAll('button');
-        const speedValue = overlay.querySelector('.tm-yt-speed-overlay__value');
-
-        assert(overlay, 'Expected YouTube tools overlay.');
-        assert.equal(buttons.length, 5);
-        assert.equal(speedValue.textContent, '1x');
-
-        buttons[1].click();
+    test('speed controls retain step behavior, current-value display and presets', () => {
+        const { bar, video } = load();
+        const buttons = [...bar.querySelectorAll('button')];
+        const display = bar.querySelector('.tm-yt-speed-overlay__value');
+        assert.equal(display.textContent, '1x');
+        const plus = buttons.find(b => b.getAttribute('aria-label') === 'Increase playback speed');
+        const minus = buttons.find(b => b.getAttribute('aria-label') === 'Decrease playback speed');
+        plus.click();
         assert.equal(video.playbackRate, 1.25);
-        assert.equal(speedValue.textContent, '1.25x');
-
-        const preset15 = [...buttons].find((button) => button.textContent === '1.5x');
-        const preset2 = [...buttons].find((button) => button.textContent === '2x');
-
-        assert(preset15, 'Expected a 1.5x preset button.');
-        assert(preset2, 'Expected a 2x preset button.');
-
-        preset15.click();
-        assert.equal(video.playbackRate, 1.5);
-        assert.equal(speedValue.textContent, '1.5x');
-
-        preset2.click();
-        assert.equal(video.playbackRate, 2);
-        assert.equal(speedValue.textContent, '2x');
-    });
-
-    test('fullscreen hides the overlay until its top-right hover area is entered', () => {
-        const { harness, video } = executeYouTubeTools('https://www.youtube.com/watch?v=nCg3aXn5F3M');
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        harness.flushAnimationFrames();
-
-        const overlay = harness.document.getElementById('tm-yt-speed-overlay');
-        const style = harness.document.getElementById('tm-yt-speed-overlay-style');
-
-        assert(overlay, 'Expected YouTube tools overlay.');
-        assert.equal(overlay.classList.contains('tm-yt-speed-overlay--fullscreen'), false);
-        assert.match(style.textContent, /tm-yt-speed-overlay--fullscreen \{\s*position: absolute;\s*opacity: 0;/);
-        assert.match(style.textContent, /tm-yt-speed-overlay--fullscreen:hover \{\s*opacity: 1;/);
-
-        harness.document.fullscreenElement = video;
-        harness.dispatchWindowEvent('fullscreenchange');
-
-        assert.equal(overlay.classList.contains('tm-yt-speed-overlay--fullscreen'), true);
-        assert.equal(overlay.parentElement, video);
-
-        harness.document.fullscreenElement = null;
-        harness.dispatchWindowEvent('fullscreenchange');
-
-        assert.equal(overlay.classList.contains('tm-yt-speed-overlay--fullscreen'), false);
-        assert.equal(overlay.parentElement, harness.document.body);
-    });
-
-    test('route change away from watch page removes the overlay', () => {
-        const { harness } = executeYouTubeTools('https://www.youtube.com/watch?v=nCg3aXn5F3M');
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        harness.flushAnimationFrames();
-        assert(harness.document.getElementById('tm-yt-speed-overlay'));
-
-        harness.location.pathname = '/results';
-        harness.dispatchWindowEvent('yt-navigate-finish');
-        assert.equal(harness.document.getElementById('tm-yt-speed-overlay'), null);
-    });
-});
-
-
-
-describe('Android Edge alternative YouTube fullscreen', () => {
-    const url = 'https://m.youtube.com/watch?v=zeWBx3AePow';
-    const androidEdge = 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150.0 Mobile Safari/537.36 EdgA/150.0';
-    const androidChrome = 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150.0 Mobile Safari/537.36';
-    const buttonId = 'tm-yt-alternative-fullscreen-button';
-    const rootId = 'tm-yt-alternative-fullscreen-root';
-
-    function load(options = {}) {
-        const { harness, video } = executeYouTubeTools(url, { userAgent: androidEdge, ...options });
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        harness.flushAnimationFrames();
-        const button = harness.document.getElementById(buttonId);
-        return { harness, video, button, player: video.parentElement };
-    }
-
-    test('only Android Edge gets a Game View styled independent entry button', () => {
-        const { harness, button } = load();
-        assert(button, 'Expected Android Edge alternative fullscreen button.');
-        assert.equal(button.textContent, '⛶');
-        assert.equal(button.getAttribute('aria-pressed'), 'false');
-        const style = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
-        assert.match(style, /#tm-yt-alternative-fullscreen-button \{/);
-        assert.match(style, /background: rgba\(0,0,0,\.55\) !important;/);
-        assert.match(style, /width: 38px !important;/);
-        assert.match(style, /height: 32px !important;/);
-        assert.match(style, /100dvh !important;/);
-        assert.match(style, /object-fit: contain !important;/);
-        const chrome = load({userAgent: androidChrome});
-        assert.equal(chrome.button, null);
-        const desktop = load({userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0'});
-        assert.equal(desktop.button, null);
-    });
-
-    test('both 100% and 125% zoom use a custom player without native YouTube fullscreen', () => {
-        for (const viewportWidth of [400, 320]) {
-            const { harness, video, button, player } = load({
-                screenWidth: 400, viewportWidth
-            });
-            video.playbackRate = 1.5;
-            video.currentTime = 42;
+        assert.equal(display.textContent, '1.25x');
+        minus.click();
+        assert.equal(video.playbackRate, 1);
+        for (const rate of [0.5, 1, 1.5, 2]) {
+            const formatted = rate + 'x';
+            const button = buttons.find(b => b.textContent === formatted);
+            assert(button, 'Missing preset ' + formatted);
             button.click();
-            harness.flushAnimationFrames();
-            const root = harness.document.getElementById(rootId);
-            assert(root, 'Expected fullscreen root.');
-            assert.equal(player.parentElement, root);
-            assert.equal(video.parentElement, player);
-            assert.equal(video.playbackRate, 1.5);
-            assert.equal(video.currentTime, 42);
-            assert.equal(harness.document.fullscreenElement ?? null, null);
-            assert.equal(button.getAttribute('aria-pressed'), 'true');
-            const speed = harness.document.getElementById('tm-yt-speed-overlay');
-            assert.equal(speed.parentElement, root);
-            const presets = [...speed.querySelectorAll('button')];
-            presets.find((item) => item.textContent === '2x').click();
-            assert.equal(video.playbackRate, 2);
-            harness.document.dispatchEvent({type:'keydown',key:'Escape'});
-            harness.flushAnimationFrames();
-            assert.equal(harness.document.getElementById(rootId), null);
-            assert.equal(player.parentElement, harness.document.body);
-            assert.equal(button.getAttribute('aria-pressed'), 'false');
-            assert.equal(harness.document.documentElement.classList.contains('tm-yt-alternative-fullscreen-active'), false);
-            assert.equal(video.playbackRate, 2);
+            assert.equal(video.playbackRate, rate);
+            assert.equal(display.textContent, formatted);
         }
     });
 
-    test('requestFullscreen runs on our container, never the video player', () => {
-        const { harness, button, player } = load({ nativeFullscreen: true });
-        button.click();
+    test('desktop and Android Chrome use the same inline toolbar without custom fullscreen', () => {
+        for (const userAgent of [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0',
+            androidChrome
+        ]) {
+            const { bar, player, fullscreen } = load({userAgent});
+            assert(bar);
+            assert.equal(fullscreen, null);
+            assert.equal(bar.querySelectorAll('button').length, 6);
+            assert.equal(bar.nextElementSibling, player);
+        }
+    });
+
+    test('custom fullscreen retains a non-overlapping toolbar and restores it on Escape', () => {
+        const { harness, video, player, bar, fullscreen } = load({
+            viewportWidth: 390, viewportHeight: 844, videoWidth: 1920, videoHeight: 1080
+        });
+        video.currentTime = 42;
+        video.playbackRate = 1.5;
+        fullscreen.click();
         const root = harness.document.getElementById(rootId);
         assert(root);
-        assert.equal(harness.document.fullscreenElement, root);
-        assert.notEqual(harness.document.fullscreenElement, player);
-        harness.document.fullscreenElement = null;
-        harness.dispatchDocumentEvent('fullscreenchange');
+        const stage = root.querySelector('.tm-yt-alternative-fullscreen-stage');
+        assert(stage);
+        assert.equal(bar.parentElement, stage);
+        assert.equal(bar.nextElementSibling, player);
+        assert.equal(player.parentElement, stage);
+        assert.equal(video.currentTime, 42);
+        assert.equal(video.playbackRate, 1.5);
+        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), true);
+        assert.equal(fullscreen.getAttribute('aria-pressed'), 'true');
+
+        bar.querySelector('.tm-yt-speed-overlay__click--right').click();
+        assert.equal(video.playbackRate, 1.75);
+        harness.document.dispatchEvent({type: 'keydown', key: 'Escape'});
         harness.flushAnimationFrames();
         assert.equal(harness.document.getElementById(rootId), null);
+        assert.equal(bar.parentElement, harness.document.body);
+        assert.equal(bar.nextElementSibling, player);
         assert.equal(player.parentElement, harness.document.body);
+        assert.equal(video.currentTime, 42);
+        assert.equal(video.playbackRate, 1.75);
+        assert.equal(fullscreen.getAttribute('aria-pressed'), 'false');
     });
 
-    test('Android Back and YouTube SPA navigation both restore the player', () => {
-        const history = { count: 0, pushState() { this.count++; }, back() { this.count--; } };
-        const { harness, button, player } = load({ history });
-        button.click();
-        assert.equal(history.count, 1);
-        harness.dispatchWindowEvent('popstate');
-        harness.flushAnimationFrames();
-        assert.equal(history.count, 1, 'Back was already performed by the browser.');
-        assert.equal(player.parentElement, harness.document.body);
-        button.click();
-        harness.location.pathname = '/results';
-        harness.dispatchWindowEvent('yt-navigate-finish');
-        harness.flushAnimationFrames();
-        assert.equal(harness.document.getElementById(rootId), null);
-        assert.equal(harness.document.getElementById(buttonId), null);
-        assert.equal(player.parentElement, harness.document.body);
-        // The lightweight DOM harness does not detach the old child when
-        // appendChild reparents a node. The player and route restoration
-        // assertions above check the meaningful user-facing behavior.
-    });
-
-
-    test('speed overlay reserves the rightmost corner and uses compact hit targets', () => {
-        const { harness } = load();
-        const overlay = harness.document.getElementById('tm-yt-speed-overlay');
-        const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
-        assert(overlay.classList.contains('tm-yt-speed-overlay--android-edge'));
-        assert.match(css, /tm-yt-speed-overlay--android-edge \{\s*right: calc\(50px \+ max\(4px, env\(safe-area-inset-right\)\)\);/);
-        assert.match(css, /pointer-events: none;/);
-        assert.match(css, /tm-yt-speed-overlay__click \{[^}]*width: 30px;[^}]*height: 30px;/s);
-        assert.match(css, /tm-yt-speed-overlay__preset \{[^}]*pointer-events: auto;/s);
-        const controls = overlay.querySelectorAll('button');
-        assert.equal(controls.length, 5);
-    });
-
-    test('landscape video rotates by 90 degrees when the portrait viewport remains locked', () => {
-        const { harness, button, video } = load({
-            viewportWidth: 390, viewportHeight: 844,
-            videoWidth: 1920, videoHeight: 1080
+    test('rotation switches with viewport direction while landscape video stays within stage', () => {
+        const { harness, fullscreen } = load({
+            viewportWidth: 390, viewportHeight: 844, videoWidth: 1920, videoHeight: 1080
         });
-        button.click();
+        fullscreen.click();
         const root = harness.document.getElementById(rootId);
-        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
         const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
-        assert.match(css, /tm-yt-alternative-fullscreen-rotated > .tm-yt-alternative-fullscreen-target/);
-        assert.match(css, /left: 100dvw !important;/);
+        assert.match(css, /tm-yt-alternative-fullscreen-rotated > .tm-yt-alternative-fullscreen-stage/);
         assert.match(css, /width: 100dvh !important;/);
         assert.match(css, /height: 100dvw !important;/);
         assert.match(css, /transform: rotate\(90deg\) !important;/);
-        assert.equal(video.parentElement.parentElement, root);
         harness.window.innerWidth = 844;
         harness.window.innerHeight = 390;
         harness.dispatchWindowEvent('resize');
@@ -288,90 +206,79 @@ describe('Android Edge alternative YouTube fullscreen', () => {
         harness.window.innerWidth = 390;
         harness.window.innerHeight = 844;
         harness.dispatchWindowEvent('orientationchange');
-        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
-        harness.document.dispatchEvent({type:'keydown',key:'Escape'});
-        assert.equal(harness.document.getElementById(rootId), null);
+        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), true);
     });
 
-    test('portrait video stays upright and metadata updates an initially unknown aspect ratio', () => {
+    test('portrait videos remain upright and missing metadata can be updated later', () => {
         const portrait = load({
-            viewportWidth: 390, viewportHeight: 844,
-            videoWidth: 1080, videoHeight: 1920
+            viewportWidth: 390, viewportHeight: 844, videoWidth:1080, videoHeight:1920
         });
-        portrait.button.click();
+        portrait.fullscreen.click();
         assert.equal(portrait.harness.document.getElementById(rootId)
             .classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
-        const unknown = load({viewportWidth:390, viewportHeight:844});
-        unknown.button.click();
+        const unknown = load({viewportWidth:390,viewportHeight:844});
+        unknown.fullscreen.click();
         const root = unknown.harness.document.getElementById(rootId);
         assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
         unknown.video.videoWidth = 1920;
         unknown.video.videoHeight = 1080;
         unknown.video.dispatchEvent({type:'loadedmetadata'});
-        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
+        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), true);
     });
 
-    test('tries the Screen Orientation API in our fullscreen wrapper; unlocks on exit', async () => {
+    test('requests orientation lock only on our fullscreen root, releasing it on exit', async () => {
         let locks = 0, unlocks = 0;
         const orientation = {
-            lock(value) {
-                assert.equal(value, 'landscape');
-                locks++;
-                return Promise.resolve();
-            },
+            lock(value) { assert.equal(value,'landscape'); locks++; return Promise.resolve(); },
             unlock() { unlocks++; }
         };
-        const { harness, button } = load({
-            viewportWidth:390, viewportHeight:844,
-            videoWidth:1920, videoHeight:1080,
-            orientation, nativeFullscreen:true
+        const { harness, fullscreen } = load({
+            nativeFullscreen: true, viewportWidth: 390, viewportHeight:844,
+            videoWidth:1920, videoHeight:1080, orientation
         });
-        button.click();
+        fullscreen.click();
+        const root = harness.document.getElementById(rootId);
+        assert.equal(harness.document.fullscreenElement, root);
         await Promise.resolve();
         await Promise.resolve();
         assert.equal(locks, 1);
-        const root = harness.document.getElementById(rootId);
-        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
-        harness.window.innerWidth = 844;
-        harness.window.innerHeight = 390;
-        harness.dispatchWindowEvent('resize');
-        assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
         harness.document.dispatchEvent({type:'keydown',key:'Escape'});
-        // The lock promise is settled asynchronously across the VM context.
-        // Its cleanup may run after the immediate Escape event.
-        await new Promise((resolve) => setImmediate(resolve));
+        await new Promise(resolve => setImmediate(resolve));
         assert.equal(unlocks, 1);
     });
 
-    test('a denied screen-orientation lock retains CSS rotation', async () => {
-        let calls = 0;
+    test('denied orientation lock keeps CSS fallback without forcing portrait video rotation', async () => {
         const orientation = {
-            lock() { calls++; return Promise.reject(new Error('NotSupportedError')); },
-            unlock() { assert.fail('Rejected locks must not be unlocked.'); }
+            lock() { return Promise.reject(new Error('NotSupportedError')); },
+            unlock() { assert.fail('Rejected orientation lock was not acquired'); }
         };
-        const { harness, button } = load({
-            viewportWidth:390, viewportHeight:844,
-            videoWidth:1920, videoHeight:1080,
-            orientation, nativeFullscreen:true
+        const { harness, fullscreen } = load({
+            nativeFullscreen:true, viewportWidth:390, viewportHeight:844,
+            videoWidth:1920, videoHeight:1080, orientation
         });
-        button.click();
+        fullscreen.click();
         await Promise.resolve();
         await Promise.resolve();
-        assert.equal(calls, 1);
-        const root = harness.document.getElementById(rootId);
-        assert(root.classList.contains('tm-yt-alternative-fullscreen-rotated'));
+        assert.equal(harness.document.getElementById(rootId)
+            .classList.contains('tm-yt-alternative-fullscreen-rotated'), true);
     });
 
-    test('the generic Fullscreen Game View button is temporarily suppressed', () => {
-        const { harness } = executeYouTubeTools(url, { userAgent: androidEdge });
-        const existing = harness.document.createElement('button');
-        existing.id = 'tm-fullscreen-game-view-button';
-        harness.appendToBody(existing);
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        harness.flushAnimationFrames();
-        assert.equal(existing.hidden, true);
+    test('browser Back, SPA navigation and generic game control are handled', () => {
+        const history = { count:0, pushState() {this.count++;}, back() {this.count--;} };
+        const { harness, fullscreen, bar, player } = load({history});
+        const generic = harness.document.createElement('button');
+        generic.id = 'tm-fullscreen-game-view-button';
+        harness.appendToBody(generic);
+        harness.triggerMutation([generic]);
+        assert.equal(generic.hidden, true);
+        fullscreen.click();
+        harness.dispatchWindowEvent('popstate');
+        assert.equal(player.parentElement, harness.document.body);
+        assert.equal(bar.parentElement, harness.document.body);
+        fullscreen.click();
         harness.location.pathname = '/results';
         harness.dispatchWindowEvent('yt-navigate-finish');
-        assert.equal(existing.hidden, false);
+        assert.equal(bar.isConnected, false);
+        assert.equal(generic.hidden, false);
     });
 });
