@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.7.1
-// @description  Keep opaque YouTube speed controls below the player, with a centered one-second fullscreen reveal and Edge-native fullscreen buttons hidden.
+// @version      2026-10-30_1.8.0
+// @description  Show responsive YouTube playback-speed controls with highlighted active presets and Android Edge alternative fullscreen.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -62,6 +62,14 @@
         }
         const rate = currentVideo ? currentVideo.playbackRate : null;
         speedValue.textContent = rate ? formatRate(rate) : '--';
+        // Native YouTube rate changes and script-driven changes share this update.
+        overlay?.querySelectorAll('.tm-yt-speed-overlay__preset').forEach((button) => {
+            const presetRate = Number(button.getAttribute('data-rate'));
+            const selected = rate !== null && Math.abs(rate - presetRate) < 0.001;
+            button.disabled = selected;
+            button.setAttribute('aria-pressed', String(selected));
+            button.classList.toggle('tm-yt-speed-overlay__preset--selected', selected);
+        });
     }
 
     function setPlaybackRate(direction) {
@@ -84,7 +92,11 @@
         if (!video) {
             return;
         }
-        video.playbackRate = clampRate(rate);
+        const nextRate = clampRate(rate);
+        if (Math.abs(video.playbackRate - nextRate) < 0.001) {
+            return;
+        }
+        video.playbackRate = nextRate;
         updateSpeedDisplay();
     }
 
@@ -906,6 +918,82 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
     display: none !important;
 }
 
+/* Wide by default (desktop or landscape): keep arrows and rate separate.
+   Only a narrow portrait touch viewport uses the compact rate overlay. */
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper {
+    flex: 0 0 144px !important;
+    width: 144px !important;
+}
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+}
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click--left {
+    order: 0 !important;
+}
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click--right {
+    order: 2 !important;
+}
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__value {
+    position: static !important;
+    order: 1 !important;
+    flex: 0 0 56px !important;
+    width: 56px !important;
+    height: 44px !important;
+    transform: none !important;
+    border-radius: 0 !important;
+}
+@media (max-width: 600px) and (orientation: portrait) and (pointer: coarse) {
+    #tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper {
+        flex: 0 0 88px !important;
+        width: 88px !important;
+    }
+    #tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click {
+        flex: 0 0 50% !important;
+        width: 50% !important;
+    }
+    #tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click--left {
+        order: 0 !important;
+        justify-content: flex-start !important;
+        padding-left: 5px !important;
+    }
+    #tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click--right {
+        order: 1 !important;
+        justify-content: flex-end !important;
+        padding-right: 5px !important;
+    }
+    #tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__value {
+        position: absolute !important;
+        order: 2 !important;
+        left: 50% !important;
+        top: 50% !important;
+        flex: 0 0 44px !important;
+        width: 44px !important;
+        height: 28px !important;
+        transform: translate(-50%, -50%) !important;
+        border-radius: 5px !important;
+        pointer-events: none !important;
+    }
+}
+
+/* Hover feedback for every actionable control; don't imply a disabled
+   currently selected speed is clickable. */
+#tm-yt-speed-overlay button:not(:disabled):hover {
+    background: #676767 !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__stepper button:not(:disabled):hover {
+    background: rgba(255,255,255,.24) !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__preset:disabled,
+#tm-yt-speed-overlay .tm-yt-speed-overlay__preset--selected {
+    background: #a82032 !important;
+    color: #fff !important;
+    cursor: default !important;
+    opacity: 1 !important;
+}
+
 `;
         document.head.appendChild(style);
     }
@@ -947,9 +1035,12 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
         const presets = document.createElement('div');
         presets.className = 'tm-yt-speed-overlay__presets';
         [0.5, 1, 1.5, 2].forEach((rate) => {
-            presets.appendChild(makeButton(formatRate(rate),
+            const button = makeButton(formatRate(rate),
                 'Set playback speed to ' + formatRate(rate),
-                'tm-yt-speed-overlay__preset', () => setAbsoluteRate(rate)));
+                'tm-yt-speed-overlay__preset', () => setAbsoluteRate(rate));
+            button.setAttribute('data-rate', String(rate));
+            button.setAttribute('aria-pressed', 'false');
+            presets.appendChild(button);
         });
         controls.appendChild(presets);
         overlay.appendChild(controls);
