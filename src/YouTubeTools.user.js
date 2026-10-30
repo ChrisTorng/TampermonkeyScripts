@@ -504,6 +504,18 @@ html.tm-yt-alternative-fullscreen-active body {
         controls.appendChild(rightButton);
         controls.appendChild(presets);
         overlay.appendChild(controls);
+        if (isAndroidEdge) {
+            fullscreenButton = document.createElement('button');
+            fullscreenButton.id = fullscreenButtonId;
+            fullscreenButton.className = 'tm-yt-toolbar__fullscreen';
+            fullscreenButton.type = 'button';
+            fullscreenButton.textContent = '⛶';
+            fullscreenButton.title = 'Alternative fullscreen view';
+            fullscreenButton.setAttribute('aria-label', 'Enter alternative fullscreen YouTube view');
+            fullscreenButton.setAttribute('aria-pressed', 'false');
+            fullscreenButton.addEventListener('click', enterAlternativeFullscreen);
+            overlay.appendChild(fullscreenButton);
+        }
 
         mountInlineToolbar();
         updateSpeedDisplay();
@@ -555,62 +567,11 @@ html.tm-yt-alternative-fullscreen-active body {
         return player === document.body ? null : player;
     }
 
-    function watchFloatingMenu() {
-        if (!isAndroidEdge) return;
-        const menu = document.getElementById('tm-shared-floating-menu');
-        if (menu === menuElement) return;
-        menuObserver?.disconnect();
-        menuElement = menu;
-        if (menu) {
-            menuObserver = new MutationObserver(refreshTransientControls);
-            menuObserver.observe(menu, {
-                attributes: true,
-                attributeFilter: ['style', 'hidden', 'data-floating-expanded'],
-                childList: true,
-                subtree: true
-            });
-        }
-        refreshTransientControls();
-    }
-
     function removeAlternativeFullscreenButton() {
-        fullscreenButton?.remove();
-        fullscreenButton = null;
-        fullscreenTarget?.classList.remove(fullscreenTargetClass);
-        fullscreenTarget = null;
-        if (fullscreenLayout) transientControlLayouts.delete(fullscreenLayout);
-        fullscreenLayout = null;
+        // The fullscreen button is a child of the in-flow toolbar.
         restoreGenericFullscreenButton();
-    }
-
-    function mountAlternativeFullscreenButton() {
-        if (!isAndroidEdge || !isWatchPage()) return;
-        if (fullscreenSession) return;
-        const target = getYouTubePlayer();
-        if (!target) return;
-        if (fullscreenButton && target === fullscreenTarget && fullscreenButton.isConnected) return;
-        removeAlternativeFullscreenButton();
-        fullscreenTarget = target;
-        target.classList.add(fullscreenTargetClass);
-        fullscreenButton = document.createElement('button');
-        fullscreenButton.id = fullscreenButtonId;
-        fullscreenButton.type = 'button';
-        fullscreenButton.textContent = '⛶';
-        fullscreenButton.title = 'Alternative fullscreen view';
-        fullscreenButton.setAttribute('aria-label', 'Enter alternative fullscreen YouTube view');
-        fullscreenButton.setAttribute('aria-pressed', 'false');
-        target.appendChild(fullscreenButton);
-        fullscreenLayout = makeTransientControlDraggable(fullscreenButton, target, {
-            size: 38, height: 32, inset: 4,
-            stationaryOnPinchZoom: true, avoidFloatingMenu: true
-        });
-        fullscreenButton.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation?.();
-            enterAlternativeFullscreen();
-        });
-        watchFloatingMenu();
-        hideGenericFullscreenButton();
+        fullscreenButton = null;
+        fullscreenTarget = null;
     }
 
     function restorePageScroll(snapshot) {
@@ -716,7 +677,6 @@ html.tm-yt-alternative-fullscreen-active body {
 
     function onAlternativeViewportChange() {
         syncAlternativeOrientation();
-        refreshTransientControls();
     }
 
     function enterAlternativeFullscreen() {
@@ -810,7 +770,8 @@ html.tm-yt-alternative-fullscreen-active body {
         if (fullscreenSession) exitAlternativeFullscreen(true);
         if (isWatchPage()) {
             createOverlay();
-            mountAlternativeFullscreenButton();
+            mountInlineToolbar();
+            hideGenericFullscreenButton();
         } else {
             removeAlternativeFullscreenButton();
             removeOverlay();
@@ -826,7 +787,7 @@ html.tm-yt-alternative-fullscreen-active body {
     window.addEventListener('orientationchange', onAlternativeViewportChange);
     window.screen?.orientation?.addEventListener?.('change', onAlternativeViewportChange);
     new MutationObserver(() => {
-        watchFloatingMenu();
+        if (overlay && !fullscreenSession) scheduleVideoCheck();
         hideGenericFullscreenButton();
     }).observe(document.documentElement, { childList: true, subtree: true });
 
