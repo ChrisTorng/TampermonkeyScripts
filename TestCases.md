@@ -109,7 +109,7 @@ Section note: automated tests use representative inline code, preformatted block
 
 # YouTube Tools
 - https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (speed controls, fullscreen hover behavior, and Android Edge alternate button tested in the DOM harness)
-- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (custom fullscreen container, 100%/125% geometry setup, history/SPA exit and playback state are simulated; live Android Edge compositor appearance requires device verification)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (compact speed controls and non-overlapping fullscreen entry; wide/portrait video detection, 90-degree CSS fallback, screen.orientation lock/denial and viewport changes are simulated; Android Edge live rotation/compositor behavior still requires device verification)
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
