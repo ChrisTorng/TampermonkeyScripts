@@ -182,7 +182,7 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         const css = edge.harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
         const nativeStyle = css.slice(css.indexOf('/* Keep YouTube'));
         assert.match(nativeStyle, /html\.tm-yt-edge-alt-fullscreen \.ytp-fullscreen-button/);
-        assert.match(nativeStyle, /html\.tm-yt-edge-alt-fullscreen \.ytp-size-button/);
+        assert.doesNotMatch(nativeStyle, /\.ytp-size-button/, 'Theater mode must remain available.');
         assert.match(nativeStyle, /ytm-player button\[aria-label\*="full screen" i\]/);
         assert.match(nativeStyle, /display: none !important;/);
         assert(edge.harness.document.documentElement.classList.contains('tm-yt-edge-alt-fullscreen'));
