@@ -438,6 +438,163 @@ html.tm-yt-alternative-fullscreen-active body {
     top: 0 !important;
     transform: none !important;
 }
+
+/* In-flow controls: one row between the YouTube header and the player. */
+#tm-yt-speed-overlay {
+    all: revert;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 52px !important;
+    margin: 0 !important;
+    padding: 4px 6px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    inset: auto !important;
+    transform: none !important;
+    opacity: 1 !important;
+    background: #202020 !important;
+    color: #f5f5f5 !important;
+    z-index: 1 !important;
+    font: 500 14px/1 Roboto, Arial, sans-serif !important;
+    pointer-events: auto !important;
+    user-select: none !important;
+}
+
+#tm-yt-speed-overlay.tm-yt-speed-overlay--fullscreen {
+    display: none !important;
+}
+
+#tm-yt-speed-overlay .tm-yt-toolbar__controls {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    touch-action: pan-x !important;
+}
+#tm-yt-speed-overlay .tm-yt-toolbar__controls::-webkit-scrollbar {
+    display: none !important;
+}
+
+#tm-yt-speed-overlay button,
+#tm-yt-speed-overlay .tm-yt-speed-overlay__preset {
+    position: static !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 43px !important;
+    width: auto !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    padding: 0 7px !important;
+    border: none !important;
+    border-radius: 7px !important;
+    background: #3b3b3b !important;
+    color: #f6f6f6 !important;
+    font: 500 14px/1 Roboto, Arial, sans-serif !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    text-decoration: none !important;
+}
+#tm-yt-speed-overlay button:active {
+    background: #656565 !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__value {
+    position: static !important;
+    display: flex !important;
+    flex: 0 0 47px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: #fff !important;
+    background: transparent !important;
+    font: 600 14px/1 Roboto, Arial, sans-serif !important;
+}
+#tm-yt-speed-overlay .tm-yt-speed-overlay__presets {
+    position: static !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    gap: 4px !important;
+    inset: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+#tm-yt-speed-overlay .tm-yt-toolbar__fullscreen {
+    position: static !important;
+    flex: 0 0 44px !important;
+    min-width: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    margin-left: auto !important;
+    background: #505050 !important;
+    font-size: 22px !important;
+    z-index: auto !important;
+}
+#tm-yt-speed-overlay .tm-yt-toolbar__fullscreen[hidden],
+#tm-yt-speed-overlay .tm-yt-toolbar__fullscreen[aria-pressed="true"] {
+    display: none !important;
+}
+
+/* The fullscreen stage stacks the same toolbar above the unchanged player. */
+#tm-yt-alternative-fullscreen-root > .tm-yt-alternative-fullscreen-stage {
+    position: relative !important;
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    background: #000 !important;
+}
+
+#tm-yt-alternative-fullscreen-root.tm-yt-alternative-fullscreen-rotated > .tm-yt-alternative-fullscreen-stage {
+    position: absolute !important;
+    left: 100dvw !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100dvh !important;
+    height: 100dvw !important;
+    transform-origin: 0 0 !important;
+    transform: rotate(90deg) !important;
+}
+
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+    background: #000 !important;
+    overflow: hidden !important;
+}
+
 `;
         document.head.appendChild(style);
     }
