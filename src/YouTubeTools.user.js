@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.4.0
-// @description  Insert a touch-friendly YouTube speed toolbar above the video, with Android Edge alternative landscape fullscreen.
+// @version      2026-10-30_1.5.0
+// @description  Compact YouTube speed bar with a centered speed label and floating controls only in alternative fullscreen.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -147,6 +147,7 @@
         if (!overlay) return;
         const otherFullscreen = Boolean(document.fullscreenElement && !fullscreenSession);
         overlay.classList.toggle('tm-yt-speed-overlay--fullscreen', otherFullscreen);
+        overlay.classList.toggle('tm-yt-toolbar--custom-fullscreen', Boolean(fullscreenSession));
         if (fullscreenButton) {
             const active = Boolean(document.fullscreenElement || fullscreenSession);
             fullscreenButton.hidden = active;
@@ -156,10 +157,32 @@
 
     function getPlayerAnchor(video) {
         if (!video) return null;
+        // Mount before the watch-page wrapper, which owns both the player
+        // controls and metadata, rather than moving only the video element.
+        for (const selector of [
+            'ytm-watch', 'ytm-watch-flexy', 'ytm-watch-page',
+            'ytd-watch-flexy', 'ytm-watch-video'
+        ]) {
+            const wrapper = video.closest?.(selector);
+            if (wrapper?.parentElement) return wrapper;
+        }
+        const metadata = document.querySelector(
+            'ytm-slim-video-metadata-section-renderer, ytm-watch-metadata, ytd-watch-metadata'
+        );
+        if (metadata) {
+            const ancestors = new Set();
+            for (let node = video; node; node = node.parentElement) ancestors.add(node);
+            let common = metadata;
+            while (common && !ancestors.has(common)) common = common.parentElement;
+            if (common && common !== document.body && common !== document.documentElement &&
+                common.tagName?.toLowerCase() !== 'ytm-app' && common.parentElement) {
+                return common;
+            }
+        }
         for (const selector of ['ytm-player', '#player-container-outer',
             '#player-container', '#player', '.html5-video-player']) {
-            const anchor = video.closest?.(selector);
-            if (anchor?.parentElement && anchor !== document.body) return anchor;
+            const wrapper = video.closest?.(selector);
+            if (wrapper?.parentElement && wrapper !== document.body) return wrapper;
         }
         const fallback = getYouTubePlayer();
         return fallback?.parentElement ? fallback : null;
@@ -168,7 +191,7 @@
     function mountInlineToolbar() {
         if (!overlay || fullscreenSession || !isWatchPage()) return;
         const anchor = getPlayerAnchor(document.querySelector('video'));
-        if (!anchor?.parentElement) return;
+        if (!anchor?.parentElement || overlay.contains?.(anchor)) return;
         if (overlay.parentElement === anchor.parentElement &&
             overlay.nextElementSibling === anchor) return;
         anchor.parentElement.insertBefore(overlay, anchor);
@@ -600,80 +623,56 @@ html.tm-yt-alternative-fullscreen-active body {
     }
 
     function createOverlay() {
-        if (overlay) {
-            return;
-        }
+        if (overlay) return;
         injectStyles();
         overlay = document.createElement('div');
         overlay.id = overlayId;
         overlay.classList.add('tm-yt-inline-toolbar');
         overlay.setAttribute('role', 'group');
         overlay.setAttribute('aria-label', 'Playback speed controls');
-
-        const leftButton = document.createElement('button');
-        leftButton.type = 'button';
-        leftButton.className = 'tm-yt-speed-overlay__click tm-yt-speed-overlay__click--left';
-        leftButton.setAttribute('aria-label', 'Decrease playback speed');
-        leftButton.addEventListener('click', () => setPlaybackRate(-1));
-
-        const rightButton = document.createElement('button');
-        rightButton.type = 'button';
-        rightButton.className = 'tm-yt-speed-overlay__click tm-yt-speed-overlay__click--right';
-        rightButton.setAttribute('aria-label', 'Increase playback speed');
-        rightButton.addEventListener('click', () => setPlaybackRate(1));
-
-        const label = document.createElement('div');
-        label.className = 'tm-yt-speed-overlay__label';
-
-        const leftIcon = document.createElement('span');
-        leftIcon.className = 'tm-yt-speed-overlay__icon tm-yt-speed-overlay__icon--left';
-        leftIcon.textContent = '«';
-
-        speedValue = document.createElement('span');
-        speedValue.className = 'tm-yt-speed-overlay__value';
-        speedValue.setAttribute('aria-live', 'polite');
-
-        const rightIcon = document.createElement('span');
-        rightIcon.className = 'tm-yt-speed-overlay__icon tm-yt-speed-overlay__icon--right';
-        rightIcon.textContent = '»';
-
-        label.appendChild(leftIcon);
-        label.appendChild(speedValue);
-        label.appendChild(rightIcon);
-
-        const presets = document.createElement('div');
-        presets.className = 'tm-yt-speed-overlay__presets';
-
-        [0.5, 1, 1.5, 2].forEach((rate) => {
-            const preset = document.createElement('button');
-            preset.type = 'button';
-            preset.className = 'tm-yt-speed-overlay__preset';
-            preset.textContent = formatRate(rate);
-            preset.setAttribute('aria-label', `Set playback speed to ${formatRate(rate)}`);
-            preset.addEventListener('click', () => setAbsoluteRate(rate));
-            presets.appendChild(preset);
-        });
-
         const controls = document.createElement('div');
         controls.className = 'tm-yt-toolbar__controls';
-        controls.appendChild(leftButton);
-        controls.appendChild(speedValue);
-        controls.appendChild(rightButton);
+        const stepper = document.createElement('div');
+        stepper.className = 'tm-yt-speed-overlay__stepper';
+
+        function makeButton(text, label, className, action) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = className;
+            button.textContent = text;
+            button.setAttribute('aria-label', label);
+            button.addEventListener('click', action);
+            return button;
+        }
+        stepper.appendChild(makeButton('«', 'Decrease playback speed',
+            'tm-yt-speed-overlay__click tm-yt-speed-overlay__click--left',
+            () => setPlaybackRate(-1)));
+        stepper.appendChild(makeButton('»', 'Increase playback speed',
+            'tm-yt-speed-overlay__click tm-yt-speed-overlay__click--right',
+            () => setPlaybackRate(1)));
+        speedValue = document.createElement('span');
+        speedValue.className = 'tm-yt-speed-overlay__value';
+        speedValue.setAttribute('aria-label', 'Current playback speed');
+        speedValue.setAttribute('aria-live', 'polite');
+        stepper.appendChild(speedValue);
+        controls.appendChild(stepper);
+        const presets = document.createElement('div');
+        presets.className = 'tm-yt-speed-overlay__presets';
+        [0.5, 1, 1.5, 2].forEach((rate) => {
+            presets.appendChild(makeButton(formatRate(rate),
+                'Set playback speed to ' + formatRate(rate),
+                'tm-yt-speed-overlay__preset', () => setAbsoluteRate(rate)));
+        });
         controls.appendChild(presets);
         overlay.appendChild(controls);
         if (isAndroidEdge) {
-            fullscreenButton = document.createElement('button');
+            fullscreenButton = makeButton('⛶', 'Enter alternative fullscreen YouTube view',
+                'tm-yt-toolbar__fullscreen', enterAlternativeFullscreen);
             fullscreenButton.id = fullscreenButtonId;
-            fullscreenButton.className = 'tm-yt-toolbar__fullscreen';
-            fullscreenButton.type = 'button';
-            fullscreenButton.textContent = '⛶';
             fullscreenButton.title = 'Alternative fullscreen view';
-            fullscreenButton.setAttribute('aria-label', 'Enter alternative fullscreen YouTube view');
             fullscreenButton.setAttribute('aria-pressed', 'false');
-            fullscreenButton.addEventListener('click', enterAlternativeFullscreen);
             overlay.appendChild(fullscreenButton);
         }
-
         mountInlineToolbar();
         updateSpeedDisplay();
         updateFullscreenState();
