@@ -2,29 +2,34 @@
 
 Updated: 2026-10-30
 
-This change updates only Better Discord; previously updated YouTube Tools and other userscripts are unaffected. Install this version from this branch's preview (or main after merge), verify the version in Tampermonkey, and reload your Discord channel.
+This experimental change updates **only Force Mobile View**. Install from the pull request's branch while testing. No other floating-menu userscript is changed; the shared `src/FloatingMenu.js` source remains untouched until the Android pilot is accepted.
 
 ## Updated userscripts (1)
 
-### Better Discord — 2026-10-30_1.0.10
+### Force Mobile View — 2026-10-30_2.1.0
 
-**[Install / update BetterDiscord.user.js](src/BetterDiscord.user.js)**
+**[Install / update ForceMobileView.user.js](src/ForceMobileView.user.js)**
 
-**Visible changes:** No extra UI in normal browsing. On Android, append `?bddebug=1` to the current Discord channel URL to open an optional floating diagnostics panel. The panel shows current visual-viewport and window dimensions, composer-to-viewport gap, ancestor element bottom coordinates, and colored outlines. You can capture automatic keyboard events, copy a JSON geometry report, save it as a file, or compare the earlier layout fix ON/OFF. Diagnostics start with the fix OFF so the original problem can be recorded. Windows Edge is unaffected.
+**Visible changes:** On Android, previously unmatched pages with sustained genuinely tiny text may enable a guarded auto-readability mode. Old desktop-style layouts (including Stack Exchange Data Explorer's original 980px page) are evaluated using the layout/physical width ratio and visual viewport scale, not merely a single small label. Auto mode injects a reversible device-width viewport only when no viewport meta exists, uses scoped responsive CSS and text adjustments, and enlarges the existing floating menu's hit targets and spacing **from within this one userscript**, without editing the shared menu source or other userscripts. Existing explicitly matched URL behavior remains unchanged.
+
+**Safety/rollback:** Auto mode avoids legacy global `body *` overrides. If a measured viewport fix fails or the document develops substantial horizontal overflow, it restores the previous styling and records a temporary tab-level suppression. Clicking the ↔ button while automatic mode is active disables it and saves a per-site preference; clicking again enables the existing manual mode and clears that preference.
 
 **Test links:**
-- [Existing Discord channel test](https://discord.com/channels/1475861167476965439/1475861168412164149)
-- [Same channel with debug enabled](https://discord.com/channels/1475861167476965439/1475861168412164149?bddebug=1) (requires account access; otherwise append `?bddebug=1` to a channel you can open)
+- [Stack Exchange Data Explorer — legacy 980px query page](https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1)
+- [Previously problematic tiny-font article](https://lcamtuf.coredump.cx/prep/index-old.shtml)
+- [Hacker News comment page — existing URL auto-enable](https://news.ycombinator.com/item?id=46255285)
+- [Archive Today — existing URL auto-enable](https://archive.is/75aY9)
+- [Steve Blank article — line-height regression reference](https://steveblank.com/2026/04/09/nowhere-is-safe/)
 
 **Verify on Android Edge:**
-1. Install/update the script in Tampermonkey, confirm `2026-10-30_1.0.10`, and reload your Discord channel.
-2. Open the channel URL with `?bddebug=1`. A small `Discord layout debug` panel appears at the top; the layout fix starts OFF.
-3. Screenshot with keyboard closed. Focus the message editor and screenshot again with the keyboard open. Orange = composer, cyan = form, purple = chat wrapper, green = app root; dashed yellow = reported visual viewport bottom. The red tinted area is the geometric gap, if any.
-4. While the keyboard is open, read `gap`, `vvH`, `vvBottom`, and ancestor bottoms. Automatic geometry snapshots are retained across focus/resize events. Use `Copy log` or `Save JSON` and provide the report for analysis. The report records only geometry, CSS and browser context, not chat messages, URL, cookies or credentials.
-5. Optionally tap `Fix: OFF` to switch ON, and compare with a second screenshot. Close to restore normal operation; remove `?bddebug=1` from the URL for subsequent visits.
+1. Install this one userscript from the branch/PR link, confirm `2026-10-30_2.1.0` in Tampermonkey, and reload the Stack Exchange query page.
+2. Confirm a previously tiny desktop layout is readable without manually expanding the ≡ menu. Open the menu, tap ↔, close and reopen it; adjacent controls and the × button should not overlap while automatic mode is active.
+3. Inspect SQL editor input, graph, results table, scrolling, page width, and orientation changes. Intended in-widget horizontal scrolling is acceptable; full-page horizontal scrolling or missing content is not.
+4. Tap ↔ to disable automatic mode and confirm the original layout returns; tap it again to enable the existing manual Force Mobile View mode.
+5. Compare a normally responsive article (which should stay unmodified) and the previously tiny-font article. Confirm Windows Edge does not auto-enable from the new detector.
 
-**Update scope:** Update only `BetterDiscord.user.js`. The existing input-button suppression remains unchanged. No shared menu scripts need updating.
+**Scope and limitations:** Only this userscript is changed. This is a browser-behavior pilot: Node tests mock viewport reflow and cannot substitute for live Android Edge testing. The automatic failure checker examines horizontal document overflow and persisted unreadable scale; visual element collisions on arbitrary third-party sites are not yet exhaustively detected. On existing explicitly matched URLs, the prior manual-style auto-enable behavior is retained.
 
 ## Verification notes
 
-`node --test scripts/test-better-discord.js` covers the opt-in diagnostics rendering, captured viewport values, initial fix-off behavior, fix toggle/restore, and Windows exclusion, alongside previous keyboard-layout and button tests. These DOM mocks cannot reproduce Android Edge's keyboard compositor; live screenshots and the JSON report are needed before choosing another CSS correction.
+Run `node --test scripts/test-force-mobile-view.js` and `node --test`. New tests cover high-confidence legacy detection, small caption non-triggering, sustained tiny text, Windows exclusion, rollback, and per-site opt-out. The shared floating menu implementation and four other participating scripts are unchanged.
