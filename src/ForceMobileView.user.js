@@ -402,7 +402,7 @@
     let autoRestoreError = false;
     let autoTimer = null;
     const AUTO_STYLE_ID = 'tm-force-mobile-auto-style';
-    const AUTO_STORAGE = 'tm-force-mobile-auto-v1:' + location.hostname.toLowerCase();
+    const AUTO_STORAGE = 'tm-force-mobile-auto-v2:' + location.hostname.toLowerCase();
     const AUTO_FAILURE = 'tm-force-mobile-failed:' + location.pathname + location.search;
 
     const AUTO_PREPARE_KEY = 'tm-force-mobile-prepared-v2:' + location.pathname + location.search;
