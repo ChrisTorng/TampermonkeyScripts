@@ -542,8 +542,9 @@
             viewportLine.style.top = bottom + 'px';
             viewportLine.style.width = '100vw';
             viewportLine.style.borderTop = '3px dashed #facc15';
-            const composerBottom = box(form) && box(form).bottom;
-            const gap = bottom - composerBottom;
+            const formRect = box(form);
+            const composerBottom = formRect ? formRect.bottom : null;
+            const gap = Number.isFinite(composerBottom) ? bottom - composerBottom : NaN;
             gapLayer.style.display = Number.isFinite(gap) && gap > 8 ? 'block' : 'none';
             if (Number.isFinite(gap) && gap > 8) {
                 gapLayer.style.left = '0px';
