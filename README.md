@@ -116,7 +116,7 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Keep opaque YouTube speed controls below the player, with a centered one-second fullscreen reveal and Edge-native fullscreen buttons hidden.
+Show responsive YouTube playback-speed controls with highlighted active presets and Android Edge alternative fullscreen.
 
 ### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 

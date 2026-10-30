@@ -4,27 +4,33 @@ Updated: 2026-10-30
 
 ## Updated userscripts (1)
 
-### YouTube Tools — 2026-10-30_1.7.1
+### YouTube Tools — 2026-10-30_1.8.0
 
 **[Install / update YouTubeTools.user.js](src/YouTubeTools.user.js)**
 
-**Visible change:** Only the Android Edge **alternative fullscreen** speed-control placement has changed. The speed toolbar now appears **horizontally centered near the top of the video** rather than at the upper-left. This keeps YouTube's left-side mute/unmute button available when the video starts muted. The responsive toolbar retains its 410px maximum width, with a centered `left: 50%` and `translateX(-50%)`, so rotated landscape and physically landscape viewports behave consistently.
+**UI changes:**
+- On Windows and other wide or landscape layouts, **«**, the **current speed**, and **»** are now separate side-by-side controls; the speed display does not overlap either arrow. The combined region is 144 CSS px wide (44 + 56 + 44).
+- Only **narrow portrait touch screens** (width at most 600 CSS px, portrait orientation, coarse pointer) retain the existing 88px compressed layout with the current speed display overlaid between the arrows. The Android Edge custom fullscreen still uses its existing 44 + 48 + 44 separated layout.
+- All available buttons now show a **background-color hover response** on pointer hover, including step controls, speed presets and the custom fullscreen entry.
+- The **currently selected preset** (0.5x, 1x, 1.5x or 2x) is highlighted and **disabled**; clicking the active preset does not change playback speed. A rate not matching a preset (e.g. 1.25x) leaves all presets available.
+- The selected state is synchronized on script-driven speed changes, native YouTube playback-speed changes (`ratechange`), and video element changes caused by YouTube navigation.
 
-**Unchanged:** The custom fullscreen speed controls appear when the viewer taps the player, disappear after **1 second**, and leave no invisible touch layer when hidden. In fullscreen the step arrows and current speed remain in separate 44/48/44px regions; the custom fullscreen entry itself is hidden. On the normal YouTube watch page, the opaque compact toolbar remains below the player, including 0.5x / 1x / 1.5x / 2x presets and the Android Edge-only alternative fullscreen entry button. YouTube native fullscreen/restore controls remain hidden only on Android Edge watch pages. Native playback, mute, CC, gear, seek controls, orientation handling, and Android Back to exit are unchanged.
+**Unchanged:** The opaque normal watch-page row is below the player. On Android Edge the independent fullscreen button remains on the right; its native YouTube fullscreen suppression, centered temporary fullscreen speed overlay, one-second hide delay, orientation handling and Android Back behavior are unchanged. Android Chrome and Windows Edge keep their native YouTube fullscreen buttons.
 
 Test pages:
-- [Video used to reproduce the muted fullscreen overlap](https://m.youtube.com/watch?v=zeWBx3AePow)
-- [Speed controls regression page](https://www.youtube.com/watch?v=nCg3aXn5F3M)
+- [YouTube playback-speed test video](https://www.youtube.com/watch?v=nCg3aXn5F3M)
+- [Android Edge alternative fullscreen test](https://m.youtube.com/watch?v=zeWBx3AePow)
 
 Verification:
-1. Update `YouTubeTools.user.js` to version `2026-10-30_1.7.1` in Tampermonkey and reload YouTube in Android Edge.
-2. Mute the video and enter fullscreen using the **custom ⛶** button. Tap the picture and verify the temporary speed bar is centered near the top rather than at upper-left, leaving YouTube's mute/unmute control clear and tappable.
-3. Check that the speed bar fully disappears after **1 second**, that the left mute control still responds, and that tapping the video again reopens the bar.
-4. Try «, », 0.5x, 1x, 1.5x, and 2x, then leave fullscreen using Android Back. Confirm speed, video time, and normal toolbar position are preserved.
-5. Verify the normal watch-page toolbar and Windows Edge / Android Chrome behavior remain unchanged.
+1. Install YouTubeTools.user.js version `2026-10-30_1.8.0` in Tampermonkey and reload YouTube.
+2. On **Windows Edge**, verify «, the live speed value and » have three visually distinct cells without overlapping; hovering over unselected buttons changes the background.
+3. At 1x, the **1x preset** should be highlighted and disabled. Click 1.5x, then 2x and confirm the highlight moves; selecting the active preset again must not reset playback or write the same rate.
+4. Use « and » to reach a rate such as 1.25x: no preset should remain selected. Change playback rate through YouTube's original Settings menu to verify the new selected preset is reflected.
+5. On **portrait Android Edge** at Accessibility 125%, verify the compact speed indicator remains overlaid without clipping any of 0.5x / 1x / 1.5x / 2x / custom ⛶. Rotate the device landscape and check the expanded spacing.
+6. Enter custom fullscreen on Android Edge and verify the pre-existing one-second centered overlay and Back-to-exit behavior are unaffected.
 
-**Update scope:** Only YouTubeTools.user.js requires installation.
+**Update scope:** Only YouTubeTools.user.js needs installation.
 
 ## Verification notes
 
-`node --test scripts/test-youtube-tools.js` asserts the centered fullscreen CSS geometry, retained one-second visibility behavior, playback-speed changes, and fullscreen exit restoration. Automated DOM testing cannot fully emulate Edge Android's visual compositor or YouTube's live mute controls; a real-device check is still needed.
+`node --test scripts/test-youtube-tools.js` covers live speed-state behavior, selected-preset disabling, width-specific CSS rules, hover CSS, fullscreen handling, and restoration. The DOM harness cannot produce real browser screenshots; verify the actual widths in desktop Edge and narrow Android Edge on a physical device.
