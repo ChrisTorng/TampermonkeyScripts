@@ -601,11 +601,11 @@ html.tm-yt-alternative-fullscreen-active body {
         if (!session) return;
         fullscreenSession = null;
         if (document.fullscreenElement === session.root) {
-            try { document.exitFullscreen?.(); } catch (_error) { /* May already be exiting. */ }
+            try { document.exitFullscreen?.(); } catch (_error) { /* Already exiting. */ }
         }
         session.video?.removeEventListener('loadedmetadata', onAlternativeVideoMetadata);
         if (session.orientationLocked) {
-            try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Browser may already unlock. */ }
+            try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Already unlocked. */ }
         }
         session.target.classList.remove(fullscreenActiveClass);
         document.documentElement.classList.remove(fullscreenActiveClass);
@@ -616,6 +616,15 @@ html.tm-yt-alternative-fullscreen-active body {
             session.parent.appendChild(session.target);
         }
         session.anchor.remove();
+        if (overlay) {
+            overlay.remove();
+            if (session.barMarker.parentElement) {
+                session.barMarker.parentElement.insertBefore(overlay, session.barMarker);
+            } else if (session.barParent.isConnected) {
+                session.barParent.appendChild(overlay);
+            }
+        }
+        session.barMarker.remove();
         session.root.remove();
         if (fullscreenButton) {
             fullscreenButton.hidden = false;
@@ -623,10 +632,7 @@ html.tm-yt-alternative-fullscreen-active body {
         }
         updateFullscreenState();
         restorePageScroll(session.scroll);
-        refreshTransientControls();
-        if (session.historyAdded && !fromBack) {
-            window.history?.back?.();
-        }
+        if (session.historyAdded && !fromBack) window.history?.back?.();
     }
 
     function isLandscapeVideo(video) {
@@ -680,14 +686,21 @@ html.tm-yt-alternative-fullscreen-active body {
     }
 
     function enterAlternativeFullscreen() {
-        if (!isAndroidEdge || fullscreenSession || document.fullscreenElement) return;
-        const target = fullscreenTarget;
-        if (!target?.parentElement || !target.querySelector('video')) return;
+        if (!isAndroidEdge || fullscreenSession || document.fullscreenElement || !overlay) return;
+        const target = getYouTubePlayer();
+        if (!target?.parentElement || !target.querySelector('video') || !overlay.parentElement) return;
         const parent = target.parentElement;
         const anchor = document.createElement('span');
         anchor.hidden = true;
         anchor.setAttribute('aria-hidden', 'true');
         parent.insertBefore(anchor, target);
+
+        const barParent = overlay.parentElement;
+        const barMarker = document.createElement('span');
+        barMarker.hidden = true;
+        barMarker.setAttribute('aria-hidden', 'true');
+        barParent.insertBefore(barMarker, overlay);
+
         const elements = [target, ...target.querySelectorAll('*')];
         const scroll = {
             x: window.scrollX || 0,
@@ -701,13 +714,19 @@ html.tm-yt-alternative-fullscreen-active body {
         root.id = fullscreenRootId;
         root.setAttribute('role', 'region');
         root.setAttribute('aria-label', 'Alternative fullscreen YouTube player');
+
+        const stage = document.createElement('div');
+        stage.className = fullscreenStageClass;
+        overlay.remove();
         target.remove();
-        root.appendChild(target);
+        stage.appendChild(overlay);
+        stage.appendChild(target);
+        root.appendChild(stage);
         document.body.appendChild(root);
         target.classList.add(fullscreenActiveClass);
         document.documentElement.classList.add(fullscreenActiveClass);
         const video = target.querySelector('video');
-        fullscreenSession = { root, target, parent, anchor, scroll, video,
+        fullscreenSession = { root, stage, target, parent, anchor, barParent, barMarker, scroll, video,
             historyAdded: false, nativeEntered: false,
             orientationRequested: false, orientationLocked: false };
         video.addEventListener('loadedmetadata', onAlternativeVideoMetadata);
@@ -715,15 +734,11 @@ html.tm-yt-alternative-fullscreen-active body {
         fullscreenButton.hidden = true;
         fullscreenButton.setAttribute('aria-pressed', 'true');
         updateFullscreenState();
-        refreshTransientControls();
         try {
             window.history?.pushState?.({ tmYouTubeFullscreen: true }, '', window.location.href);
             fullscreenSession.historyAdded = Boolean(window.history?.pushState);
-        } catch (_error) {
-            // The browser's Back button can still be handled via popstate.
-        }
-        // Enter fullscreen on our own container, never through YouTube's player.
-        // CSS viewport-fill mode remains active if the request is unavailable or rejected.
+        } catch (_error) { /* The browser can still send popstate. */ }
+
         if (typeof root.requestFullscreen === 'function') {
             try {
                 const session = fullscreenSession;
@@ -735,12 +750,8 @@ html.tm-yt-alternative-fullscreen-active body {
                 }).catch?.(() => {
                     if (fullscreenSession === session) syncAlternativeOrientation();
                 });
-                if (!result?.then && document.fullscreenElement === root) {
-                    tryLockLandscape(session);
-                }
-            } catch (_error) {
-                // The CSS fallback is already active.
-            }
+                if (!result?.then && document.fullscreenElement === root) tryLockLandscape(session);
+            } catch (_error) { /* CSS viewport-fill fallback is already active. */ }
         }
     }
 
