@@ -26,9 +26,37 @@ function executeYouTubeTools(url, options = {}) {
     if ('pinchScale' in options) {
         harness.window.visualViewport.scale = options.pinchScale;
     }
+    const player = harness.document.createElement('div');
+    player.className = 'html5-video-player';
     const video = harness.document.createElement('video');
     video.playbackRate = 1;
-    harness.appendToBody(video);
+    player.appendChild(video);
+    harness.appendToBody(player);
+    if (options.history) {
+        harness.window.history = options.history;
+    }
+    if (options.nativeFullscreen) {
+        const createElement = harness.document.createElement.bind(harness.document);
+        harness.document.createElement = (tagName) => {
+            const element = createElement(tagName);
+            if (tagName === 'div') {
+                element.requestFullscreen = () => {
+                    if (element.id === 'tm-yt-alternative-fullscreen-root') {
+                        harness.document.fullscreenElement = element;
+                        harness.dispatchDocumentEvent('fullscreenchange');
+                        return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('Unexpected fullscreen target'));
+                };
+            }
+            return element;
+        };
+        harness.document.exitFullscreen = () => {
+            harness.document.fullscreenElement = null;
+            harness.dispatchDocumentEvent('fullscreenchange');
+            return Promise.resolve();
+        };
+    }
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
@@ -112,83 +140,117 @@ describe('YouTubeTools on captured watch pages', () => {
 });
 
 
-describe('Android Edge fullscreen page-zoom compensation', () => {
+
+describe('Android Edge alternative YouTube fullscreen', () => {
     const url = 'https://m.youtube.com/watch?v=zeWBx3AePow';
     const androidEdge = 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150.0 Mobile Safari/537.36 EdgA/150.0';
     const androidChrome = 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/150.0 Mobile Safari/537.36';
+    const buttonId = 'tm-yt-alternative-fullscreen-button';
+    const rootId = 'tm-yt-alternative-fullscreen-root';
 
-    function enterFullscreen(options) {
-        const { harness, video } = executeYouTubeTools(url, options);
+    function load(options = {}) {
+        const { harness, video } = executeYouTubeTools(url, { userAgent: androidEdge, ...options });
         harness.dispatchDocumentEvent('DOMContentLoaded');
         harness.flushAnimationFrames();
-        harness.document.fullscreenElement = video;
-        video._rect = { left: 80, top: 24, width: 480, height: 900, right: 560, bottom: 924 };
-        harness.dispatchWindowEvent('fullscreenchange');
-        harness.flushAnimationFrames();
-        return { harness, video };
+        const button = harness.document.getElementById(buttonId);
+        return { harness, video, button, player: video.parentElement };
     }
 
-    test('125% Android Edge page zoom inversely scales and offsets the fullscreen player', () => {
-        const { harness, video } = enterFullscreen({
-            userAgent: androidEdge, screenWidth: 400, viewportWidth: 320
-        });
-        assert.equal(video.style.getPropertyValue('width'), '125.00vw');
-        assert.equal(video.style.getPropertyValue('height'), '125.00vh');
-        assert.equal(video.style.getPropertyValue('transform-origin'), 'top left');
-        assert.equal(video.style.getPropertyValue('transform'),
-            'translate(-80px, -24px) scale(0.8)');
-        assert.equal(video.style.getPropertyPriority('transform'), 'important');
-        const speed = harness.document.getElementById('tm-yt-speed-overlay');
-        assert(speed, 'Existing speed controls must remain in fullscreen.');
+    test('only Android Edge gets a Game View styled independent entry button', () => {
+        const { harness, button } = load();
+        assert(button, 'Expected Android Edge alternative fullscreen button.');
+        assert.equal(button.textContent, '⛶');
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+        const style = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        assert.match(style, /#tm-yt-alternative-fullscreen-button \{/);
+        assert.match(style, /background: rgba\(0,0,0,\.55\) !important;/);
+        assert.match(style, /width: 38px !important;/);
+        assert.match(style, /height: 32px !important;/);
+        assert.match(style, /100dvh !important;/);
+        assert.match(style, /object-fit: contain !important;/);
+        const chrome = load({userAgent: androidChrome});
+        assert.equal(chrome.button, null);
+        const desktop = load({userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0'});
+        assert.equal(desktop.button, null);
     });
 
-    test('100% page zoom does not modify fullscreen geometry', () => {
-        const { video } = enterFullscreen({
-            userAgent: androidEdge, screenWidth: 400, viewportWidth: 400
-        });
-        assert.equal(video.style.getPropertyValue('transform'), '');
-        assert.equal(video.style.getPropertyValue('width'), '');
+    test('both 100% and 125% zoom use a custom player without native YouTube fullscreen', () => {
+        for (const viewportWidth of [400, 320]) {
+            const { harness, video, button, player } = load({
+                screenWidth: 400, viewportWidth
+            });
+            video.playbackRate = 1.5;
+            video.currentTime = 42;
+            button.click();
+            harness.flushAnimationFrames();
+            const root = harness.document.getElementById(rootId);
+            assert(root, 'Expected fullscreen root.');
+            assert.equal(player.parentElement, root);
+            assert.equal(video.parentElement, player);
+            assert.equal(video.playbackRate, 1.5);
+            assert.equal(video.currentTime, 42);
+            assert.equal(harness.document.fullscreenElement ?? null, null);
+            assert.equal(button.getAttribute('aria-pressed'), 'true');
+            const speed = harness.document.getElementById('tm-yt-speed-overlay');
+            assert.equal(speed.parentElement, root);
+            const presets = [...speed.querySelectorAll('button')];
+            presets.find((item) => item.textContent === '2x').click();
+            assert.equal(video.playbackRate, 2);
+            harness.document.dispatchEvent({type:'keydown',key:'Escape'});
+            harness.flushAnimationFrames();
+            assert.equal(harness.document.getElementById(rootId), null);
+            assert.equal(player.parentElement, harness.document.body);
+            assert.equal(button.getAttribute('aria-pressed'), 'false');
+            assert.equal(harness.document.documentElement.classList.contains('tm-yt-alternative-fullscreen-active'), false);
+            assert.equal(video.playbackRate, 2);
+        }
     });
 
-    test('other Android browsers are never changed, even at 125%', () => {
-        const { video } = enterFullscreen({
-            userAgent: androidChrome, screenWidth: 400, viewportWidth: 320
-        });
-        assert.equal(video.style.getPropertyValue('transform'), '');
-    });
-
-    test('Android Edge falls back to 125% if page zoom cannot be read', () => {
-        const { video } = enterFullscreen({ userAgent: androidEdge });
-        assert.equal(video.style.getPropertyValue('transform'),
-            'translate(-80px, -24px) scale(0.8)');
-    });
-
-    test('a pinch zoom does not trigger the 125% fallback', () => {
-        const { video } = enterFullscreen({
-            userAgent: androidEdge, screenWidth: 400, viewportWidth: 400, pinchScale: 1.25
-        });
-        assert.equal(video.style.getPropertyValue('transform'), '');
-    });
-
-    test('exiting fullscreen restores existing styles', () => {
-        const { harness, video } = enterFullscreen({
-            userAgent: androidEdge, screenWidth: 400, viewportWidth: 320
-        });
+    test('requestFullscreen runs on our container, never the video player', () => {
+        const { harness, button, player } = load({ nativeFullscreen: true });
+        button.click();
+        const root = harness.document.getElementById(rootId);
+        assert(root);
+        assert.equal(harness.document.fullscreenElement, root);
+        assert.notEqual(harness.document.fullscreenElement, player);
         harness.document.fullscreenElement = null;
-        harness.dispatchWindowEvent('fullscreenchange');
-        assert.equal(video.style.getPropertyValue('transform'), '');
-        assert.equal(video.style.getPropertyValue('height'), '');
-        assert.equal(video.style.getPropertyValue('width'), '');
-        assert.equal(video.style.getPropertyValue('transform-origin'), '');
-        const overlay = harness.document.getElementById('tm-yt-speed-overlay');
-        assert.equal(overlay.parentElement, harness.document.body);
+        harness.dispatchDocumentEvent('fullscreenchange');
+        harness.flushAnimationFrames();
+        assert.equal(harness.document.getElementById(rootId), null);
+        assert.equal(player.parentElement, harness.document.body);
     });
 
-    test('desktop Edge remains unaffected', () => {
-        const { video } = enterFullscreen({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0',
-            screenWidth: 400, viewportWidth: 320
-        });
-        assert.equal(video.style.getPropertyValue('transform'), '');
+    test('Android Back and YouTube SPA navigation both restore the player', () => {
+        const history = { count: 0, pushState() { this.count++; }, back() { this.count--; } };
+        const { harness, button, player } = load({ history });
+        button.click();
+        assert.equal(history.count, 1);
+        harness.dispatchWindowEvent('popstate');
+        harness.flushAnimationFrames();
+        assert.equal(history.count, 1, 'Back was already performed by the browser.');
+        assert.equal(player.parentElement, harness.document.body);
+        button.click();
+        harness.location.pathname = '/results';
+        harness.dispatchWindowEvent('yt-navigate-finish');
+        harness.flushAnimationFrames();
+        assert.equal(harness.document.getElementById(rootId), null);
+        assert.equal(harness.document.getElementById(buttonId), null);
+        assert.equal(player.parentElement, harness.document.body);
+        // The lightweight DOM harness does not detach the old child when
+        // appendChild reparents a node. The player and route restoration
+        // assertions above check the meaningful user-facing behavior.
+    });
+
+    test('the generic Fullscreen Game View button is temporarily suppressed', () => {
+        const { harness } = executeYouTubeTools(url, { userAgent: androidEdge });
+        const existing = harness.document.createElement('button');
+        existing.id = 'tm-fullscreen-game-view-button';
+        harness.appendToBody(existing);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.flushAnimationFrames();
+        assert.equal(existing.hidden, true);
+        harness.location.pathname = '/results';
+        harness.dispatchWindowEvent('yt-navigate-finish');
+        assert.equal(existing.hidden, false);
     });
 });
