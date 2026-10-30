@@ -937,6 +937,14 @@ html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
         // live outside .html5-video-player. Moving just that element into our
         // fullscreen root loses the siblings. Find the smallest player-only
         // ancestor containing the native controls instead.
+        const mobileHost = video.closest?.('ytm-player') ||
+            video.closest?.('#player-container-outer') ||
+            video.closest?.('.player-container') ||
+            video.closest?.('#player-container');
+        if (mobileHost?.parentElement && !mobileHost.querySelector?.(
+            'ytm-slim-video-metadata-section-renderer, ytm-watch-metadata')) {
+            return mobileHost;
+        }
         const nativeControls = 'ytm-custom-control, #player-controls, ' +
             '.player-controls, .ytp-chrome-bottom, ytm-player-controls';
         const metadata = 'ytm-slim-video-metadata-section-renderer, ' +
