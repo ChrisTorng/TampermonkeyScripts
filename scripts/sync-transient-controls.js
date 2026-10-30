@@ -6,7 +6,7 @@ const shared = fs.readFileSync(path.join(root, 'src', 'TransientControl.js'), 'u
 const start = '    // BEGIN SHARED TRANSIENT CONTROL';
 const end = '    // END SHARED TRANSIENT CONTROL';
 const block = `${start}\n${shared}\n${end}`;
-for (const name of ['TranslatePreformattedText.user.js', 'FullscreenGameView.user.js']) {
+for (const name of ['TranslatePreformattedText.user.js', 'FullscreenGameView.user.js', 'YouTubeTools.user.js']) {
     const file = path.join(root, 'src', name);
     const original = fs.readFileSync(file, 'utf8');
     const newline = original.includes('\r\n') ? '\r\n' : '\n';
