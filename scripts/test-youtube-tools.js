@@ -190,7 +190,7 @@ describe('Android Edge alternative YouTube fullscreen', () => {
             assert.equal(video.playbackRate, 1.5);
             assert.equal(video.currentTime, 42);
             assert.equal(harness.document.fullscreenElement ?? null, null);
-            assert.equal(button.hidden, true);
+            assert.equal(button.getAttribute('aria-pressed'), 'true');
             const speed = harness.document.getElementById('tm-yt-speed-overlay');
             assert.equal(speed.parentElement, root);
             const presets = [...speed.querySelectorAll('button')];
@@ -200,7 +200,7 @@ describe('Android Edge alternative YouTube fullscreen', () => {
             harness.flushAnimationFrames();
             assert.equal(harness.document.getElementById(rootId), null);
             assert.equal(player.parentElement, harness.document.body);
-            assert.equal(button.hidden, false);
+            assert.equal(button.getAttribute('aria-pressed'), 'false');
             assert.equal(harness.document.documentElement.classList.contains('tm-yt-alternative-fullscreen-active'), false);
             assert.equal(video.playbackRate, 2);
         }
