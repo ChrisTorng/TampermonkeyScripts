@@ -116,7 +116,7 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Show YouTube playback-speed controls and compensate Android Edge fullscreen video at non-default page zoom.
+Show YouTube speed controls and an Android Edge alternative fullscreen button that avoids YouTube native fullscreen.
 
 ### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
