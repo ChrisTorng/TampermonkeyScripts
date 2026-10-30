@@ -337,6 +337,9 @@ describe('Android Edge alternative YouTube fullscreen', () => {
         harness.dispatchWindowEvent('resize');
         assert.equal(root.classList.contains('tm-yt-alternative-fullscreen-rotated'), false);
         harness.document.dispatchEvent({type:'keydown',key:'Escape'});
+        // The lock promise is settled asynchronously across the VM context.
+        // Its cleanup may run after the immediate Escape event.
+        await new Promise((resolve) => setImmediate(resolve));
         assert.equal(unlocks, 1);
     });
 
