@@ -556,6 +556,18 @@
             #${FLOATING_MENU_ID} > [data-floating-close] { top: -50px !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] button { min-height: 44px !important; height: auto !important; line-height: 1.4 !important; }
         `;
+        if (location.hostname.toLowerCase() === 'data.stackexchange.com') {
+            // The original Data Explorer stylesheet fixes several independent regions at 950-980px.
+            // Keep scrolling inside editors and charts instead of clipping the entire document.
+            style.textContent += `
+                #footer .footerwrap, #mainbar-full, #query-results .subheader .group, #resultsetStats {
+                    width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
+                }
+                #mainbar, #sidebar { float: none !important; width: 100% !important; max-width: 100% !important; }
+                #graph { width: 100% !important; max-width: 100% !important; overflow-x: auto !important; }
+                .CodeMirror { font-size: 15px !important; line-height: 1.4 !important; }
+            `;
+        }
         (document.head || document.documentElement).appendChild(style);
         applyAutoTextSize(document.body);
         setAutomaticButtonState();
@@ -578,6 +590,12 @@
 
     function validateAutomaticReadability(before) {
         if (!autoMode) return;
+        // CodeMirror caches text and line geometry; refresh only when its API is available.
+        for (const element of document.querySelectorAll('.CodeMirror')) {
+            if (element.CodeMirror && typeof element.CodeMirror.refresh === 'function') {
+                try { element.CodeMirror.refresh(); } catch (_) { /* Keep the rest of the page usable. */ }
+            }
+        }
         const after = scaledPageMetrics();
         const measuredText = sampleReadingText(after.scale);
         const viewport = Math.max(1, window.innerWidth || after.layoutWidth);
@@ -585,7 +603,9 @@
         const overflowing = horizontalOverflow > viewport * 1.18;
         const failedViewport = before.legacy && after.legacy &&
             measuredText.all >= 60 && measuredText.ratio > 0.55;
-        if (overflowing || failedViewport) {
+        const unreadableStill = !before.legacy && measuredText.all >= 180
+            && measuredText.ratio > 0.8 && measuredText.ratio > before.text.ratio - 0.1;
+        if (overflowing || failedViewport || unreadableStill) {
             undoAutomaticReadability();
             try { sessionStorage.setItem(AUTO_FAILURE, 'failed'); } catch (_) { /* Session only. */ }
             autoRestoreError = true;
