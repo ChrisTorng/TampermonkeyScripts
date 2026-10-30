@@ -113,14 +113,18 @@ function change(element, value) { element.value = value; element.dispatchEvent({
 const postCalls = (state) => state.requests.filter((call) => call.url.endsWith('/bookmarks'));
 
 describe('CloudMark category dropdown on captured BetaCat articles', () => {
-    test('renders icon-only adjacent buttons on latest, Chinese and archive pages', () => {
+    test('places unsaved stars in the title control column on latest, Chinese and archive pages', () => {
         assert(captured.length >= 20);
         for (const url of ['https://hackernews.betacat.io/', 'https://hackernews.betacat.io/zh', 'https://hackernews.betacat.io/daily/2026-10-29/']) {
             const { state } = setup({ url, settings: null }); state.run();
             assert.equal(state.buttons().length, captured.length);
             for (const { link } of state.entries) {
-                assert.equal(link.nextElementSibling.textContent, '☆');
-                assert.equal(link.nextElementSibling.getAttribute('aria-haspopup'), 'dialog');
+                const title = link.closest('.post-title');
+                const button = title.querySelector('.tm-cloudmark-save');
+                assert(title.classList.contains('tm-cloudmark-title'));
+                assert.equal(button.parentElement, title);
+                assert.equal(button.textContent, '☆');
+                assert.equal(button.getAttribute('aria-haspopup'), 'dialog');
             }
             assert.equal(state.requests.length, 0);
         }
@@ -138,7 +142,7 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
         assert.equal(call.anonymous, true); assert.equal(call.redirect, 'error');
         assert.equal(event.defaultPrevented, true); assert.equal(event.immediatePropagationStopped, true);
         assert.equal(h.location.assignedUrl, null); assert.equal(h.window.openCalls.length, 0);
-        assert.equal(state.buttons()[0].textContent, '✓');
+        assert.equal(state.buttons()[0].textContent, 'reading');
         assert.equal(state.buttons()[0].disabled, false, 'Saved topics can still switch collections.');
     });
     test('loads existing categories and persists newly named empty categories across reloads', async () => {
@@ -164,7 +168,7 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
         state.handler = (call) => call.method === 'GET'
             ? state.respond(call, { exists: true, bookmarksData: { bookmarks: call.url.endsWith(fakeConfig.mark) ? [{ url: captured[0].url, category: 'AI' }] : [] } })
             : state.respond(call, { uuid: 'other-saved' });
-        state.run(); await settle(); assert.equal(state.buttons()[0].textContent, '✓');
+        state.run(); await settle(); assert.equal(state.buttons()[0].textContent, 'AI');
         await open(state); change(panel(state).querySelector('select'), other.mark); await settle();
         assert.equal(state.buttons()[0].textContent, '☆'); assert(!item(state, 'AI'));
         item(state, 'Music').click(); await settle();
@@ -172,14 +176,52 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
         assert.equal(payload.mark, other.mark); assert.equal(payload.token, other.token); assert.equal(payload.category, 'Music');
         assert.equal(state.storage.get('cloudmark.settings.v2').selectedMark, other.mark);
     });
-    test('deduplicates rapid taps and duplicate article URLs while showing only star/check', async () => {
+    test('deduplicates rapid taps and duplicate article URLs while displaying the saved category', async () => {
         const { state } = setup({ entries: [captured[0], captured[0]] }); state.run(); await settle(); await open(state);
         state.handler = () => {};
         const category = item(state, 'reading'); category.click(); category.click(); await settle();
         assert.equal(postCalls(state).length, 1);
         assert(state.buttons().every((button) => button.textContent === '☆' && button.disabled));
         state.respond(postCalls(state)[0], { uuid: 'confirmed' }); await settle();
-        assert(state.buttons().every((button) => button.textContent === '✓'));
+        assert(state.buttons().every((button) => button.textContent === 'reading'));
+    });
+    test('shows the actual category and only one check, then updates that bookmark without duplicate creation', async () => {
+        const { state } = setup({ entries: [captured[0], captured[0]] });
+        const bookmark = { uuid: 'existing-uuid', url: captured[0].url, title: 'Custom collection title',
+            description: 'Custom description', favicon: 'https://example.com/custom.png', category: 'AI' };
+        state.handler = (call) => {
+            if (call.method === 'GET') state.respond(call, { exists: true, bookmarksData: { bookmarks: [{...bookmark}] }, settings: { defaultCategory: 'default' } });
+            else if (call.method === 'PUT') {
+                assert.equal(call.url, server + '/api/bookmarks/existing-uuid');
+                const payload = JSON.parse(call.data);
+                assert.equal(payload.title, bookmark.title); assert.equal(payload.description, bookmark.description);
+                assert.equal(payload.favicon, undefined, 'Category-only edits leave custom icons untouched.');
+                bookmark.category = payload.category;
+                state.respond(call, { ...bookmark });
+            } else assert.fail('An existing article must not be inserted again.');
+        };
+        state.run(); await settle();
+        assert(state.buttons().every((button) => button.textContent === 'AI'));
+        await open(state);
+        assert.equal(panel(state).querySelectorAll('.category').filter((button) => button.textContent.includes('✓')).length, 1);
+        assert.equal(item(state, 'AI ✓').disabled, true);
+        assert.equal(item(state, 'default').disabled, false);
+        item(state, 'default').click(); await settle();
+        assert(state.buttons().every((button) => button.textContent === 'default'));
+        assert.equal(state.requests.filter((call) => call.method === 'PUT').length, 1);
+        assert.equal(postCalls(state).length, 0);
+        await open(state);
+        assert(item(state, 'default ✓')); assert.equal(item(state, 'AI').disabled, false);
+    });
+    test('failed category changes retain the actual saved category and allow retry', async () => {
+        const { state } = setup();
+        state.handler = (call) => call.method === 'GET'
+            ? state.respond(call, { exists: true, bookmarksData: { bookmarks: [{uuid:'id', url:captured[0].url, title:'Saved', category:'AI'}] } })
+            : state.respond(call, {error:'Invalid write token'}, 400);
+        state.run(); await settle(); await open(state); item(state, 'default').click(); await settle();
+        assert.equal(state.buttons()[0].textContent, 'AI'); assert(item(state, 'AI ✓'));
+        assert.equal(item(state, 'default').disabled, false);
+        assert(panel(state).querySelector('.error'));
     });
     test('retains errors in menu and retries without claiming unconfirmed writes succeeded', async () => {
         for (const failure of ['token', 'network', 'timeout', 'malformed', 'unconfirmed']) {
@@ -195,7 +237,7 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
             assert.equal(state.buttons()[0].textContent, '☆'); assert(panel(state).querySelector('.error'));
             assert(!state.buttons()[0].title.includes(fakeConfig.token));
             state.handler = (call) => state.respond(call, { uuid: 'retry' });
-            item(state, 'reading').click(); await settle(); assert.equal(state.buttons()[0].textContent, '✓');
+            item(state, 'reading').click(); await settle(); assert.equal(state.buttons()[0].textContent, 'reading');
         }
     });
     test('enforces timeout when the native GM timeout is ignored and ignores late success', async () => {
@@ -300,7 +342,7 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
         };
         state.run(); await settle(); await save(state);
         state.respond(state.requests[0], { exists: true, bookmarksData: { bookmarks: [] } }); await settle();
-        assert.equal(state.buttons()[0].textContent, '✓');
+        assert.equal(state.buttons()[0].textContent, 'reading');
     });
     test('respects API limits and ignores unsupported URLs', async () => {
         const long = { url: 'https://example.com/article', title: 'T'.repeat(240), summary: 'S'.repeat(2400) };
@@ -316,7 +358,7 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
                 vm.runInNewContext(fs.readFileSync(path.join(root, 'src', name + '.user.js'), 'utf8'), h.context); };
             if (cloudmarkFirst) { state.run(); runOthers(); } else { runOthers(); state.run(); }
             h.flushAnimationFrames(); await settle(); const count = opened.length; await save(state);
-            assert.equal(opened.length, count); assert.equal(state.buttons()[0].textContent, '✓');
+            assert.equal(opened.length, count); assert.equal(state.buttons()[0].textContent, 'reading');
         }
     });
 });

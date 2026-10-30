@@ -47,8 +47,9 @@
         } else {
             const body = JSON.parse(options.data);
             const bookmarks = collections.get(body.mark);
-            data = { uuid: 'local-' + (bookmarks.length + 1), url: body.url, title: body.title, category: body.category };
-            bookmarks.push(data);
+            const existing = options.method === 'PUT' ? bookmarks.find((bookmark) => bookmark.uuid === body.uuid) : null;
+            data = { uuid: existing?.uuid || 'local-' + (bookmarks.length + 1), url: body.url, title: body.title, category: body.category };
+            if (existing) Object.assign(existing, data); else bookmarks.push(data);
             document.getElementById('result').textContent = 'Saved locally: ' + body.title + ' · ' + body.mark + ' / ' + body.category;
         }
         const responseText = JSON.stringify(data);
