@@ -42,16 +42,26 @@ function executeYouTubeTools(url, options = {}) {
     if ('videoWidth' in options) video.videoWidth = options.videoWidth;
     if ('videoHeight' in options) video.videoHeight = options.videoHeight;
     player.appendChild(video);
+    let actualPlayer = player;
+    if (options.mobileControls) {
+        const host = harness.document.createElement('ytm-player');
+        host.appendChild(player);
+        const native = harness.document.createElement('ytm-custom-control');
+        native.setAttribute('aria-label', 'YouTube CC, gear and seek controls');
+        native.textContent = 'Captions Settings Progress';
+        host.appendChild(native);
+        actualPlayer = host;
+    }
     if (options.watchWrapper || options.metadataGroup) {
         const section = harness.document.createElement(options.watchWrapper ? 'ytm-watch' : 'div');
         section.className = 'ytm-watch-content';
-        section.appendChild(player);
+        section.appendChild(actualPlayer);
         const metadata = harness.document.createElement('ytm-slim-video-metadata-section-renderer');
         metadata.textContent = 'Sample title and details';
         section.appendChild(metadata);
         harness.appendToBody(section);
     } else {
-        harness.appendToBody(player);
+        harness.appendToBody(actualPlayer);
     }
     if (options.history) {
         harness.window.history = options.history;
@@ -116,7 +126,7 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert(bar, 'Expected the toolbar.');
         assert(fullscreen, 'Expected the Android Edge fullscreen button.');
         assert.equal(bar.parentElement, player.parentElement);
-        assert.equal(bar.nextElementSibling, player);
+        assert.equal(bar.previousElementSibling, player);
         assert.equal(fullscreen.parentElement, bar);
         assert.equal(bar.querySelector('.tm-yt-toolbar__controls').parentElement, bar);
         assert.equal(bar.querySelectorAll('button').length, 7);
@@ -136,16 +146,16 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.equal(stepper.children.length, 3);
     });
 
-    test('watch container and metadata move together when toolbar reserves document height', () => {
+    test('toolbar is inserted below the video, above metadata, without moving the player', () => {
         for (const option of [{watchWrapper: true}, {metadataGroup: true}]) {
             const { harness, bar, player } = load(option);
             const wrapper = player.parentElement;
             const meta = wrapper.querySelector('ytm-slim-video-metadata-section-renderer');
             assert(meta, 'Expected test metadata beside the player.');
-            assert.equal(bar.parentElement, wrapper.parentElement);
-            assert.equal(bar.nextElementSibling, wrapper);
+            assert.equal(bar.parentElement, wrapper);
+            assert.equal(bar.previousElementSibling, player);
+            assert.equal(bar.nextElementSibling, meta);
             assert.equal(meta.parentElement, wrapper);
-            assert.notEqual(bar.parentElement, player.parentElement);
             assert.equal(harness.document.querySelectorAll('#tm-yt-speed-overlay').length, 1);
         }
     });
@@ -181,8 +191,27 @@ describe('YouTube Tools in-flow playback toolbar', () => {
             assert(bar);
             assert.equal(fullscreen, null);
             assert.equal(bar.querySelectorAll('button').length, 6);
-            assert.equal(bar.nextElementSibling, player);
+            assert.equal(bar.previousElementSibling, player);
         }
+    });
+
+    test('fullscreen root includes YouTube native captions, settings and progress controls', () => {
+        const { harness, bar, video, fullscreen } = load({
+            mobileControls: true, videoWidth: 1920, videoHeight: 1080
+        });
+        const host = video.closest('ytm-player');
+        const native = host.querySelector('ytm-custom-control');
+        assert(native, 'Expected mocked mobile YouTube native controls.');
+        assert.equal(bar.previousElementSibling, host);
+        fullscreen.click();
+        const root = harness.document.getElementById(rootId);
+        assert.equal(host.parentElement.className, 'tm-yt-alternative-fullscreen-stage');
+        assert.equal(root.querySelector('ytm-custom-control'), native);
+        assert.equal(root.querySelector('video'), video);
+        harness.document.dispatchEvent({type: 'keydown', key: 'Escape'});
+        assert.equal(host.parentElement, harness.document.body);
+        assert.equal(bar.previousElementSibling, host);
+        assert.equal(host.querySelector('ytm-custom-control'), native);
     });
 
     test('custom fullscreen retains a non-overlapping toolbar and restores it on Escape', () => {
@@ -207,22 +236,35 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
         const fullscreenCSS = css.slice(css.indexOf('/* Fullscreen: player occupies 100%'));
         assert.match(fullscreenCSS, /position: absolute !important;/);
-        assert.match(fullscreenCSS, /top: 56% !important;/);
-        assert.match(fullscreenCSS, /opacity: \.35 !important;/);
+        assert.match(css, /top: 12px !important;/);
+        assert.match(css, /opacity: 0 !important;/);
+        assert.match(css, /visibility: hidden !important;/);
+        assert.match(css, /pointer-events: none !important;/);
         assert.match(fullscreenCSS, /tm-yt-toolbar--custom-fullscreen \.tm-yt-toolbar__fullscreen \{\s*display: none !important;/);
         assert.match(fullscreenCSS, /height: 100% !important;/);
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
+        root.dispatchEvent({type: 'click'});
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), true);
+        harness.runAllTimeouts();
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
+        root.dispatchEvent({type: 'click'});
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), true);
+        // Native YouTube gestures must not be cancelled when revealing speed.
+        const originalVideo = video.currentTime;
+        assert.equal(video.currentTime, originalVideo);
         bar.querySelector('.tm-yt-speed-overlay__click--right').click();
         assert.equal(video.playbackRate, 1.75);
         harness.document.dispatchEvent({type: 'keydown', key: 'Escape'});
         harness.flushAnimationFrames();
         assert.equal(harness.document.getElementById(rootId), null);
         assert.equal(bar.parentElement, harness.document.body);
-        assert.equal(bar.nextElementSibling, player);
+        assert.equal(bar.previousElementSibling, player);
         assert.equal(player.parentElement, harness.document.body);
         assert.equal(video.currentTime, 42);
         assert.equal(video.playbackRate, 1.75);
         assert.equal(fullscreen.getAttribute('aria-pressed'), 'false');
         assert.equal(bar.classList.contains('tm-yt-toolbar--custom-fullscreen'), false);
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
     });
 
     test('rotation switches with viewport direction while landscape video stays within stage', () => {

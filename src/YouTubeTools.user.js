@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.5.0
-// @description  Compact YouTube speed bar with a centered speed label and floating controls only in alternative fullscreen.
+// @version      2026-10-30_1.6.0
+// @description  Place YouTube speed controls below the player and reveal them on demand in custom fullscreen.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -148,6 +148,7 @@
         const otherFullscreen = Boolean(document.fullscreenElement && !fullscreenSession);
         overlay.classList.toggle('tm-yt-speed-overlay--fullscreen', otherFullscreen);
         overlay.classList.toggle('tm-yt-toolbar--custom-fullscreen', Boolean(fullscreenSession));
+        if (!fullscreenSession) overlay.classList.remove('tm-yt-toolbar--revealed');
         if (fullscreenButton) {
             const active = Boolean(document.fullscreenElement || fullscreenSession);
             fullscreenButton.hidden = active;
@@ -157,48 +158,39 @@
 
     function getPlayerAnchor(video) {
         if (!video) return null;
-        // Mount before the watch-page wrapper, which owns both the player
-        // controls and metadata, rather than moving only the video element.
-        for (const selector of [
-            'ytm-watch', 'ytm-watch-flexy', 'ytm-watch-page',
-            'ytd-watch-flexy'
-        ]) {
-            const wrapper = video.closest?.(selector);
-            if (wrapper?.parentElement) return wrapper;
-        }
+        // Prefer the metadata element as the insertion point. Moving the
+        // toolbar before the video changes its offset while the mobile native
+        // control layer retains the old coordinates, so the gear overlaps.
+        // Here the original video position stays untouched.
         const metadata = document.querySelector(
-            'ytm-slim-video-metadata-section-renderer, ytm-watch-metadata, ytd-watch-metadata'
+            'ytm-slim-video-metadata-section-renderer, ytm-watch-metadata, ' +
+            'ytm-slim-video-information-renderer, ytd-watch-metadata'
         );
-        if (metadata) {
-            const ancestors = new Set();
-            for (let node = video; node; node = node.parentElement) ancestors.add(node);
-            let common = metadata;
-            while (common && !ancestors.has(common)) common = common.parentElement;
-            if (common && common !== document.body && common !== document.documentElement &&
-                common.tagName?.toLowerCase() !== 'ytm-app' && common.parentElement) {
-                return common;
+        if (metadata?.parentElement && !video.contains?.(metadata)) {
+            return { element: metadata, before: true };
+        }
+        // If metadata is unavailable, place the row directly after the
+        // outermost player-only host, never ahead of the video.
+        const candidates = ['ytm-player', '#player-container-outer',
+            '.player-container', '#player-container', '.html5-video-player'];
+        for (const selector of candidates) {
+            const node = video.closest?.(selector);
+            if (node?.parentElement && node !== document.body) {
+                return { element: node, before: false };
             }
         }
-        // A video-only wrapper is a fallback, never ahead of the shared
-        // player-and-metadata container.
-        const videoSection = video.closest?.('ytm-watch-video');
-        if (videoSection?.parentElement) return videoSection;
-        for (const selector of ['ytm-player', '#player-container-outer',
-            '#player-container', '#player', '.html5-video-player']) {
-            const wrapper = video.closest?.(selector);
-            if (wrapper?.parentElement && wrapper !== document.body) return wrapper;
-        }
         const fallback = getYouTubePlayer();
-        return fallback?.parentElement ? fallback : null;
+        return fallback?.parentElement ? { element: fallback, before: false } : null;
     }
 
     function mountInlineToolbar() {
         if (!overlay || fullscreenSession || !isWatchPage()) return;
         const anchor = getPlayerAnchor(document.querySelector('video'));
-        if (!anchor?.parentElement || overlay.contains?.(anchor)) return;
-        if (overlay.parentElement === anchor.parentElement &&
-            overlay.nextElementSibling === anchor) return;
-        anchor.parentElement.insertBefore(overlay, anchor);
+        if (!anchor?.element?.parentElement) return;
+        const host = anchor.element.parentElement;
+        const following = anchor.before ? anchor.element : anchor.element.nextElementSibling;
+        if (overlay.parentElement === host && overlay.nextElementSibling === following) return;
+        host.insertBefore(overlay, following || null);
     }
 
     function injectStyles() {
@@ -787,6 +779,59 @@ html.tm-yt-alternative-fullscreen-active body {
     display: none !important;
 }
 
+/* The row follows the mobile player; its 50px height does not shift video. */
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) {
+    position: relative !important;
+    margin: 0 !important;
+    background: rgba(24,24,24,.78) !important;
+    min-height: 50px !important;
+    z-index: 1 !important;
+}
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) .tm-yt-toolbar__controls {
+    overflow: visible !important;
+}
+/* Fullscreen uses the whole player host including YouTube native controls. */
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target .html5-video-player,
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target ytm-player,
+#tm-yt-alternative-fullscreen-root .tm-yt-alternative-fullscreen-target .player-container {
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+}
+#tm-yt-alternative-fullscreen-root .ytp-chrome-bottom,
+#tm-yt-alternative-fullscreen-root ytm-custom-control,
+#tm-yt-alternative-fullscreen-root #player-controls {
+    z-index: 10 !important;
+}
+/* Default: no visible speed buttons and no invisible tap blockers. */
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen {
+    top: 12px !important;
+    left: 12px !important;
+    bottom: auto !important;
+    transform: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity .15s ease, visibility .15s ease !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen * {
+    pointer-events: none !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen.tm-yt-toolbar--revealed {
+    opacity: .95 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen.tm-yt-toolbar--revealed button {
+    pointer-events: auto !important;
+}
+html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-toolbar__fullscreen {
+    display: none !important;
+}
+
 `;
         document.head.appendChild(style);
     }
@@ -887,9 +932,38 @@ html.tm-yt-alternative-fullscreen-active body {
     function getYouTubePlayer() {
         const video = document.querySelector('video');
         if (!video) return null;
-        const player = video.closest?.('.html5-video-player') ||
-            video.closest?.('#movie_player') || video.parentElement;
-        return player === document.body ? null : player;
+
+        // The mobile YouTube play/pause, CC, progress and settings elements can
+        // live outside .html5-video-player. Moving just that element into our
+        // fullscreen root loses the siblings. Find the smallest player-only
+        // ancestor containing the native controls instead.
+        const mobileHost = video.closest?.('ytm-player') ||
+            video.closest?.('#player-container-outer') ||
+            video.closest?.('.player-container') ||
+            video.closest?.('#player-container');
+        if (mobileHost?.parentElement && !mobileHost.querySelector?.(
+            'ytm-slim-video-metadata-section-renderer, ytm-watch-metadata')) {
+            return mobileHost;
+        }
+        const nativeControls = 'ytm-custom-control, #player-controls, ' +
+            '.player-controls, .ytp-chrome-bottom, ytm-player-controls';
+        const metadata = 'ytm-slim-video-metadata-section-renderer, ' +
+            'ytm-watch-metadata, ytd-watch-metadata';
+        let node = video.closest?.('.html5-video-player') || video.parentElement;
+        let candidate = node;
+        for (let depth = 0; node?.parentElement && depth < 7; depth++, node = node.parentElement) {
+            if (node === document.body || node === document.documentElement ||
+                node.matches?.('ytm-watch, ytm-watch-flexy, ytd-watch-flexy') ||
+                node.querySelector?.(metadata)) break;
+            if (node.matches?.('ytm-player, #player-container-outer, #player-container, .player-container')) {
+                candidate = node;
+            }
+            if (node.querySelector?.(nativeControls)) {
+                candidate = node;
+                break;
+            }
+        }
+        return candidate === document.body ? null : candidate;
     }
 
     function removeAlternativeFullscreenButton() {
@@ -929,6 +1003,8 @@ html.tm-yt-alternative-fullscreen-active body {
             try { document.exitFullscreen?.(); } catch (_error) { /* Already exiting. */ }
         }
         session.video?.removeEventListener('loadedmetadata', onAlternativeVideoMetadata);
+        if (session.revealTimer != null) window.clearTimeout(session.revealTimer);
+        overlay?.classList.remove('tm-yt-toolbar--revealed');
         if (session.orientationLocked) {
             try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Already unlocked. */ }
         }
@@ -1010,6 +1086,30 @@ html.tm-yt-alternative-fullscreen-active body {
         syncAlternativeOrientation();
     }
 
+    function revealFullscreenSpeedControls() {
+        const session = fullscreenSession;
+        if (!session || !overlay) return;
+        overlay.classList.add('tm-yt-toolbar--revealed');
+        if (session.revealTimer != null) window.clearTimeout(session.revealTimer);
+        session.revealTimer = window.setTimeout(() => {
+            if (fullscreenSession === session) {
+                overlay?.classList.remove('tm-yt-toolbar--revealed');
+            }
+            session.revealTimer = null;
+        }, 3500);
+    }
+
+    function onFullscreenSurfacePress(event) {
+        if (!fullscreenSession || !event) return;
+        // Let YouTube receive exactly the same original gesture. This listener
+        // only reveals our speed controls; it does not pause, seek or cancel it.
+        if (overlay?.contains?.(event.target)) {
+            revealFullscreenSpeedControls();
+            return;
+        }
+        revealFullscreenSpeedControls();
+    }
+
     function enterAlternativeFullscreen() {
         if (!isAndroidEdge || fullscreenSession || document.fullscreenElement || !overlay) return;
         const target = getYouTubePlayer();
@@ -1050,15 +1150,18 @@ html.tm-yt-alternative-fullscreen-active body {
         document.body.appendChild(root);
         target.classList.add(fullscreenActiveClass);
         document.documentElement.classList.add(fullscreenActiveClass);
+        root.addEventListener('pointerdown', onFullscreenSurfacePress, true);
+        root.addEventListener('click', onFullscreenSurfacePress, true);
         const video = target.querySelector('video');
         fullscreenSession = { root, stage, target, parent, anchor, barParent, barMarker, scroll, video,
-            historyAdded: false, nativeEntered: false,
+            historyAdded: false, nativeEntered: false, revealTimer: null,
             orientationRequested: false, orientationLocked: false };
         video.addEventListener('loadedmetadata', onAlternativeVideoMetadata);
         syncAlternativeOrientation();
         fullscreenButton.hidden = true;
         fullscreenButton.setAttribute('aria-pressed', 'true');
         updateFullscreenState();
+        overlay.classList.remove('tm-yt-toolbar--revealed');
         try {
             window.history?.pushState?.({ tmYouTubeFullscreen: true }, '', window.location.href);
             fullscreenSession.historyAdded = Boolean(window.history?.pushState);

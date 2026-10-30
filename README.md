@@ -116,7 +116,7 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Compact YouTube speed bar with a centered speed label and floating controls only in alternative fullscreen.
+Place YouTube speed controls below the player and reveal them on demand in custom fullscreen.
 
 ### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
