@@ -129,8 +129,9 @@ Section note: automated tests inject the userscript into a representative ARC Pr
 - https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and D-pad repairs, fullscreen state events, Escape/Back exit, scroll/focus restoration, delayed layout resets, and rapid re-entry use explicit runtime mocks; mouse/touch dragging uses mock rectangles; visual layout still requires manual device validation)
 
 # Better Discord
-Section note: automated DOM tests cover composer cleanup, Android Edge viewport gap repair (short app root and nested chat panels), resize stability, restoration, and Windows Edge exclusion. Keyboard placement still requires validation on an actual Android Edge device.
+Section note: automated DOM tests cover composer cleanup, Android Edge viewport gap repair, opt-in geometry diagnostics, fix-on/off comparison, and Windows Edge exclusion. Actual viewport values and blank-gap causes require Android Edge screenshots or exported JSON from the live website. No chat contents, cookies, tokens, or complete URLs are logged.
 - https://discord.com/channels/1475861167476965439/1475861168412164149 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED_WITH_MOCKS]
+- https://discord.com/channels/1475861167476965439/1475861168412164149?bddebug=1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED_WITH_MOCKS_AND_LIVE_ANDROID_REQUIRED]
 
 # Force Dark Mode
 Section note: automated tests inject the script, mock `GM_info`, and cover the shared menu toggle.

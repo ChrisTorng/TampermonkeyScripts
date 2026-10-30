@@ -308,4 +308,63 @@ describe('BetterDiscord on captured Discord pages', () => {
         assert.equal(chat.style.getPropertyValue('height'), '');
     });
 
+    test('Android diagnostic query captures viewport geometry without applying the layout fix', () => {
+        const harness = executeBetterDiscord(
+            'https://discord.com/channels/1/2?bddebug=1',
+            'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('div');
+        editor.setAttribute('contenteditable', 'true');
+        editor.isContentEditable = true;
+        composer.textArea.appendChild(editor);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const panel = harness.document.querySelector('section[data-bd-debug]');
+        assert.ok(panel, 'Android diagnostic panel should be present');
+        const buttons = panel.querySelectorAll('button');
+        const findButton = (name) => buttons.find((item) => item.textContent === name);
+        assert.ok(findButton('Fix: OFF'), 'original geometry should be captured with the fix disabled');
+        assert.ok(findButton('Capture'));
+        assert.ok(findButton('Copy log'));
+        assert.ok(findButton('Save JSON'));
+
+        harness.document.activeElement = editor;
+        composer.form.getBoundingClientRect = () => {
+            const shift = Number.parseFloat(
+                composer.form.style.getPropertyValue('translate').split(' ')[1]) || 0;
+            return { top: 220, bottom: 280 + shift, height: 60, width: 320, left: 0, right: 320 };
+        };
+        harness.window.visualViewport.height = 360;
+        harness.dispatchDocumentEvent('focusin');
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+        const report = panel.querySelector('pre').textContent;
+        assert.match(report, /Fix OFF/);
+        assert.match(report, /focused true/);
+        assert.match(report, /gap 80px/);
+        assert.match(report, /vvH 360/);
+
+        findButton('Fix: OFF').click();
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '0 80.0px');
+        assert.ok(findButton('Fix: ON'), 'fix should be switchable on demand');
+
+        findButton('Fix: ON').click();
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+        findButton('Close').click();
+        assert.equal(harness.document.querySelector('section[data-bd-debug]'), null);
+    });
+
+    test('Windows Edge ignores Android diagnostic URL parameter', () => {
+        const harness = executeBetterDiscord(
+            'https://discord.com/channels/1/2?bddebug=1',
+            'Mozilla/5.0 (Windows NT 10.0) Edg/146.0');
+        buildDiscordComposer(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(harness.document.querySelector('section[data-bd-debug]'), null);
+    });
+
 });
