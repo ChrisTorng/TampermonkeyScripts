@@ -112,10 +112,11 @@ Section note: automated tests use representative inline code, preformatted block
 - https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Edge Android native fullscreen/restore button suppression, 1-second tap-to-reveal speed toolbar, expanded separate fullscreen step arrows and speed label, orientation and Back/Escape restoration tested with DOM harness; real mobile YouTube button markup and GPU compositor require physical-device validation)
 
 # Force Mobile View
-Section note: automated tests inject the script and mock `GM_info`.
+Section note: Node DOM-harness tests simulate Android text sampling, 980px desktop layouts, a viewport correction, tiny-text false positives, horizontal-overflow rollback, and user opt-out. The real Android Edge visual viewport and hit target sizes require hands-on testing.
+- https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (synthetic 980px layout is AUTOMATED; live Android Edge and CodeMirror/SlickGrid behavior are not yet validated)
 - https://news.ycombinator.com/item?id=46255285 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED]
 - https://archive.is/75aY9 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
-- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (non-matched URL remains off by default even with tiny fonts)
+- https://lcamtuf.coredump.cx/prep/index-old.shtml [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (a small, insufficient text sample stays off; larger sustained small-font pages are now eligible after delayed analysis)
 - https://daringfireball.net/2026/03/your_frustration_is_the_product [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mobile spacing logic is AUTOMATED via synthetic DOM harness, including minimal side-whitespace enforcement; full live-page capture coverage is still limited)
 - https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height overlap regression is simulated with local DOM harness against captured page content)
 - https://paulbourke.net/geometry/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (URL match auto-enable behavior is validated with a local DOM harness)
