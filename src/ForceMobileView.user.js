@@ -602,7 +602,7 @@
             '#tm-shared-floating-menu#tm-shared-floating-menu { width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }',
             '#tm-shared-floating-menu#tm-shared-floating-menu > button { width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; min-height: 44px !important; font: 600 20px/44px system-ui,sans-serif !important; }',
             '#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }'
-        ].join('\\n');
+        ].join(String.fromCharCode(10));
         (document.head || document.documentElement).appendChild(style);
         applyAutoTextSize(document.body);
         setAutomaticButtonState();
