@@ -942,6 +942,8 @@ html.tm-yt-alternative-fullscreen-active body {
             try { document.exitFullscreen?.(); } catch (_error) { /* Already exiting. */ }
         }
         session.video?.removeEventListener('loadedmetadata', onAlternativeVideoMetadata);
+        if (session.revealTimer != null) window.clearTimeout(session.revealTimer);
+        overlay?.classList.remove('tm-yt-toolbar--revealed');
         if (session.orientationLocked) {
             try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Already unlocked. */ }
         }
@@ -1023,6 +1025,30 @@ html.tm-yt-alternative-fullscreen-active body {
         syncAlternativeOrientation();
     }
 
+    function revealFullscreenSpeedControls() {
+        const session = fullscreenSession;
+        if (!session || !overlay) return;
+        overlay.classList.add('tm-yt-toolbar--revealed');
+        if (session.revealTimer != null) window.clearTimeout(session.revealTimer);
+        session.revealTimer = window.setTimeout(() => {
+            if (fullscreenSession === session) {
+                overlay?.classList.remove('tm-yt-toolbar--revealed');
+            }
+            session.revealTimer = null;
+        }, 3500);
+    }
+
+    function onFullscreenSurfacePress(event) {
+        if (!fullscreenSession || !event) return;
+        // Let YouTube receive exactly the same original gesture. This listener
+        // only reveals our speed controls; it does not pause, seek or cancel it.
+        if (overlay?.contains?.(event.target)) {
+            revealFullscreenSpeedControls();
+            return;
+        }
+        revealFullscreenSpeedControls();
+    }
+
     function enterAlternativeFullscreen() {
         if (!isAndroidEdge || fullscreenSession || document.fullscreenElement || !overlay) return;
         const target = getYouTubePlayer();
@@ -1063,15 +1089,18 @@ html.tm-yt-alternative-fullscreen-active body {
         document.body.appendChild(root);
         target.classList.add(fullscreenActiveClass);
         document.documentElement.classList.add(fullscreenActiveClass);
+        root.addEventListener('pointerdown', onFullscreenSurfacePress, true);
+        root.addEventListener('click', onFullscreenSurfacePress, true);
         const video = target.querySelector('video');
         fullscreenSession = { root, stage, target, parent, anchor, barParent, barMarker, scroll, video,
-            historyAdded: false, nativeEntered: false,
+            historyAdded: false, nativeEntered: false, revealTimer: null,
             orientationRequested: false, orientationLocked: false };
         video.addEventListener('loadedmetadata', onAlternativeVideoMetadata);
         syncAlternativeOrientation();
         fullscreenButton.hidden = true;
         fullscreenButton.setAttribute('aria-pressed', 'true');
         updateFullscreenState();
+        overlay.classList.remove('tm-yt-toolbar--revealed');
         try {
             window.history?.pushState?.({ tmYouTubeFullscreen: true }, '', window.location.href);
             fullscreenSession.historyAdded = Boolean(window.history?.pushState);
