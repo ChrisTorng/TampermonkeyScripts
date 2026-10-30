@@ -267,7 +267,8 @@ describe('Force Mobile View automatic readability pilot', () => {
         }
     }
 
-    test('detects an unscaled 980px desktop layout on Android and enlarges it without editing the shared menu', () => {
+
+    test('applies a responsive viewport and width overrides before DOMContentLoaded on Data Explorer', () => {
         const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1', {
             userAgent: 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36',
             setupBody(harness) {
@@ -280,22 +281,72 @@ describe('Force Mobile View automatic readability pilot', () => {
                 addParagraphs(harness, 4);
             }
         });
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
-        harness.runAllTimeouts();
-        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+        // These exist already, before the browser finishes its first layout.
+        const style = harness.document.getElementById('tm-force-mobile-auto-style');
+        assert(style);
         assert(harness.document.querySelector('meta[name="viewport"]'));
-        assert.equal(harness.document.querySelector('[data-floating-tool="mobile"]').getAttribute('aria-pressed'), 'true');
-        const css = harness.document.getElementById('tm-force-mobile-auto-style').textContent;
-        assert.match(css, /data-floating-close.*top: -50px/);
-        assert.match(css, /gap: 6px/);
-        // Simulate Android's layout viewport returning to device width after meta injection.
+        assert.match(style.textContent, /text-size-adjust: 100% !important/);
+        assert.match(style.textContent, /body #query-results/);
+        assert.match(style.textContent, /body #resultsetStats/);
+        assert.match(style.textContent, /body #footer-menu/);
+        assert.match(style.textContent, /height: auto !important/);
+        assert.match(style.textContent, /line-height: 1\.45 !important/);
+        assert.equal(harness.location.reloadCallCount, 0);
         harness.window.innerWidth = 360;
         harness.document.documentElement.clientWidth = 360;
+        harness.document.body.clientWidth = 360;
         harness.window.visualViewport.width = 360;
         harness.window.visualViewport.scale = 1;
+        harness.dispatchDocumentEvent('DOMContentLoaded');
         harness.runAllTimeouts();
-        assert(harness.document.getElementById('tm-force-mobile-auto-style'), 'Expected successful validation to keep the auto styles.');
+        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(harness.document.querySelector('[data-floating-tool="mobile"]').getAttribute('aria-pressed'), 'true');
+    });
+
+    test('tap OFF on Data Explorer stores opt-out and reloads to recover original viewport', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)'
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        button.click();
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:data.stackexchange.com'), 'off');
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+    });
+
+    test('after opt-out Data Explorer stays untouched until user re-enables via reload', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            localStorageSeed: { 'tm-force-mobile-auto-v2:data.stackexchange.com': 'off' }
+        });
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+        button.click();
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:data.stackexchange.com'), null);
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+    });
+
+    test('unverified legacy layouts do not dynamically inject viewport after load', () => {
+        const { harness } = executeForceMobileView('https://example.org/legacy', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) {
+                harness.window.screen = { width: 360 };
+                harness.window.innerWidth = 980;
+                harness.document.documentElement.clientWidth = 980;
+                harness.window.visualViewport.width = 980;
+                harness.window.visualViewport.scale = 0.36;
+                addParagraphs(harness, 4);
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.location.reloadCallCount, 0);
     });
 
     test('does not auto-enable for a normal-sized mobile article with one small caption', () => {
@@ -333,6 +384,7 @@ describe('Force Mobile View automatic readability pilot', () => {
         assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
         const firstParagraph = harness.document.querySelector('p');
         assert.equal(firstParagraph.style.getPropertyValue('font-size'), '15px');
+        assert.equal(firstParagraph.style.getPropertyValue('line-height'), '1.45');
         harness.runAllTimeouts();
         assert(harness.document.getElementById('tm-force-mobile-auto-style'));
     });
@@ -383,7 +435,7 @@ describe('Force Mobile View automatic readability pilot', () => {
         const button = harness.document.querySelector('[data-floating-tool="mobile"]');
         button.click();
         assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
-        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v1:example.org'), 'off');
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:example.org'), 'off');
         harness.dispatchWindowEvent('load');
         harness.runAllTimeouts();
         assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
