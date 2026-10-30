@@ -372,6 +372,8 @@ describe('BetterDiscord on captured Discord pages', () => {
         const harness = executeBetterDiscord('https://discord.com/channels/1/2', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
         const composer = buildDiscordComposer(harness);
         const editor = harness.document.createElement('textarea');
+        // The lightweight harness does not implement comma-separated Element.matches selectors.
+        editor.matches = selector => selector.split(',').some(part => part.trim() === 'textarea');
         composer.textArea.appendChild(editor);
         harness.dispatchDocumentEvent('DOMContentLoaded');
         harness.document.activeElement = editor;
@@ -388,6 +390,8 @@ describe('BetterDiscord on captured Discord pages', () => {
         const harness = executeBetterDiscord('https://discord.com/channels/1/2?bddebug=1', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
         const composer = buildDiscordComposer(harness);
         const editor = harness.document.createElement('textarea');
+        // The lightweight harness does not implement comma-separated Element.matches selectors.
+        editor.matches = selector => selector.split(',').some(part => part.trim() === 'textarea');
         composer.textArea.appendChild(editor);
         harness.dispatchDocumentEvent('DOMContentLoaded');
         const panel = harness.document.querySelector('section[data-bd-debug]');
