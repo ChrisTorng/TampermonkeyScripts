@@ -100,7 +100,7 @@ describe('ForceMobileView on captured pages', () => {
 
         assert(style, 'Expected mobile view style element to be inserted.');
         assert.match(style.textContent, /max-width: 100vw !important/);
-        assert.match(style.textContent, /line-height: 1\\.45 !important; height: auto !important/);
+        assert.match(style.textContent, /line-height: 1[.]45 !important; height: auto !important/);
         assert(button, 'Expected mobile view toggle button to be created.');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
