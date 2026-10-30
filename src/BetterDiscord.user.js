@@ -511,6 +511,19 @@
             { label: 'CHAT', color: '#d946ef', element: null, node: layer() },
             { label: 'APP', color: '#4ade80', element: null, node: layer() },
         ];
+        // Label each outline so a screenshot identifies the corresponding DOM level.
+        for (const entry of outlines) {
+            const label = document.createElement('span');
+            label.textContent = entry.label;
+            label.style.cssText = [
+                'position:absolute!important', 'top:0!important', 'left:0!important',
+                'display:inline-block!important', 'padding:1px 4px!important',
+                'font:700 10px/1.2 monospace!important',
+                'color:#0f172a!important', 'background:' + entry.color + '!important',
+                'white-space:nowrap!important',
+            ].join(';');
+            entry.node.appendChild(label);
+        }
         const viewportLine = layer();
         const gapLayer = layer();
 
