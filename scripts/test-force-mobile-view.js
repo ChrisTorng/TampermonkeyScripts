@@ -100,6 +100,7 @@ describe('ForceMobileView on captured pages', () => {
 
         assert(style, 'Expected mobile view style element to be inserted.');
         assert.match(style.textContent, /max-width: 100vw !important/);
+        assert.match(style.textContent, /line-height: 1\\.45 !important; height: auto !important/);
         assert(button, 'Expected mobile view toggle button to be created.');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(textElement.style.getPropertyValue('font-size'), '18px');
@@ -313,6 +314,33 @@ describe('Force Mobile View automatic readability pilot', () => {
         assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:data.stackexchange.com'), 'off');
         assert.equal(harness.location.reloadCallCount, 1);
         assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+    });
+
+
+    test('a failed v1 pilot opt-out does not silently prevent corrected v2 reflow', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            localStorageSeed: { 'tm-force-mobile-auto-v1:data.stackexchange.com': 'off' }
+        });
+        assert(harness.document.querySelector('meta[name="viewport"]'));
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+    });
+
+    test('severe full-document overflow in early reflow reloads safely without repeat attempts', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) {
+                harness.window.innerWidth = 360;
+                harness.document.documentElement.clientWidth = 360;
+                harness.document.body.clientWidth = 360;
+                addParagraphs(harness, 4);
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.document.documentElement.scrollWidth = 600;
+        harness.runAllTimeouts();
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.sessionStorage.getItem('tm-force-mobile-failed-v2:/stackoverflow/query/1926661'), 'failed');
     });
 
     test('after opt-out Data Explorer stays untouched until user re-enables via reload', () => {
