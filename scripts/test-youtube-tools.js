@@ -245,6 +245,10 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
         root.dispatchEvent({type: 'click'});
         assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), true);
+        harness.runAllTimeouts();
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
+        root.dispatchEvent({type: 'click'});
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), true);
         // Native YouTube gestures must not be cancelled when revealing speed.
         const originalVideo = video.currentTime;
         assert.equal(video.currentTime, originalVideo);
