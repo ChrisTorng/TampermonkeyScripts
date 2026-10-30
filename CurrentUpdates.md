@@ -2,35 +2,36 @@
 
 Updated: 2026-10-30
 
-Install the new userscript version from the PR preview after deployment or from the main branch after merge. Confirm the version in Tampermonkey and reload YouTube.
+Install this version through the PR's Vercel preview if available, or update from the main branch after merge. Confirm the userscript version in Tampermonkey and reload YouTube.
 
 ## Updated userscripts (1)
 
-### YouTube Tools — 2026-10-30_1.2.0
+### YouTube Tools — 2026-10-30_1.3.0
 
 **[Install / update YouTubeTools.user.js](src/YouTubeTools.user.js)**
 
-**UI changes:** The failed Android Edge fullscreen zoom/offset hack has been removed. Android Edge watch pages now show an independent draggable `⛶` fullscreen button, matching Fullscreen Game View's 38 × 32 px translucent styling, document-anchored pinch zoom behavior, and floating-menu avoidance. The button does not join the shared floating menu. Other browsers retain the existing playback-speed overlay unchanged.
+**UI changes:** The existing playback-speed widget is now **132 × 62 px**, with actual 30 × 30 px step-button hit targets instead of invisible half-width/full-height touch regions, compact 1x/1.5x/2x presets and a non-interactive widget background. On Android Edge the widget is moved left, leaving the far upper-right corner free for the independent draggable 38 × 32 px `⛶` alternative-fullscreen entry control. The fullscreen button continues to use the existing shared transient-control layout; there is no dependency on any floating menu.
 
-Clicking the new button moves the **existing** YouTube player (not a separate iframe) into a viewport-filling container and asks **that container** to enter browser fullscreen, bypassing YouTube's own fullscreen mechanism. If browser fullscreen is rejected, an in-page CSS viewport-fill fallback remains. Escape or the browser Back button exits, restoring the original player, video position, scroll and playback speed. The entry button is hidden in fullscreen. An existing generic Fullscreen Game View button on this page is temporarily hidden to avoid duplicate controls.
+For landscape videos (determined by `videoWidth > videoHeight`) played in a portrait phone viewport, the alternate fullscreen wrapper first attempts `screen.orientation.lock('landscape')` **only while in browser fullscreen**. If denied, unavailable, or if the physical viewport remains portrait, CSS rotates the existing YouTube player by 90 degrees and swaps its `100dvw`/`100dvh` dimensions to use the entire portrait viewport sideways. As soon as the browser actually rotates into landscape, the CSS rotation is removed. Portrait videos are never force-rotated; unloaded metadata is detected later. Exit or browser Back restores the original player and releases only a successfully acquired orientation lock.
 
 Test pages:
 
-- [Reported Android Edge YouTube clip](https://m.youtube.com/watch?v=zeWBx3AePow)
-- [Existing YouTube speed-control test](https://www.youtube.com/watch?v=nCg3aXn5F3M)
+- [Reported mobile YouTube sample](https://m.youtube.com/watch?v=zeWBx3AePow)
+- [Existing YouTube speed test](https://www.youtube.com/watch?v=nCg3aXn5F3M)
 
 Verification:
 
-1. In Android Edge, update YouTubeTools.user.js to `2026-10-30_1.2.0`, keep Accessibility zoom at 125%, and reload the affected video.
-2. Tap the **new small translucent ⛶ button near the upper-right of the video**, not YouTube's existing fullscreen icon. Check that the left/right and bottom of the video are not cropped in landscape. Repeat at 100%.
-3. Use the original 1x, 1.5x, 2x playback-speed controls. They should still affect the same video and should not restart or lose position.
-4. Exit using Android Back or Escape; the page, video position and controls should return without changing playback speed.
-5. On Android Chrome and Windows Edge, verify the new button is absent and the original speed controls work as before.
+1. Install/update YouTube Tools to `2026-10-30_1.3.0`, reload the sample in Android Edge (Accessibility 125%).
+2. In portrait, confirm the `⛶` button alone occupies the top-right of the player. The reduced speed controls should sit to its left, without invisible wide tappable areas covering the YouTube video; verify minus/plus and 1x/1.5x/2x presets.
+3. Tap the new `⛶` button. On a landscape video, check that the phone changes to landscape when Edge permits orientation locking. Otherwise the *video* should rotate 90 degrees to fill the portrait phone screen when held sideways.
+4. Exit with Android Back/Escape and confirm the player returns, the orientation lock is released, video progress and speed remain the same, and neither entry control nor speed controls overlap.
+5. Test a vertical/portrait YouTube video. It should remain upright and should not attempt landscape lock. Check physical landscape entry, YouTube page navigation, and 100% zoom.
+6. Confirm Android Chrome and Windows Edge do not show the alternate fullscreen button and that their compact speed controls remain functional.
 
-**Update scope:** Only YouTubeTools.user.js needs to be installed. Shared TransientControl.js and FullscreenGameView.user.js remain unchanged; scripts/sync-transient-controls.js now includes YouTubeTools as an additional consumer.
+**Update scope:** Only YouTubeTools.user.js needs installing. Shared TransientControl.js, FullscreenGameView.user.js, and the other floating-menu consumers are unchanged.
 
 ## Verification notes
 
-`node --test scripts/test-youtube-tools.js` verifies Android Edge-only button behavior, native fullscreen on our wrapper instead of the YouTube player, 100%/125% fallback setup, preservation of playback rate/time, generic button suppression, Escape/Back exit and SPA cleanup. The shared transient-control implementation was copied from src/TransientControl.js.
+`node --test scripts/test-youtube-tools.js` exercises the retained speed controls, the Android Edge fullscreen wrapper, CSS button dimensions and placement, 100%/125% zoom, wide and portrait metadata, 90-degree rotated CSS geometry, browser orientation-lock success/denial and cleanup, responsive viewport switching, SPA navigation and Back restoration. These are DOM/CSS-harness tests. Android Edge's compositor and physical orientation lock are still subject to mobile browser behavior and need real-device confirmation.
 
-The DOM harness cannot prove whether the real Android Edge browser compositor is correctly centered at 125%. If the own-container fullscreen still crops, the next fallback should be **CSS-only viewport-fill** (without invoking requestFullscreen), which may leave the browser toolbar visible. Embedded YouTube iframes are not used because autoplay restrictions and a second playback instance make state restoration unreliable.
+Screen Orientation API reference: https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock
