@@ -5,8 +5,8 @@
 // @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
-// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
-// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
+// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/codex/force-mobile-auto-readable-pilot-20261030/src/ForceMobileView.user.js
+// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/codex/force-mobile-auto-readable-pilot-20261030/src/ForceMobileView.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=www.tampermonkey.net
 // @match        https://news.ycombinator.com/item?*
 // @match        https://archive.is/*
