@@ -22,6 +22,7 @@ function executeForceMobileView(url, options = {}) {
     const harness = createHarness({
         url,
         readyState: 'loading',
+        localStorageSeed: options.localStorageSeed || {},
         gmInfo: {
             script: {
                 matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', 'https://paulbourke.net/*', 'https://www.paulbourke.net/*', '*://*/*']
@@ -71,6 +72,7 @@ function executeForceMobileView(url, options = {}) {
     textElement.textContent = 'small text';
     harness.appendToBody(textElement);
 
+    if (options.userAgent) harness.context.navigator = { userAgent: options.userAgent };
     harness.context.globalThis = harness.context;
     harness.context.global = harness.context;
     vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
@@ -250,5 +252,143 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(span.style.getPropertyValue('line-height'), '25.2px');
         assert.equal(paragraph.getAttribute('data-tm-force-width-min-line-height-only'), 'true');
         assert.equal(paragraph.style.getPropertyValue('line-height'), '28px');
+    });
+});
+
+
+describe('Force Mobile View automatic readability pilot', () => {
+    const readable = 'A representative paragraph that fills enough of the mobile page to measure meaningful body text rather than a small icon or caption.';
+
+    function addParagraphs(harness, count, text = readable) {
+        for (let i = 0; i < count; i++) {
+            const paragraph = harness.document.createElement('p');
+            paragraph.textContent = text;
+            harness.appendToBody(paragraph);
+        }
+    }
+
+    test('detects an unscaled 980px desktop layout on Android and enlarges it without editing the shared menu', () => {
+        const { harness } = executeForceMobileView('https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36',
+            setupBody(harness) {
+                harness.window.screen = { width: 360 };
+                harness.window.innerWidth = 980;
+                harness.document.documentElement.clientWidth = 980;
+                harness.document.body.clientWidth = 980;
+                harness.window.visualViewport.width = 980;
+                harness.window.visualViewport.scale = 0.36;
+                addParagraphs(harness, 4);
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+        assert(harness.document.querySelector('meta[name="viewport"]'));
+        assert.equal(harness.document.querySelector('[data-floating-tool="mobile"]').getAttribute('aria-pressed'), 'true');
+        const css = harness.document.getElementById('tm-force-mobile-auto-style').textContent;
+        assert.match(css, /data-floating-close.*top: -50px/);
+        assert.match(css, /gap: 6px/);
+        // Simulate Android's layout viewport returning to device width after meta injection.
+        harness.window.innerWidth = 360;
+        harness.document.documentElement.clientWidth = 360;
+        harness.window.visualViewport.width = 360;
+        harness.window.visualViewport.scale = 1;
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'), 'Expected successful validation to keep the auto styles.');
+    });
+
+    test('does not auto-enable for a normal-sized mobile article with one small caption', () => {
+        const { harness } = executeForceMobileView('https://example.org/article', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) {
+                addParagraphs(harness, 4);
+                const caption = harness.document.createElement('span');
+                caption.textContent = 'footnote text';
+                caption.id = 'caption';
+                harness.appendToBody(caption);
+            },
+            computedStyle(element) {
+                return { fontSize: element.id === 'caption' ? '9px' : '16px', lineHeight: '24px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+    });
+
+    test('auto-enables on Android with sustained tiny article text and preserves the original viewport', () => {
+        const { harness } = executeForceMobileView('https://example.org/tiny', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) { addParagraphs(harness, 4); },
+            computedStyle(element) {
+                const inlineSize = element.style.getPropertyValue('font-size');
+                return { fontSize: inlineSize || (element.tagName === 'P' ? '10px' : '16px'),
+                    lineHeight: element.style.getPropertyValue('line-height') || '14px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
+        const firstParagraph = harness.document.querySelector('p');
+        assert.equal(firstParagraph.style.getPropertyValue('font-size'), '15px');
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+    });
+
+    test('never auto-enables on Windows even if a page is tiny', () => {
+        const { harness } = executeForceMobileView('https://example.org/tiny', {
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+            setupBody(harness) { addParagraphs(harness, 4); },
+            computedStyle() { return { fontSize: '8px', lineHeight: '12px' }; }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+    });
+
+    test('rolls back a layout producing horizontal overflow without a retry loop', () => {
+        const { harness } = executeForceMobileView('https://example.org/overflow', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) { addParagraphs(harness, 5); },
+            computedStyle(element) {
+                return { fontSize: element.style.getPropertyValue('font-size') || (element.tagName === 'P' ? '9px' : '16px'),
+                    lineHeight: '24px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert(harness.document.getElementById('tm-force-mobile-auto-style'));
+        harness.document.documentElement.scrollWidth = 550;
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.document.querySelector('p').style.getPropertyValue('font-size'), '');
+        harness.dispatchWindowEvent('load');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+    });
+
+    test('manual OFF is persistent per site, manual ON remains available', () => {
+        const { harness } = executeForceMobileView('https://example.org/tiny', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            setupBody(harness) { addParagraphs(harness, 4); },
+            computedStyle(element) {
+                return { fontSize: element.style.getPropertyValue('font-size') || (element.tagName === 'P' ? '9px' : '16px'),
+                    lineHeight: '24px' };
+            }
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        button.click();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v1:example.org'), 'off');
+        harness.dispatchWindowEvent('load');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        button.click();
+        assert(harness.document.getElementById('tm-force-width-style'));
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v1:example.org'), null);
     });
 });
