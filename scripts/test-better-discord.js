@@ -167,13 +167,16 @@ describe('BetterDiscord on captured Discord pages', () => {
     });
 
     test('Android Edge closes the measured gap above the software keyboard', () => {
-        const harness = executeBetterDiscord('https://discord.com/channels/1475861167476965439/1475861168412164149', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const harness = executeBetterDiscord('https://discord.com/channels/1475861167476965439/1475861168412164149?bddebug=1', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
         const composer = buildDiscordComposer(harness);
         const editor = harness.document.createElement('div');
         editor.setAttribute('contenteditable', 'true');
         editor.isContentEditable = true;
         composer.textArea.appendChild(editor);
         harness.dispatchDocumentEvent('DOMContentLoaded');
+        const fixButton = harness.document.querySelector('section[data-bd-debug] button');
+        assert.ok(fixButton, 'the experimental repair is opt-in');
+        fixButton.click();
         harness.flushAnimationFrames();
 
         harness.document.activeElement = editor;
@@ -220,7 +223,7 @@ describe('BetterDiscord on captured Discord pages', () => {
     });
 
     test('Android Edge expands a short Discord app root instead of moving a clipped form', () => {
-        const harness = executeBetterDiscord('https://discord.com/channels/1/2', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const harness = executeBetterDiscord('https://discord.com/channels/1/2?bddebug=1', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
         const composer = buildDiscordComposer(harness);
         const editor = harness.document.createElement('div');
         editor.setAttribute('contenteditable', 'true');
@@ -242,6 +245,9 @@ describe('BetterDiscord on captured Discord pages', () => {
         });
 
         harness.dispatchDocumentEvent('DOMContentLoaded');
+        const fixButton = harness.document.querySelector('section[data-bd-debug] button');
+        assert.ok(fixButton, 'the experimental repair is opt-in');
+        fixButton.click();
         harness.document.activeElement = editor;
         harness.window.visualViewport.height = 360;
         harness.dispatchDocumentEvent('focusin');
@@ -267,7 +273,7 @@ describe('BetterDiscord on captured Discord pages', () => {
     });
 
     test('Android Edge expands the short chat container when its app root is full height', () => {
-        const harness = executeBetterDiscord('https://discord.com/channels/1/2', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const harness = executeBetterDiscord('https://discord.com/channels/1/2?bddebug=1', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
         const composer = buildDiscordComposer(harness);
         const editor = harness.document.createElement('div');
         editor.setAttribute('contenteditable', 'true');
@@ -293,6 +299,9 @@ describe('BetterDiscord on captured Discord pages', () => {
         });
 
         harness.dispatchDocumentEvent('DOMContentLoaded');
+        const fixButton = harness.document.querySelector('section[data-bd-debug] button');
+        assert.ok(fixButton, 'the experimental repair is opt-in');
+        fixButton.click();
         harness.document.activeElement = editor;
         harness.window.visualViewport.height = 360;
         harness.dispatchVisualViewportEvent('resize');
@@ -356,6 +365,52 @@ describe('BetterDiscord on captured Discord pages', () => {
         assert.equal(composer.form.style.getPropertyValue('translate'), '');
         findButton('Close').click();
         assert.equal(harness.document.querySelector('section[data-bd-debug]'), null);
+    });
+
+
+    test('Android Edge preserves native layout with the experimental fix disabled by default', () => {
+        const harness = executeBetterDiscord('https://discord.com/channels/1/2', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('textarea');
+        // The lightweight harness does not implement comma-separated Element.matches selectors.
+        editor.matches = selector => selector.split(',').some(part => part.trim() === 'textarea');
+        composer.textArea.appendChild(editor);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.document.activeElement = editor;
+        composer.form.getBoundingClientRect = () => ({ top: 220, bottom: 280, height: 60 });
+        harness.window.visualViewport.height = 360;
+        harness.dispatchDocumentEvent('focusin');
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+        assert.equal(composer.form.style.getPropertyValue('height'), '');
+    });
+
+    test('closing diagnostics removes an active experimental keyboard correction', () => {
+        const harness = executeBetterDiscord('https://discord.com/channels/1/2?bddebug=1', 'Mozilla/5.0 (Linux; Android 16) EdgA/146.0');
+        const composer = buildDiscordComposer(harness);
+        const editor = harness.document.createElement('textarea');
+        // The lightweight harness does not implement comma-separated Element.matches selectors.
+        editor.matches = selector => selector.split(',').some(part => part.trim() === 'textarea');
+        composer.textArea.appendChild(editor);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const panel = harness.document.querySelector('section[data-bd-debug]');
+        const findButton = name => panel.querySelectorAll('button').find(button => button.textContent === name);
+        harness.document.activeElement = editor;
+        composer.form.getBoundingClientRect = () => {
+            const shift = Number.parseFloat(composer.form.style.getPropertyValue('translate').split(' ')[1]) || 0;
+            return { top: 220 + shift, bottom: 280 + shift, height: 60 };
+        };
+        harness.window.visualViewport.height = 360;
+        findButton('Fix: OFF').click();
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '0 80.0px');
+        findButton('Close').click();
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
+        harness.dispatchVisualViewportEvent('resize');
+        harness.flushAnimationFrames();
+        assert.equal(composer.form.style.getPropertyValue('translate'), '');
     });
 
     test('Windows Edge ignores Android diagnostic URL parameter', () => {

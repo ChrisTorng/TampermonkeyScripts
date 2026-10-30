@@ -128,7 +128,7 @@ Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fulls
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
-Simplify Discord input buttons; repair Android Edge keyboard gaps and provide opt-in layout diagnostics.
+Simplify Discord input buttons; keep Android Edge keyboard layout unchanged by default, with opt-in diagnostics and experimental repair.
 
 ### [Medium Auto Reload Once User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/Medium.user.js)
 
