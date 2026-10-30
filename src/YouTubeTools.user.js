@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.2.0
-// @description  Show YouTube speed controls and an Android Edge alternative fullscreen button that avoids YouTube native fullscreen.
+// @version      2026-10-30_1.3.0
+// @description  Show compact YouTube speed controls and an Android Edge fullscreen button with automatic landscape or rotated playback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -351,17 +351,22 @@
         style.textContent = `
 #${overlayId} {
     position: fixed;
-    top: 40px;
+    top: 6px;
     right: 12px;
-    width: clamp(132px, 28vw, 170px);
-    min-height: 76px;
+    width: 132px;
+    max-width: calc(100vw - 70px);
+    height: 62px;
     z-index: 2147483647;
     color: rgba(255, 255, 255, 0.6);
     font-family: "Roboto", "Arial", sans-serif;
-    pointer-events: auto;
+    pointer-events: none;
     user-select: none;
     opacity: 1;
     transition: color 160ms ease, opacity 0s;
+}
+
+#${overlayId}.tm-yt-speed-overlay--android-edge {
+    right: calc(50px + max(4px, env(safe-area-inset-right)));
 }
 
 #${overlayId}.tm-yt-speed-overlay--fullscreen {
@@ -376,12 +381,16 @@
 #${overlayId} .tm-yt-speed-overlay__click {
     position: absolute;
     top: 0;
-    bottom: 0;
-    width: 50%;
+    bottom: auto;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: none;
+    border-radius: 5px;
     background: transparent;
     cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
     transition: background-color 160ms ease;
 }
 
@@ -395,9 +404,10 @@
 
 #${overlayId} .tm-yt-speed-overlay__label {
     position: absolute;
-    inset: 0;
+    inset: 0 0 auto;
+    height: 30px;
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: 30px minmax(0, 1fr) 30px;
     align-items: center;
     pointer-events: none;
     text-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
@@ -405,10 +415,10 @@
 }
 
 #${overlayId} .tm-yt-speed-overlay__icon {
-    font-size: clamp(18px, 5vw, 24px);
+    font-size: 17px;
     font-weight: 500;
     opacity: 0.55;
-    padding: 0 10px;
+    padding: 0 5px;
     transition: opacity 160ms ease;
 }
 
@@ -423,9 +433,9 @@
 #${overlayId} .tm-yt-speed-overlay__value {
     justify-self: center;
     background: rgba(0, 0, 0, 0.35);
-    padding: 4px 8px;
+    padding: 3px 5px;
     border-radius: 999px;
-    font-size: clamp(12px, 3.5vw, 16px);
+    font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.2px;
     color: rgba(255, 255, 255, 0.7);
@@ -463,17 +473,20 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: 44px;
+    top: 33px;
     display: flex;
     justify-content: center;
-    gap: 6px;
+    gap: 3px;
 }
 
 #${overlayId} .tm-yt-speed-overlay__preset {
     border: none;
     border-radius: 999px;
-    padding: 4px 8px;
-    font-size: clamp(11px, 2.8vw, 13px);
+    padding: 4px 6px;
+    min-height: 25px;
+    font-size: 11px;
+    pointer-events: auto;
+    touch-action: manipulation;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.88);
     background: rgba(0, 0, 0, 0.48);
@@ -552,6 +565,19 @@ html.tm-yt-alternative-fullscreen-active body {
     width: 100% !important;
     height: 100% !important;
 }
+
+/* Portrait viewport with a landscape source and no browser orientation lock. */
+#tm-yt-alternative-fullscreen-root.tm-yt-alternative-fullscreen-rotated > .tm-yt-alternative-fullscreen-target {
+    position: absolute !important;
+    left: 100dvw !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100dvh !important;
+    height: 100dvw !important;
+    transform-origin: 0 0 !important;
+    transform: rotate(90deg) !important;
+}
 #tm-yt-alternative-fullscreen-root > .tm-yt-alternative-fullscreen-target {
     position: relative !important;
     inset: auto !important;
@@ -591,6 +617,7 @@ html.tm-yt-alternative-fullscreen-active body {
         injectStyles();
         overlay = document.createElement('div');
         overlay.id = overlayId;
+        overlay.classList.toggle('tm-yt-speed-overlay--android-edge', isAndroidEdge);
         overlay.setAttribute('role', 'group');
         overlay.setAttribute('aria-label', 'Playback speed controls');
 
@@ -780,6 +807,10 @@ html.tm-yt-alternative-fullscreen-active body {
         if (document.fullscreenElement === session.root) {
             try { document.exitFullscreen?.(); } catch (_error) { /* May already be exiting. */ }
         }
+        session.video?.removeEventListener('loadedmetadata', onAlternativeVideoMetadata);
+        if (session.orientationLocked) {
+            try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Browser may already unlock. */ }
+        }
         session.target.classList.remove(fullscreenActiveClass);
         document.documentElement.classList.remove(fullscreenActiveClass);
         session.target.remove();
@@ -800,6 +831,57 @@ html.tm-yt-alternative-fullscreen-active body {
         if (session.historyAdded && !fromBack) {
             window.history?.back?.();
         }
+    }
+
+    function isLandscapeVideo(video) {
+        return Boolean(video && video.videoWidth > 0 && video.videoHeight > 0 &&
+            video.videoWidth > video.videoHeight);
+    }
+
+    function syncAlternativeOrientation() {
+        const session = fullscreenSession;
+        if (!session) return;
+        const video = session.target.querySelector('video');
+        // A portrait video retains the normal portrait display. Landscape
+        // content rotates only while the actual viewport remains portrait.
+        const rotate = isLandscapeVideo(video) && window.innerHeight > window.innerWidth;
+        session.root.classList.toggle('tm-yt-alternative-fullscreen-rotated', rotate);
+    }
+
+    function tryLockLandscape(session) {
+        if (fullscreenSession !== session || session.orientationRequested ||
+            document.fullscreenElement !== session.root ||
+            !isLandscapeVideo(session.video)) return;
+        const orientation = window.screen?.orientation;
+        if (typeof orientation?.lock !== 'function') return;
+        session.orientationRequested = true;
+        try {
+            Promise.resolve(orientation.lock('landscape')).then(() => {
+                if (fullscreenSession !== session) {
+                    orientation.unlock?.();
+                    return;
+                }
+                session.orientationLocked = true;
+                syncAlternativeOrientation();
+            }).catch(() => {
+                // Browser denied the lock; keep CSS rotation as the fallback.
+                if (fullscreenSession === session) syncAlternativeOrientation();
+            });
+        } catch (_error) {
+            syncAlternativeOrientation();
+        }
+    }
+
+    function onAlternativeVideoMetadata() {
+        const session = fullscreenSession;
+        if (!session) return;
+        syncAlternativeOrientation();
+        tryLockLandscape(session);
+    }
+
+    function onAlternativeViewportChange() {
+        syncAlternativeOrientation();
+        refreshTransientControls();
     }
 
     function enterAlternativeFullscreen() {
@@ -829,7 +911,12 @@ html.tm-yt-alternative-fullscreen-active body {
         document.body.appendChild(root);
         target.classList.add(fullscreenActiveClass);
         document.documentElement.classList.add(fullscreenActiveClass);
-        fullscreenSession = { root, target, parent, anchor, scroll, historyAdded: false, nativeEntered: false };
+        const video = target.querySelector('video');
+        fullscreenSession = { root, target, parent, anchor, scroll, video,
+            historyAdded: false, nativeEntered: false,
+            orientationRequested: false, orientationLocked: false };
+        video.addEventListener('loadedmetadata', onAlternativeVideoMetadata);
+        syncAlternativeOrientation();
         fullscreenButton.hidden = true;
         fullscreenButton.setAttribute('aria-pressed', 'true');
         updateFullscreenState();
@@ -844,8 +931,18 @@ html.tm-yt-alternative-fullscreen-active body {
         // CSS viewport-fill mode remains active if the request is unavailable or rejected.
         if (typeof root.requestFullscreen === 'function') {
             try {
+                const session = fullscreenSession;
                 const result = root.requestFullscreen({ navigationUI: 'hide' });
-                result?.catch?.(() => {});
+                result?.then?.(() => {
+                    if (fullscreenSession !== session) return;
+                    tryLockLandscape(session);
+                    syncAlternativeOrientation();
+                }).catch?.(() => {
+                    if (fullscreenSession === session) syncAlternativeOrientation();
+                });
+                if (!result?.then && document.fullscreenElement === root) {
+                    tryLockLandscape(session);
+                }
             } catch (_error) {
                 // The CSS fallback is already active.
             }
@@ -856,6 +953,8 @@ html.tm-yt-alternative-fullscreen-active body {
         if (fullscreenSession) {
             if (document.fullscreenElement === fullscreenSession.root) {
                 fullscreenSession.nativeEntered = true;
+                tryLockLandscape(fullscreenSession);
+                syncAlternativeOrientation();
             } else if (fullscreenSession.nativeEntered) {
                 exitAlternativeFullscreen();
             }
@@ -888,7 +987,9 @@ html.tm-yt-alternative-fullscreen-active body {
     document.addEventListener('fullscreenchange', handleAlternativeFullscreenEvent);
     document.addEventListener('keydown', handleAlternativeFullscreenKeydown, true);
     window.addEventListener('popstate', handleAlternativeFullscreenNavigation);
-    window.addEventListener('resize', refreshTransientControls);
+    window.addEventListener('resize', onAlternativeViewportChange);
+    window.addEventListener('orientationchange', onAlternativeViewportChange);
+    window.screen?.orientation?.addEventListener?.('change', onAlternativeViewportChange);
     new MutationObserver(() => {
         watchFloatingMenu();
         hideGenericFullscreenButton();
