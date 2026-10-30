@@ -160,6 +160,41 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         }
     });
 
+    test('normal speed row is opaque and fullscreen uses three separate stepper cells', () => {
+        const { harness, bar, fullscreen } = load();
+        const css = harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        const v17 = css.slice(css.indexOf('/* Non-fullscreen watch page:'));
+        assert.match(v17, /:not\(\.tm-yt-toolbar--custom-fullscreen\) \{[^}]*background: #202020 !important;/s);
+        assert.match(v17, /tm-yt-toolbar--custom-fullscreen \.tm-yt-speed-overlay__stepper \{[^}]*width: 136px !important;/s);
+        assert.match(v17, /tm-yt-toolbar--custom-fullscreen \.tm-yt-speed-overlay__stepper \.tm-yt-speed-overlay__click--left \{[^}]*order: 0 !important;/s);
+        assert.match(v17, /tm-yt-toolbar--custom-fullscreen \.tm-yt-speed-overlay__stepper \.tm-yt-speed-overlay__click--right \{[^}]*order: 2 !important;/s);
+        assert.match(v17, /tm-yt-toolbar--custom-fullscreen \.tm-yt-speed-overlay__stepper \.tm-yt-speed-overlay__value \{[^}]*position: static !important;[^}]*order: 1 !important;/s);
+        const stepper = bar.querySelector('.tm-yt-speed-overlay__stepper');
+        assert.equal(stepper.children.length, 3);
+        assert.equal(stepper.querySelector('.tm-yt-speed-overlay__value').textContent, '1x');
+        fullscreen.click();
+        assert(bar.classList.contains('tm-yt-toolbar--custom-fullscreen'));
+        assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
+    });
+
+    test('only Android Edge watch pages suppress native YouTube fullscreen / restore icons', () => {
+        const edge = load();
+        const css = edge.harness.document.getElementById('tm-yt-speed-overlay-style').textContent;
+        const nativeStyle = css.slice(css.indexOf('/* Keep YouTube'));
+        assert.match(nativeStyle, /html\.tm-yt-edge-alt-fullscreen \.ytp-fullscreen-button/);
+        assert.match(nativeStyle, /html\.tm-yt-edge-alt-fullscreen \.ytp-size-button/);
+        assert.match(nativeStyle, /ytm-player button\[aria-label\*="full screen" i\]/);
+        assert.match(nativeStyle, /display: none !important;/);
+        assert(edge.harness.document.documentElement.classList.contains('tm-yt-edge-alt-fullscreen'));
+        const chrome = load({ userAgent: androidChrome });
+        assert.equal(chrome.harness.document.documentElement.classList.contains('tm-yt-edge-alt-fullscreen'), false);
+        const desktop = load({ userAgent:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/150.0' });
+        assert.equal(desktop.harness.document.documentElement.classList.contains('tm-yt-edge-alt-fullscreen'), false);
+        edge.harness.location.pathname = '/results';
+        edge.harness.dispatchWindowEvent('yt-navigate-finish');
+        assert.equal(edge.harness.document.documentElement.classList.contains('tm-yt-edge-alt-fullscreen'), false);
+    });
+
     test('speed controls retain step behavior, current-value display and presets', () => {
         const { bar, video } = load();
         const buttons = [...bar.querySelectorAll('button')];
@@ -243,8 +278,15 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.match(fullscreenCSS, /tm-yt-toolbar--custom-fullscreen \.tm-yt-toolbar__fullscreen \{\s*display: none !important;/);
         assert.match(fullscreenCSS, /height: 100% !important;/);
         assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
+        const previousSetTimeout = harness.window.setTimeout;
+        const timers = [];
+        harness.window.setTimeout = (callback, delay) => {
+            timers.push(delay);
+            return previousSetTimeout(callback, delay);
+        };
         root.dispatchEvent({type: 'click'});
         assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), true);
+        assert.deepEqual(timers, [1000], 'Fullscreen controls should hide after one second.');
         harness.runAllTimeouts();
         assert.equal(bar.classList.contains('tm-yt-toolbar--revealed'), false);
         root.dispatchEvent({type: 'click'});
