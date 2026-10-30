@@ -108,8 +108,8 @@ Section note: automated tests use representative inline code, preformatted block
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
 # YouTube Tools
-- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (opaque normal-page speed bar below the player, ± step controls, 0.5x/1x/1.5x/2x presets and current playback rate tested in local DOM harness)
-- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Edge Android native fullscreen/restore button suppression, horizontally centered 1-second tap-to-reveal fullscreen speed toolbar away from left mute control, expanded independent step arrows and rate label, orientation and Back/Escape restoration tested with DOM harness; real mobile YouTube layout and GPU compositor require device verification)
+- https://www.youtube.com/watch?v=nCg3aXn5F3M [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (desktop/landscape arrow, current-rate and arrow regions are separate; compact overlapping label is used only on narrow portrait touch screens; hover feedback, selected preset highlighting/disabled state and native ratechange synchronization are covered by the DOM harness)
+- https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge alternative fullscreen, centered one-second speed reveal, native fullscreen control suppression, playback and orientation restoration are covered by the DOM harness; real mobile compositor and touch layout require physical-device verification)
 
 # Force Mobile View
 Section note: automated tests inject the script and mock `GM_info`.
