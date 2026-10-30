@@ -332,7 +332,10 @@
         }
         const isFullscreen = Boolean(document.fullscreenElement || fullscreenSession);
         overlay.classList.toggle('tm-yt-speed-overlay--fullscreen', isFullscreen);
-        if (fullscreenButton) fullscreenButton.hidden = isFullscreen;
+        if (fullscreenButton) {
+            fullscreenButton.hidden = isFullscreen;
+            fullscreenButton.setAttribute('aria-pressed', String(isFullscreen));
+        }
         const host = fullscreenSession?.root || document.fullscreenElement || document.body;
         if (host && overlay.parentElement !== host) {
             host.appendChild(overlay);
@@ -512,7 +515,8 @@ html.tm-yt-alternative-fullscreen-active body {
     touch-action: none !important;
     text-decoration: none !important;
 }
-#tm-yt-alternative-fullscreen-button[hidden] {
+#tm-yt-alternative-fullscreen-button[hidden],
+#tm-yt-alternative-fullscreen-button[aria-pressed="true"] {
     display: none !important;
 }
 #tm-yt-alternative-fullscreen-button:hover {
