@@ -419,7 +419,7 @@
         try {
             if (localStorage.getItem(AUTO_STORAGE) === 'off'
                 || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
-            return isDataExplorer || sessionStorage.getItem(AUTO_PREPARE_KEY) === 'ready';
+            return isDataExplorer;
         } catch (_) {
             return isDataExplorer;
         }
@@ -571,9 +571,7 @@
             element.setAttribute(MIN_LINE_HEIGHT_VALUE_ATTR, element.style.getPropertyValue('line-height'));
             element.setAttribute(MIN_LINE_HEIGHT_PRIORITY_ATTR, element.style.getPropertyPriority('line-height'));
             element.style.setProperty('font-size', '15px', 'important');
-            if (!Number.isFinite(Number.parseFloat(lineHeight)) || Number.parseFloat(lineHeight) < 21) {
-                element.style.setProperty('line-height', '21px', 'important');
-            }
+            element.style.setProperty('line-height', '1.45', 'important');
         }
     }
 
@@ -587,36 +585,24 @@
         automaticViewport = meta;
     }
 
+
     function applyAutomaticReadability(detection) {
+        // Do not inject a viewport after rendering: browser font boosting can become enormous.
+        // Unknown desktop-only layouts are intentionally left unchanged in this safe pilot.
+        if (detection.legacy) return;
         autoMode = true;
         isEnabled = true;
-        if (detection.legacy) installAutoViewport();
         const style = document.createElement('style');
         style.id = AUTO_STYLE_ID;
-        style.textContent = `
-            :root, body { max-width: 100% !important; }
-            body { font-size: 16px !important; line-height: 1.5 !important; }
-            body > .page, #topbar .page { box-sizing: border-box !important; width: 100% !important; max-width: 100% !important; }
-            body > .page { padding-left: 6px !important; padding-right: 6px !important; }
-            pre, .CodeMirror, .slick-viewport { max-width: 100% !important; overflow-x: auto !important; }
-            img, video { max-width: 100% !important; height: auto !important; }
-            #${FLOATING_MENU_ID} { width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }
-            #${FLOATING_MENU_ID} > button { box-sizing: border-box !important; width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; min-height: 44px !important; font-size: 20px !important; line-height: 44px !important; }
-            #${FLOATING_MENU_ID} > [data-floating-close] { top: -50px !important; }
-            #${FLOATING_MENU_ID} [data-floating-dialog] button { min-height: 44px !important; height: auto !important; line-height: 1.4 !important; }
-        `;
-        if (location.hostname.toLowerCase() === 'data.stackexchange.com') {
-            // The original Data Explorer stylesheet fixes several independent regions at 950-980px.
-            // Keep scrolling inside editors and charts instead of clipping the entire document.
-            style.textContent += `
-                #footer .footerwrap, #mainbar-full, #query-results .subheader .group, #resultsetStats {
-                    width: 100% !important; max-width: 100% !important; box-sizing: border-box !important;
-                }
-                #mainbar, #sidebar { float: none !important; width: 100% !important; max-width: 100% !important; }
-                #graph { width: 100% !important; max-width: 100% !important; overflow-x: auto !important; }
-                .CodeMirror { font-size: 15px !important; line-height: 1.4 !important; }
-            `;
-        }
+        style.textContent = [
+            'body p, body li, body blockquote, body article, body section,',
+            'body h1, body h2, body h3, body h4, body h5, body h6 {',
+            'line-height: 1.45 !important; height: auto !important; max-height: none !important;',
+            'overflow-wrap: break-word !important; }',
+            '#tm-shared-floating-menu#tm-shared-floating-menu { width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }',
+            '#tm-shared-floating-menu#tm-shared-floating-menu > button { width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; min-height: 44px !important; font: 600 20px/44px system-ui,sans-serif !important; }',
+            '#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }'
+        ].join('\\n');
         (document.head || document.documentElement).appendChild(style);
         applyAutoTextSize(document.body);
         setAutomaticButtonState();
@@ -624,6 +610,14 @@
     }
 
     function undoAutomaticReadability(userDisabled = false) {
+        if (earlyReflow) {
+            // A navigation is required to restore the pre-viewport desktop layout.
+            if (userDisabled) setAutomaticPreference(true);
+            autoMode = false;
+            isEnabled = false;
+            window.location.reload();
+            return;
+        }
         autoMode = false;
         isEnabled = false;
         const style = document.getElementById(AUTO_STYLE_ID);
@@ -637,7 +631,7 @@
         setAutomaticButtonState();
     }
 
-    function validateAutomaticReadability(before) {
+    function validateAutomaticReadability(before = { legacy: false, text: { ratio: 0 } }) {
         if (!autoMode) return;
         // CodeMirror caches text and line geometry; refresh only when its API is available.
         for (const element of document.querySelectorAll('.CodeMirror')) {
@@ -649,12 +643,17 @@
         const measuredText = sampleReadingText(after.scale);
         const viewport = Math.max(1, window.innerWidth || after.layoutWidth);
         const horizontalOverflow = document.documentElement.scrollWidth || 0;
-        const overflowing = horizontalOverflow > viewport * 1.18;
+        const overflowing = horizontalOverflow > viewport + Math.max(24, viewport * 0.05);
         const failedViewport = before.legacy && after.legacy &&
             measuredText.all >= 60 && measuredText.ratio > 0.55;
         const unreadableStill = !before.legacy && measuredText.all >= 180
             && measuredText.ratio > 0.8 && measuredText.ratio > before.text.ratio - 0.1;
         if (overflowing || failedViewport || unreadableStill) {
+            if (earlyReflow) {
+                try { sessionStorage.setItem(AUTO_FAILURE_V2, 'failed'); } catch (_) { /* Session only. */ }
+                window.location.reload();
+                return;
+            }
             undoAutomaticReadability();
             try { sessionStorage.setItem(AUTO_FAILURE, 'failed'); } catch (_) { /* Session only. */ }
             autoRestoreError = true;
@@ -814,6 +813,11 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
+        } else if (isDataExplorer && isAndroidBrowser()) {
+            // Restore the early mobile viewport instead of running the destructive legacy CSS.
+            setAutomaticPreference(false);
+            try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
+            window.location.reload();
         } else {
             setAutomaticPreference(false);
             enableForceWidth();
@@ -1137,13 +1141,19 @@
         });
         updateButtonAppearance();
         registerFloatingButton('mobile', toggleButton);
+        if (autoMode) setAutomaticButtonState();
     }
 
-    if (shouldAutoEnableForUrl()) {
+    if (!autoMode && shouldAutoEnableForUrl()) {
         enableForceWidth();
-    } else {
+    } else if (!autoMode) {
         onDocumentReady(scheduleAutomaticDetection);
         window.addEventListener('load', scheduleAutomaticDetection, { once: true });
+    } else {
+        onDocumentReady(() => {
+            setAutomaticButtonState();
+            setTimeout(validateAutomaticReadability, 1600);
+        });
     }
 
     window.addEventListener('resize', scheduleMinimumFontRefresh);
