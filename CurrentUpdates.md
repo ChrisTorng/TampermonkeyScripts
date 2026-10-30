@@ -2,35 +2,29 @@
 
 Updated: 2026-10-30
 
-Install the userscript from the PR preview or from main after merge, confirm the metadata version in Tampermonkey, and reload the YouTube watch page.
+This change updates only Better Discord; previously updated YouTube Tools and other userscripts are unaffected. Install this version from this branch's preview (or main after merge), verify the version in Tampermonkey, and reload your Discord channel.
 
 ## Updated userscripts (1)
 
-### YouTube Tools — 2026-10-30_1.7.0
+### Better Discord — 2026-10-30_1.0.10
 
-**[Install / update YouTubeTools.user.js](src/YouTubeTools.user.js)**
+**[Install / update BetterDiscord.user.js](src/BetterDiscord.user.js)**
 
-**Visible changes:**
-- Normal playback: the compact speed toolbar remains **below the player and above metadata/title**, but now uses a fully **opaque dark background** because it occupies its own row. The central speed indicator still overlays the two half-width step buttons here to save space. The existing four presets (0.5x, 1x, 1.5x, 2x) remain.
-- Alternative Android Edge fullscreen: tapping the player reveals the speed toolbar in the **upper-left for just 1 second**, then it fully disappears and stops intercepting taps. Each new tap retriggers the 1-second display; touching a speed button also refreshes the timer. It does not pause video or cancel YouTube's own tap handler.
-- In alternative fullscreen, the **left step button («), current speed, and right step button (»)** each have their own **44 / 48 / 44 CSS-pixel** area, so the speed text does not visually cover the arrows. Normal portrait watch pages retain the compact overlapping speed label.
-- On **Android Edge watch pages only**, hide YouTube's own fullscreen **and restore/exit-fullscreen** entry buttons (including desktop-style `.ytp-fullscreen-button` and known mobile player/button variants). Do not hide other native controls: play/pause, CC, settings gear, mute/volume, or timeline. Other browsers retain YouTube's standard fullscreen controls.
-- Keep existing custom fullscreen orientation lock, CSS 90-degree rotation fallback, original player DOM restoration, speed, playback position and Android Back navigation.
+**Visible changes:** No extra UI in normal browsing. On Android, append `?bddebug=1` to the current Discord channel URL to open an optional floating diagnostics panel. The panel shows current visual-viewport and window dimensions, composer-to-viewport gap, ancestor element bottom coordinates, and colored outlines. You can capture automatic keyboard events, copy a JSON geometry report, save it as a file, or compare the earlier layout fix ON/OFF. Diagnostics start with the fix OFF so the original problem can be recorded. Windows Edge is unaffected.
 
-Test pages:
-- [YouTube video reported for Android Edge](https://m.youtube.com/watch?v=zeWBx3AePow)
-- [Speed-controls test video](https://www.youtube.com/watch?v=nCg3aXn5F3M)
+**Test links:**
+- [Existing Discord channel test](https://discord.com/channels/1475861167476965439/1475861168412164149)
+- [Same channel with debug enabled](https://discord.com/channels/1475861167476965439/1475861168412164149?bddebug=1) (requires account access; otherwise append `?bddebug=1` to a channel you can open)
 
-Verification:
-1. In Android Edge with Accessibility scaling 125%, update YouTubeTools.user.js to `2026-10-30_1.7.0`, reload the video and verify the **opaque** bar beneath the player, with the speed label centered between «/» without taking an additional column.
-2. Confirm YouTube's native fullscreen/restore icon is hidden but the Tampermonkey `⛶` button on the far right of the normal toolbar still works. The YouTube gear, CC, timeline and pause buttons must remain visible and functional.
-3. Enter the alternative fullscreen view. The speed toolbar should be **entirely absent** until touching the video. Tap to reveal, and verify it disappears **after 1 second**.
-4. While visible, verify the left arrow, separate speed indicator and right arrow do not overlap; select 0.5x / 1x / 1.5x / 2x and check speed still changes without restarting the video.
-5. Exit using Android Back or browser gesture, and check the original speed bar, page layout, progress and orientation restoration.
-6. Test on Windows Edge or Android Chrome to confirm **no native YouTube fullscreen controls are suppressed** and the compact opaque toolbar still works.
+**Verify on Android Edge:**
+1. Install/update the script in Tampermonkey, confirm `2026-10-30_1.0.10`, and reload your Discord channel.
+2. Open the channel URL with `?bddebug=1`. A small `Discord layout debug` panel appears at the top; the layout fix starts OFF.
+3. Screenshot with keyboard closed. Focus the message editor and screenshot again with the keyboard open. Orange = composer, cyan = form, purple = chat wrapper, green = app root; dashed yellow = reported visual viewport bottom. The red tinted area is the geometric gap, if any.
+4. While the keyboard is open, read `gap`, `vvH`, `vvBottom`, and ancestor bottoms. Automatic geometry snapshots are retained across focus/resize events. Use `Copy log` or `Save JSON` and provide the report for analysis. The report records only geometry, CSS and browser context, not chat messages, URL, cookies or credentials.
+5. Optionally tap `Fix: OFF` to switch ON, and compare with a second screenshot. Close to restore normal operation; remove `?bddebug=1` from the URL for subsequent visits.
 
-**Update scope:** Only `YouTubeTools.user.js` needs installation. `FullscreenGameView.user.js` and the shared floating menu are unchanged.
+**Update scope:** Update only `BetterDiscord.user.js`. The existing input-button suppression remains unchanged. No shared menu scripts need updating.
 
-## Verification limits
+## Verification notes
 
-`node --test scripts/test-youtube-tools.js` covers the timer duration, fullscreen overlay state, separated speed display, Android Edge-only native-button selector scope, speed presets, orientation handling and navigation restoration. The captured DOM test does not prove selectors match every current YouTube mobile release or reproduce browser compositor behavior, so Android Edge real-device confirmation is needed.
+`node --test scripts/test-better-discord.js` covers the opt-in diagnostics rendering, captured viewport values, initial fix-off behavior, fix toggle/restore, and Windows exclusion, alongside previous keyboard-layout and button tests. These DOM mocks cannot reproduce Android Edge's keyboard compositor; live screenshots and the JSON report are needed before choosing another CSS correction.
