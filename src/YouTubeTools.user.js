@@ -884,7 +884,6 @@ html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
 /* Keep YouTube's native play, volume, CC, gear and seek controls. Only hide
    its competing fullscreen/restore controls on Android Edge watch pages. */
 html.tm-yt-edge-alt-fullscreen .ytp-fullscreen-button,
-html.tm-yt-edge-alt-fullscreen .ytp-size-button,
 html.tm-yt-edge-alt-fullscreen ytm-player .fullscreen-button,
 html.tm-yt-edge-alt-fullscreen ytm-player [class*="fullscreen-button"],
 html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="full screen" i],
