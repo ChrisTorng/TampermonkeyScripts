@@ -120,7 +120,7 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(button.getAttribute('aria-pressed'), 'true');
     });
 
-    test('non-matched URLs no longer auto-enable mobile view even on tiny-font pages', () => {
+    test('non-matched URL with insufficient sampled text remains off', () => {
         const { harness } = executeForceMobileView('https://lcamtuf.coredump.cx/prep/index-old.shtml', {
             fixtureHtml: lcamtufFixtureHtml,
             computedFontSize(element) {
