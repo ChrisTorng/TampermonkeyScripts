@@ -54,7 +54,7 @@ function setup({ v2 = null, settings = fakeConfig, url = 'https://hackernews.bet
     const createElement = h.document.createElement.bind(h.document);
     h.document.createElement = (name) => {
         const element = createElement(name);
-        element.focus = () => {};
+        element.focus = () => { state.focused = element; };
         element.replaceChildren = (...children) => {
             for (const child of [...element.children]) element.removeChild(child);
             element.append(...children);
@@ -260,6 +260,27 @@ describe('CloudMark category dropdown on captured BetaCat articles', () => {
         const { state } = setup(); state.run(); await settle(); await open(state);
         const first = panel(state); await open(state, 1); assert.notEqual(panel(state), first);
         const current = panel(state); current.dispatchEvent({ type: 'toggle', newState: 'closed' });
+        assert.equal(state.buttons()[1].getAttribute('aria-expanded'), 'false');
+    });
+    test('replaces New category in place with a focused input and Add, and closes explicitly', async () => {
+        const { state } = setup(); state.run(); await settle(); await open(state);
+        const current = panel(state);
+        const before = [...current.children];
+        const action = item(state, '+ New category');
+        const index = before.indexOf(action);
+        action.click();
+        const form = current.querySelector('form');
+        assert.equal(current.children[index], form, 'Input replaces the existing action in the same position.');
+        assert.equal(item(state, '+ New category'), undefined);
+        assert.equal(state.focused, form.querySelector('input'));
+        assert.equal(form.querySelector('button').textContent, 'Add');
+        form.querySelector('input').value = 'Music';
+        form.dispatchEvent({type:'submit', preventDefault(){}}); await settle();
+        assert.equal(JSON.parse(postCalls(state)[0].data).category, 'Music');
+        await open(state, 1);
+        const close = panel(state).querySelector('.menu-close');
+        assert.equal(close.getAttribute('aria-label'), 'Close CloudMark menu');
+        close.click();
         assert.equal(state.buttons()[1].getAttribute('aria-expanded'), 'false');
     });
     test('keeps a new-category form open while the mobile keyboard resizes the viewport', async () => {

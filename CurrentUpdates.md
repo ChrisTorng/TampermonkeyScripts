@@ -2,13 +2,13 @@
 
 Updated: 2026-10-31
 
-## CloudMark — 2026-10-31_1.1.0
+## CloudMark — 2026-10-31_1.1.1
 
 [Install CloudMark.user.js](src/CloudMark.user.js) · Reload BetaCat after updating.
 
-- Icon-only ☆/✓ buttons open category menus; select a category to save.
-- Switch collections, connect/create collections, and add categories; existing settings are retained.
+- Narrower category menu with a top-right close button.
+- New category becomes an inline focused input with Add on the right.
 
 **Test pages:**
-- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) / [Dated](https://hackernews.betacat.io/daily/2026-10-29/) — tap ☆, choose a category, expect ✓.
-- [Local demo](tests/CloudMark/index.html) — try collection switching and new categories without real writes.
+- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) — tap ☆; try close, category selection, and inline category creation.
+- [Local demo](tests/CloudMark/index.html) — test without real writes.

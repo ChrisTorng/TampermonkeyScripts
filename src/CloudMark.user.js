@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CloudMark
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-31_1.1.0
-// @description  Save Hacker News Summary topics with icon buttons, collection switching, and category menus.
+// @version      2026-10-31_1.1.1
+// @description  Save Hacker News Summary topics with icon buttons, compact category menus, and collection switching.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudMark.user.js
@@ -212,10 +212,16 @@
             button.addEventListener('click', callback);
             return button;
         };
-        add('div', 'Collection', 'caption');
+        const header = add('div', '', 'menu-header');
+        const close = document.createElement('button');
+        close.type = 'button'; close.className = 'menu-close'; close.textContent = '×';
+        close.setAttribute('aria-label', 'Close CloudMark menu');
+        close.addEventListener('click', closeMenu);
+        header.appendChild(close);
         if (collections.length) {
             const select = add('select', '', 'collections');
             select.setAttribute('aria-label', 'Collection');
+            header.insertBefore(select, close);
             for (const settings of collections) {
                 const option = document.createElement('option');
                 option.value = settings.mark;
@@ -229,7 +235,7 @@
                 for (const control of controls.values()) control.error = '';
                 persist(); render(); drawMenu(); void loadMenu();
             });
-            add('div', menu.loading ? 'Loading categories…' : 'Category — tap to save', 'caption');
+            add('div', menu.loading ? 'Loading…' : 'Category', 'caption');
             const state = snapshot();
             const url = articleData(link).url;
             const busy = pending.has(config.mark + '\n' + url);
@@ -241,13 +247,17 @@
             const error = controls.get(link).error;
             if (error) add('p', error, 'error');
             action('+ New category', (event) => {
-                event.currentTarget.disabled = true;
-                const form = add('form', '', 'new-category');
+                const target = event.currentTarget;
+                const form = document.createElement('form');
+                form.className = 'new-category';
+                target.parentNode.insertBefore(form, target);
+                target.remove();
                 const input = document.createElement('input');
                 input.placeholder = 'Category name'; input.maxLength = 50;
                 input.setAttribute('aria-label', 'New category');
                 const submit = document.createElement('button');
-                submit.type = 'submit'; submit.textContent = 'Add and save';
+                submit.type = 'submit'; submit.textContent = 'Add';
+                submit.title = 'Add category and save article';
                 form.append(input, submit);
                 form.addEventListener('submit', (event) => {
                     event.preventDefault();
@@ -289,9 +299,15 @@
         if (!menu) return;
         const { panel, link } = menu;
         const rect = controls.get(link).button.getBoundingClientRect();
+        const viewport = window.visualViewport;
+        const width = viewport?.width ?? window.innerWidth;
+        const height = viewport?.height ?? window.innerHeight;
+        const left = viewport?.offsetLeft ?? 0;
+        const top = viewport?.offsetTop ?? 0;
+        panel.style.setProperty('--menu-height', height + 'px');
         const bounds = panel.getBoundingClientRect();
-        panel.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8)) + 'px';
-        panel.style.top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - bounds.height - 8)) + 'px';
+        panel.style.left = Math.max(left + 8, Math.min(rect.left, left + width - bounds.width - 8)) + 'px';
+        panel.style.top = Math.max(top + 8, Math.min(rect.bottom + 4, top + height - bounds.height - 8)) + 'px';
     }
 
     function openMenu(link) {
@@ -302,16 +318,21 @@
         const style = document.createElement('style');
         style.textContent = `
             :host { all: initial; }
-            .panel { box-sizing: border-box; position: fixed; margin: 0; padding: 8px; width: min(300px, calc(100vw - 16px));
-                max-height: min(420px, calc(100dvh - 16px)); overflow: auto; border: 1px solid #91a4b8; border-radius: 10px;
-                background: #fff; color: #18212b; box-shadow: 0 6px 24px #0003; font: 15px/1.5 system-ui,sans-serif; }
+            .panel { box-sizing: border-box; position: fixed; margin: 0; padding: 8px; width: min(224px, calc(100vw - 16px));
+                max-height: min(360px, calc(var(--menu-height, 100dvh) - 16px)); overflow: auto; border: 1px solid #91a4b8; border-radius: 10px;
+                background: #fff; color: #18212b; box-shadow: 0 6px 24px #0003; font: 14px/1.35 system-ui,sans-serif; }
             .panel::backdrop { background: transparent; }
-            button, select, input { box-sizing: border-box; display: block; width: 100%; min-height: 42px; margin: 3px 0;
-                padding: 8px 10px; border: 1px solid #c1cbd5; border-radius: 6px; background: #fff; color: #18212b;
+            button, select, input { box-sizing: border-box; display: block; width: 100%; min-height: 36px; margin: 2px 0;
+                padding: 5px 8px; border: 1px solid #c1cbd5; border-radius: 6px; background: #fff; color: #18212b;
                 font: inherit; text-align: left; overflow-wrap: anywhere; }
             button { cursor: pointer; } button:hover, button:focus-visible { background: #e5f1ff; }
-            button:disabled { opacity: .55; cursor: default; } .caption { color: #53667b; font-size: 13px; padding: 4px; }
-            .error { margin: 6px; color: #a21616; overflow-wrap: anywhere; } .new-category { margin: 8px 0; }
+            button:disabled { opacity: .55; cursor: default; } .caption { color: #53667b; font-size: 12px; padding: 3px; }
+            .error { margin: 6px; color: #a21616; overflow-wrap: anywhere; } .menu-header { display: flex; align-items: center; gap: 4px; position: sticky; top: -8px; background: #fff; }
+            .menu-header select { flex: 1; min-width: 0; width: 0; text-overflow: ellipsis; }
+            .menu-close { flex: 0 0 36px; width: 36px; font-size: 22px; line-height: 1; text-align: center; }
+            .new-category { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+            .new-category input { flex: 1; min-width: 0; width: 0; font-size: 16px; }
+            .new-category button { flex: none; width: auto; }
         `;
         const panel = document.createElement('div');
         panel.className = 'panel';

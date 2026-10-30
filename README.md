@@ -39,7 +39,7 @@ Update each script below separately as needed.
 
 ### [CloudMark User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudMark.user.js)
 
-Save Hacker News Summary topics with icon buttons, collection switching, and category menus.
+Save Hacker News Summary topics with icon buttons, compact category menus, and collection switching.
 
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
