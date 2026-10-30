@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.6.0
-// @description  Place YouTube speed controls below the player and reveal them on demand in custom fullscreen.
+// @version      2026-10-30_1.7.0
+// @description  Keep opaque YouTube speed controls below the player, with one-second fullscreen reveal and Edge-native fullscreen buttons hidden.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -832,6 +832,71 @@ html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
     display: none !important;
 }
 
+/* Non-fullscreen watch page: the row is in normal flow and is opaque. */
+#tm-yt-speed-overlay:not(.tm-yt-toolbar--custom-fullscreen) {
+    background: #202020 !important;
+}
+
+/* The alternative fullscreen player uses real, separately sized step controls.
+   Speed text is a normal center cell here, never laid over the arrow targets. */
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen {
+    width: min(410px, calc(100% - 24px)) !important;
+    background: rgba(0,0,0,.6) !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-toolbar__controls {
+    gap: 5px !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-speed-overlay__stepper {
+    display: flex !important;
+    flex: 0 0 136px !important;
+    width: 136px !important;
+    height: 44px !important;
+    gap: 0 !important;
+    background: rgba(50,50,50,.9) !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click--left {
+    order: 0 !important;
+    justify-content: center !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__click--right {
+    order: 2 !important;
+    justify-content: center !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-speed-overlay__stepper .tm-yt-speed-overlay__value {
+    position: static !important;
+    order: 1 !important;
+    transform: none !important;
+    flex: 0 0 48px !important;
+    width: 48px !important;
+    height: 44px !important;
+    border-radius: 0 !important;
+    pointer-events: none !important;
+}
+#tm-yt-speed-overlay.tm-yt-toolbar--custom-fullscreen .tm-yt-speed-overlay__presets .tm-yt-speed-overlay__preset {
+    min-width: 0 !important;
+}
+
+/* Keep YouTube's native play, volume, CC, gear and seek controls. Only hide
+   its competing fullscreen/restore controls on Android Edge watch pages. */
+html.tm-yt-edge-alt-fullscreen .ytp-fullscreen-button,
+html.tm-yt-edge-alt-fullscreen .ytp-size-button,
+html.tm-yt-edge-alt-fullscreen ytm-player .fullscreen-button,
+html.tm-yt-edge-alt-fullscreen ytm-player [class*="fullscreen-button"],
+html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="full screen" i],
+html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="fullscreen" i],
+html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="全螢幕"],
+html.tm-yt-edge-alt-fullscreen ytm-player button[aria-label*="全屏"],
+html.tm-yt-edge-alt-fullscreen ytm-player button:has(.fullscreen-icon),
+html.tm-yt-edge-alt-fullscreen ytm-player button:has([class*="fullscreen-icon"]),
+html.tm-yt-edge-alt-fullscreen ytm-player-controls button[aria-label*="full screen" i] {
+    display: none !important;
+}
+
 `;
         document.head.appendChild(style);
     }
@@ -1096,7 +1161,7 @@ html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
                 overlay?.classList.remove('tm-yt-toolbar--revealed');
             }
             session.revealTimer = null;
-        }, 3500);
+        }, 1000);
     }
 
     function onFullscreenSurfacePress(event) {
@@ -1208,10 +1273,12 @@ html.tm-yt-alternative-fullscreen-active #tm-fullscreen-game-view-button,
     function handleRouteChange() {
         if (fullscreenSession) exitAlternativeFullscreen(true);
         if (isWatchPage()) {
+            if (isAndroidEdge) document.documentElement.classList.add('tm-yt-edge-alt-fullscreen');
             createOverlay();
             mountInlineToolbar();
             hideGenericFullscreenButton();
         } else {
+            document.documentElement.classList.remove('tm-yt-edge-alt-fullscreen');
             removeAlternativeFullscreenButton();
             removeOverlay();
         }
