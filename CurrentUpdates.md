@@ -2,16 +2,13 @@
 
 Updated: 2026-10-31
 
-## Force Mobile View — 2026-10-31_2.1.2
+## CloudMark — 2026-10-31_1.3.0
 
-[Install ForceMobileView.user.js](src/ForceMobileView.user.js) · Reload the page after updating.
+[Install CloudMark.user.js](src/CloudMark.user.js) · Reload BetaCat after updating.
 
-- Android: detect tiny text; apply early mobile layout on Stack Exchange Data Explorer.
-- Improve line heights, reduce excessive page overflow, and preserve the ↔ manual switch. Further layout refinement may be needed.
+- Open cached category menus immediately; refresh in the background without clearing active input.
+- Close immediately on selection; update badges after saving, or show Retry / Choose category on failure.
 
 **Test pages:**
-- [Data Explorer query](https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1) — check text size, wrapping, scrolling, and ↔ on/off.
-- [Tiny-font example](https://lcamtuf.coredump.cx/prep/index-old.shtml) — check readable text.
-- [Hacker News](https://news.ycombinator.com/item?id=46255285) / [Archive Today](https://archive.is/75aY9) — verify existing URL-based behavior.
-
-Only `ForceMobileView.user.js` needs updating; shared floating-menu scripts are unchanged.
+- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) — choose a category and continue browsing immediately.
+- [Local demo](tests/CloudMark/index.html) — delayed responses and simulated save failures; no real writes.

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudMark · local BetaCat demo</title>
+<style>
+    body { margin: 24px auto; padding: 0 16px; max-width: 780px; color: #243243; background: #fff; font: 16px/1.6 system-ui,sans-serif; }
+    h1 { font-size: 24px; } h3 { font-size: 22px; line-height: 1.5; margin-bottom: 10px; }
+    article { border-top: 1px solid #cbd5df; padding: 16px 0; } a { color: #185c96; }
+    button { padding: 8px 14px; font: inherit; } .note { background: #eef5fb; padding: 12px; border-radius: 8px; }
+    #result { overflow-wrap: anywhere; }
+</style>
+<h1>CloudMark · BetaCat save buttons</h1>
+<p class="note">Local demo only: a fake token and an in-memory Cloudmark API. Choosing a category sends no network request and does not open an article.</p>
+<button id="settings" type="button">CloudMark settings</button>
+<button id="fail-next" type="button">Fail next save</button>
+<p id="result" role="status">Ready. Tap a Cloudmark button after either topic.</p>
+<article class="post-item">
+    <div class="post-title"><h3><a class="post-url" href="https://lars.ingebrigtsen.no/2026/02/02/whats-up-with-all-those-equals-signs-anyway/">What's up with all those equals signs anyway?</a></h3></div>
+    <div class="summary-text">People are posting old emails with equals signs left over from quoted-printable decoding.</div>
+</article>
+<article class="post-item">
+    <div class="post-title"><h3><a class="post-url" href="https://example.com/second-topic">A second article for testing independent save states</a></h3></div>
+    <div class="summary-text">Menus and browsing stay usable while requests run in the background. Saved category badges remain clickable for editing.</div>
+</article>
+<script>
+    let failNextSave = false;
+    document.getElementById('fail-next').addEventListener('click', () => {
+        failNextSave = true; document.getElementById('result').textContent = 'The next save will fail. Try Retry in the notice.';
+    });
+    const settings = new Map([['cloudmark.settings.v1', { mark: 'local-demo', token: 'fake_token_for_local_tests_only_123', category: '' }]]);
+    const collections = new Map([
+        ['local-demo', [{ url: 'https://example.com/existing', category: 'AI' }]],
+        ['music-demo', [{ url: 'https://example.com/music', category: 'Music' }]],
+    ]);
+    settings.set('cloudmark.settings.v2', { selectedMark: 'local-demo', collections: [
+        settings.get('cloudmark.settings.v1'), { mark: 'music-demo', token: 'other_fake_token_for_tests_123', category: 'Music' },
+    ] });
+    window.GM_getValue = (key, fallback) => settings.get(key) ?? fallback;
+    window.GM_setValue = (key, value) => settings.set(key, value);
+    window.GM_registerMenuCommand = (_name, callback) => document.getElementById('settings').addEventListener('click', callback);
+    window.GM_xmlhttpRequest = (options) => {
+        if (options.method !== 'GET' && !options.url.endsWith('/claim') && failNextSave) {
+            failNextSave = false;
+            setTimeout(() => options.onload({ status: 503, finalUrl: options.url, responseText: JSON.stringify({error:'Simulated save failure. Retry is safe.'}) }), 1800);
+            return;
+        }
+        let data;
+        if (options.method === 'GET') {
+            const mark = decodeURIComponent(new URL(options.url).pathname.split('/').pop());
+            data = { exists: collections.has(mark), bookmarksData: { bookmarks: collections.get(mark) || [] }, settings: { defaultCategory: 'reading' } };
+        } else if (options.url.endsWith('/claim')) {
+            const body = JSON.parse(options.data);
+            const created = !collections.has(body.mark);
+            if (created) collections.set(body.mark, []);
+            data = { created };
+        } else {
+            const body = JSON.parse(options.data);
+            const bookmarks = collections.get(body.mark);
+            const existing = options.method === 'PUT' ? bookmarks.find((bookmark) => bookmark.uuid === body.uuid) : null;
+            data = { uuid: existing?.uuid || 'local-' + (bookmarks.length + 1), url: body.url, title: body.title, category: body.category };
+            if (existing) Object.assign(existing, data); else bookmarks.push(data);
+            document.getElementById('result').textContent = 'Saved locally: ' + body.title + ' · ' + body.mark + ' / ' + body.category;
+        }
+        const responseText = JSON.stringify(data);
+        setTimeout(() => options.onload({ status: 200, finalUrl: options.url, responseText }), options.method === 'GET' ? 1200 : 1800);
+    };
+</script>
+<script src="../../src/CloudMark.user.js"></script>
+</html>
