@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-28_1.5.6
-// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, and Wikipedia translation.
+// @version      2026-11-01_1.5.7
+// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Aatish Bhatia translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
@@ -751,6 +751,7 @@
     }
 
     function scan(root = document) {
+        enableAatishFullPageNavigation(root);
         enableMastodonTranslation(root);
         revealWikipediaSections(root);
         if (root.nodeType === 1 && isSpecialBlock(root)) {
@@ -785,6 +786,28 @@
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
         updateAllButton();
+    }
+
+    function enableAatishFullPageNavigation(root) {
+        if (location.hostname !== 'aatishb.com') return;
+
+        const links = [];
+        if (root.nodeType === 1 && root.tagName === 'A' && root.hasAttribute('href')) {
+            links.push(root);
+        }
+        if (root.querySelectorAll) links.push(...root.querySelectorAll('a[href]'));
+        links.forEach((link) => {
+            let url;
+            try {
+                url = new URL(link.getAttribute('href'), document.baseURI || location.href);
+            } catch {
+                return;
+            }
+            if (url.origin !== location.origin) return;
+            if (url.pathname === location.pathname && url.search === location.search) return;
+            // Astro's supported opt-out gives browser translation a new document to process.
+            link.setAttribute('data-astro-reload', 'true');
+        });
     }
 
     function enableMastodonTranslation(root) {

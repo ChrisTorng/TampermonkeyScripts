@@ -42,6 +42,61 @@ function addPre(harness, text, className = '') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('Aatish article navigation opts out of Astro swaps while fragments and external links remain unchanged', () => {
+        const links = [];
+        execute((harness) => {
+            for (const href of [
+                '/blog/2026/introducing-myriad/',
+                'https://aatishb.com/myriad/lets-build-a-brain/',
+                '/blog/2026/ai-jagged-intelligence/#more',
+                '?page=2',
+                '#more',
+                '/blog/#more',
+                'https://example.com/article',
+                'mailto:hello@aatishb.com',
+                'javascript:void(0)',
+                'https://[invalid'
+            ]) {
+                const link = harness.document.createElement('a');
+                link.setAttribute('href', href);
+                harness.appendToBody(link);
+                links.push(link);
+            }
+        }, 'https://aatishb.com/blog/');
+
+        links.forEach((link, index) => {
+            assert.equal(link.hasAttribute('data-astro-reload'), index < 4, link.getAttribute('href'));
+        });
+        assert.equal(links[2].getAttribute('href'), '/blog/2026/ai-jagged-intelligence/#more');
+    });
+
+    test('Aatish links added after startup are also prepared, including nested links', () => {
+        const harness = execute(() => {}, 'https://aatishb.com/blog/');
+        const link = harness.document.createElement('a');
+        link.setAttribute('href', '/about/');
+        harness.appendToBody(link);
+        harness.triggerMutation([link]);
+        assert.equal(link.hasAttribute('data-astro-reload'), true);
+
+        const container = harness.document.createElement('section');
+        const nested = harness.document.createElement('a');
+        nested.setAttribute('href', '/myriad/');
+        container.appendChild(nested);
+        harness.appendToBody(container);
+        harness.triggerMutation([container]);
+        assert.equal(nested.hasAttribute('data-astro-reload'), true);
+    });
+
+    test('Astro navigation on other sites is unaffected', () => {
+        let link;
+        execute((harness) => {
+            link = harness.document.createElement('a');
+            link.setAttribute('href', '/blog/article/');
+            harness.appendToBody(link);
+        }, 'https://another-astro-site.example/blog/');
+        assert.equal(link.hasAttribute('data-astro-reload'), false);
+    });
+
     test('inline code is replaced in place before automatic translation can reorder it', () => {
         let paragraph;
         const harness = execute((currentHarness) => {
