@@ -74,7 +74,8 @@ function createElement(tag) {
 
 function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer = '',
     sessionStorageSeed = {}, tabSeed = {}, historyState = null, navigationType = 'navigate',
-    earlyDocument = false, deferTabSave = false, menuRect = null, menuExpanded = false }) {
+    earlyDocument = false, deferTabSave = false, menuRect = null, menuExpanded = false,
+    readyState = 'complete' }) {
     const historyCalls = [];
     const replaceCalls = [];
     const commands = new Map();
@@ -114,6 +115,7 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
     const timers = [];
     const document = {
         referrer,
+        readyState,
         listeners: {},
         documentElement: html,
         body: earlyDocument ? null : body,
@@ -149,6 +151,8 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
     };
     windowObject.performance = { getEntriesByType: () => [{ type: navigationType }] };
     windowObject.setTimeout = (callback) => { timers.push(callback); };
+    windowObject.listeners = {};
+    windowObject.addEventListener = (name, callback) => { windowObject.listeners[name] = callback; };
 
     windowObject.window = windowObject;
     windowObject.self = windowObject;
@@ -189,6 +193,11 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
         commands, replaceCalls, document, body, observers, timers,
         flushSaves() { while (pendingSaves.length) pendingSaves.shift()(); },
         ready() { document.body = body; document.listeners.DOMContentLoaded?.(); },
+        load() {
+            document.readyState = 'complete';
+            windowObject.listeners.load?.();
+            while (timers.length) timers.shift()();
+        },
         historyCalls,
         logs,
         warnings,
@@ -200,7 +209,8 @@ function assertRedirectCase(testCase) {
     const fixtureHtml = loadFixture(testCase.fixture);
     const result = executeUserScript({
         sourceUrl: testCase.sourceUrl,
-        fixtureHtml
+        fixtureHtml,
+        referrer: testCase.referrer || ''
     });
 
     assert.strictEqual(
@@ -208,6 +218,13 @@ function assertRedirectCase(testCase) {
         testCase.expectedTargetUrl,
         `${testCase.name}: expected redirect target.`
     );
+    if (testCase.name.endsWith('status')) {
+        assert.equal(result.historyCalls.length, 0, 'do not add a duplicate original URL entry');
+        assert.equal(result.historyState.redirectUrlsXOriginal, testCase.sourceUrl);
+        assert.equal(result.tabSnapshot.redirectUrlsX.originalUrl, testCase.sourceUrl);
+        assert.deepEqual(result.warnings, []);
+        return;
+    }
     assert.strictEqual(result.historyCalls.length, 1, `${testCase.name}: expected one history.pushState call.`);
     assert.strictEqual(
         result.historyCalls[0].url,
@@ -243,30 +260,6 @@ function assertSkipBySessionCase(testCase) {
         result.sessionStorageSnapshot[testCase.sessionKey],
         undefined,
         `${testCase.name}: expected skip path to clear the stored redirect ID.`
-    );
-    assert(
-        result.logs.some((line) => line.includes('Skip redirect')),
-        `${testCase.name}: expected a skip log entry.`
-    );
-}
-
-function assertSkipByReferrerCase(testCase) {
-    const fixtureHtml = loadFixture(testCase.fixture);
-    const result = executeUserScript({
-        sourceUrl: testCase.sourceUrl,
-        fixtureHtml,
-        referrer: testCase.referrer,
-        sessionStorageSeed: {
-            [testCase.sessionKey]: 'stale-value'
-        }
-    });
-
-    assert.strictEqual(result.assignedUrl, null, `${testCase.name}: expected no redirect when referrer is already redirected site.`);
-    assert.strictEqual(result.historyCalls.length, 0, `${testCase.name}: expected no history.pushState on referrer skip.`);
-    assert.strictEqual(
-        result.sessionStorageSnapshot[testCase.sessionKey],
-        undefined,
-        `${testCase.name}: expected referrer skip path to clear the stored redirect ID.`
     );
     assert(
         result.logs.some((line) => line.includes('Skip redirect')),
@@ -429,8 +422,10 @@ describe('RedirectUrls captured pages', () => {
     });
 
     for (const testCase of redirectCases.filter((item) => item.name.endsWith('status'))) {
-        test(`${testCase.name} skips redirect after Back using sessionStorage`, () => {
-            assertSkipBySessionCase(testCase);
+        test(`${testCase.name} ignores stale session-wide redirect suppression on fresh visits`, () => {
+            const result = executeUserScript({ sourceUrl: testCase.sourceUrl,
+                sessionStorageSeed: { [testCase.sessionKey]: testCase.redirectId } });
+            assert.equal(result.assignedUrl, testCase.expectedTargetUrl);
         });
 
         test(`${testCase.name} opens the canonical first-viewer post from a shared photo link`, () => {
@@ -448,12 +443,9 @@ describe('RedirectUrls captured pages', () => {
     }
 
     for (const testCase of redirectCases.filter((item) => item.skipReferrer)) {
-        test(`${testCase.name} skips redirect when returning from the redirected site`, () => {
-            assertSkipByReferrerCase({
-                name: `${testCase.name} referrer skip`,
-                fixture: testCase.fixture,
-                sourceUrl: testCase.sourceUrl,
-                sessionKey: testCase.sessionKey,
+        test(`${testCase.name} redirects fresh links even when opened from a viewer`, () => {
+            assertRedirectCase({
+                ...testCase,
                 referrer: testCase.skipReferrer
             });
         });
@@ -477,6 +469,90 @@ describe('X viewer fallback and original-page navigation', () => {
     const firstUrl = 'https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812';
     const secondUrl = 'https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812';
 
+    test('history keeps X -> first -> second -> X and supports Back/Forward through every entry', () => {
+        // Explicit history model: assign appends, replace overwrites, traversal restores entry state.
+        const entries = [];
+        let index = -1;
+        let tab = {};
+        let page;
+        function load(type = 'navigate') {
+            const entry = entries[index];
+            page = executeUserScript({ sourceUrl: entry.url, historyState: entry.state,
+                tabSeed: tab, navigationType: type });
+            entry.state = page.historyState;
+            tab = page.tabSnapshot;
+            assert.equal(page.historyCalls.length, 0, 'never push a duplicate X entry');
+            assert.equal(page.replaceCalls.length, 0, 'never discard a visited viewer');
+            if (page.assignedUrl) open(page.assignedUrl);
+        }
+        function open(url) {
+            entries.splice(index + 1);
+            entries.push({ url, state: null });
+            index++;
+            load();
+        }
+        function click(label) {
+            page.commands.get(label)();
+            tab = page.tabSnapshot;
+            assert.deepEqual(page.replaceCalls, []);
+            open(page.assignedUrl);
+        }
+        open(originalUrl);
+        assert.deepEqual(entries.map((entry) => entry.url), [originalUrl, firstUrl]);
+        click('Next viewer');
+        click('Return to original');
+        assert.deepEqual(entries.map((entry) => entry.url), [originalUrl, firstUrl, secondUrl, originalUrl]);
+        for (const expected of [secondUrl, firstUrl, originalUrl]) {
+            index--;
+            load('back_forward');
+            assert.equal(entries[index].url, expected);
+            assert.equal(page.assignedUrl, null, 'Back does not restart automatic redirection');
+            assert.equal(entries.length, 4);
+        }
+        for (const expected of [firstUrl, secondUrl, originalUrl]) {
+            index++;
+            load('back_forward');
+            assert.equal(entries[index].url, expected);
+            assert.equal(page.assignedUrl, null, 'Forward preserves the recorded entry');
+        }
+        load('reload');
+        assert.equal(page.assignedUrl, null);
+        open(originalUrl);
+        assert.deepEqual(entries.slice(-2).map((entry) => entry.url), [originalUrl, firstUrl],
+            'freshly opening the same URL automatically redirects again');
+    });
+
+    test('automatic navigation waits until load completes so X is not implicitly replaced', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl, readyState: 'loading' });
+        assert.equal(source.assignedUrl, null);
+        assert.equal(source.historyCalls.length, 0);
+        source.load();
+        assert.equal(source.assignedUrl, firstUrl);
+        assert.deepEqual(source.replaceCalls, []);
+    });
+
+    test('a restored viewer entry retains its own exact source after another post was visited', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const viewer = executeUserScript({ sourceUrl: firstUrl, tabSeed: source.tabSnapshot });
+        const restored = executeUserScript({ sourceUrl: firstUrl, historyState: viewer.historyState,
+            tabSeed: { redirectUrlsX: { originalUrl: 'https://x.com/NASA/status/123', postId: '123' } },
+            navigationType: 'back_forward' });
+        restored.commands.get('Return to original')();
+        assert.equal(restored.assignedUrl, originalUrl);
+    });
+
+    test('expired or unrelated explicit-return tokens do not suppress fresh X visits', () => {
+        for (const returnOnce of [
+            { url: originalUrl, createdAt: Date.now() - 60000 },
+            { url: 'https://x.com/NASA/status/123', createdAt: Date.now() }
+        ]) {
+            const page = executeUserScript({ sourceUrl: originalUrl,
+                tabSeed: { redirectUrlsX: { originalUrl, returnOnce } } });
+            assert.equal(page.assignedUrl, firstUrl);
+            assert.equal(page.tabSnapshot.redirectUrlsX.returnOnce, undefined);
+        }
+    });
+
     test('source -> first -> second -> exact original -> reload stays on original', () => {
         const source = executeUserScript({ sourceUrl: originalUrl, deferTabSave: true });
         assert.equal(source.assignedUrl, null, 'save the cross-origin source before navigating');
@@ -485,15 +561,18 @@ describe('X viewer fallback and original-page navigation', () => {
         const first = executeUserScript({ sourceUrl: firstUrl, tabSeed: source.tabSnapshot });
         first.commands.get('Next viewer')();
         assert.equal(first.assignedUrl, secondUrl);
-        assert.deepEqual(first.replaceCalls, [secondUrl], 'failed viewer is replaced in history');
+        assert.deepEqual(first.replaceCalls, [], 'keep the first viewer in history');
         const second = executeUserScript({ sourceUrl: secondUrl, tabSeed: first.tabSnapshot });
         assert.equal(second.commands.has('Next viewer'), false, 'never wrap to the first viewer');
         second.commands.get('Return to original')();
         assert.equal(second.assignedUrl, originalUrl, 'retain Twitter host, photo suffix, query and hash');
         const original = executeUserScript({ sourceUrl: originalUrl, tabSeed: second.tabSnapshot });
         assert.equal(original.assignedUrl, null, 'explicit return works without referrer or session');
+        assert.equal(original.tabSnapshot.redirectUrlsX.returnOnce, undefined, 'consume only this return');
         const reload = executeUserScript({ sourceUrl: originalUrl, historyState: original.historyState });
         assert.equal(reload.assignedUrl, null);
+        assert.equal(executeUserScript({ sourceUrl: originalUrl,
+            tabSeed: original.tabSnapshot }).assignedUrl, firstUrl, 'a new visit to the same URL redirects');
         const freshPost = executeUserScript({
             sourceUrl: 'https://twitter.com/NASA/status/123', tabSeed: second.tabSnapshot
         });
@@ -628,11 +707,11 @@ describe('X viewer fallback and original-page navigation', () => {
         assert.equal(homepage.body.children.length, 0);
     });
 
-    test('all viewer referrers allow staying on X; lookalike hosts do not', () => {
+    test('fresh X links redirect regardless of referrer; unrelated sites are untouched', () => {
         for (const host of ['nitter.tiekoetter.com', 'nitter.meowing.monster',
             'xnologin.com', 'shitter.thepixora.com']) {
             assert.equal(executeUserScript({ sourceUrl: originalUrl,
-                referrer: `https://${host}/` }).assignedUrl, null);
+                referrer: `https://${host}/` }).assignedUrl, firstUrl);
         }
         assert.equal(executeUserScript({ sourceUrl: originalUrl,
             referrer: 'https://nitter.tiekoetter.com.attacker.example/' }).assignedUrl, firstUrl);

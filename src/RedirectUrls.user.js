@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         RedirectUrls
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-01_1.6.1
-// @description  Redirect supported pages to readable destinations, with a compact X viewer fallback arrow and original-page Back navigation.
+// @version      2026-11-01_1.6.2
+// @description  Redirect supported pages to readable destinations, with a compact X viewer fallback arrow and normal browsing history.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js
@@ -48,12 +48,11 @@
         }
     }
 
-    function isViewerReferrer() {
-        try {
-            return [...viewerHosts, ...xHosts].includes(new URL(document.referrer).hostname);
-        } catch {
-            return false;
-        }
+    function visitXPage(targetUrl) {
+        const navigate = () => window.location.assign(targetUrl);
+        // Before load completes, Location.assign may replace the current history entry.
+        if (document.readyState === 'complete') navigate();
+        else window.addEventListener('load', () => window.setTimeout(navigate, 0), { once: true });
     }
 
     function markOriginalPage() {
@@ -67,32 +66,26 @@
     function handleXSource() {
         const post = getPost(currentUrl, xHosts);
         if (!post) return false;
-        const sessionKey = currentHostname === 'x.com' ?
-            'redirectx-last-redirect-x' : 'redirectx-last-redirect-twitter';
-        const navigation = window.performance?.getEntriesByType?.('navigation')[0];
-        // History markers survive reloads and Back even when referrers are stripped.
-        const shouldSkip = history.state?.redirectUrlsXOriginal === currentUrl ||
-            sessionStorage.getItem(sessionKey) === post.id ||
-            navigation?.type === 'back_forward' || isViewerReferrer();
-        if (shouldSkip) {
-            sessionStorage.removeItem(sessionKey);
-            markOriginalPage();
-            console.log('[RedirectUrls] Skip redirect (X original page) to preserve Back navigation');
-            return true;
-        }
-
         GM_getTab((tab) => {
+            const saved = tab.redirectUrlsX;
+            const pending = saved?.returnOnce;
+            if (pending) delete saved.returnOnce;
+            const age = pending ? Date.now() - pending.createdAt : -1;
+            const returning = pending?.url === currentUrl && age >= 0 && age < 30000;
+            const navigation = window.performance?.getEntriesByType?.('navigation')[0];
+            // Only the existing history entry is exempt; fresh visits to the same URL redirect again.
+            if (history.state?.redirectUrlsXOriginal === currentUrl ||
+                navigation?.type === 'back_forward' || returning) {
+                markOriginalPage();
+                if (pending) GM_saveTab(tab);
+                console.log('[RedirectUrls] Skip redirect (X history entry)');
+                return;
+            }
             // Tab-scoped extension storage keeps the exact source across viewer origins.
             tab.redirectUrlsX = { originalUrl: currentUrl, postId: post.id };
             GM_saveTab(tab, () => {
-                sessionStorage.setItem(sessionKey, post.id);
-                try {
-                    history.pushState({ ...history.state, redirectedByRedirectUrls: true,
-                        redirectUrlsXOriginal: currentUrl }, '', currentUrl);
-                } catch (error) {
-                    console.warn('Unable to push history state before redirect', error);
-                }
-                window.location.assign(`https://${xViewers[0]}${post.path}`);
+                markOriginalPage();
+                visitXPage(`https://${xViewers[0]}${post.path}`);
             });
         });
         return true;
@@ -102,27 +95,29 @@
         if (!viewerHosts.includes(currentHostname)) return false;
         GM_getTab((tab) => {
             const post = getPost(currentUrl, viewerHosts);
-            const saved = tab.redirectUrlsX;
-            const originalPost = saved && getPost(saved.originalUrl, xHosts);
-            const useSaved = originalPost && saved.postId === originalPost.id &&
-                (!post || saved.postId === post.id);
-            const originalUrl = useSaved ? saved.originalUrl :
+            const savedUrl = history.state?.redirectUrlsXSource || tab.redirectUrlsX?.originalUrl;
+            const originalPost = savedUrl && getPost(savedUrl, xHosts);
+            const useSaved = originalPost && (!post || originalPost.id === post.id);
+            const originalUrl = useSaved ? savedUrl :
                 (post ? `https://x.com${post.path}` : null);
             const targetPost = post || (useSaved ? originalPost : null);
             if (!originalUrl || !targetPost) return;
+            // Preserve source context with this viewer entry even after visiting other posts.
+            history.replaceState({ ...history.state, redirectUrlsXSource: originalUrl }, '', currentUrl);
 
             const index = currentHostname === 'xnologin.com' ? 0 : xViewers.indexOf(currentHostname);
             const nextHost = xViewers[index + 1];
-            // Replace failed viewers so Back goes straight to the original source entry.
+            // Every arrow click adds a normal history entry, including the final return to X.
             const goOriginal = () => {
                 const target = new URL(originalUrl);
-                const state = { originalUrl, postId: targetPost.id, bypass: true };
+                const state = { originalUrl, postId: targetPost.id,
+                    returnOnce: { url: target.href, createdAt: Date.now() } };
                 tab.redirectUrlsX = state;
-                GM_saveTab(tab, () => window.location.replace(target.href));
+                GM_saveTab(tab, () => visitXPage(target.href));
             };
             const goNext = () => {
                 if (nextHost) {
-                    window.location.replace(`https://${nextHost}${targetPost.path}`);
+                    visitXPage(`https://${nextHost}${targetPost.path}`);
                 } else {
                     goOriginal();
                 }
@@ -189,18 +184,7 @@
 
     if (handleXViewer()) return;
 
-    // Explicit return also works with no referrer and with unavailable source storage.
-    if (getPost(currentUrl, xHosts)) {
-        GM_getTab((tab) => {
-            const saved = tab.redirectUrlsX;
-            if (saved?.bypass && saved.originalUrl === currentUrl) {
-                markOriginalPage();
-                return;
-            }
-            handleXSource();
-        });
-        return;
-    }
+    if (handleXSource()) return;
 
     function normalizeUrlString(urlString) {
         const url = new URL(urlString);

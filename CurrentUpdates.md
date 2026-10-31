@@ -2,17 +2,17 @@
 
 Updated: 2026-11-01
 
-## RedirectUrls — 2026-11-01_1.6.1
+## RedirectUrls — 2026-11-01_1.6.2
 
 [Install RedirectUrls.user.js](src/RedirectUrls.user.js) · Reload open X/viewer pages after updating.
 
 - Replace the large toolbar with a separate compact floating → below ≡; no page/header layout changes. Click for Meowing, then the original URL; the existing Archive action stays unchanged.
-- Preserve the exact source URL; Back and reload stay on the original.
+- Keep normal history: X → first viewer → second viewer → X. Back/Forward never repeat the automatic redirect; freshly opening the same X URL redirects again.
 
 **Test pages:**
-- [X post](https://x.com/cocktailpeanut/status/1860756706357022812) — opens Tiekoetter; Back then reload stays on X.
-- [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — floating → opens Meowing; Tampermonkey menu can return directly to X.
-- [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — floating → opens X without redirecting again.
+- [X post](https://x.com/cocktailpeanut/status/1860756706357022812) — follow both arrows, then Back returns through Meowing, Tiekoetter, and the original X entry; reopen the X link to start again.
+- [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — floating → opens Meowing; Back returns to this first viewer.
+- [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — floating → opens X; Back returns to this second viewer.
 
 ## Translate Preformatted Text — 2026-11-01_1.5.8
 
