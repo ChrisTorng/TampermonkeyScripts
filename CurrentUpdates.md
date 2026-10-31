@@ -1,17 +1,16 @@
 # Current updates
 
-Updated: 2026-10-31
+Updated: 2026-11-01
 
-## Force Mobile View — 2026-10-31_2.1.2
+## Translate Preformatted Text — 2026-11-01_1.5.8
 
-[Install ForceMobileView.user.js](src/ForceMobileView.user.js) · Reload the page after updating.
+[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload the page once after updating.
 
-- Android: detect tiny text; apply early mobile layout on Stack Exchange Data Explorer.
-- Improve line heights, reduce excessive page overflow, and preserve the ↔ manual switch. Further layout refinement may be needed.
+- Automatically detect Astro ClientRouter sites and use full-page navigation so browser auto-translation can run after opening pages.
 
 **Test pages:**
-- [Data Explorer query](https://data.stackexchange.com/stackoverflow/query/1926661#graph?t=1) — check text size, wrapping, scrolling, and ↔ on/off.
-- [Tiny-font example](https://lcamtuf.coredump.cx/prep/index-old.shtml) — check readable text.
-- [Hacker News](https://news.ycombinator.com/item?id=46255285) / [Archive Today](https://archive.is/75aY9) — verify existing URL-based behavior.
+- [Blog](https://aatishb.com/blog/) → [article](https://aatishb.com/blog/2026/introducing-myriad/) — open the article from the listing; expect auto-translation without a manual reload.
+- [Metasora Blog](https://metasora.com/blog/) — open the first article in the same tab; expect auto-translation.
+- [Bag of Tricks](https://events-3bg.pages.dev/) — open Reusable Components in the same tab; expect auto-translation.
 
-Only `ForceMobileView.user.js` needs updating; shared floating-menu scripts are unchanged.
+Only `TranslatePreformattedText.user.js` needs updating.

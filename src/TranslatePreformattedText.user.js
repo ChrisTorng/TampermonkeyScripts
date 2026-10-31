@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-10-28_1.5.6
-// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, and Wikipedia translation.
+// @version      2026-11-01_1.5.8
+// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
@@ -489,6 +489,7 @@
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
     const originalBlocks = new WeakMap();
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
+    let astroNavigationEnabled = false;
 
     const style = document.createElement('style');
     style.textContent = `
@@ -751,6 +752,7 @@
     }
 
     function scan(root = document) {
+        enableAstroFullPageNavigation(root);
         enableMastodonTranslation(root);
         revealWikipediaSections(root);
         if (root.nodeType === 1 && isSpecialBlock(root)) {
@@ -785,6 +787,33 @@
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
         updateAllButton();
+    }
+
+    function enableAstroFullPageNavigation(root) {
+        if (!astroNavigationEnabled) {
+            if (!document.querySelector('meta[name="astro-view-transitions-enabled"][content="true"]')) return;
+            astroNavigationEnabled = true;
+            // The router marker can arrive after links when running at document-start.
+            root = document;
+        }
+
+        const links = [];
+        if (root.nodeType === 1 && root.tagName === 'A' && root.hasAttribute('href')) {
+            links.push(root);
+        }
+        if (root.querySelectorAll) links.push(...root.querySelectorAll('a[href]'));
+        links.forEach((link) => {
+            let url;
+            try {
+                url = new URL(link.getAttribute('href'), document.baseURI || location.href);
+            } catch {
+                return;
+            }
+            if (url.origin !== location.origin) return;
+            if (url.pathname === location.pathname && url.search === location.search) return;
+            // Astro's supported opt-out gives browser translation a new document to process.
+            link.setAttribute('data-astro-reload', 'true');
+        });
     }
 
     function enableMastodonTranslation(root) {
