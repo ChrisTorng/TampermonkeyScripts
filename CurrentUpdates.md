@@ -2,17 +2,17 @@
 
 Updated: 2026-11-01
 
-## RedirectUrls — 2026-11-01_1.6.0
+## RedirectUrls — 2026-11-01_1.6.1
 
-[Install RedirectUrls.user.js](src/RedirectUrls.user.js) · Reload open X/viewer pages after updating and accept the new viewer-site permissions.
+[Install RedirectUrls.user.js](src/RedirectUrls.user.js) · Reload open X/viewer pages after updating.
 
-- Use Tiekoetter first; Next viewer opens Meowing, then Return to original ends the chain. Controls also appear in the Tampermonkey menu.
+- Replace the large toolbar with a separate compact floating → below ≡; no page/header layout changes. Click for Meowing, then the original URL; the existing Archive action stays unchanged.
 - Preserve the exact source URL; Back and reload stay on the original.
 
 **Test pages:**
 - [X post](https://x.com/cocktailpeanut/status/1860756706357022812) — opens Tiekoetter; Back then reload stays on X.
-- [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — Next viewer opens Meowing; Return to original opens X.
-- [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — Return to original opens X without redirecting again.
+- [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — floating → opens Meowing; Tampermonkey menu can return directly to X.
+- [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — floating → opens X without redirecting again.
 
 ## Translate Preformatted Text — 2026-11-01_1.5.8
 

@@ -46,11 +46,27 @@ function createSessionStorage(seed = {}) {
 
 // Minimal DOM and extension APIs; live viewer availability and challenges are not simulated.
 function createElement(tag) {
+    const style = {
+        setProperty(name, value) { this[name] = value; },
+        set cssText(value) {
+            this.text = value;
+            for (const declaration of value.split(';')) {
+                const colon = declaration.indexOf(':');
+                if (colon > 0) this[declaration.slice(0, colon)] = declaration.slice(colon + 1).replace(/!important/g, '');
+            }
+        },
+        get cssText() { return this.text || ''; }
+    };
     return {
-        tag, children: [], style: {}, listeners: {},
+        tag, children: [], style, listeners: {},
         appendChild(child) { this.children.push(child); return child; },
         prepend(child) { this.children.unshift(child); },
         setAttribute(name, value) { this[name] = value; },
+        getAttribute(name) { return this[name] ?? null; },
+        querySelector(selector) {
+            return this.children.find((child) => selector === '[data-floating-toggle]' && child['data-floating-toggle']);
+        },
+        getBoundingClientRect() { return this.rect || { width: 0, height: 0 }; },
         addEventListener(name, callback) { this.listeners[name] = callback; },
         attachShadow() { this.shadow = createElement('shadow'); return this.shadow; }
     };
@@ -58,7 +74,7 @@ function createElement(tag) {
 
 function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer = '',
     sessionStorageSeed = {}, tabSeed = {}, historyState = null, navigationType = 'navigate',
-    earlyDocument = false, deferTabSave = false }) {
+    earlyDocument = false, deferTabSave = false, menuRect = null, menuExpanded = false }) {
     const historyCalls = [];
     const replaceCalls = [];
     const commands = new Map();
@@ -81,15 +97,28 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
     const warnings = [];
     const body = createElement('body');
     body.innerHTML = fixtureHtml;
+    const html = createElement('html');
+    html.outerHTML = fixtureHtml;
+    html.appendChild(body);
+    if (menuRect) {
+        const menu = createElement('div');
+        menu.id = 'tm-shared-floating-menu';
+        menu.setAttribute('data-floating-expanded', String(menuExpanded));
+        const handle = createElement('button');
+        handle.setAttribute('data-floating-toggle', 'true');
+        handle.rect = menuRect;
+        menu.appendChild(handle);
+        html.appendChild(menu);
+    }
+    const observers = [];
+    const timers = [];
     const document = {
         referrer,
         listeners: {},
-        documentElement: {
-            outerHTML: fixtureHtml
-        },
+        documentElement: html,
         body: earlyDocument ? null : body,
         createElement,
-        getElementById(id) { return body.children.find((child) => child.id === id) || null; },
+        getElementById(id) { return [...html.children, ...body.children].find((child) => child.id === id) || null; },
         addEventListener(name, callback) { this.listeners[name] = callback; }
     };
     const history = {
@@ -119,6 +148,7 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
         console: consoleMock
     };
     windowObject.performance = { getEntriesByType: () => [{ type: navigationType }] };
+    windowObject.setTimeout = (callback) => { timers.push(callback); };
 
     windowObject.window = windowObject;
     windowObject.self = windowObject;
@@ -138,6 +168,11 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
             else save();
         },
         GM_registerMenuCommand(label, callback) { commands.set(label, callback); },
+        MutationObserver: class {
+            constructor(callback) { this.callback = callback; observers.push(this); }
+            observe(target, options) { this.target = target; this.options = options; }
+            disconnect() { this.disconnected = true; }
+        },
         URL,
         URLSearchParams
     };
@@ -151,7 +186,7 @@ function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer 
         get assignedUrl() { return locationState.assignedUrl; },
         get tabSnapshot() { return structuredClone(tab); },
         get historyState() { return history.state; },
-        commands, replaceCalls, document, body,
+        commands, replaceCalls, document, body, observers, timers,
         flushSaves() { while (pendingSaves.length) pendingSaves.shift()(); },
         ready() { document.body = body; document.listeners.DOMContentLoaded?.(); },
         historyCalls,
@@ -485,20 +520,83 @@ describe('X viewer fallback and original-page navigation', () => {
         assert.equal(executeUserScript({ sourceUrl: originalUrl }).assignedUrl, firstUrl);
     });
 
-    test('visible buttons work on blocked HTML and during document-start startup', () => {
+    test('compact floating arrow works on blocked HTML without inserting a body toolbar', () => {
         const source = executeUserScript({ sourceUrl: originalUrl });
         const first = executeUserScript({ sourceUrl: firstUrl, tabSeed: source.tabSnapshot,
             fixtureHtml: '<h1>You have been blocked</h1>', earlyDocument: true });
         assert.equal(first.body.children.length, 0);
         first.ready();
-        const root = first.body.children[0].shadow;
-        const buttons = root.children[1].children.filter((child) => child.tag === 'button');
-        assert.deepEqual(buttons.map((button) => button.textContent), ['Next viewer', 'Return to original']);
+        const host = first.document.getElementById('redirecturls-x-controls');
+        const buttons = host.shadow.children.filter((child) => child.tag === 'button');
+        assert.equal(first.body.children.length, 0, 'site body and header keep their original children');
+        assert.equal(host.style.position, 'absolute', 'control is out of normal layout flow');
+        assert.equal(host.style.top, '106px');
+        assert.equal(host.style.width, '38px');
+        assert.equal(host.style.height, '32px');
+        assert.equal(buttons.length, 1);
+        assert.equal(buttons[0].textContent, '→');
+        assert.equal(buttons[0].getAttribute('aria-label'), 'Next viewer: nitter.meowing.monster');
         assert.equal(first.assignedUrl, null, 'do not abandon human verification automatically');
         buttons[0].listeners.click();
         assert.equal(first.assignedUrl, secondUrl);
-        buttons[1].listeners.click();
+        first.commands.get('Return to original')();
         assert.equal(first.assignedUrl, originalUrl);
+    });
+
+    test('independent arrow sits below the existing menu and leaves its archive action intact', () => {
+        const first = executeUserScript({ sourceUrl: firstUrl,
+            menuRect: { left: 210, bottom: 90, width: 38, height: 32 } });
+        const host = first.document.getElementById('redirecturls-x-controls');
+        const menu = first.document.getElementById('tm-shared-floating-menu');
+        const archive = createElement('button');
+        archive.textContent = '→';
+        archive.setAttribute('data-floating-tool', 'archive');
+        menu.appendChild(archive);
+        assert.equal(host.style.left, '210px');
+        assert.equal(host.style.top, '94px');
+        assert.equal(menu.children.length, 2, 'new arrow is not registered inside the shared menu');
+        menu.setAttribute('data-floating-expanded', 'true');
+        first.observers[0].callback();
+        assert.equal(host.style.display, 'none', 'expanded archive menu is not covered');
+        menu.hidden = true;
+        first.observers[0].callback();
+        assert.equal(host.style.display, 'block', 'an unavailable shared menu does not hide the arrow');
+        menu.hidden = false;
+        menu.setAttribute('data-floating-expanded', 'false');
+        first.observers[0].callback();
+        assert.equal(host.style.display, 'block');
+        assert.equal(archive.textContent, '→');
+        assert.equal(archive['data-floating-tool'], 'archive');
+    });
+
+    test('late menu discovery aligns once, then stops observing page mutations', () => {
+        const first = executeUserScript({ sourceUrl: firstUrl });
+        const menu = createElement('div');
+        menu.id = 'tm-shared-floating-menu';
+        const handle = createElement('button');
+        handle.setAttribute('data-floating-toggle', 'true');
+        handle.rect = { left: 300, bottom: 102, width: 38, height: 32 };
+        menu.appendChild(handle);
+        first.document.documentElement.appendChild(menu);
+        const discovery = first.observers[0];
+        discovery.callback();
+        assert.equal(discovery.disconnected, true);
+        assert.equal(first.document.getElementById('redirecturls-x-controls').style.top, '106px');
+        assert.equal(first.observers[1].target, menu);
+        assert.deepEqual(Array.from(first.observers[1].options.attributeFilter), ['data-floating-expanded', 'hidden']);
+        const alone = executeUserScript({ sourceUrl: firstUrl });
+        alone.timers[0]();
+        assert.equal(alone.observers[0].disconnected, true, 'discovery is bounded without a shared menu');
+    });
+
+    test('last viewer arrow returns to the exact original URL', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const second = executeUserScript({ sourceUrl: secondUrl, tabSeed: source.tabSnapshot });
+        const button = second.document.getElementById('redirecturls-x-controls').shadow.children[1];
+        assert.equal(button.textContent, '→');
+        assert.equal(button.getAttribute('aria-label'), 'Return to original');
+        button.listeners.click();
+        assert.equal(second.assignedUrl, originalUrl);
     });
 
     test('direct viewer links use their current post, never stale source data', () => {

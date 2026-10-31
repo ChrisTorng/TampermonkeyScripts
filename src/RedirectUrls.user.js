@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         RedirectUrls
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-01_1.6.0
-// @description  Redirect supported pages to readable destinations, with X viewer fallback and original-page Back navigation.
+// @version      2026-11-01_1.6.1
+// @description  Redirect supported pages to readable destinations, with a compact X viewer fallback arrow and original-page Back navigation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js
@@ -132,29 +132,52 @@
             if (nextHost) GM_registerMenuCommand('Return to original', goOriginal);
 
             function mountControls() {
-                if (!document.body || document.getElementById('redirecturls-x-controls')) return;
+                if (!document.documentElement || document.getElementById('redirecturls-x-controls')) return;
                 const host = document.createElement('div');
                 host.id = 'redirecturls-x-controls';
-                host.style.cssText = 'all:initial!important;display:block!important;position:relative!important;z-index:2147483647!important;';
+                // Independent, out-of-flow control; never add a nav element or offset the site header.
+                host.style.cssText = `all:initial!important;display:block!important;position:absolute!important;top:${(window.scrollY || 0) + 106}px!important;right:0!important;width:38px!important;height:32px!important;margin:0!important;padding:0!important;z-index:2147483647!important;`;
                 const root = host.attachShadow({ mode: 'closed' });
                 const style = document.createElement('style');
-                style.textContent = ':host{color-scheme:light dark}nav{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px;background:#202124;color:#fff;font:14px/1.4 system-ui,sans-serif}button{font:inherit;color:#fff;background:#3c4043;border:1px solid #777;border-radius:5px;min-height:40px;padding:6px 12px;cursor:pointer}button:hover,button:focus-visible{background:#555}';
-                const nav = document.createElement('nav');
-                nav.setAttribute('aria-label', 'X viewer navigation');
-                const label = document.createElement('span');
-                label.textContent = index < 0 ? 'X viewer' : `X viewer ${index + 1}/${xViewers.length}`;
-                nav.appendChild(label);
-                for (const [text, action] of [[nextLabel, goNext],
-                    ...(nextHost ? [['Return to original', goOriginal]] : [])]) {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.textContent = text;
-                    button.addEventListener('click', action);
-                    nav.appendChild(button);
-                }
+                style.textContent = 'button{all:initial;appearance:none;display:block;box-sizing:border-box;width:38px;height:32px;margin:0;padding:0;border:0;border-radius:5px;box-shadow:0 2px 6px rgba(0,0,0,.25);background:rgba(0,0,0,.55);color:#f0f0f0;font:600 15px/32px system-ui,sans-serif;text-align:center;cursor:pointer;user-select:none;text-decoration:none}button:hover,button:focus-visible{background:rgba(0,0,0,.75);text-decoration:none}';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = '→';
+                button.title = nextHost ? `Next viewer: ${nextHost}` : 'Return to original';
+                button.setAttribute('aria-label', button.title);
+                button.addEventListener('click', goNext);
                 root.appendChild(style);
-                root.appendChild(nav);
-                document.body.prepend(host);
+                root.appendChild(button);
+                document.documentElement.appendChild(host);
+
+                let menuObserver;
+                function placeBelowMenu() {
+                    const menu = document.getElementById('tm-shared-floating-menu');
+                    const handle = menu?.querySelector('[data-floating-toggle]');
+                    if (!handle) return false;
+                    const rect = handle.getBoundingClientRect();
+                    if (rect.width && rect.height && !menu.hidden) {
+                        host.style.setProperty('left', `${rect.left + (window.scrollX || 0)}px`, 'important');
+                        host.style.setProperty('right', 'auto', 'important');
+                        host.style.setProperty('top', `${rect.bottom + (window.scrollY || 0) + 4}px`, 'important');
+                    }
+                    // Do not cover the existing archive action when its menu is expanded.
+                    host.style.setProperty('display', !menu.hidden && menu.getAttribute('data-floating-expanded') === 'true' ? 'none' : 'block', 'important');
+                    if (!menuObserver) {
+                        menuObserver = new MutationObserver(placeBelowMenu);
+                        menuObserver.observe(menu, { attributes: true,
+                            attributeFilter: ['data-floating-expanded', 'hidden'] });
+                    }
+                    return true;
+                }
+                // Only initial discovery and menu expansion matter; no scrolling, zoom, or drag tracking.
+                if (!placeBelowMenu()) {
+                    const discovery = new MutationObserver(() => {
+                        if (placeBelowMenu()) discovery.disconnect();
+                    });
+                    discovery.observe(document.documentElement, { childList: true, subtree: true });
+                    window.setTimeout(() => discovery.disconnect(), 5000);
+                }
             }
 
             // Controls stay available on HTTP error/challenge HTML without auto-skipping verification.

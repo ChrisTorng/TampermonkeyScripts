@@ -43,10 +43,10 @@ Add an article button for Hacker News comments, including pages reached through 
 
 ### [RedirectUrls User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/RedirectUrls.user.js)
 
-Redirect supported pages to readable destinations, with X viewer fallback and original-page Back navigation.
+Redirect supported pages to readable destinations, with a compact X viewer fallback arrow and original-page Back navigation.
 
 Supported sites:
-- [X](https://x.com/) / [Twitter](https://twitter.com/) posts → [Tiekoetter](https://nitter.tiekoetter.com/), then [Meowing](https://nitter.meowing.monster/) via Next viewer, then the exact original URL. Viewer pages offer Return to original; Back and reload stay on the original.
+- [X](https://x.com/) / [Twitter](https://twitter.com/) posts → [Tiekoetter](https://nitter.tiekoetter.com/), then [Meowing](https://nitter.meowing.monster/) via a separate floating → below the tools menu, then the exact original URL. The Tampermonkey menu also offers Return to original; Back and reload stay on the original.
 - [Reddit](https://www.reddit.com/) stays on www.reddit.com for account-free browsing; old.reddit.com links and old-site login (`reason=lor2`) redirects recover the equivalent www URL without third-party frontends.
 - [GitHub](https://github.com/) repository `readme-ov-file` tab → repository main page on GitHub
 - [arXiv](https://arxiv.org/) abs/pdf pages → arXiv HTML view
