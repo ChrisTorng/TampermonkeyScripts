@@ -41,10 +41,19 @@ function addPre(harness, text, className = '') {
     return pre;
 }
 
+function addAstroRouterMarker(harness, content = 'true') {
+    const marker = harness.document.createElement('meta');
+    marker.setAttribute('name', 'astro-view-transitions-enabled');
+    marker.setAttribute('content', content);
+    harness.document.head.appendChild(marker);
+    return marker;
+}
+
 describe('Translate Preformatted Text', () => {
-    test('Aatish article navigation opts out of Astro swaps while fragments and external links remain unchanged', () => {
+    test('Astro article navigation opts out of swaps while fragments and external links remain unchanged', () => {
         const links = [];
         execute((harness) => {
+            addAstroRouterMarker(harness);
             for (const href of [
                 '/blog/2026/introducing-myriad/',
                 'https://aatishb.com/myriad/lets-build-a-brain/',
@@ -70,8 +79,8 @@ describe('Translate Preformatted Text', () => {
         assert.equal(links[2].getAttribute('href'), '/blog/2026/ai-jagged-intelligence/#more');
     });
 
-    test('Aatish links added after startup are also prepared, including nested links', () => {
-        const harness = execute(() => {}, 'https://aatishb.com/blog/');
+    test('Astro links added after startup are also prepared, including nested links', () => {
+        const harness = execute(addAstroRouterMarker, 'https://aatishb.com/blog/');
         const link = harness.document.createElement('a');
         link.setAttribute('href', '/about/');
         harness.appendToBody(link);
@@ -87,14 +96,55 @@ describe('Translate Preformatted Text', () => {
         assert.equal(nested.hasAttribute('data-astro-reload'), true);
     });
 
-    test('Astro navigation on other sites is unaffected', () => {
+    for (const url of [
+        'https://metasora.com/blog/',
+        'https://events-3bg.pages.dev/',
+        'https://unknown-astro-site.example/blog/'
+    ]) {
+        test(`router detection enables full-page links without a host allowlist: ${url}`, () => {
+            let link;
+            execute((harness) => {
+                addAstroRouterMarker(harness);
+                link = harness.document.createElement('a');
+                link.setAttribute('href', '/article/');
+                harness.appendToBody(link);
+            }, url);
+            assert.equal(link.hasAttribute('data-astro-reload'), true);
+        });
+    }
+
+    test('late router detection prepares links already present before the marker arrives', () => {
         let link;
-        execute((harness) => {
-            link = harness.document.createElement('a');
-            link.setAttribute('href', '/blog/article/');
-            harness.appendToBody(link);
-        }, 'https://another-astro-site.example/blog/');
+        const harness = execute((current) => {
+            link = current.document.createElement('a');
+            link.setAttribute('href', '/article/');
+            current.appendToBody(link);
+        }, 'https://late-router.example/');
         assert.equal(link.hasAttribute('data-astro-reload'), false);
+
+        const marker = addAstroRouterMarker(harness);
+        harness.triggerMutation([marker], { target: harness.document.head });
+        assert.equal(link.hasAttribute('data-astro-reload'), true);
+    });
+
+    test('static Astro sites, disabled routers, and ordinary sites keep their navigation', () => {
+        for (const markerType of ['static-astro', 'disabled-router', 'ordinary']) {
+            let link;
+            execute((harness) => {
+                if (markerType === 'static-astro') {
+                    const generator = harness.document.createElement('meta');
+                    generator.setAttribute('name', 'generator');
+                    generator.setAttribute('content', 'Astro v7.2.9');
+                    harness.document.head.appendChild(generator);
+                } else if (markerType === 'disabled-router') {
+                    addAstroRouterMarker(harness, 'false');
+                }
+                link = harness.document.createElement('a');
+                link.setAttribute('href', '/blog/article/');
+                harness.appendToBody(link);
+            }, 'https://aatishb.com/blog/');
+            assert.equal(link.hasAttribute('data-astro-reload'), false, markerType);
+        }
     });
 
     test('inline code is replaced in place before automatic translation can reorder it', () => {
