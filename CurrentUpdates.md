@@ -2,13 +2,13 @@
 
 Updated: 2026-10-31
 
-## CloudMark — 2026-10-31_1.2.0
+## CloudMark — 2026-10-31_1.3.0
 
 [Install CloudMark.user.js](src/CloudMark.user.js) · Reload BetaCat after updating.
 
-- Saved topics show their category at the title's top-right; only the current category is checked.
-- Choose another category to update the existing bookmark, preserving its title, description, and icon.
+- Open cached category menus immediately; refresh in the background without clearing active input.
+- Close immediately on selection; update badges after saving, or show Retry / Choose category on failure.
 
 **Test pages:**
-- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) — inspect saved category badges, then switch categories.
-- [Local demo](tests/CloudMark/index.html) — save and recategorize without real writes.
+- [Latest](https://hackernews.betacat.io/) / [Chinese](https://hackernews.betacat.io/zh) — choose a category and continue browsing immediately.
+- [Local demo](tests/CloudMark/index.html) — delayed responses and simulated save failures; no real writes.

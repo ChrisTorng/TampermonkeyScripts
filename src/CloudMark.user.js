@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CloudMark
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-31_1.2.0
-// @description  Save Hacker News Summary topics with title-corner category badges, category editing, and collection switching.
+// @version      2026-10-31_1.3.0
+// @description  Save Hacker News Summary topics with category badges, instant menus, background saving, and retry notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CloudMark.user.js
@@ -31,6 +31,9 @@
     const collections = Array.isArray(stored?.collections) ? stored.collections : previous?.mark ? [previous] : [];
     let config = collections.find((item) => item.mark === stored?.selectedMark) || collections[0] || null;
     const snapshots = new Map();
+    const failures = new Map();
+    let noticeHost = null;
+    let noticeRoot = null;
     let settingsHost = null;
     let menu = null;
     let scheduled = false;
@@ -43,7 +46,7 @@
         if (!settings) return { saved: new Map(), categories: new Set(), defaultCategory: 'default', revision: 0 };
         if (!snapshots.has(settings.mark)) snapshots.set(settings.mark, {
             saved: new Map(), categories: new Set([...(settings.categories || []), ...(settings.category ? [settings.category] : [])]),
-            defaultCategory: 'default', revision: 0,
+            defaultCategory: settings.defaultCategory || 'default', revision: 0, loaded: false, lastLoaded: 0, readTask: null,
         });
         return snapshots.get(settings.mark);
     }
@@ -144,38 +147,99 @@
             if (bookmark.category) state.categories.add(bookmark.category);
         }
         state.categories.add(state.defaultCategory);
+        state.loaded = true;
+        state.lastLoaded = Date.now();
+        settings.categories = [...state.categories];
+        settings.defaultCategory = state.defaultCategory;
+        persist();
         render();
     }
 
-    async function refreshSaved(settings = config) {
-        if (!settings?.mark || !settings?.token) return;
+    function refreshSaved(settings = config, force = false) {
+        if (!settings?.mark || !settings?.token) return Promise.resolve();
         const state = snapshot(settings);
+        if (state.readTask) return state.readTask;
+        if (!force && state.loaded && Date.now() - state.lastLoaded < 30000) return Promise.resolve();
         const revision = state.revision;
-        const data = await request('GET', '/collections/' + encodeURIComponent(settings.mark), null, settings);
-        if (revision === state.revision) useCollection(data, settings);
+        state.readTask = request('GET', '/collections/' + encodeURIComponent(settings.mark), null, settings)
+            .then((data) => { if (revision === state.revision) useCollection(data, settings); })
+            .finally(() => { state.readTask = null; });
+        return state.readTask;
     }
 
-    async function saveArticle(link, category) {
-        if (!config?.mark || !config?.token) return;
-        const control = controls.get(link);
-        const settings = config;
+    function showFailures() {
+        if (!failures.size) { noticeHost?.remove(); noticeHost = null; noticeRoot = null; return; }
+        if (!noticeHost) {
+            noticeHost = document.createElement('div');
+            noticeRoot = noticeHost.attachShadow({ mode: 'closed' });
+            document.body.appendChild(noticeHost);
+        }
+        noticeRoot.replaceChildren();
+        const style = document.createElement('style');
+        style.textContent = `
+            :host { all: initial; position: fixed; z-index: 2147483647; left: 12px; right: 12px;
+                bottom: max(12px, env(safe-area-inset-bottom)); pointer-events: none; }
+            .notices { max-width: 28rem; max-height: 40dvh; overflow: auto; margin: 0 auto;
+                font: 14px/1.4 system-ui,sans-serif; color: #18212b; }
+            .notice { position: relative; pointer-events: auto; padding: 12px; margin-top: 8px;
+                background: #fff; border: 1px solid #b34242; border-radius: 10px; box-shadow: 0 4px 20px #0003; }
+            p { margin: 0 28px 8px 0; overflow-wrap: anywhere; } .actions { display: flex; gap: 6px; }
+            button { min-height: 36px; padding: 5px 10px; font: inherit; cursor: pointer; border: 1px solid #9aa9b8;
+                border-radius: 6px; color: #18212b; background: #f1f7ff; } button:hover { background: #dbeaff; }
+            .dismiss { position: absolute; right: 4px; top: 4px; padding: 2px 8px; background: none; border: 0; }
+            button:disabled { opacity: .5; cursor: default; }
+        `;
+        const list = document.createElement('div'); list.className = 'notices';
+        for (const [key, failure] of failures) {
+            const card = document.createElement('div'); card.className = 'notice'; card.setAttribute('role', 'alert');
+            const message = document.createElement('p');
+            message.textContent = 'CloudMark: ' + failure.title.slice(0, 80) + ' → ' + failure.settings.mark + ' / ' + failure.category + '. ' + failure.message;
+            const actions = document.createElement('div'); actions.className = 'actions';
+            const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry';
+            retry.addEventListener('click', () => void saveArticle(failure.link, failure.category, collections.find((item) => item.mark === failure.settings.mark) || failure.settings));
+            const choose = document.createElement('button'); choose.type = 'button'; choose.textContent = 'Choose category';
+            choose.disabled = !failure.link.isConnected;
+            choose.addEventListener('click', () => {
+                config = collections.find((item) => item.mark === failure.settings.mark) || failure.settings;
+                persist(); render(); closeMenu(); openMenu(failure.link);
+            });
+            const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.className = 'dismiss'; dismiss.textContent = '×';
+            dismiss.setAttribute('aria-label', 'Dismiss CloudMark error');
+            dismiss.addEventListener('click', () => { failures.delete(key); showFailures(); });
+            actions.append(retry, choose); card.append(message, actions, dismiss); list.appendChild(card);
+        }
+        noticeRoot.append(style, list);
+    }
+
+    async function saveArticle(link, category, settings = config) {
+        if (!settings?.mark || !settings?.token) return;
+        const control = controls.get(link) || { error: '' };
         const state = snapshot(settings);
         let article;
         try { article = articleData(link); }
         catch (error) { control.error = error.message; render(); return; }
         const key = settings.mark + '\n' + article.url;
-        const existing = state.saved.get(article.url);
         const targetCategory = category || settings.category || state.defaultCategory;
-        if (pending.has(key) || (existing && (existing.category || state.defaultCategory) === targetCategory)) return;
+        if (pending.has(key)) return;
+        if (menu?.link === link && config === settings) closeMenu();
+        const current = state.saved.get(article.url);
+        if (current && (current.category || state.defaultCategory) === targetCategory) {
+            failures.delete(key); showFailures(); return;
+        }
         pending.add(key);
+        failures.delete(key); showFailures();
         control.error = '';
         render();
-        if (menu?.link === link) drawMenu();
         try {
+            // Resolve unknown bookmark identities in the background; never hold the menu open.
+            if (!state.loaded) await refreshSaved(settings);
+            const existing = state.saved.get(article.url);
+            if (existing && (existing.category || state.defaultCategory) === targetCategory) return;
             if (existing && !existing.uuid) throw new Error('Reload the collection before changing this category.');
+            // Reads begun before this write must not replace confirmed metadata with stale data.
+            state.revision += 1;
             const method = existing ? 'PUT' : 'POST';
             const path = existing ? '/bookmarks/' + encodeURIComponent(existing.uuid) : '/bookmarks';
-            // Preserve the collection's edited title/description/icon when changing only its category.
             const payload = existing ? {
                 uuid: existing.uuid, url: existing.url, title: existing.title,
                 description: existing.description,
@@ -186,14 +250,16 @@
             if (!result.uuid) throw new Error('Cloudmark did not confirm that the article was saved.');
             state.saved.set(article.url, { ...article, ...existing, ...result, category: targetCategory });
             state.categories.add(targetCategory);
+            settings.categories = [...state.categories]; persist();
             state.revision += 1;
-            if (menu?.link === link && config === settings) closeMenu();
         } catch (error) {
             if (config === settings) control.error = error.message;
+            failures.set(key, { link, settings, category: targetCategory, title: article.title, message: error.message });
+            showFailures();
         } finally {
             pending.delete(key);
             render();
-            if (menu?.link === link && config === settings) drawMenu();
+            if (menu?.link === link && config === settings) updateMenuCategories();
         }
     }
 
@@ -245,20 +311,12 @@
                 for (const control of controls.values()) control.error = '';
                 persist(); render(); drawMenu(); void loadMenu();
             });
-            add('div', menu.loading ? 'Loading…' : 'Category', 'caption');
+            add('div', 'Category', 'caption');
+            add('div', '', 'category-list');
             const state = snapshot();
             const url = articleData(link).url;
             const busy = pending.has(config.mark + '\n' + url);
-            const existing = state.saved.get(url);
-            const currentCategory = existing ? existing.category || state.defaultCategory : null;
-            for (const category of [...new Set([state.defaultCategory, ...state.categories])]) {
-                const selected = category === currentCategory;
-                const button = action(category + (selected ? ' ✓' : ''), () => void saveArticle(link, category), 'category');
-                button.setAttribute('aria-pressed', String(selected));
-                button.disabled = busy || selected || menu.loading;
-            }
-            const error = controls.get(link).error;
-            if (error) add('p', error, 'error');
+            add('p', '', 'error');
             action('+ New category', (event) => {
                 const target = event.currentTarget;
                 const form = document.createElement('form');
@@ -285,13 +343,41 @@
                 });
                 input.focus();
                 positionMenu();
-            }, 'new-category-action').disabled = busy || menu.loading;
+            }, 'new-category-action').disabled = busy;
         }
         action('+ Add collection', () => {
             closeMenu();
             openSettings(() => openMenu(link), true);
         });
         if (config) action('Collection settings', () => { closeMenu(); openSettings(() => openMenu(link)); });
+        updateMenuCategories();
+        positionMenu();
+    }
+
+    function updateMenuCategories() {
+        if (!menu || !config) return;
+        const { panel, link } = menu;
+        const group = panel.querySelector('.category-list');
+        if (!group) return;
+        const state = snapshot();
+        const url = articleData(link).url;
+        const busy = pending.has(config.mark + '\n' + url);
+        const existing = state.saved.get(url);
+        const currentCategory = existing ? existing.category || state.defaultCategory : null;
+        group.replaceChildren();
+        for (const category of [...new Set([state.defaultCategory, ...state.categories])]) {
+            const selected = category === currentCategory;
+            const button = document.createElement('button'); button.type = 'button'; button.className = 'category';
+            button.textContent = category + (selected ? ' ✓' : '');
+            button.setAttribute('aria-pressed', String(selected));
+            button.disabled = busy || selected;
+            button.addEventListener('click', () => void saveArticle(link, category));
+            group.appendChild(button);
+        }
+        const errorBox = panel.querySelector('.error');
+        errorBox.textContent = controls.get(link)?.error || menu.refreshError || '';
+        const addCategory = panel.querySelector('.new-category-action');
+        if (addCategory) addCategory.disabled = busy;
         positionMenu();
     }
 
@@ -299,12 +385,15 @@
         if (!menu || !config) return;
         const current = menu;
         const settings = config;
-        current.loading = true; drawMenu();
+        current.panel.setAttribute('aria-busy', 'true');
         try { await refreshSaved(settings); }
         catch (error) {
-            if (menu === current && config === settings) controls.get(current.link).error = error.message;
+            if (menu === current && config === settings) current.refreshError = error.message;
         } finally {
-            if (menu === current && config === settings) { current.loading = false; drawMenu(); }
+            if (menu === current && config === settings) {
+                current.panel.setAttribute('aria-busy', 'false');
+                updateMenuCategories();
+            }
         }
     }
 
@@ -560,7 +649,7 @@
         window.addEventListener('scroll', positionMenu);
         window.visualViewport?.addEventListener('resize', positionMenu);
         GM_registerMenuCommand('CloudMark settings', () => openSettings());
-        void refreshSaved().catch(() => {});
+        for (const settings of collections) void refreshSaved(settings).catch(() => {});
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });

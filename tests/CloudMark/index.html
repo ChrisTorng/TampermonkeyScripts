@@ -13,6 +13,7 @@
 <h1>CloudMark · BetaCat save buttons</h1>
 <p class="note">Local demo only: a fake token and an in-memory Cloudmark API. Choosing a category sends no network request and does not open an article.</p>
 <button id="settings" type="button">CloudMark settings</button>
+<button id="fail-next" type="button">Fail next save</button>
 <p id="result" role="status">Ready. Tap a Cloudmark button after either topic.</p>
 <article class="post-item">
     <div class="post-title"><h3><a class="post-url" href="https://lars.ingebrigtsen.no/2026/02/02/whats-up-with-all-those-equals-signs-anyway/">What's up with all those equals signs anyway?</a></h3></div>
@@ -20,9 +21,13 @@
 </article>
 <article class="post-item">
     <div class="post-title"><h3><a class="post-url" href="https://example.com/second-topic">A second article for testing independent save states</a></h3></div>
-    <div class="summary-text">Each topic gets its own save button. Saved icons remain clickable so you can choose another collection.</div>
+    <div class="summary-text">Menus and browsing stay usable while requests run in the background. Saved category badges remain clickable for editing.</div>
 </article>
 <script>
+    let failNextSave = false;
+    document.getElementById('fail-next').addEventListener('click', () => {
+        failNextSave = true; document.getElementById('result').textContent = 'The next save will fail. Try Retry in the notice.';
+    });
     const settings = new Map([['cloudmark.settings.v1', { mark: 'local-demo', token: 'fake_token_for_local_tests_only_123', category: '' }]]);
     const collections = new Map([
         ['local-demo', [{ url: 'https://example.com/existing', category: 'AI' }]],
@@ -35,6 +40,11 @@
     window.GM_setValue = (key, value) => settings.set(key, value);
     window.GM_registerMenuCommand = (_name, callback) => document.getElementById('settings').addEventListener('click', callback);
     window.GM_xmlhttpRequest = (options) => {
+        if (options.method !== 'GET' && !options.url.endsWith('/claim') && failNextSave) {
+            failNextSave = false;
+            setTimeout(() => options.onload({ status: 503, finalUrl: options.url, responseText: JSON.stringify({error:'Simulated save failure. Retry is safe.'}) }), 1800);
+            return;
+        }
         let data;
         if (options.method === 'GET') {
             const mark = decodeURIComponent(new URL(options.url).pathname.split('/').pop());
@@ -53,7 +63,7 @@
             document.getElementById('result').textContent = 'Saved locally: ' + body.title + ' · ' + body.mark + ' / ' + body.category;
         }
         const responseText = JSON.stringify(data);
-        setTimeout(() => options.onload({ status: 200, finalUrl: options.url, responseText }), 250);
+        setTimeout(() => options.onload({ status: 200, finalUrl: options.url, responseText }), options.method === 'GET' ? 1200 : 1800);
     };
 </script>
 <script src="../../src/CloudMark.user.js"></script>
