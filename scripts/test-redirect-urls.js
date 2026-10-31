@@ -44,30 +44,59 @@ function createSessionStorage(seed = {}) {
     };
 }
 
-function executeUserScript({ sourceUrl, fixtureHtml, referrer = '', sessionStorageSeed = {} }) {
+// Minimal DOM and extension APIs; live viewer availability and challenges are not simulated.
+function createElement(tag) {
+    return {
+        tag, children: [], style: {}, listeners: {},
+        appendChild(child) { this.children.push(child); return child; },
+        prepend(child) { this.children.unshift(child); },
+        setAttribute(name, value) { this[name] = value; },
+        addEventListener(name, callback) { this.listeners[name] = callback; },
+        attachShadow() { this.shadow = createElement('shadow'); return this.shadow; }
+    };
+}
+
+function executeUserScript({ sourceUrl, fixtureHtml = '<html></html>', referrer = '',
+    sessionStorageSeed = {}, tabSeed = {}, historyState = null, navigationType = 'navigate',
+    earlyDocument = false, deferTabSave = false }) {
     const historyCalls = [];
+    const replaceCalls = [];
+    const commands = new Map();
+    const pendingSaves = [];
+    let tab = structuredClone(tabSeed);
     const locationState = {
         href: sourceUrl,
         hostname: new URL(sourceUrl).hostname,
         assignedUrl: null,
         assign(targetUrl) {
             this.assignedUrl = String(targetUrl);
+        },
+        replace(targetUrl) {
+            this.assignedUrl = String(targetUrl);
+            replaceCalls.push(String(targetUrl));
         }
     };
     const sessionStorage = createSessionStorage(sessionStorageSeed);
     const logs = [];
     const warnings = [];
+    const body = createElement('body');
+    body.innerHTML = fixtureHtml;
     const document = {
         referrer,
+        listeners: {},
         documentElement: {
             outerHTML: fixtureHtml
         },
-        body: {
-            innerHTML: fixtureHtml
-        }
+        body: earlyDocument ? null : body,
+        createElement,
+        getElementById(id) { return body.children.find((child) => child.id === id) || null; },
+        addEventListener(name, callback) { this.listeners[name] = callback; }
     };
     const history = {
+        state: historyState,
+        replaceState(state) { this.state = state; },
         pushState(state, _unused, url) {
+            this.state = state;
             historyCalls.push({ state, url: String(url) });
             locationState.href = String(url);
             locationState.hostname = new URL(String(url)).hostname;
@@ -89,6 +118,7 @@ function executeUserScript({ sourceUrl, fixtureHtml, referrer = '', sessionStora
         sessionStorage,
         console: consoleMock
     };
+    windowObject.performance = { getEntriesByType: () => [{ type: navigationType }] };
 
     windowObject.window = windowObject;
     windowObject.self = windowObject;
@@ -101,6 +131,13 @@ function executeUserScript({ sourceUrl, fixtureHtml, referrer = '', sessionStora
         location: locationState,
         sessionStorage,
         console: consoleMock,
+        GM_getTab(callback) { callback(structuredClone(tab)); },
+        GM_saveTab(value, callback) {
+            const save = () => { tab = structuredClone(value); callback?.(); };
+            if (deferTabSave) pendingSaves.push(save);
+            else save();
+        },
+        GM_registerMenuCommand(label, callback) { commands.set(label, callback); },
         URL,
         URLSearchParams
     };
@@ -111,7 +148,12 @@ function executeUserScript({ sourceUrl, fixtureHtml, referrer = '', sessionStora
     vm.runInNewContext(scriptContents, context, { filename: scriptPath });
 
     return {
-        assignedUrl: locationState.assignedUrl,
+        get assignedUrl() { return locationState.assignedUrl; },
+        get tabSnapshot() { return structuredClone(tab); },
+        get historyState() { return history.state; },
+        commands, replaceCalls, document, body,
+        flushSaves() { while (pendingSaves.length) pendingSaves.shift()(); },
+        ready() { document.body = body; document.listeners.DOMContentLoaded?.(); },
         historyCalls,
         logs,
         warnings,
@@ -247,19 +289,19 @@ const redirectCases = [
         name: 'x.com status',
         fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
         sourceUrl: 'https://x.com/cocktailpeanut/status/1860756706357022812',
-        expectedTargetUrl: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812',
+        expectedTargetUrl: 'https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812',
         sessionKey: 'redirectx-last-redirect-x',
         redirectId: '1860756706357022812',
-        skipReferrer: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812'
+        skipReferrer: 'https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812'
     },
     {
         name: 'twitter.com status',
         fixture: 'x.com_cocktailpeanut_status_1860756706357022812.html',
         sourceUrl: 'https://twitter.com/cocktailpeanut/status/1860756706357022812',
-        expectedTargetUrl: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812',
+        expectedTargetUrl: 'https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812',
         sessionKey: 'redirectx-last-redirect-twitter',
         redirectId: '1860756706357022812',
-        skipReferrer: 'https://shitter.thepixora.com/cocktailpeanut/status/1860756706357022812'
+        skipReferrer: 'https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812'
     },
     {
         name: 'Reddit old-site login recovery (URL-only)',
@@ -296,7 +338,8 @@ const redirectCases = [
     },
     {
         name: 'arXiv pdf page',
-        fixture: 'arxiv.org_pdf_2402.07939v1.html',
+        // This rule is URL-only; reuse the captured abstract instead of parsing PDF content.
+        fixture: 'arxiv.org_abs_2402.07939v1.html',
         sourceUrl: 'https://arxiv.org/pdf/2402.07939v1',
         expectedTargetUrl: 'https://arxiv.org/html/2402.07939v1',
         sessionKey: 'redirectx-last-redirect-arxiv',
@@ -355,7 +398,7 @@ describe('RedirectUrls captured pages', () => {
             assertSkipBySessionCase(testCase);
         });
 
-        test(`${testCase.name} opens the canonical Shitter post from a shared photo link`, () => {
+        test(`${testCase.name} opens the canonical first-viewer post from a shared photo link`, () => {
             assertRedirectCase({
                 ...testCase,
                 sourceUrl: `${testCase.sourceUrl}/photo/1?s=20#media`
@@ -394,3 +437,107 @@ describe('RedirectUrls captured pages', () => {
     }
 });
 
+describe('X viewer fallback and original-page navigation', () => {
+    const originalUrl = 'https://twitter.com/cocktailpeanut/status/1860756706357022812/photo/1?s=20#media';
+    const firstUrl = 'https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812';
+    const secondUrl = 'https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812';
+
+    test('source -> first -> second -> exact original -> reload stays on original', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl, deferTabSave: true });
+        assert.equal(source.assignedUrl, null, 'save the cross-origin source before navigating');
+        source.flushSaves();
+        assert.equal(source.assignedUrl, firstUrl);
+        const first = executeUserScript({ sourceUrl: firstUrl, tabSeed: source.tabSnapshot });
+        first.commands.get('Next viewer')();
+        assert.equal(first.assignedUrl, secondUrl);
+        assert.deepEqual(first.replaceCalls, [secondUrl], 'failed viewer is replaced in history');
+        const second = executeUserScript({ sourceUrl: secondUrl, tabSeed: first.tabSnapshot });
+        assert.equal(second.commands.has('Next viewer'), false, 'never wrap to the first viewer');
+        second.commands.get('Return to original')();
+        assert.equal(second.assignedUrl, originalUrl, 'retain Twitter host, photo suffix, query and hash');
+        const original = executeUserScript({ sourceUrl: originalUrl, tabSeed: second.tabSnapshot });
+        assert.equal(original.assignedUrl, null, 'explicit return works without referrer or session');
+        const reload = executeUserScript({ sourceUrl: originalUrl, historyState: original.historyState });
+        assert.equal(reload.assignedUrl, null);
+        const freshPost = executeUserScript({
+            sourceUrl: 'https://twitter.com/NASA/status/123', tabSeed: second.tabSnapshot
+        });
+        assert.equal(freshPost.assignedUrl, 'https://nitter.tiekoetter.com/NASA/status/123');
+    });
+
+    test('Back and reload preserve the original even after another post overwrites session state', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const back = executeUserScript({ sourceUrl: originalUrl,
+            historyState: source.historyState,
+            sessionStorageSeed: { 'redirectx-last-redirect-twitter': 'another-post' } });
+        assert.equal(back.assignedUrl, null);
+        assert.equal(executeUserScript({ sourceUrl: originalUrl,
+            historyState: back.historyState }).assignedUrl, null);
+        assert.equal(executeUserScript({ sourceUrl: originalUrl,
+            navigationType: 'back_forward' }).assignedUrl, null);
+    });
+
+    test('return is available on the first viewer and does not affect another tab', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const first = executeUserScript({ sourceUrl: firstUrl, tabSeed: source.tabSnapshot });
+        first.commands.get('Return to original')();
+        assert.equal(first.assignedUrl, originalUrl);
+        assert.equal(executeUserScript({ sourceUrl: originalUrl }).assignedUrl, firstUrl);
+    });
+
+    test('visible buttons work on blocked HTML and during document-start startup', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const first = executeUserScript({ sourceUrl: firstUrl, tabSeed: source.tabSnapshot,
+            fixtureHtml: '<h1>You have been blocked</h1>', earlyDocument: true });
+        assert.equal(first.body.children.length, 0);
+        first.ready();
+        const root = first.body.children[0].shadow;
+        const buttons = root.children[1].children.filter((child) => child.tag === 'button');
+        assert.deepEqual(buttons.map((button) => button.textContent), ['Next viewer', 'Return to original']);
+        assert.equal(first.assignedUrl, null, 'do not abandon human verification automatically');
+        buttons[0].listeners.click();
+        assert.equal(first.assignedUrl, secondUrl);
+        buttons[1].listeners.click();
+        assert.equal(first.assignedUrl, originalUrl);
+    });
+
+    test('direct viewer links use their current post, never stale source data', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const viewer = executeUserScript({ sourceUrl: 'https://nitter.meowing.monster/NASA/status/123',
+            tabSeed: source.tabSnapshot });
+        viewer.commands.get('Return to original')();
+        assert.equal(viewer.assignedUrl, 'https://x.com/NASA/status/123');
+    });
+
+    test('aliases share the first slot and old Shitter can move to the new first viewer', () => {
+        for (const [host, expected] of [
+            ['xnologin.com', secondUrl], ['shitter.thepixora.com', firstUrl]
+        ]) {
+            const viewer = executeUserScript({ sourceUrl: firstUrl.replace('nitter.tiekoetter.com', host) });
+            viewer.commands.get('Next viewer')();
+            assert.equal(viewer.assignedUrl, expected);
+        }
+    });
+
+    test('challenge root can recover the saved post, empty viewer homepages show no controls', () => {
+        const source = executeUserScript({ sourceUrl: originalUrl });
+        const challenge = executeUserScript({ sourceUrl: 'https://nitter.tiekoetter.com/',
+            tabSeed: source.tabSnapshot });
+        challenge.commands.get('Next viewer')();
+        assert.equal(challenge.assignedUrl, secondUrl);
+        const homepage = executeUserScript({ sourceUrl: 'https://nitter.tiekoetter.com/' });
+        assert.equal(homepage.commands.size, 0);
+        assert.equal(homepage.body.children.length, 0);
+    });
+
+    test('all viewer referrers allow staying on X; lookalike hosts do not', () => {
+        for (const host of ['nitter.tiekoetter.com', 'nitter.meowing.monster',
+            'xnologin.com', 'shitter.thepixora.com']) {
+            assert.equal(executeUserScript({ sourceUrl: originalUrl,
+                referrer: `https://${host}/` }).assignedUrl, null);
+        }
+        assert.equal(executeUserScript({ sourceUrl: originalUrl,
+            referrer: 'https://nitter.tiekoetter.com.attacker.example/' }).assignedUrl, firstUrl);
+        assert.equal(executeUserScript({ sourceUrl: 'https://example.com/?url=https://x.com/NASA/status/123' }).assignedUrl, null);
+    });
+});
