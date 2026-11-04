@@ -6,7 +6,7 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ## Shared floating-menu scripts — update together when the menu changes
 
-**When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. Independent feature updates (such as Fullscreen Game View or an individual block control) do not require a five-script menu update.
+**When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. Independent feature updates (such as Full Screen or an individual block control) do not require a five-script menu update.
 
 ### [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
@@ -122,9 +122,9 @@ Show responsive YouTube playback-speed controls with highlighted active presets 
 
 Expand Hacker News Summary article images to full width in portrait mobile view.
 
-### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
+### [Full Screen User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
+Enlarge videos and games using native fullscreen or an isolated fallback; prefer working built-in controls.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 

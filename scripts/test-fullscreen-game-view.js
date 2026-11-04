@@ -48,7 +48,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.match(style.textContent, /#playground \.d-pad-grid[\s\S]*transform: translateX\(2rem\) !important/);
         assert(game.classList.contains('tm-fullscreen-game-view-target'));
         assert.equal(button.parentElement, game);
-        assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
+        assert.equal(button.getAttribute('aria-label'), 'Enter Full Screen');
     });
 
     test('enters and exits the distraction-free fallback view', async () => {
@@ -67,7 +67,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         await Promise.resolve();
         assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
         assert(!document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
-        assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
+        assert.equal(button.getAttribute('aria-label'), 'Enter Full Screen');
         assert.equal(button.disabled, false);
     });
 
@@ -182,5 +182,132 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         harness.flushAnimationFrames();
         harness.flushAnimationFrames();
         assert.equal(window.scrollY, 500);
+    });
+});
+
+describe('Full Screen on embedded video players', () => {
+    function executeOnVideo({ controls = false, custom = false, nitter = false, forbidden = false } = {}) {
+        const harness = createHarness({ url: nitter
+            ? 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214'
+            : 'https://example.com/video' });
+        if (forbidden) harness.document.fullscreenEnabled = false;
+        const originalCreate = harness.document.createElement.bind(harness.document);
+        harness.document.createElement = (tagName) => {
+            const element = originalCreate(tagName);
+            if (tagName === 'dialog') {
+                element.showModal = () => { element.open = true; element.setAttribute('open', ''); };
+                element.close = () => {
+                    element.open = false;
+                    element.removeAttribute('open');
+                    element.dispatchEvent({ type: 'close' });
+                };
+            }
+            return element;
+        };
+        const wrapper = harness.document.createElement('div');
+        const video = harness.document.createElement('video');
+        if (controls) video.controls = true; // The lightweight harness does not model empty boolean attributes.
+        wrapper.appendChild(video);
+        if (custom) {
+            const nativeButton = harness.document.createElement('button');
+            nativeButton.setAttribute('aria-label', 'Fullscreen');
+            wrapper.appendChild(nativeButton);
+        }
+        harness.document.body.appendChild(wrapper);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        return { ...harness, wrapper, video };
+    }
+
+    test('prefers browser-native video controls', () => {
+        const { document, wrapper } = executeOnVideo({ controls: true });
+        assert.equal(document.getElementById('tm-fullscreen-game-view-button'), null);
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-target'));
+    });
+
+    test('does not overlap the site-provided fullscreen button', () => {
+        const { document } = executeOnVideo({ custom: true });
+        assert.equal(document.getElementById('tm-fullscreen-game-view-button'), null);
+    });
+
+    test('recognizes an icon-only website fullscreen control', () => {
+        const harness = createHarness({ url: 'https://example.com/player' });
+        const wrapper = harness.document.createElement('div');
+        wrapper.appendChild(harness.document.createElement('video'));
+        const nativeButton = harness.document.createElement('button');
+        nativeButton.className = 'player-fullscreen';
+        wrapper.appendChild(nativeButton);
+        harness.document.body.appendChild(wrapper);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        assert.equal(harness.document.getElementById('tm-fullscreen-game-view-button'), null);
+    });
+
+    test('requests fullscreen on the video, never on its article wrapper', async () => {
+        const { document, wrapper, video } = executeOnVideo();
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        let requested = false;
+        video.requestFullscreen = async () => {
+            requested = true;
+            document.fullscreenElement = video;
+            document.dispatchEvent({ type: 'fullscreenchange' });
+        };
+        button.click();
+        await Promise.resolve();
+        assert(requested);
+        assert.equal(document.fullscreenElement, video);
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-fallback'));
+        document.fullscreenElement = null;
+        document.dispatchEvent({ type: 'fullscreenchange' });
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+    });
+
+    test('Nitter keeps our button when its native fullscreen control is disabled', () => {
+        const { document } = executeOnVideo({ nitter: true, controls: true });
+        assert(document.getElementById('tm-fullscreen-game-view-button'));
+    });
+
+    test('blocked fullscreen uses a top-layer dialog without enlarging the tweet wrapper', async () => {
+        const { document, wrapper, video } = executeOnVideo({ nitter: true, controls: true });
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        video.requestFullscreen = async () => { throw new TypeError('Permissions-Policy denied fullscreen'); };
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        const dialog = document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog && dialog.open);
+        assert.equal(video.parentElement, dialog);
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
+        assert.equal(button.disabled, true);
+        document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+        assert.equal(video.parentElement, wrapper);
+        assert.equal(document.getElementById('tm-fullscreen-video-dialog'), null);
+        assert.equal(button.disabled, false);
+    });
+
+    test('denied fullscreen policy skips the forbidden API and browser Back restores the video', () => {
+        const harness = executeOnVideo({ forbidden: true, controls: true });
+        const { document, video, wrapper } = harness;
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        let requested = false;
+        video.requestFullscreen = () => { requested = true; return Promise.reject(new Error('denied')); };
+        button.click();
+        assert(!requested);
+        const dialog = document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog && dialog.open);
+        harness.dispatchWindowEvent('popstate');
+        assert.equal(video.parentElement, wrapper);
+        assert.equal(document.getElementById('tm-fullscreen-video-dialog'), null);
+    });
+
+    test('native dialog cancel exits the enlarged view', () => {
+        const { document, video, wrapper } = executeOnVideo({ nitter: true, forbidden: true });
+        document.getElementById('tm-fullscreen-game-view-button').click();
+        const dialog = document.getElementById('tm-fullscreen-video-dialog');
+        dialog.dispatchEvent({ type: 'cancel', preventDefault() {} });
+        assert.equal(video.parentElement, wrapper);
+        assert.equal(document.getElementById('tm-fullscreen-video-dialog'), null);
     });
 });
