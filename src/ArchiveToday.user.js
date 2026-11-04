@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2025-12-27_1.2.8
+// @version      2026-11-05_1.2.10
 // @description  Redirect selected paywall pages to Archive Today, hide prompts, and jump into the content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -21,6 +21,7 @@
 // @match        https://www.theatlantic.com/*
 // @match        https://www.wired.com/*
 // @match        https://www.wsj.com/*
+// @run-at       document-start
 // @grant        none
 // ==/UserScript==
 
@@ -54,8 +55,10 @@
         return; // 結束腳本執行，避免繼續執行下方的重定向邏輯
     }
     
-    // 其他網站的重定向邏輯
-    const archiveUrl = `https://archive.is/submit/?url=${window.location.href}`;
+    // No article-specific fixed snapshots. Keep the original submit behavior.
+    const sourceUrl = new URL(window.location.href);
+    sourceUrl.hash = '';
+    const archiveUrl = `https://archive.is/submit/?url=${encodeURIComponent(sourceUrl.href)}`;
     
     console.log(`重定向至 archive.is: ${archiveUrl}`);
     

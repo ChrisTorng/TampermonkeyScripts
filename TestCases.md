@@ -26,8 +26,13 @@ Section note: X/Twitter runtime tests cover viewer order, compact out-of-flow ar
 Section note: Node.js runtime DOM-harness tests simulate known and localized Reddit app popups, late injection, scroll-lock recovery, non-app dialogs, and early script startup. The mobile app-blocker DOM is not yet captured from a live session, so Android browser behavior requires manual validation.
 - https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (automated runtime tests use synthetic popup and scroll-lock DOM; actual blocking prompt and phone touch scrolling require live validation)
 
+## Archive Today 11 網域實測（全 a，來源衝突已排除）
+
+- [編號 1～11 的原始文章網址、測試步驟與 I/a/X 結果紀錄](ArchiveRedirectOverlapTestCases.md)。使用者實測 11 項皆為 Archive Today；InternetArchive.user.js 已移除重疊 @match。
+
 # Archive Today
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+- https://www.bloomberg.com/news/articles/2025-11-25/three-years-of-ai-mania-how-chatgpt-reordered-the-stock-market [TEST_STATUS: LIMITED] (redirect rule only; archived content not independently confirmed)
 - https://www.economist.com/interactive/christmas-specials/2024/12/21/the-chart-of-everything [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; redirect rule only)
 - https://www.ft.com/content/a3eeb268-5daa-4525-858b-eab93b28d3c7 [CONTENT_CLASS: VALID_AUTH_REQUIRED]
 - https://www.nature.com/articles/d41586-025-00648-5 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
