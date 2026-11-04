@@ -360,9 +360,15 @@ body:has(#task-detail-root) {
             .some((control) => {
                 if (control.id === BUTTON_ID || control.disabled || control.hidden ||
                     control.getAttribute('aria-disabled') === 'true') return false;
+                if (!['BUTTON', 'A', 'INPUT'].includes(control.tagName) &&
+                    control.getAttribute('role') !== 'button') return false;
+                if (control.getClientRects?.().length === 0) return false;
+                const css = window.getComputedStyle(control);
+                if (css.display === 'none' || css.visibility === 'hidden') return false;
                 const label = [control.getAttribute('aria-label'), control.getAttribute('title'),
-                    control.getAttribute('data-tooltip')].filter(Boolean).join(' ');
-                return /(?:full[\s-]?screen|全螢幕|全屏)/i.test(label);
+                    control.getAttribute('data-tooltip'), control.id,
+                    typeof control.className === 'string' ? control.className : ''].filter(Boolean).join(' ');
+                return /(?:full[\s_-]?screen|全螢幕|全屏)/i.test(label);
             });
     }
 
