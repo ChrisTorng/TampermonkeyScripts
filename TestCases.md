@@ -130,9 +130,10 @@ Section note: 18 DOM-harness tests cover detection, viewport, rollback, and manu
 # Better Mobile View
 - https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
-# Fullscreen Game View
-Section note: automated tests inject the userscript into a representative ARC Prize game DOM and mock the browser fullscreen API fallback. Transient-control regression tests also cover pinch-zoom position stability, inverse scaling, and collision avoidance with the separate `≡` menu. Actual mobile pinch gestures require manual validation.
+# Full Screen
+Section note: automated tests inject the userscript into representative ARC Prize and video-player DOMs and mock native fullscreen and fallback behavior. Transient-control regression tests also cover pinch-zoom position stability, inverse scaling, and collision avoidance with the separate `≡` menu. Actual mobile pinch gestures require manual validation.
 - [Local fullscreen test canvas](tests/ControlButtons/index.html#test-game) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (headless Chromium verifies compact translucent entry styling, hidden expanded controls, and pre-entry page scroll restoration after Escape/Back even with smooth scrolling enabled; native fullscreen events and dragging use explicit runtime mocks, with manual browser steps in CurrentUpdates.md)
+- https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (native controls, suppressed duplicate button, and rejected fullscreen without CSS overlays use a representative mocked video DOM; live policy and device UI need manual verification)
 - https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (mobile width and D-pad repairs, fullscreen state events, Escape/Back exit, scroll/focus restoration, delayed layout resets, and rapid re-entry use explicit runtime mocks; mouse/touch dragging uses mock rectangles; visual layout still requires manual device validation)
 
 # Better Discord
