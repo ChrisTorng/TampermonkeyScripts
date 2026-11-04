@@ -2,15 +2,15 @@
 
 Updated: 2026-11-04
 
-## Full Screen — 2026-11-04_1.1.0
+## Full Screen — 2026-11-04_1.1.1
 
 [Install FullscreenGameView.user.js](src/FullscreenGameView.user.js) · Reload existing pages after updating.
 
-- Use video-only native fullscreen, not an overlay of the surrounding article.
-- Hide duplicate controls when the site/player already has one; retain game fallback only.
+- Keep Full Screen available on Nitter despite its disabled native control; use a top-layer video dialog when native fullscreen is blocked.
+- Keep the original video controls, avoid tweet overlap, and restore the player on Escape/Back.
 
 **Test pages:**
-- [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — no duplicate button or overlapping tweet text.
+- [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — custom Full Screen appears; video enlarges without overlaid tweet text; Escape/Back restores it.
 - [ARC Prize game](https://arcprize.org/tasks/ls20) — enter, Escape/Back, and restored position.
 - [Test canvas](tests/ControlButtons/index.html#test-game) — independent floating control.
 
