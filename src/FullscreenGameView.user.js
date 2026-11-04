@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Fullscreen Game View
+// @name         Full Screen
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-28_1.0.6
-// @description  Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
+// @version      2026-11-04_1.1.0
+// @description  Enter true fullscreen for media and games when available; prefer built-in controls and avoid overlapping video.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -277,6 +277,16 @@ html.tm-fullscreen-game-view-active body {
     z-index: 2147483646 !important;
 }
 
+/* Fullscreen the video itself instead of scaling a tweet with overlapping text. */
+video.tm-fullscreen-game-view-media:fullscreen {
+    background: #000 !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    width: 100dvw !important;
+}
+
 /* ARC Prize tasks use a content-box handheld shell that can overflow narrow viewports. */
 body:has(#task-detail-root) {
     overflow-x: hidden !important;
@@ -335,15 +345,38 @@ body:has(#task-detail-root) {
         return candidate.parentElement || candidate;
     }
 
+    function getVideo(target) {
+        return target.tagName === 'VIDEO' ? target : target.querySelector('video');
+    }
+
+    function hasBuiltInFullscreen(target) {
+        const video = getVideo(target);
+        const noFullscreen = video && (video.controlsList?.contains?.('nofullscreen') ||
+            /\bnofullscreen\b/i.test(video.getAttribute('controlslist') || ''));
+        if (video && (video.controls || video.hasAttribute('controls')) && !noFullscreen) return true;
+
+        // Prefer a site's visible custom fullscreen control to another overlay.
+        return Array.from(target.querySelectorAll('button, [role="button"], [aria-label], [title]'))
+            .some((control) => {
+                if (control.id === BUTTON_ID || control.disabled || control.hidden ||
+                    control.getAttribute('aria-disabled') === 'true') return false;
+                const label = [control.getAttribute('aria-label'), control.getAttribute('title'),
+                    control.getAttribute('data-tooltip')].filter(Boolean).join(' ');
+                return /(?:full[\s-]?screen|全螢幕|全屏)/i.test(label);
+            });
+    }
+
     function isFullscreen(target) {
-        return document.fullscreenElement === target || target.classList.contains(FALLBACK_CLASS);
+        return document.fullscreenElement === target ||
+            document.fullscreenElement === getVideo(target) ||
+            target.classList.contains(FALLBACK_CLASS);
     }
 
     function updateButton(button, target) {
         const active = isFullscreen(target);
         button.textContent = '⛶';
-        button.setAttribute('aria-label', 'Enter fullscreen game view');
-        button.title = 'Fullscreen game view';
+        button.setAttribute('aria-label', 'Enter Full Screen');
+        button.title = 'Full Screen';
         button.setAttribute('aria-pressed', String(active));
         button.disabled = active;
     }
@@ -394,32 +427,48 @@ body:has(#task-detail-root) {
 
     async function enterFullscreen(target, button) {
         if (isFullscreen(target)) return;
+        const video = getVideo(target);
+        const surface = video || target;
         rememberPageState(target);
-        if (typeof target.requestFullscreen === 'function') {
+
+        if (typeof surface.requestFullscreen === 'function') {
             try {
-                await target.requestFullscreen({ navigationUI: 'hide' });
+                // Called synchronously on user activation before the first await.
+                await surface.requestFullscreen({ navigationUI: 'hide' });
             } catch (_error) {
-                target.classList.add(FALLBACK_CLASS);
+                // Never fake video fullscreen by overlaying the tweet with CSS.
+                if (!video) target.classList.add(FALLBACK_CLASS);
             }
-        } else {
+        } else if (!video) {
+            // Retain the established game-only fallback on older browsers.
             target.classList.add(FALLBACK_CLASS);
         }
 
+        if (!isFullscreen(target)) restorePageState(target);
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
         updateButton(button, target);
+        if (video && !isFullscreen(target)) {
+            button.title = 'Full Screen unavailable: blocked by website or browser';
+        }
         refreshTransientControls();
     }
 
     function mountButton() {
-        if (document.getElementById(BUTTON_ID)) {
+        const existing = document.getElementById(BUTTON_ID);
+        if (existing) {
+            const parent = existing.parentElement;
+            if (parent && hasBuiltInFullscreen(parent) && !isFullscreen(parent)) {
+                existing.remove();
+                parent.classList.remove(TARGET_CLASS);
+            }
             return;
         }
 
         const target = getTarget();
-        if (!target) {
-            return;
-        }
+        if (!target || hasBuiltInFullscreen(target)) return;
 
+        const video = getVideo(target);
+        if (video) video.classList.add('tm-fullscreen-game-view-media');
         target.classList.add(TARGET_CLASS);
         const button = document.createElement('button');
         button.id = BUTTON_ID;
