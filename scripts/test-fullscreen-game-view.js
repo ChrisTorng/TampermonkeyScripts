@@ -214,6 +214,19 @@ describe('Full Screen on embedded video players', () => {
         assert.equal(document.getElementById('tm-fullscreen-game-view-button'), null);
     });
 
+    test('recognizes a site's icon-only fullscreen control', () => {
+        const harness = createHarness({ url: 'https://example.com/player' });
+        const wrapper = harness.document.createElement('div');
+        wrapper.appendChild(harness.document.createElement('video'));
+        const nativeButton = harness.document.createElement('button');
+        nativeButton.className = 'player-fullscreen';
+        wrapper.appendChild(nativeButton);
+        harness.document.body.appendChild(wrapper);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        assert.equal(harness.document.getElementById('tm-fullscreen-game-view-button'), null);
+    });
+
     test('requests fullscreen on the video, never on its article wrapper', async () => {
         const { document, wrapper, video } = executeOnVideo();
         const button = document.getElementById('tm-fullscreen-game-view-button');
