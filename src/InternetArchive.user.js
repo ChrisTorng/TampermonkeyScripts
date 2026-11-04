@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-08_1.5.3
+// @version      2026-11-05_1.5.4
 // @description  Send most paywall articles to Internet Archive for archiving, hide fixed titles, and offer an Archive Today fallback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/InternetArchive.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=web.archive.org
+// @run-at       document-start
 // @match        https://web.archive.org/*
 // @exclude      *://christorng.idv.tw/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -16,33 +17,17 @@
 // @match        https://www.australiangeographic.com.au/*
 // @match        https://www.bbc.com/*
 // @match        https://www.cnbc.com/*
-/// @match        https://www.economist.com/*
-/// @match        https://www.ft.com/*
 // @match        https://www.lrb.co.uk/*
-/// @match        https://www.newyorker.com/*
-/// @match        https://www.nytimes.com/*
 // @match        https://www.scientificamerican.com/*
 // @match        https://www.rawstory.com/*
 // @match        https://www.scmp.com/*
 // @match        https://www.smh.com.au/*
-/// @match        https://www.theatlantic.com/*
 // @match        https://www.thetimes.com/*
 // @match        https://www.theverge.com/*
 // @match        https://www.washingtonpost.com/*
-/// @match        https://www.wsj.com/*
 
-/// from ArchiveToday.user.js, because of human check may loses target URL
-// @match        https://www.404media.co/*
-// @match        https://www.bloomberg.com/*
-// @match        https://www.economist.com/*
-// @match        https://www.ft.com/*
-// @match        https://www.nature.com/*
-// @match        https://www.newscientist.com/*
-// @match        https://www.newyorker.com/*
-// @match        https://www.nytimes.com/*
-// @match        https://www.theatlantic.com/*
-// @match        https://www.wired.com/*
-// @match        https://www.wsj.com/*
+// ArchiveToday.user.js owns 11 other hosts. The same source URL must
+// never be intercepted by both archive scripts (tested 2026-11-05).
 
 // @grant        none
 // ==/UserScript==
