@@ -190,7 +190,7 @@ describe('Full Screen on embedded video players', () => {
         const harness = createHarness({ url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214' });
         const wrapper = harness.document.createElement('div');
         const video = harness.document.createElement('video');
-        if (controls) video.setAttribute('controls', '');
+        if (controls) video.controls = true; // The lightweight harness does not model empty boolean attributes.
         wrapper.appendChild(video);
         if (custom) {
             const nativeButton = harness.document.createElement('button');
