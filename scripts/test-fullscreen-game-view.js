@@ -214,7 +214,7 @@ describe('Full Screen on embedded video players', () => {
         assert.equal(document.getElementById('tm-fullscreen-game-view-button'), null);
     });
 
-    test('recognizes a site's icon-only fullscreen control', () => {
+    test('recognizes an icon-only website fullscreen control', () => {
         const harness = createHarness({ url: 'https://example.com/player' });
         const wrapper = harness.document.createElement('div');
         wrapper.appendChild(harness.document.createElement('video'));
