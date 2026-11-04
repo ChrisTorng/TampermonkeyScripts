@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-28_1.7.1
+// @version      2026-11-04_1.8.0
 // @description  Add clear read states, fixed collapse controls, and separate dated archive/Latest navigation to Hacker News Summary; track and auto-open new items on other supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -30,6 +30,7 @@
     const COLLAPSED_CLASS = 'auto-open-new-articles-collapsed';
     const MANAGED_CLASS = 'auto-open-new-articles-managed';
     const ITEM_TOGGLE_CLASS = 'auto-open-new-articles-item-toggle';
+    const BETACAT_TOOLBAR = 'tm-betacat-article-tools';
     const ALL_TOGGLE_ID = 'auto-open-new-articles-all-toggle';
     const DATE_NAV_CLASS = 'auto-open-new-articles-date-nav';
     const STYLE_ID = 'auto-open-new-articles-style';
@@ -51,7 +52,7 @@
             .${SEEN_CLASS} {
                 opacity: 0.68 !important;
             }
-            .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}) {
+            .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}):not(.${BETACAT_TOOLBAR}) {
                 display: none !important;
             }
             .${MANAGED_CLASS} {
@@ -74,6 +75,13 @@
                 text-align: center !important;
                 cursor: pointer !important;
             }
+            article.post-item.${MANAGED_CLASS} { padding-left: 0 !important; }
+            article.post-item > .${BETACAT_TOOLBAR} { display: flex !important; align-items: flex-start !important; justify-content: space-between !important;
+                gap: 8px !important; width: 100% !important; min-width: 0 !important; box-sizing: border-box !important;
+                padding: 0 !important; margin: 0 0 6px !important; min-height: 32px !important; }
+            article.post-item > .${BETACAT_TOOLBAR} > .${ITEM_TOGGLE_CLASS} { position: static !important; left: auto !important; top: auto !important;
+                flex: 0 0 28px !important; width: 28px !important; height: 28px !important; min-height: 28px !important;
+                line-height: 26px !important; align-self: flex-start !important; }
             .${DATE_NAV_CLASS} {
                 display: grid !important;
                 grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
@@ -388,7 +396,17 @@
         button.addEventListener('click', () => {
             setArticleCollapsed(article, !article.classList.contains(COLLAPSED_CLASS));
         });
-        article.insertBefore(button, article.firstChild);
+        if (article.matches('article.post-item')) {
+            let tools = article.querySelector(':scope > .' + BETACAT_TOOLBAR);
+            if (!tools) {
+                tools = document.createElement('div');
+                tools.className = BETACAT_TOOLBAR;
+                article.insertBefore(tools, article.querySelector(':scope > .post-title') || article.firstChild);
+            }
+            tools.prepend(button);
+        } else {
+            article.insertBefore(button, article.firstChild);
+        }
         setArticleCollapsed(article, initiallyCollapsed);
     }
 
