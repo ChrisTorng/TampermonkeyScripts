@@ -48,7 +48,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.match(style.textContent, /#playground \.d-pad-grid[\s\S]*transform: translateX\(2rem\) !important/);
         assert(game.classList.contains('tm-fullscreen-game-view-target'));
         assert.equal(button.parentElement, game);
-        assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
+        assert.equal(button.getAttribute('aria-label'), 'Enter Full Screen');
     });
 
     test('enters and exits the distraction-free fallback view', async () => {
@@ -67,7 +67,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         await Promise.resolve();
         assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
         assert(!document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
-        assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
+        assert.equal(button.getAttribute('aria-label'), 'Enter Full Screen');
         assert.equal(button.disabled, false);
     });
 
@@ -182,5 +182,68 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         harness.flushAnimationFrames();
         harness.flushAnimationFrames();
         assert.equal(window.scrollY, 500);
+    });
+});
+
+describe('Full Screen on embedded video players', () => {
+    function executeOnVideo({ controls = false, custom = false } = {}) {
+        const harness = createHarness({ url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214' });
+        const wrapper = harness.document.createElement('div');
+        const video = harness.document.createElement('video');
+        if (controls) video.setAttribute('controls', '');
+        wrapper.appendChild(video);
+        if (custom) {
+            const nativeButton = harness.document.createElement('button');
+            nativeButton.setAttribute('aria-label', 'Fullscreen');
+            wrapper.appendChild(nativeButton);
+        }
+        harness.document.body.appendChild(wrapper);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        return { ...harness, wrapper, video };
+    }
+
+    test('prefers browser-native video controls', () => {
+        const { document, wrapper } = executeOnVideo({ controls: true });
+        assert.equal(document.getElementById('tm-fullscreen-game-view-button'), null);
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-target'));
+    });
+
+    test('does not overlap the site-provided fullscreen button', () => {
+        const { document } = executeOnVideo({ custom: true });
+        assert.equal(document.getElementById('tm-fullscreen-game-view-button'), null);
+    });
+
+    test('requests fullscreen on the video, never on its article wrapper', async () => {
+        const { document, wrapper, video } = executeOnVideo();
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        let requested = false;
+        video.requestFullscreen = async () => {
+            requested = true;
+            document.fullscreenElement = video;
+            document.dispatchEvent({ type: 'fullscreenchange' });
+        };
+        button.click();
+        await Promise.resolve();
+        assert(requested);
+        assert.equal(document.fullscreenElement, video);
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-fallback'));
+        document.fullscreenElement = null;
+        document.dispatchEvent({ type: 'fullscreenchange' });
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+    });
+
+    test('blocked video fullscreen does not simulate an overlay on top of the article', async () => {
+        const { document, wrapper, video } = executeOnVideo();
+        const button = document.getElementById('tm-fullscreen-game-view-button');
+        video.requestFullscreen = async () => { throw new TypeError('Permissions-Policy denied fullscreen'); };
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(!document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
+        assert.equal(button.disabled, false);
+        assert.match(button.title, /unavailable/);
     });
 });
