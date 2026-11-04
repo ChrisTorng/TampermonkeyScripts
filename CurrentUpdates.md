@@ -1,6 +1,18 @@
 # Current updates
 
-Updated: 2026-11-01
+Updated: 2026-11-04
+
+## Full Screen — 2026-11-04_1.1.0
+
+[Install FullscreenGameView.user.js](src/FullscreenGameView.user.js) · Reload existing pages after updating.
+
+- Use video-only native fullscreen, not an overlay of the surrounding article.
+- Hide duplicate controls when the site/player already has one; retain game fallback only.
+
+**Test pages:**
+- [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — no duplicate button or overlapping tweet text.
+- [ARC Prize game](https://arcprize.org/tasks/ls20) — enter, Escape/Back, and restored position.
+- [Test canvas](tests/ControlButtons/index.html#test-game) — independent floating control.
 
 ## RedirectUrls — 2026-11-01_1.6.2
 
