@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ArchiveToday Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-05_1.2.9
+// @version      2026-11-05_1.2.10
 // @description  Redirect selected paywall pages to Archive Today, hide prompts, and jump into the content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -55,17 +55,10 @@
         return; // 結束腳本執行，避免繼續執行下方的重定向邏輯
     }
     
-    // Only exact source URLs with publicly referenced or user-observed fixed
-    // snapshots use direct links. Others retain the regular submit fallback.
-    const VERIFIED_SNAPSHOTS = new Map([
-        ['https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/', 'https://archive.ph/wy1Wt'],
-        ['https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091/', 'https://archive.is/20250108154250/https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091'],
-        ['https://www.wsj.com/world/dozens-feared-dead-in-crash-after-passenger-flight-diverts-from-russia-fb2cdf2c', 'https://archive.is/T0atg']
-    ]);
+    // No article-specific fixed snapshots. Keep the original submit behavior.
     const sourceUrl = new URL(window.location.href);
     sourceUrl.hash = '';
-    const archiveUrl = VERIFIED_SNAPSHOTS.get(sourceUrl.href) ||
-        `https://archive.is/submit/?url=${encodeURIComponent(sourceUrl.href)}`;
+    const archiveUrl = `https://archive.is/submit/?url=${encodeURIComponent(sourceUrl.href)}`;
     
     console.log(`重定向至 archive.is: ${archiveUrl}`);
     

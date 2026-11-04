@@ -80,20 +80,8 @@
 - `title_zh` 使用實際取得的繁體中文翻譯，中文為主，原文為輔。無法取得時保持空值，不推測。
 - `url` 保存原始網址，`redirect_url` 保存優先或觀察到的轉址網址，不能互相覆寫。
 
-## 固定快照查詢結果
+## 統一轉址規則
 
-- **1**：[404 Media — HN 留言提供的快照](https://archive.ph/wy1Wt)。來源：[HN 討論](https://news.ycombinator.com/item?id=43045835)。
-- **9**：[The Atlantic — 公開引用的快照](https://archive.is/20250108154250/https://www.theatlantic.com/magazine/archive/2025/02/american-loneliness-personality-politics/681091)。來源：[外部文章引用](https://om.co/2025/05/17/what-an-unusual-week/)。
-- **11**：[WSJ — 使用者實測最終網址](https://archive.is/T0atg)。目前無法從外部獨立讀取 Archive Today 頁面，採用使用者提供的網址。
-- **2、3、4、5、6、7、8、10**：已搜尋，但未找到足以確認原始文章和固定快照 URL 對應的資料，保留 `/submit/?url=<encoded URL>`。
+11 項實測都到 Archive Today；原始網域由 `ArchiveToday.user.js` 處理，並統一前往 `https://archive.is/submit/?url=<URL 編碼後的原始網址>`。
 
-固定快照不保證免除 CAPTCHA；快照代表當時的歷史版本，非原站最新內容。原始標題來自原文網站，而非封存網域。
-
-## 動態最新快照路徑（尚未改為預設）
-
-Archive Today 另有社群與擴充功能使用的 `https://archive.is/newest/<原始網址>` 端點，服務會嘗試尋找**最新已存在的快照**，並導向像 `https://archive.is/T0atg` 的固定網址。參考：
-
-- https://github.com/jackar/archive_viewer
-- https://chromewebstore.google.com/detail/archivetoday-automator/mmhadhnchpgicjlmlcdfaapkekknnkha
-
-它不等於 `/submit/?url=`：未找到既有快照時，可能顯示建立快照頁或其他錯誤。第三方工具也提醒可能遇到 CAPTCHA 或服務限流。由於**未能從目前環境連線驗證原始 8 篇的 /newest 回應**，暫不把它無條件取代正式 fallback；保留既定 `/submit/` 行為，並只對三筆已知文章使用固定快照直連。
+**不建立任何單篇文章的固定快照對應**。之後實際跳往哪個快照或是否進行人機驗證，交由 Archive Today 決定。腳本在 `document-start` 執行，以減少原始頁面閃現。
