@@ -367,8 +367,9 @@ body:has(#task-detail-root) {
     }
 
     function isFullscreen(target) {
+        const video = getVideo(target);
         return document.fullscreenElement === target ||
-            document.fullscreenElement === getVideo(target) ||
+            Boolean(video && document.fullscreenElement === video) ||
             target.classList.contains(FALLBACK_CLASS);
     }
 
