@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-04_1.8.0
+// @version      2026-11-04_1.8.1
 // @description  Add clear read states, fixed collapse controls, and separate dated archive/Latest navigation to Hacker News Summary; track and auto-open new items on other supported sites.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -113,7 +113,7 @@
         const url = new URL(window.location.href);
 
         const hackerNewsDateMatch = url.pathname.match(/^\/daily\/(\d{4}-\d{2}-\d{2})\/?$/);
-        if (url.hostname === 'hackernews.betacat.io' && (url.pathname === '/' || hackerNewsDateMatch)) {
+        if (url.hostname === 'hackernews.betacat.io' && (url.pathname === '/' || url.pathname === '/zh' || url.pathname === '/zh/' || hackerNewsDateMatch)) {
             return {
                 scope: 'hackernews-summary:listings',
                 markPreviouslyListed: true,
