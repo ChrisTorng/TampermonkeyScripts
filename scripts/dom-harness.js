@@ -106,6 +106,13 @@ class BasicNode {
         nodes.forEach((node) => this.appendChild(node));
     }
 
+    prepend(...nodes) {
+        // Match DOM insertion order; insertBefore handles connection state.
+        for (let index = nodes.length - 1; index >= 0; index--) {
+            this.insertBefore(nodes[index], this.children[0] || null);
+        }
+    }
+
     removeChild(child) {
         const index = this.children.indexOf(child);
         if (index === -1) {
