@@ -26,6 +26,10 @@ Section note: X/Twitter runtime tests cover viewer order, compact out-of-flow ar
 Section note: Node.js runtime DOM-harness tests simulate known and localized Reddit app popups, late injection, scroll-lock recovery, non-app dialogs, and early script startup. The mobile app-blocker DOM is not yet captured from a live session, so Android browser behavior requires manual validation.
 - https://www.reddit.com/r/robotics/comments/1ps2aw1/in_china_robots_are_now_handling_the_solar_panels/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (automated runtime tests use synthetic popup and scroll-lock DOM; actual blocking prompt and phone touch scrolling require live validation)
 
+## Archive Today / Internet Archive 11 個重疊網域手動測試（待回報）
+
+- [編號 1～11 的原始文章網址、測試步驟與 I/a/X 結果紀錄](ArchiveRedirectOverlapTestCases.md)。來源兩個腳本同時啟用時的實際優先權，待使用者測試回報後再修正。
+
 # Archive Today
 - https://www.404media.co/anyone-can-push-updates-to-the-doge-gov-website-2/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://www.economist.com/interactive/christmas-specials/2024/12/21/the-chart-of-everything [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; redirect rule only)
