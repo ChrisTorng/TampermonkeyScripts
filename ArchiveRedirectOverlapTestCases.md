@@ -88,3 +88,12 @@
 - **2、3、4、5、6、7、8、10**：已搜尋，但未找到足以確認原始文章和固定快照 URL 對應的資料，保留 `/submit/?url=<encoded URL>`。
 
 固定快照不保證免除 CAPTCHA；快照代表當時的歷史版本，非原站最新內容。原始標題來自原文網站，而非封存網域。
+
+## 動態最新快照路徑（尚未改為預設）
+
+Archive Today 另有社群與擴充功能使用的 `https://archive.is/newest/<原始網址>` 端點，服務會嘗試尋找**最新已存在的快照**，並導向像 `https://archive.is/T0atg` 的固定網址。參考：
+
+- https://github.com/jackar/archive_viewer
+- https://chromewebstore.google.com/detail/archivetoday-automator/mmhadhnchpgicjlmlcdfaapkekknnkha
+
+它不等於 `/submit/?url=`：未找到既有快照時，可能顯示建立快照頁或其他錯誤。第三方工具也提醒可能遇到 CAPTCHA 或服務限流。由於**未能從目前環境連線驗證原始 8 篇的 /newest 回應**，暫不把它無條件取代正式 fallback；保留既定 `/submit/` 行為，並只對三筆已知文章使用固定快照直連。
