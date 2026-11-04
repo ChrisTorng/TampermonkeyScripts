@@ -124,7 +124,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Full Screen User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Enter true fullscreen for media and games when available; prefer built-in controls and avoid overlapping video.
+Enlarge videos and games using native fullscreen or an isolated fallback; prefer working built-in controls.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
