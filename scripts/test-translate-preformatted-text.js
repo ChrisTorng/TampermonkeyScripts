@@ -50,6 +50,75 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('large embedded documents offer an explicit standalone translation fallback', () => {
+        const opened = [];
+        const harness = execute((h) => {
+            const frame = h.document.createElement('iframe');
+            frame.setAttribute('src', 'https://sample.frame.claudeusercontent.com/_f/signed-content');
+            frame.clientWidth = 360;
+            frame.clientHeight = 700;
+            h.appendToBody(frame);
+            h.context.window.open = (...args) => opened.push(args);
+        }, 'https://claude.ai/artifact/example');
+
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        assert.equal(button.textContent, '譯↗');
+        assert.equal(button.getAttribute('aria-label'), 'Open an embedded page separately for browser translation');
+        assert.equal(harness.document.querySelector('iframe').getAttribute('src'), 'https://sample.frame.claudeusercontent.com/_f/signed-content');
+        button.click();
+        assert.deepEqual(opened, [[
+            'https://sample.frame.claudeusercontent.com/_f/signed-content',
+            '_blank',
+            'noopener,noreferrer'
+        ]]);
+    });
+
+    test('embedded-frame fallback ignores unsafe, tiny, and media-only frames', () => {
+        const harness = execute((h) => {
+            for (const [src, width, height] of [
+                ['javascript:alert(1)', 350, 500],
+                ['about:blank', 350, 500],
+                ['https://www.youtube.com/embed/test', 350, 500],
+                ['https://example.org/tracking', 1, 1],
+            ]) {
+                const frame = h.document.createElement('iframe');
+                frame.setAttribute('src', src);
+                frame.clientWidth = width;
+                frame.clientHeight = height;
+                h.appendToBody(frame);
+            }
+        }, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        assert.equal(button.textContent, '譯↗');
+        assert.equal(button.getAttribute('data-floating-available'), 'false');
+    });
+
+    test('late iframe insertion is detected and multiple frames require a selection', () => {
+        const opened = [];
+        let promptText = '';
+        const harness = execute((h) => {
+            h.context.window.open = (...args) => opened.push(args);
+            h.context.window.prompt = (text) => { promptText = text; return '2'; };
+        }, 'https://example.org/article');
+        for (const [host, width] of [['first.example', 400], ['second.example', 300]]) {
+            const frame = harness.document.createElement('iframe');
+            frame.setAttribute('src', `https://${host}/embed/article`);
+            frame.clientWidth = width;
+            frame.clientHeight = 450;
+            harness.appendToBody(frame);
+            harness.triggerMutation([frame]);
+        }
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert.equal(button.textContent, '譯↗');
+        button.click();
+        assert.match(promptText, /1\\. first\\.example/);
+        assert.match(promptText, /2\\. second\\.example/);
+        assert.equal(opened.length, 1);
+        assert.equal(opened[0][0], 'https://second.example/embed/article');
+    });
+
     test('Astro article navigation opts out of swaps while fragments and external links remain unchanged', () => {
         const links = [];
         execute((harness) => {
