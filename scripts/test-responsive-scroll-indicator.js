@@ -239,6 +239,83 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         }
     });
 
+    test('clip-path or overlapping content does not leave a floating marker behind', () => {
+        let menu;
+        let scrollport;
+        let article;
+        let open = false;
+        const harness = executeResponsiveScrollIndicator(
+            'https://www.pangram.com/blog/introducing-pangram-image-1-0',
+            (currentHarness) => {
+                menu = currentHarness.document.createElement('div');
+                menu._rect = { top: 240, left: 60, right: 640, bottom: 780, width: 580, height: 540 };
+                menu.offsetWidth = 580;
+                menu.offsetHeight = 540;
+                menu.clientWidth = 580;
+                menu.clientHeight = 540;
+                scrollport = currentHarness.document.createElement('div');
+                scrollport.dataset.overflowY = 'auto';
+                scrollport.clientHeight = 400;
+                scrollport.scrollHeight = 1500;
+                scrollport._rect = { top: 380, left: 85, right: 605, bottom: 780, width: 520, height: 400 };
+                menu.appendChild(scrollport);
+                currentHarness.appendToBody(menu);
+                article = currentHarness.document.createElement('article');
+                currentHarness.appendToBody(article);
+
+                // Layout dimensions are unchanged while the menu is paint-clipped.
+                currentHarness.document.elementFromPoint = (x, y) =>
+                    open ? (y < 560 ? article : scrollport) : article;
+            }
+        );
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const marker = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert(marker);
+        assert.equal(marker.style.display, 'none', 'A paint-clipped popup leaves no marker.');
+        assert.equal(root.style.display, '', 'The page marker remains present.');
+
+        open = true;
+        harness.triggerMutation([], { type: 'attributes', target: menu, attributeName: 'class' });
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, '', 'The revealed popup becomes eligible.');
+        assert(Number.parseInt(marker.style.top, 10) >= 550, 'The marker starts below the occluding overlay.');
+        assert.equal(marker.style.left, '605px');
+        assert(Number.parseInt(marker.style.height, 10) < 230, 'Occluded sections are excluded.');
+
+        open = false;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, 'none', 'Painting changes are rechecked without layout changes.');
+    });
+
+    test('semantic closed state and aria-hidden hide a scrollport before animation ends', () => {
+        let menu;
+        const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
+            menu = currentHarness.document.createElement('div');
+            menu.dataset.state = 'closed';
+            const scrollport = currentHarness.document.createElement('div');
+            scrollport.dataset.overflowY = 'auto';
+            scrollport.clientHeight = 320;
+            scrollport.scrollHeight = 900;
+            scrollport._rect = { top: 100, left: 80, right: 380, bottom: 420, width: 300, height: 320 };
+            menu.appendChild(scrollport);
+            currentHarness.appendToBody(menu);
+        });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const marker = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert.equal(marker.style.display, 'none');
+        menu.dataset.state = 'open';
+        harness.triggerMutation([], { type: 'attributes', target: menu, attributeName: 'data-state' });
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, '');
+        menu.setAttribute('aria-hidden', 'true');
+        harness.triggerMutation([], { type: 'attributes', target: menu, attributeName: 'aria-hidden' });
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, 'none');
+    });
+
     test('class-triggered overflow changes discover scrollports without adding children', () => {
         let panel;
         const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
