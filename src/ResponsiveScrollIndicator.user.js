@@ -350,7 +350,6 @@
                 || style.display === 'none'
                 || style.visibility === 'hidden' || style.visibility === 'collapse'
                 || style.contentVisibility === 'hidden'
-                || style.pointerEvents === 'none'
                 || (typeof style.opacity === 'string' && parseFloat(style.opacity) === 0)) {
                 return null;
             }
@@ -388,7 +387,7 @@
         }
 
         return bottom - top >= MIN_VISIBLE_TRACK_PX && right - left >= BAR_WIDTH
-            ? { top, right, bottom }
+            ? { top, left, right, bottom }
             : null;
     }
 
