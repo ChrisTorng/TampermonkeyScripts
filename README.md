@@ -29,7 +29,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
+Translate code blocks or open embedded pages separately for browser translation; improve inline code, Mastodon, Wikipedia, and Astro navigation.
 
 ---
 
