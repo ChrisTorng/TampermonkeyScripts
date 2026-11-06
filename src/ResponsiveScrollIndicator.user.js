@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-01-04_1.3.10
-// @description  Show thin, fixed vertical markers that track scroll position for every scrollable area on the page.
+// @version      2026-11-06_1.3.11
+// @description  Show thin scroll markers only for visible page and nested scroll areas.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -23,10 +23,12 @@
     const VIEWPORT_CLASS = 'tm-viewport';
     const BAR_WIDTH = 6;
     const MIN_VIEWPORT_HEIGHT_PX = 12;
+    const MIN_VISIBLE_TRACK_PX = 12;
     const UPDATE_INTERVAL_MS = 100;
     const SCAN_INTERVAL_MS = 1000;
     const VISIBILITY_RATIO_THRESHOLD = 0.95;
     const SCROLLABLE_OVERFLOW_VALUES = new Set(['auto', 'scroll', 'overlay']);
+    const CLIPPING_OVERFLOW_VALUES = new Set(['auto', 'scroll', 'overlay', 'hidden', 'clip']);
 
     let styleElement = null;
     let constructedStyleSheet = null;
@@ -322,6 +324,68 @@
         return element.getClientRects().length === 0;
     }
 
+    // Indicators live in document.body, outside the scrollport's CSS clipping.
+    // Calculate the painted viewport instead of trusting the target's own rectangle.
+    function getVisibleScrollableRect(element) {
+        if (isElementHidden(element)) {
+            return null;
+        }
+
+        const rect = element.getBoundingClientRect();
+        let left = Math.max(rect.left, viewportLeft);
+        let right = Math.min(rect.right, viewportLeft + viewportWidth);
+        let top = Math.max(rect.top, viewportTop);
+        let bottom = Math.min(rect.bottom, viewportTop + viewportHeight);
+
+        if (right <= left || bottom <= top) {
+            return null;
+        }
+
+        for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+            const style = getComputedStyle(ancestor);
+            if (ancestor.hidden || style.display === 'none'
+                || style.contentVisibility === 'hidden'
+                || (typeof style.opacity === 'string' && parseFloat(style.opacity) === 0)) {
+                return null;
+            }
+
+            if (ancestor === element) {
+                continue;
+            }
+
+            const paintContained = /(?:^|\s)(?:paint|content|strict)(?:\s|$)/.test(style.contain || '')
+                || style.contentVisibility === 'auto';
+            const clipX = paintContained || CLIPPING_OVERFLOW_VALUES.has(style.overflowX);
+            const clipY = paintContained || CLIPPING_OVERFLOW_VALUES.has(style.overflowY);
+            if (!clipX && !clipY) {
+                continue;
+            }
+
+            const ancestorRect = ancestor.getBoundingClientRect();
+            const scaleX = ancestor.offsetWidth > 0 ? ancestorRect.width / ancestor.offsetWidth : 1;
+            const scaleY = ancestor.offsetHeight > 0 ? ancestorRect.height / ancestor.offsetHeight : 1;
+            const clientLeft = ancestorRect.left + (ancestor.clientLeft || 0) * scaleX;
+            const clientTop = ancestorRect.top + (ancestor.clientTop || 0) * scaleY;
+
+            if (clipX) {
+                left = Math.max(left, clientLeft);
+                right = Math.min(right, clientLeft + ancestor.clientWidth * scaleX);
+            }
+            if (clipY) {
+                top = Math.max(top, clientTop);
+                bottom = Math.min(bottom, clientTop + ancestor.clientHeight * scaleY);
+            }
+
+            if (right <= left || bottom <= top) {
+                return null;
+            }
+        }
+
+        return bottom - top >= MIN_VISIBLE_TRACK_PX && right - left >= BAR_WIDTH
+            ? { top, right, bottom }
+            : null;
+    }
+
     function updateViewportMarker(indicator, scrollRatio, viewportRatio) {
         const trackHeight = indicator.track.clientHeight;
         if (!trackHeight) {
@@ -378,26 +442,8 @@
             return;
         }
 
-        if (isElementHidden(element)) {
-            hideIndicator(indicator);
-            return;
-        }
-
-        const rect = element.getBoundingClientRect();
-        if (rect.height <= 0 || rect.width <= 0) {
-            hideIndicator(indicator);
-            return;
-        }
-        const visibleTop = viewportTop;
-        const visibleBottom = viewportTop + viewportHeight;
-        const visibleLeft = viewportLeft;
-        const visibleRight = viewportLeft + viewportWidth;
-
-        if (rect.bottom <= visibleTop || rect.top >= visibleBottom) {
-            hideIndicator(indicator);
-            return;
-        }
-        if (rect.right <= visibleLeft || rect.left >= visibleRight) {
+        const visibleRect = getVisibleScrollableRect(element);
+        if (!visibleRect) {
             hideIndicator(indicator);
             return;
         }
@@ -412,11 +458,11 @@
             return;
         }
 
-        showIndicator(indicator);
-        indicator.container.style.top = `${Math.round(rect.top)}px`;
-        indicator.container.style.left = `${Math.round(rect.right)}px`;
-        indicator.container.style.height = `${Math.max(0, Math.round(rect.height))}px`;
+        indicator.container.style.top = `${Math.round(visibleRect.top)}px`;
+        indicator.container.style.left = `${Math.round(visibleRect.right)}px`;
+        indicator.container.style.height = `${Math.max(0, Math.round(visibleRect.bottom - visibleRect.top))}px`;
         indicator.container.style.setProperty('--tm-scroll-scale', `${viewportScale}`);
+        showIndicator(indicator);
 
         const scrollRatio = maxScrollTop > 0 ? element.scrollTop / maxScrollTop : 0;
         updateViewportMarker(indicator, scrollRatio, viewportRatio);
@@ -455,13 +501,24 @@
             window.visualViewport.addEventListener('scroll', handleVisualViewportChange, { passive: true });
         }
 
-        const observer = new MutationObserver(() => {
+        const observer = new MutationObserver((records) => {
+            if (!records.some((record) => {
+                const target = record.target;
+                return !target || !target.closest || !target.closest('[data-tm-scroll-indicator]');
+            })) {
+                return;
+            }
             pendingScan = true;
             scheduleUpdate();
         });
 
         if (document.body) {
-            observer.observe(document.body, { childList: true, subtree: true });
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'hidden', 'open']
+            });
         }
     }
 
