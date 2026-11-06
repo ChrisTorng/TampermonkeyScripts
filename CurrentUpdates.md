@@ -11,7 +11,7 @@ Updated: 2026-11-07
 
 **Test pages:**
 - [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — closed contents: no inner bar; expanded contents: solid gray bar; outer bar stays solid gray and flush-right.
-- [IndieWeb POSSE](https://indieweb.org/POSSE) — gray page marker remains visible after scrolling stops.
+- [IndieWeb POSSE](https://indieweb.org/POSSE) — solid gray page marker remains visible after scrolling stops.
 
 ## RedirectUrls — 2026-11-01_1.6.2
 
