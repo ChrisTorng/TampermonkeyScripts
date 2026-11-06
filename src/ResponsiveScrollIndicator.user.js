@@ -679,8 +679,9 @@
             scheduleUpdate();
         });
 
-        if (document.body) {
-            observer.observe(document.body, {
+        if (document.documentElement || document.body) {
+            // Responsive layouts often toggle classes on <html>, not <body>.
+            observer.observe(document.documentElement || document.body, {
                 childList: true,
                 subtree: true,
                 attributes: true,
