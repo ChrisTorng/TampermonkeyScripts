@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-01_1.5.8
-// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
+// @version      2026-11-06_1.5.9
+// @description  Translate code blocks or open embedded pages separately for browser translation; improve inline code, Mastodon, Wikipedia, and Astro navigation.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
@@ -667,12 +667,70 @@
             : `Make ${scope} preformatted content translatable`;
     }
 
+    // Browser page translation does not reliably descend into embedded documents.
+    // Opening a frame as a top-level page is an opt-in fallback, not an attempt to
+    // access its cross-origin DOM or to invoke private browser translation APIs.
+    const watchedFrames = new WeakSet();
+
+    function embeddedDocumentFrames() {
+        return Array.from(document.querySelectorAll('iframe[src]'))
+            .map((frame) => {
+                if (!watchedFrames.has(frame)) {
+                    watchedFrames.add(frame);
+                    frame.addEventListener('load', updateAllButton);
+                }
+                if (frame.hasAttribute('hidden')) return null;
+                let url;
+                try {
+                    url = new URL(frame.getAttribute('src'), document.baseURI || location.href);
+                } catch (_) {
+                    return null;
+                }
+                if (!['http:', 'https:'].includes(url.protocol) || url.href === location.href) return null;
+                // Avoid offering an article-translation action for media players,
+                // ads, authentication challenges, and tiny tracking frames.
+                if (/(^|\.)(youtube\.com|youtube-nocookie\.com|vimeo\.com|doubleclick\.net|googlesyndication\.com|recaptcha\.net)$/i.test(url.hostname)) return null;
+                const rect = frame.getBoundingClientRect();
+                if (rect.width < 220 || rect.height < 100) return null;
+                return { frame, url, area: rect.width * rect.height };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.area - a.area);
+    }
+
     function updateAllButton() {
         const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
         const hasBlocks = wrappers.length > 0;
+        const hasFrames = embeddedDocumentFrames().length > 0;
         const allConverted = hasBlocks && wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
-        setFloatingButtonAvailable(allButton, hasBlocks);
-        setButtonState(allButton, allConverted, 'all');
+        setFloatingButtonAvailable(allButton, hasBlocks || hasFrames);
+        allButton.textContent = hasBlocks ? '譯∞' : '譯↗';
+        allButton.setAttribute('aria-label', hasBlocks
+            ? 'Translate all preformatted blocks'
+            : 'Open an embedded page separately for browser translation');
+        if (hasBlocks) {
+            setButtonState(allButton, allConverted, 'all');
+        } else {
+            allButton.setAttribute('aria-pressed', 'false');
+            allButton.title = 'Open embedded content in a separate tab for browser translation';
+        }
+    }
+
+    function openEmbeddedDocument() {
+        const frames = embeddedDocumentFrames();
+        if (!frames.length || typeof window.open !== 'function') return;
+        let selected = 0;
+        if (frames.length > 1) {
+            if (typeof window.prompt !== 'function') return;
+            const choices = frames.map(({ frame, url }, index) =>
+                `${index + 1}. ${url.hostname} ${(frame.getAttribute('title') || '').trim().slice(0, 50)}`
+            ).join('\n');
+            const answer = window.prompt(`Select embedded content to open for translation:\n${choices}`, '1');
+            if (answer === null || !/^[1-9]\d*$/.test(answer.trim())) return;
+            selected = Number(answer.trim()) - 1;
+            if (selected >= frames.length) return;
+        }
+        window.open(frames[selected].url.href, '_blank', 'noopener,noreferrer');
     }
 
     function getBlockText(node) {
@@ -873,12 +931,16 @@
     allButton.addEventListener('click', (event) => {
         event.preventDefault();
         const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        if (!wrappers.length) {
+            openEmbeddedDocument();
+            return;
+        }
         const shouldConvert = !wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
         wrappers.forEach((wrapper) => setConverted(wrapper, shouldConvert));
     });
     function mountAllButton() {
         if (!document.body || window !== window.top || floatingMenuDisabled()) return;
-        registerFloatingButton('translate', allButton, document.querySelectorAll(`[${wrapperAttribute}]`).length > 0);
+        registerFloatingButton('translate', allButton, document.querySelectorAll(`[${wrapperAttribute}]`).length > 0 || embeddedDocumentFrames().length > 0);
         scan();
     }
     mountAllButton();
@@ -893,6 +955,9 @@
                 return;
             }
             if (mutation.type === 'attributes') {
+                if (mutation.target.tagName === 'IFRAME' && mutation.attributeName === 'src') {
+                    updateAllButton();
+                }
                 revealWikipediaSections(mutation.target);
                 return;
             }
@@ -902,8 +967,8 @@
             });
         });
     }).observe(document.documentElement, {
-        attributes: isWikipedia,
-        attributeFilter: isWikipedia ? ['hidden'] : undefined,
+        attributes: true,
+        attributeFilter: isWikipedia ? ['hidden', 'src'] : ['src'],
         characterData: true,
         childList: true,
         subtree: true,
