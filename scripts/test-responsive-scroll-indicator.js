@@ -307,6 +307,9 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
                 scrollport.clientHeight = 400;
                 scrollport.scrollHeight = 1500;
                 scrollport._rect = { top: 380, left: 85, right: 605, bottom: 780, width: 520, height: 400 };
+                const paintedEntry = currentHarness.document.createElement('a');
+                paintedEntry.textContent = 'Visible table of contents entry';
+                scrollport.appendChild(paintedEntry);
                 menu.appendChild(scrollport);
                 currentHarness.appendToBody(menu);
                 article = currentHarness.document.createElement('article');
@@ -315,7 +318,7 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
                 // Layout dimensions are unchanged while the menu is paint-clipped.
                 currentHarness.document.elementFromPoint = (x, y) => {
                     assert(Number.isFinite(x) && Number.isFinite(y), 'Hit-test coordinates must be finite.');
-                    return open ? (y < 560 ? article : scrollport) : article;
+                    return open ? (y < 560 ? article : paintedEntry) : article;
                 };
             }
         );
