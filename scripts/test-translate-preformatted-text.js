@@ -113,8 +113,8 @@ describe('Translate Preformatted Text', () => {
         const button = harness.document.querySelector('#tm-translate-all-pre');
         assert.equal(button.textContent, '譯↗');
         button.click();
-        assert.match(promptText, /1\\. first\\.example/);
-        assert.match(promptText, /2\\. second\\.example/);
+        assert.match(promptText, /1\. first\.example/);
+        assert.match(promptText, /2\. second\.example/);
         assert.equal(opened.length, 1);
         assert.equal(opened[0][0], 'https://second.example/embed/article');
     });
