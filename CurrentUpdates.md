@@ -10,7 +10,7 @@ Updated: 2026-11-06
 - Preserve full-page scroll detection and hidden/collapsed menu handling.
 
 **Test pages:**
-- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — outer orange marker remains visible during scrolling; collapsed table of contents has no orange marker.
+- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — outer orange marker stays at the far-right screen edge without overlapping article text; collapsed table of contents has no orange marker.
 - [IndieWeb POSSE](https://indieweb.org/POSSE) — outer marker tracks page scroll position.
 
 ## RedirectUrls — 2026-11-01_1.6.2
