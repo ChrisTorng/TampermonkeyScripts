@@ -10,7 +10,7 @@ Updated: 2026-11-07
 - Protect the fill from global dark-mode CSS; retain screen-edge positioning and collapsed-menu visibility.
 
 **Test pages:**
-- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — closed contents: no inner gray bar; expanded contents: inner bar appears; outer gray marker stays flush-right.
+- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — closed contents: no inner bar; expanded contents: solid gray bar; outer bar stays solid gray and flush-right.
 - [IndieWeb POSSE](https://indieweb.org/POSSE) — gray page marker remains visible after scrolling stops.
 
 ## RedirectUrls — 2026-11-01_1.6.2
