@@ -96,8 +96,10 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 - https://github.com/ChrisTorng/TampermonkeyScripts/commit/267c2b3f52c428e3b68b9560ed165cb21dfa4602 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 
 # Responsive Scroll Position Indicator
-- https://mastodon.social/@firefoxwebdevs/115740500373677782 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://indieweb.org/POSSE [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
+Section note: DOM-harness tests cover page and nested scroll markers, collapsed menu clipping, dynamic expansion, and non-painted ancestors. Live Android Edge rendering requires device verification.
+- https://www.pangram.com/blog/introducing-pangram-image-1-0 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (collapsed and expanded table-of-contents behavior is simulated in the DOM harness)
+- https://mastodon.social/@firefoxwebdevs/115740500373677782 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (nested scroller placement tested in a DOM harness)
+- https://indieweb.org/POSSE [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (root marker tested in a DOM harness)
 
 # Translation Crash Guard
 Section note: automated tests cover the DOM operation guard with a local harness; Android Edge machine-translation UI still needs manual device validation.
