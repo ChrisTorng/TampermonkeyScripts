@@ -1,6 +1,17 @@
 # Current updates
 
-Updated: 2026-11-01
+Updated: 2026-11-06
+
+## Responsive Scroll Position Indicator — 2026-11-06_1.3.11
+
+[Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload the page after updating.
+
+- Hide markers for collapsed, clipped, transparent or otherwise non-visible scroll containers; restore on expansion.
+- Keep nested markers within visible clipping boundaries and detect class/style toggles.
+
+**Test pages:**
+- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — collapse the table of contents: its orange marker disappears; expand: it returns inside the menu. The page marker remains independent.
+- [IndieWeb POSSE](https://indieweb.org/POSSE) — the page marker still tracks document scrolling.
 
 ## RedirectUrls — 2026-11-01_1.6.2
 
