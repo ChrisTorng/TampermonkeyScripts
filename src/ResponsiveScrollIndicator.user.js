@@ -2,7 +2,7 @@
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
 // @version      2026-11-07_1.3.15
-// @description  Keep visible, persistent scroll markers for pages and actually visible nested scroll areas.
+// @description  Keep persistent neutral-gray scroll markers for pages and truly visible nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
