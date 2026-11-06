@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
-test('Chromium keeps an inset outer marker for document and viewport-app scrollers', {
+test('Chromium keeps a flush-right outer marker for document and viewport-app scrollers', {
     skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to a Chromium executable'
 }, () => {
     const root = path.join(__dirname, '..');
@@ -42,7 +42,7 @@ test('Chromium keeps an inset outer marker for document and viewport-app scrolle
             '   const thumb=marker.querySelector(".tm-viewport");',
             '   verify(marker && marker.style.display!=="none","Long root page must display marker");',
             '   const rect=marker.getBoundingClientRect();',
-            '   verify(rect.right<=window.innerWidth-8,"Custom marker must not hide below browser-native scrollbar");',
+            '   verify(Math.abs(rect.right-(visualViewport.offsetLeft+visualViewport.width))<=2,"Custom marker must be flush with the viewport edge");',
             '   const initialTop=thumb.style.transform;',
             '   window.scrollTo(0,600);window.dispatchEvent(new Event("scroll"));',
             '   await delay();',
@@ -54,7 +54,7 @@ test('Chromium keeps an inset outer marker for document and viewport-app scrolle
             '   await delay();',
             '   const other=Array.from(document.querySelectorAll("[data-tm-scroll-indicator]")).filter(e=>e!==marker);',
             '   verify(marker.style.display!=="none","An app-owned page scroller must still display the root marker");',
-            '   verify(marker.getBoundingClientRect().right<=window.innerWidth-8,"App marker stays inset");',
+            '   verify(Math.abs(marker.getBoundingClientRect().right-(visualViewport.offsetLeft+visualViewport.width))<=2,"App marker must stay flush with viewport edge");',
             '   verify(other.every(el=>el.style.display==="none"),"Do not duplicate outer marker inside full screen app");',
             '   verify(thumb.style.transform!=="translateY(0px)","App scroll position moves outer marker");',
             '   result.dataset.testStatus="passed";result.textContent="Root document and app scrollers verified";',
