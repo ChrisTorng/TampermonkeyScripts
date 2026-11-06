@@ -81,13 +81,62 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         assert(rootIndicator, 'Expected root indicator element to exist.');
         assert.equal(rootIndicator.style.display, '');
         assert.equal(rootIndicator.style.top, '0px');
-        assert.equal(rootIndicator.style.left, '1280px');
+        assert.equal(rootIndicator.style.left, '1270px');
         assert.equal(rootIndicator.style.height, '720px');
 
         const viewportMarker = rootIndicator.querySelector('.tm-viewport');
         assert(viewportMarker, 'Expected root indicator viewport marker.');
         assert.match(viewportMarker.style.height, /^\d+px$/);
         assert.match(viewportMarker.style.transform, /^translateY\(\d+px\)$/);
+    });
+
+    test('root indicator uses body page height and window scroll position when html disagrees', () => {
+        const harness = executeResponsiveScrollIndicator('https://www.pangram.com/blog/introducing-pangram-image-1-0',
+            (currentHarness) => {
+                currentHarness.document.documentElement.scrollHeight = 720;
+                currentHarness.document.documentElement.scrollTop = 0;
+                currentHarness.document.body.scrollHeight = 2800;
+                currentHarness.window.scrollY = 800;
+            });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        assert(root);
+        assert.equal(root.style.display, '');
+        assert.equal(root.style.left, '1270px', 'Insetting the root marker leaves room for native overlay scrollbars.');
+        const transform = root.querySelector('.tm-viewport').style.transform;
+        assert.notEqual(transform, 'translateY(0px)', 'Window scrolling advances the root marker.');
+    });
+
+    test('full-screen app scrollport becomes one root marker when html/body cannot scroll', () => {
+        let app;
+        const harness = executeResponsiveScrollIndicator('https://www.pangram.com/blog/introducing-pangram-image-1-0',
+            (currentHarness) => {
+                currentHarness.document.documentElement.scrollHeight = 720;
+                currentHarness.document.body.scrollHeight = 720;
+                currentHarness.document.documentElement.dataset.overflowY = 'hidden';
+                currentHarness.document.body.dataset.overflowY = 'hidden';
+                app = createScrollablePanel(currentHarness, {
+                    left: 0, top: 0, right: 1280, bottom: 720, width: 1280, height: 720
+                });
+                app.clientWidth = 1280;
+                app.clientHeight = 720;
+                app.scrollHeight = 4800;
+                app.scrollTop = 1100;
+            });
+        const indicators = harness.document.querySelectorAll('[data-tm-scroll-indicator]');
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const nested = indicators.find((el) => el !== root);
+
+        assert.equal(indicators.length, 2);
+        assert.equal(root.style.display, '', 'App-backed page scrolling still gets an outer marker.');
+        assert.equal(root.style.left, '1270px');
+        assert.notEqual(root.querySelector('.tm-viewport').style.transform, 'translateY(0px)');
+        assert.equal(nested.style.display, 'none', 'Do not duplicate the outer page marker inside the app.');
+
+        app.scrollTop = 2200;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(nested.style.display, 'none');
+        assert.equal(root.style.display, '');
     });
 
     test('visible nested scrollers get their own indicators', () => {
