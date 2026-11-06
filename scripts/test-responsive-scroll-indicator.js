@@ -81,7 +81,7 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         assert(rootIndicator, 'Expected root indicator element to exist.');
         assert.equal(rootIndicator.style.display, '');
         assert.equal(rootIndicator.style.top, '0px');
-        assert.equal(rootIndicator.style.left, '1270px');
+        assert.equal(rootIndicator.style.left, '1280px');
         assert.equal(rootIndicator.style.height, '720px');
 
         const viewportMarker = rootIndicator.querySelector('.tm-viewport');
@@ -101,7 +101,7 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         const root = harness.document.getElementById('tm-scroll-indicator-root');
         assert(root);
         assert.equal(root.style.display, '');
-        assert.equal(root.style.left, '1270px', 'Insetting the root marker leaves room for native overlay scrollbars.');
+        assert.equal(root.style.left, '1280px', 'Outer marker must remain anchored to the screen edge without reserving a gutter.');
         const transform = root.querySelector('.tm-viewport').style.transform;
         assert.notEqual(transform, 'translateY(0px)', 'Window scrolling advances the root marker.');
     });
@@ -128,7 +128,7 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
 
         assert.equal(indicators.length, 2);
         assert.equal(root.style.display, '', 'App-backed page scrolling still gets an outer marker.');
-        assert.equal(root.style.left, '1270px');
+        assert.equal(root.style.left, '1280px');
         assert.notEqual(root.querySelector('.tm-viewport').style.transform, 'translateY(0px)');
         assert.equal(nested.style.display, 'none', 'Do not duplicate the outer page marker inside the app.');
 
