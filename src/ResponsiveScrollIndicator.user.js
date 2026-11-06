@@ -345,7 +345,7 @@
             const style = getComputedStyle(ancestor);
             if (ancestor.hidden || style.display === 'none'
                 || style.contentVisibility === 'hidden'
-                || (style.opacity !== '' && Number(style.opacity) === 0)) {
+                || (typeof style.opacity === 'string' && parseFloat(style.opacity) === 0)) {
                 return null;
             }
 
@@ -353,7 +353,7 @@
                 continue;
             }
 
-            const paintContained = /(?:^|\\s)(?:paint|content|strict)(?:\\s|$)/.test(style.contain || '')
+            const paintContained = /(?:^|\s)(?:paint|content|strict)(?:\s|$)/.test(style.contain || '')
                 || style.contentVisibility === 'auto';
             const clipX = paintContained || CLIPPING_OVERFLOW_VALUES.has(style.overflowX);
             const clipY = paintContained || CLIPPING_OVERFLOW_VALUES.has(style.overflowY);
