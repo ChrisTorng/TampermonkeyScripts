@@ -1,6 +1,6 @@
 # Current updates
 
-Updated: 2026-11-01
+Updated: 2026-11-07
 
 ## RedirectUrls — 2026-11-01_1.6.2
 
@@ -14,12 +14,12 @@ Updated: 2026-11-01
 - [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — floating → opens Meowing; Back returns to this first viewer.
 - [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — floating → opens X; Back returns to this second viewer.
 
-## Translate Preformatted Text — 2026-11-06_1.5.9
+## Translate Preformatted Text — 2026-11-07_1.5.10
 
 [Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload the page after updating.
 
 - When a large embedded document cannot be translated, choose **譯↗** from ≡ to open its frame separately for browser translation. Multiple frames show a selector; the original page is unchanged.
-- Existing preformatted-code controls and Astro navigation translation remain unchanged.
+- Prevent a page-wide MutationObserver loop caused by rewriting unchanged menu text; preserve code-block and Astro handling.
 
 **Test pages:**
 - [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — choose ≡ → 譯↗; the signed embedded page opens in a new tab if its URL is independently accessible. Apply Edge Translate there.
