@@ -96,7 +96,7 @@ Section note: automated tests inject the script and mock `GM_getValue`, `GM_setV
 - https://github.com/ChrisTorng/TampermonkeyScripts/commit/267c2b3f52c428e3b68b9560ed165cb21dfa4602 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
 
 # Responsive Scroll Position Indicator
-Section note: DOM-harness tests cover visible/hidden nested markers and body/html/app scroll metrics; Chromium verifies clipped menus, flush-right outer marker placement, and viewport-wide app scrolling. Actual Android Edge rendering still needs device verification.
+Section note: DOM-harness tests cover painted content, zoom/pan, and page scroll metrics; Chromium checks blank-but-hit-testable collapsed menus, neutral gray styling, flush-right outer markers, and full-screen app scrolling. Android Edge still requires device validation.
 - https://www.pangram.com/blog/introducing-pangram-image-1-0 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (collapsed and expanded table-of-contents behavior is simulated in the DOM harness)
 - https://mastodon.social/@firefoxwebdevs/115740500373677782 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (nested scroller placement tested in a DOM harness)
 - https://indieweb.org/POSSE [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (root marker tested in a DOM harness)
