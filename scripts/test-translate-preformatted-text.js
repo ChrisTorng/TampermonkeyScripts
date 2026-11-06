@@ -50,6 +50,63 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('ordinary page mutations do not rewrite the floating translation button endlessly', () => {
+        const harness = execute(() => {}, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        let value = button.textContent;
+        let assignments = 0;
+        Object.defineProperty(button, 'textContent', {
+            configurable: true,
+            get() { return value; },
+            set(next) { assignments++; value = next; }
+        });
+
+        for (let index = 0; index < 30; index++) {
+            const paragraph = harness.document.createElement('p');
+            paragraph.textContent = `Dynamic comment ${index}`;
+            harness.appendToBody(paragraph);
+            harness.triggerMutation([paragraph]);
+        }
+        assert.equal(assignments, 0, 're-scanning the document must not recreate unchanged button text');
+    });
+
+    test('iframe fallback updates label only on actual state transitions', () => {
+        const harness = execute(() => {}, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        let value = button.textContent;
+        let assignments = 0;
+        Object.defineProperty(button, 'textContent', {
+            configurable: true,
+            get() { return value; },
+            set(next) { assignments++; value = next; }
+        });
+
+        const pre = harness.document.createElement('pre');
+        pre.textContent = 'Preformatted text';
+        harness.appendToBody(pre);
+        harness.triggerMutation([pre]);
+        assert.equal(value, '譯∞');
+        assert.equal(assignments, 1);
+        for (let index = 0; index < 10; index++) {
+            const p = harness.document.createElement('p');
+            p.textContent = `More comments ${index}`;
+            harness.appendToBody(p);
+            harness.triggerMutation([p]);
+        }
+        assert.equal(assignments, 1, 'unchanged mode must not rewrite button content');
+    });
+
+    test('floating-menu mutations are ignored rather than rescanned as article content', () => {
+        const harness = execute(() => {}, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        const injectedPre = harness.document.createElement('pre');
+        injectedPre.textContent = 'Internal menu content';
+        button.appendChild(injectedPre);
+        harness.triggerMutation([injectedPre], { target: button });
+        assert.equal(injectedPre.closest('[data-tm-translatable-pre-wrapper]'), null);
+    });
+
     test('large embedded documents offer an explicit standalone translation fallback', () => {
         const opened = [];
         const harness = execute((h) => {
