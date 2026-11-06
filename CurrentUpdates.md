@@ -1,17 +1,17 @@
 # Current updates
 
-Updated: 2026-11-06
+Updated: 2026-11-07
 
-## Responsive Scroll Position Indicator — 2026-11-07_1.3.15
+## Responsive Scroll Position Indicator — 2026-11-07_1.3.16
 
 [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload after updating.
 
-- Switch the persistent indicators to softly lit neutral gray, including the screen-edge page marker.
-- Hide inner markers for collapsed menus with blank but hit-testable scrollports; validate even during mobile pinch/pan.
+- Use one solid light gray (#C5C9CE) with no gradient or blur, including on long indicators.
+- Protect the fill from global dark-mode CSS; retain screen-edge positioning and collapsed-menu visibility.
 
 **Test pages:**
-- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — closed contents: no inner gray bar; expanded contents: inner bar appears; outer gray marker stays flush-right.
-- [IndieWeb POSSE](https://indieweb.org/POSSE) — gray page marker remains visible after scrolling stops.
+- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — closed contents: no inner bar; expanded contents: solid gray bar; outer bar stays solid gray and flush-right.
+- [IndieWeb POSSE](https://indieweb.org/POSSE) — solid gray page marker remains visible after scrolling stops.
 
 ## RedirectUrls — 2026-11-01_1.6.2
 
