@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-06_1.3.13
+// @version      2026-11-07_1.3.14
 // @description  Keep visible, persistent scroll markers for pages and actually visible nested scroll areas.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -22,7 +22,6 @@
     const TRACK_CLASS = 'tm-track';
     const VIEWPORT_CLASS = 'tm-viewport';
     const BAR_WIDTH = 6;
-    const ROOT_RIGHT_INSET_PX = 10;
     const PAGE_SCROLLER_EDGE_TOLERANCE_PX = 24;
     const MIN_VIEWPORT_HEIGHT_PX = 12;
     const MIN_VISIBLE_TRACK_PX = 12;
@@ -577,9 +576,9 @@
             return;
         }
 
-        // Native Android overlay scrollbars are composited above page CSS.
-        // Leave a gutter so the browser's fading thumb cannot cover ours.
-        const rightEdge = viewportLeft + viewportWidth - ROOT_RIGHT_INSET_PX;
+        // Keep the persistent marker flush with the viewport's right edge.
+        // Native scrollbars fade out; never reserve a permanent reading gutter.
+        const rightEdge = viewportLeft + viewportWidth;
         rootIndicator.container.style.top = `${viewportTop}px`;
         rootIndicator.container.style.left = `${rightEdge}px`;
         rootIndicator.container.style.height = `${viewportHeight}px`;
