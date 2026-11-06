@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-06_1.3.11
+// @version      2026-11-06_1.3.12
 // @description  Show thin scroll markers only for visible page and nested scroll areas.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -24,6 +24,7 @@
     const BAR_WIDTH = 6;
     const MIN_VIEWPORT_HEIGHT_PX = 12;
     const MIN_VISIBLE_TRACK_PX = 12;
+    const PAINT_SAMPLE_COUNT = 9;
     const UPDATE_INTERVAL_MS = 100;
     const SCAN_INTERVAL_MS = 1000;
     const VISIBILITY_RATIO_THRESHOLD = 0.95;
@@ -343,8 +344,13 @@
 
         for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
             const style = getComputedStyle(ancestor);
-            if (ancestor.hidden || style.display === 'none'
+            if (ancestor.hidden || ancestor.inert
+                || ancestor.getAttribute('aria-hidden') === 'true'
+                || ancestor.getAttribute('data-state') === 'closed'
+                || style.display === 'none'
+                || style.visibility === 'hidden' || style.visibility === 'collapse'
                 || style.contentVisibility === 'hidden'
+                || style.pointerEvents === 'none'
                 || (typeof style.opacity === 'string' && parseFloat(style.opacity) === 0)) {
                 return null;
             }
@@ -384,6 +390,62 @@
         return bottom - top >= MIN_VISIBLE_TRACK_PX && right - left >= BAR_WIDTH
             ? { top, right, bottom }
             : null;
+    }
+
+    // CSS clip-path, masks and overlays can hide a menu without reducing the
+    // scrollport's layout rectangle. Our fixed marker escapes that paint clipping,
+    // so check which parts of the scrollport are actually reachable on screen.
+    function restrictToPaintedArea(element, rect) {
+        if (typeof document.elementFromPoint !== 'function'
+            || viewportScale !== 1 || viewportLeft !== 0 || viewportTop !== 0) {
+            return rect;
+        }
+
+        const height = rect.bottom - rect.top;
+        const width = rect.right - rect.left;
+        const rightInset = Math.min(16, width / 4);
+        const xRight = rect.right - rightInset;
+        const xMiddle = rect.left + width / 2;
+        let firstHit = -1;
+        let lastHit = -1;
+
+        for (let i = 0; i < PAINT_SAMPLE_COUNT; i++) {
+            const y = rect.top + height * (i + 0.5) / PAINT_SAMPLE_COUNT;
+            let painted = false;
+            for (const x of [xRight, xMiddle]) {
+                const hit = document.elementFromPoint(x, y);
+                for (let node = hit; node; node = node.parentNode || node.host) {
+                    if (node === element) {
+                        painted = true;
+                        break;
+                    }
+                }
+                if (painted) {
+                    break;
+                }
+            }
+
+            if (painted) {
+                if (firstHit < 0) {
+                    firstHit = i;
+                }
+                lastHit = i;
+            }
+        }
+
+        if (firstHit < 0) {
+            return null;
+        }
+
+        // Two samples prevent a tiny exposed sliver of a collapsed menu from
+        // turning into a large floating indicator below its visible content.
+        if (firstHit === lastHit && height > 2 * MIN_VISIBLE_TRACK_PX) {
+            return null;
+        }
+
+        const top = rect.top + height * firstHit / PAINT_SAMPLE_COUNT;
+        const bottom = rect.top + height * (lastHit + 1) / PAINT_SAMPLE_COUNT;
+        return bottom - top >= MIN_VISIBLE_TRACK_PX ? { ...rect, top, bottom } : null;
     }
 
     function updateViewportMarker(indicator, scrollRatio, viewportRatio) {
@@ -442,7 +504,8 @@
             return;
         }
 
-        const visibleRect = getVisibleScrollableRect(element);
+        const clippedRect = getVisibleScrollableRect(element);
+        const visibleRect = clippedRect && restrictToPaintedArea(element, clippedRect);
         if (!visibleRect) {
             hideIndicator(indicator);
             return;
@@ -517,7 +580,7 @@
                 childList: true,
                 subtree: true,
                 attributes: true,
-                attributeFilter: ['class', 'style', 'hidden', 'open']
+                attributeFilter: ['class', 'style', 'hidden', 'open', 'inert', 'aria-hidden', 'data-state']
             });
         }
     }
