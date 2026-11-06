@@ -42,7 +42,7 @@ test('Chromium hides markers for paint-clipped and covered scroll menus', {
             '    verify(marker()&&pageMarker,"Expected both marker nodes");',
             '    verify(scroller.scrollHeight>scroller.clientHeight,"Menu stays scrollable when clipped");',
             '    verify(scroller.getBoundingClientRect().height>300,"Menu retains geometry when clipped");',
-            '    verify(marker().style.display==="none","Paint-clipped menu must have no marker");',
+            '    verify(marker().style.display==="none","Paint-clipped menu must have no marker: "+JSON.stringify({display:marker().style.display,clip:getComputedStyle(toc).clipPath,rect:scroller.getBoundingClientRect().toJSON(),v:window.visualViewport&&{scale:visualViewport.scale,offsetLeft:visualViewport.offsetLeft,offsetTop:visualViewport.offsetTop},hit:document.elementFromPoint(534,270)?.outerHTML.slice(0,120),marker:marker().outerHTML.slice(0,180)}));',
             '    verify(pageMarker.style.display!=="none","Page marker remains visible");',
             '    toc.classList.add("open"); await delay();',
             '    verify(marker().style.display!=="none","Expanded menu must show marker");',
