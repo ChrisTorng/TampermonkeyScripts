@@ -20,9 +20,13 @@ function executeResponsiveScrollIndicator(url, setupDom = null) {
         readyState: 'loading',
         computedStyle(element) {
             return {
+                overflowX: element.dataset.overflowX || 'visible',
                 overflowY: element.dataset.overflowY || 'visible',
                 display: element.dataset.display || 'block',
-                visibility: element.dataset.visibility || 'visible'
+                visibility: element.dataset.visibility || 'visible',
+                opacity: element.dataset.opacity || '1',
+                contentVisibility: element.dataset.contentVisibility || 'visible',
+                contain: element.dataset.contain || 'none'
             };
         }
     });
@@ -110,6 +114,148 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         assert.equal(panelIndicator.style.top, '80px');
         assert.equal(panelIndicator.style.left, '1220px');
         assert.equal(panelIndicator.style.height, '300px');
+    });
+
+    test('collapsed scrollable menus hide their markers and restore them when expanded', () => {
+        let wrapper;
+        const harness = executeResponsiveScrollIndicator(
+            'https://www.pangram.com/blog/introducing-pangram-image-1-0',
+            (currentHarness) => {
+                wrapper = currentHarness.document.createElement('div');
+                wrapper.dataset.overflowY = 'hidden';
+                wrapper.dataset.overflowX = 'hidden';
+                wrapper.offsetWidth = 500;
+                wrapper.offsetHeight = 0;
+                wrapper.clientWidth = 500;
+                wrapper.clientHeight = 0;
+                wrapper._rect = { top: 180, left: 60, right: 560, bottom: 180, width: 500, height: 0 };
+
+                const menu = currentHarness.document.createElement('nav');
+                menu.dataset.overflowY = 'auto';
+                menu.clientHeight = 300;
+                menu.scrollHeight = 1300;
+                menu.scrollTop = 300;
+                menu._rect = { top: 200, left: 80, right: 540, bottom: 500, width: 460, height: 300 };
+                wrapper.appendChild(menu);
+                currentHarness.appendToBody(wrapper);
+            }
+        );
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const marker = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+
+        assert(marker, 'The menu has a scrollable DOM even while collapsed.');
+        assert.equal(marker.style.display, 'none', 'The collapsed ancestor clips its marker.');
+        assert.equal(root.style.display, '', 'The page indicator is independent of the menu.');
+
+        wrapper.offsetHeight = 360;
+        wrapper.clientHeight = 360;
+        wrapper._rect = { top: 180, left: 60, right: 560, bottom: 540, width: 500, height: 360 };
+        harness.triggerMutation([], { type: 'attributes', target: wrapper, attributeName: 'class' });
+        harness.flushAnimationFrames();
+
+        assert.equal(marker.style.display, '', 'Expanded content has an indicator.');
+        assert.equal(marker.style.top, '200px');
+        assert.equal(marker.style.left, '540px');
+        assert.equal(marker.style.height, '300px');
+
+        wrapper.offsetHeight = 0;
+        wrapper.clientHeight = 0;
+        wrapper._rect = { top: 180, left: 60, right: 560, bottom: 180, width: 500, height: 0 };
+        harness.triggerMutation([], { type: 'attributes', target: wrapper, attributeName: 'class' });
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, 'none', 'Closing the menu hides the same marker again.');
+        assert.equal(root.style.display, '', 'Closing the menu must not hide the page marker.');
+    });
+
+    test('nested overflow clips both the marker position and its height', () => {
+        const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
+            const clip = currentHarness.document.createElement('div');
+            clip.dataset.overflowX = 'hidden';
+            clip.dataset.overflowY = 'clip';
+            clip.offsetWidth = 600;
+            clip.offsetHeight = 400;
+            clip.clientLeft = 10;
+            clip.clientTop = 10;
+            clip.clientWidth = 500;
+            clip.clientHeight = 300;
+            clip._rect = { top: 120, left: 80, right: 380, bottom: 320, width: 300, height: 200 };
+
+            const scroller = currentHarness.document.createElement('section');
+            scroller.dataset.overflowY = 'auto';
+            scroller.clientHeight = 300;
+            scroller.scrollHeight = 900;
+            scroller._rect = { top: 0, left: 0, right: 560, bottom: 400, width: 560, height: 400 };
+            clip.appendChild(scroller);
+            currentHarness.appendToBody(clip);
+        });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const marker = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+
+        assert(marker);
+        assert.equal(marker.style.display, '');
+        assert.equal(marker.style.top, '125px');
+        assert.equal(marker.style.left, '335px');
+        assert.equal(marker.style.height, '150px');
+    });
+
+    test('non-painted ancestors hide marker despite the target retaining layout geometry', () => {
+        let wrapper;
+        const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
+            wrapper = currentHarness.document.createElement('div');
+            wrapper._rect = { top: 50, left: 50, right: 650, bottom: 550, width: 600, height: 500 };
+            wrapper.offsetWidth = 600;
+            wrapper.offsetHeight = 500;
+            wrapper.clientWidth = 600;
+            wrapper.clientHeight = 500;
+            const scroller = currentHarness.document.createElement('div');
+            scroller.dataset.overflowY = 'auto';
+            scroller.clientHeight = 300;
+            scroller.scrollHeight = 1000;
+            scroller._rect = { top: 100, left: 100, right: 600, bottom: 400, width: 500, height: 300 };
+            wrapper.appendChild(scroller);
+            currentHarness.appendToBody(wrapper);
+        });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const marker = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert(marker);
+        assert.equal(marker.style.display, '');
+
+        for (const [field, value] of [
+            ['opacity', '0'],
+            ['display', 'none'],
+            ['contentVisibility', 'hidden']
+        ]) {
+            wrapper.dataset[field] = value;
+            harness.triggerMutation([], { type: 'attributes', target: wrapper, attributeName: 'style' });
+            harness.flushAnimationFrames();
+            assert.equal(marker.style.display, 'none', field + ' must hide a descendant marker.');
+            delete wrapper.dataset[field];
+            harness.triggerMutation([], { type: 'attributes', target: wrapper, attributeName: 'style' });
+            harness.flushAnimationFrames();
+            assert.equal(marker.style.display, '', field + ' removal must restore it.');
+        }
+    });
+
+    test('class-triggered overflow changes discover scrollports without adding children', () => {
+        let panel;
+        const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
+            panel = createScrollablePanel(currentHarness, {
+                top: 80, left: 700, right: 1020, bottom: 380, width: 320, height: 300
+            });
+            panel.dataset.overflowY = 'visible';
+        });
+        assert.equal(harness.document.querySelectorAll('[data-tm-scroll-indicator]').length, 1);
+
+        panel.dataset.overflowY = 'auto';
+        harness.triggerMutation([], { type: 'attributes', target: panel, attributeName: 'class' });
+        harness.flushAnimationFrames();
+
+        const markers = harness.document.querySelectorAll('[data-tm-scroll-indicator]');
+        assert.equal(markers.length, 2);
+        assert.equal(markers[1].style.display, '');
     });
 
     test('mutation observer discovers scrollable elements added later', () => {
