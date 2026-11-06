@@ -2,12 +2,12 @@
 
 Updated: 2026-11-06
 
-## Responsive Scroll Position Indicator — 2026-11-06_1.3.13
+## Responsive Scroll Position Indicator — 2026-11-07_1.3.14
 
 [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload the page after updating.
 
-- Restore the persistent outer orange marker: use html/body/window metrics or a full-viewport app scroller, and inset it from native overlay scrollbars.
-- Keep collapsed menu indicators hidden; avoid duplicating the primary page indicator.
+- Keep the persistent outer orange marker flush with the screen edge; remove the universal 10px reading-space intrusion.
+- Preserve full-page scroll detection and hidden/collapsed menu handling.
 
 **Test pages:**
 - [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — outer orange marker remains visible during scrolling; collapsed table of contents has no orange marker.
