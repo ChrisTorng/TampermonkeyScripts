@@ -2,16 +2,16 @@
 
 Updated: 2026-11-06
 
-## Responsive Scroll Position Indicator — 2026-11-07_1.3.14
+## Responsive Scroll Position Indicator — 2026-11-07_1.3.15
 
-[Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload the page after updating.
+[Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload after updating.
 
-- Keep the persistent outer orange marker flush with the screen edge; remove the universal 10px reading-space intrusion.
-- Preserve full-page scroll detection and hidden/collapsed menu handling.
+- Switch the persistent indicators to softly lit neutral gray, including the screen-edge page marker.
+- Hide inner markers for collapsed menus with blank but hit-testable scrollports; validate even during mobile pinch/pan.
 
 **Test pages:**
-- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — outer orange marker stays at the far-right screen edge without overlapping article text; collapsed table of contents has no orange marker.
-- [IndieWeb POSSE](https://indieweb.org/POSSE) — outer marker tracks page scroll position.
+- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — closed contents: no inner gray bar; expanded contents: inner bar appears; outer gray marker stays flush-right.
+- [IndieWeb POSSE](https://indieweb.org/POSSE) — gray page marker remains visible after scrolling stops.
 
 ## RedirectUrls — 2026-11-01_1.6.2
 
