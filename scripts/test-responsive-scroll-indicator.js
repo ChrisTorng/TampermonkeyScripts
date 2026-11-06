@@ -264,8 +264,10 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
                 currentHarness.appendToBody(article);
 
                 // Layout dimensions are unchanged while the menu is paint-clipped.
-                currentHarness.document.elementFromPoint = (x, y) =>
-                    open ? (y < 560 ? article : scrollport) : article;
+                currentHarness.document.elementFromPoint = (x, y) => {
+                    assert(Number.isFinite(x) && Number.isFinite(y), 'Hit-test coordinates must be finite.');
+                    return open ? (y < 560 ? article : scrollport) : article;
+                };
             }
         );
         const root = harness.document.getElementById('tm-scroll-indicator-root');
