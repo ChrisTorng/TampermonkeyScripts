@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-07_1.3.14
-// @description  Keep visible, persistent scroll markers for pages and actually visible nested scroll areas.
+// @version      2026-11-07_1.3.15
+// @description  Keep persistent neutral-gray scroll markers for pages and truly visible nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -26,6 +26,7 @@
     const MIN_VIEWPORT_HEIGHT_PX = 12;
     const MIN_VISIBLE_TRACK_PX = 12;
     const PAINT_SAMPLE_COUNT = 9;
+    const PAINT_SAMPLE_X_FRACTIONS = [0.75, 0.5, 0.25];
     const UPDATE_INTERVAL_MS = 100;
     const SCAN_INTERVAL_MS = 1000;
     const VISIBILITY_RATIO_THRESHOLD = 0.95;
@@ -89,9 +90,9 @@
                 left: calc(1px / var(--tm-scroll-scale, 1));
                 width: calc(${BAR_WIDTH - 2}px / var(--tm-scroll-scale, 1));
                 height: ${MIN_VIEWPORT_HEIGHT_PX}px;
-                background: linear-gradient(180deg, rgba(255, 193, 7, 0.82), rgba(255, 160, 0, 0.9));
+                background: linear-gradient(180deg, rgba(205, 208, 212, 0.88), rgba(181, 187, 193, 0.9));
                 border-radius: calc(${(BAR_WIDTH - 2) / 2}px / var(--tm-scroll-scale, 1));
-                box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+                box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
             }
         `;
 
@@ -392,35 +393,61 @@
             : null;
     }
 
-    // CSS clip-path, masks and overlays can hide a menu without reducing the
-    // scrollport's layout rectangle. Our fixed marker escapes that paint clipping,
-    // so check which parts of the scrollport are actually reachable on screen.
+    // The marker is in document.body rather than inside the scrollport.
+    // A collapsed menu can preserve its scroll dimensions and even intercept
+    // pointer hits while its actual list entries are no longer painted.
+    function isVisibleContentHit(element, hit) {
+        for (let node = hit; node; node = node.parentNode || node.host) {
+            if (node === element) {
+                // A blank scrollport is not evidence that its contents are visible.
+                // Text-only controls have no child elements and need this fallback.
+                return hit !== element
+                    || (element.childElementCount === 0
+                        && (element.textContent?.trim()
+                            || element.tagName === 'TEXTAREA'
+                            || element.isContentEditable));
+            }
+        }
+        return false;
+    }
+
+    // getBoundingClientRect uses layout viewport coordinates; mobile hit testing
+    // can use either layout or visual viewport coordinates. Probe both instead
+    // of skipping paint verification whenever the user pinches/pans.
+    function getPaintedHit(element, x, y) {
+        const points = [[x, y]];
+        if (viewportLeft !== 0 || viewportTop !== 0) {
+            points.push([x - viewportLeft, y - viewportTop]);
+        }
+        for (const [cx, cy] of points) {
+            if (cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) {
+                continue;
+            }
+            const hit = document.elementFromPoint(cx, cy);
+            if (isVisibleContentHit(element, hit)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function restrictToPaintedArea(element, rect) {
-        if (typeof document.elementFromPoint !== 'function'
-            || viewportScale !== 1 || viewportLeft !== 0 || viewportTop !== 0) {
+        if (typeof document.elementFromPoint !== 'function') {
             return rect;
         }
 
         const height = rect.bottom - rect.top;
         const width = rect.right - rect.left;
-        const rightInset = Math.min(16, width / 4);
-        const xRight = rect.right - rightInset;
-        const xMiddle = rect.left + width / 2;
         let firstHit = -1;
         let lastHit = -1;
 
         for (let i = 0; i < PAINT_SAMPLE_COUNT; i++) {
             const y = rect.top + height * (i + 0.5) / PAINT_SAMPLE_COUNT;
             let painted = false;
-            for (const x of [xRight, xMiddle]) {
-                const hit = document.elementFromPoint(x, y);
-                for (let node = hit; node; node = node.parentNode || node.host) {
-                    if (node === element) {
-                        painted = true;
-                        break;
-                    }
-                }
-                if (painted) {
+            for (const fraction of PAINT_SAMPLE_X_FRACTIONS) {
+                const x = rect.left + width * fraction;
+                if (getPaintedHit(element, x, y)) {
+                    painted = true;
                     break;
                 }
             }
@@ -437,8 +464,7 @@
             return null;
         }
 
-        // Two samples prevent a tiny exposed sliver of a collapsed menu from
-        // turning into a large floating indicator below its visible content.
+        // An exposed menu header is not enough to show a tall content marker.
         if (firstHit === lastHit && height > 2 * MIN_VISIBLE_TRACK_PX) {
             return null;
         }
