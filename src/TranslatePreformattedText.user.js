@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-06_1.5.9
+// @version      2026-11-07_1.5.10
 // @description  Translate code blocks or open embedded pages separately for browser translation; improve inline code, Mastodon, Wikipedia, and Astro navigation.
 // @author       Chris Torng
 // @match        *://*/*
@@ -704,10 +704,17 @@
         const hasFrames = embeddedDocumentFrames().length > 0;
         const allConverted = hasBlocks && wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
         setFloatingButtonAvailable(allButton, hasBlocks || hasFrames);
-        allButton.textContent = hasBlocks ? '譯∞' : '譯↗';
-        allButton.setAttribute('aria-label', hasBlocks
+        // Assigning textContent replaces the text node even when the value is
+        // unchanged. With a document-wide MutationObserver that would create
+        // an endless scan -> textContent -> mutation -> scan loop.
+        const nextText = hasBlocks ? '譯∞' : '譯↗';
+        if (allButton.textContent !== nextText) allButton.textContent = nextText;
+        const nextLabel = hasBlocks
             ? 'Translate all preformatted blocks'
-            : 'Open an embedded page separately for browser translation');
+            : 'Open an embedded page separately for browser translation';
+        if (allButton.getAttribute('aria-label') !== nextLabel) {
+            allButton.setAttribute('aria-label', nextLabel);
+        }
         if (hasBlocks) {
             setButtonState(allButton, allConverted, 'all');
         } else {
@@ -951,6 +958,12 @@
 
     new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
+            // Ignore our own floating-menu DOM. Other userscripts share this
+            // menu and can update it without retriggering translation scans.
+            const element = mutation.target.nodeType === 1
+                ? mutation.target : mutation.target.parentElement;
+            if (element && typeof element.closest === 'function'
+                && element.closest(`#${FLOATING_MENU_ID}`)) return;
             if (restoreInlineCode(mutation.target)) {
                 return;
             }
