@@ -2,16 +2,16 @@
 
 Updated: 2026-11-06
 
-## Responsive Scroll Position Indicator — 2026-11-06_1.3.12
+## Responsive Scroll Position Indicator — 2026-11-06_1.3.13
 
 [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload the page after updating.
 
-- Hide scroll markers even when collapsed menus retain layout dimensions but are visually clipped or covered.
-- Check actual rendered visibility and preserve independent page/nested markers.
+- Restore the persistent outer orange marker: use html/body/window metrics or a full-viewport app scroller, and inset it from native overlay scrollbars.
+- Keep collapsed menu indicators hidden; avoid duplicating the primary page indicator.
 
 **Test pages:**
-- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — collapsed table of contents must show no inner orange bar; expanding restores it only within the visible menu.
-- [IndieWeb POSSE](https://indieweb.org/POSSE) — page scroll marker remains functional.
+- [Pangram Image 1.0](https://www.pangram.com/blog/introducing-pangram-image-1-0) — outer orange marker remains visible during scrolling; collapsed table of contents has no orange marker.
+- [IndieWeb POSSE](https://indieweb.org/POSSE) — outer marker tracks page scroll position.
 
 ## RedirectUrls — 2026-11-01_1.6.2
 

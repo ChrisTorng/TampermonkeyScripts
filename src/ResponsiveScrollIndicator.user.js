@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-06_1.3.12
-// @description  Show thin scroll markers only for visible page and nested scroll areas.
+// @version      2026-11-06_1.3.13
+// @description  Keep visible, persistent scroll markers for pages and actually visible nested scroll areas.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -22,6 +22,8 @@
     const TRACK_CLASS = 'tm-track';
     const VIEWPORT_CLASS = 'tm-viewport';
     const BAR_WIDTH = 6;
+    const ROOT_RIGHT_INSET_PX = 10;
+    const PAGE_SCROLLER_EDGE_TOLERANCE_PX = 24;
     const MIN_VIEWPORT_HEIGHT_PX = 12;
     const MIN_VISIBLE_TRACK_PX = 12;
     const PAINT_SAMPLE_COUNT = 9;
@@ -463,33 +465,130 @@
         indicator.viewport.style.transform = `translateY(${viewportTopPx}px)`;
     }
 
-    function updateRootIndicator() {
+    // Some mobile layouts scroll a full-viewport app container, while other
+    // documents expose different scrollHeight values on body and html.
+    // Only adopt a nested element as the page scroller when its visible
+    // scrollport occupies the page edge and most of the viewport.
+    function findPageScrollport() {
+        let best = null;
+        let bestScore = -Infinity;
+        const rightEdge = viewportLeft + viewportWidth;
+
+        for (const element of elementIndicators.keys()) {
+            if (!element.isConnected || !isScrollableCandidate(element)) {
+                continue;
+            }
+
+            const clipped = getVisibleScrollableRect(element);
+            if (!clipped) {
+                continue;
+            }
+            const width = clipped.right - clipped.left;
+            const height = clipped.bottom - clipped.top;
+            const edgeGap = rightEdge - clipped.right;
+
+            if (width < viewportWidth * 0.85
+                || height < viewportHeight * 0.55
+                || clipped.left > viewportLeft + viewportWidth * 0.08
+                || edgeGap < -2 || edgeGap > PAGE_SCROLLER_EDGE_TOLERANCE_PX) {
+                continue;
+            }
+
+            const painted = restrictToPaintedArea(element, clipped);
+            if (!painted || painted.bottom - painted.top < viewportHeight * 0.5) {
+                continue;
+            }
+
+            const score = width / viewportWidth + height / viewportHeight
+                - edgeGap / Math.max(1, viewportWidth);
+            if (score > bestScore) {
+                best = element;
+                bestScore = score;
+            }
+        }
+
+        return best;
+    }
+
+    function getPageScrollState() {
+        const html = document.documentElement;
+        const body = document.body;
+        const scroller = document.scrollingElement || html || body;
+        if (!scroller) {
+            return null;
+        }
+
+        // Do not assume scrollingElement.scrollHeight is the entire page.
+        // In standards and quirks layouts, body and html may disagree.
+        const fullHeight = Math.max(
+            scroller.scrollHeight || 0,
+            html?.scrollHeight || 0,
+            body?.scrollHeight || 0,
+            viewportHeight, 1
+        );
+        const scrollTop = Math.max(
+            0, window.scrollY || window.pageYOffset || 0,
+            scroller.scrollTop || 0,
+            html?.scrollTop || 0,
+            body?.scrollTop || 0
+        );
+
+        const htmlOverflow = html && getComputedStyle(html).overflowY;
+        const bodyOverflow = body && getComputedStyle(body).overflowY;
+        const rootClipped = ['hidden', 'clip'].includes(htmlOverflow)
+            || ['hidden', 'clip'].includes(bodyOverflow);
+        const fallback = findPageScrollport();
+        const hasDocumentRange = fullHeight - viewportHeight >= 2;
+        if (fallback && (!hasDocumentRange || rootClipped)) {
+            return {
+                scrollTop: fallback.scrollTop,
+                fullHeight: Math.max(fallback.scrollHeight, fallback.clientHeight),
+                clientHeight: fallback.clientHeight,
+                pageScrollport: fallback
+            };
+        }
+
+        return {
+            scrollTop,
+            fullHeight,
+            clientHeight: viewportHeight,
+            pageScrollport: null
+        };
+    }
+
+    function updateRootIndicator(pageScrollState) {
         if (!rootIndicator || !rootIndicator.container || !rootIndicator.track) {
             return;
         }
 
-        const scroller = document.scrollingElement || document.documentElement;
-        if (!scroller) {
+        const state = pageScrollState || getPageScrollState();
+        if (!state) {
+            hideIndicator(rootIndicator);
             return;
         }
 
-        const fullHeight = Math.max(scroller.scrollHeight, scroller.clientHeight, viewportHeight, 1);
-        const maxScrollTop = Math.max(0, fullHeight - viewportHeight);
-        const viewportRatio = fullHeight > 0 ? viewportHeight / fullHeight : 1;
+        const fullHeight = state.fullHeight;
+        const viewHeight = state.clientHeight;
+        const maxScrollTop = Math.max(0, fullHeight - viewHeight);
+        const viewportRatio = fullHeight > 0 ? viewHeight / fullHeight : 1;
 
         if (maxScrollTop <= 0 || viewportRatio >= VISIBILITY_RATIO_THRESHOLD) {
             hideIndicator(rootIndicator);
             return;
         }
 
-        showIndicator(rootIndicator);
-        const rightEdge = viewportLeft + viewportWidth;
+        // Native Android overlay scrollbars are composited above page CSS.
+        // Leave a gutter so the browser's fading thumb cannot cover ours.
+        const rightEdge = viewportLeft + viewportWidth - ROOT_RIGHT_INSET_PX;
         rootIndicator.container.style.top = `${viewportTop}px`;
         rootIndicator.container.style.left = `${rightEdge}px`;
         rootIndicator.container.style.height = `${viewportHeight}px`;
         rootIndicator.container.style.setProperty('--tm-scroll-scale', `${viewportScale}`);
+        showIndicator(rootIndicator);
 
-        const scrollRatio = maxScrollTop > 0 ? scroller.scrollTop / maxScrollTop : 0;
+        const scrollRatio = maxScrollTop > 0
+            ? Math.min(1, Math.max(0, state.scrollTop / maxScrollTop))
+            : 0;
         updateViewportMarker(rootIndicator, scrollRatio, viewportRatio);
     }
 
@@ -530,21 +629,27 @@
         updateViewportMarker(indicator, scrollRatio, viewportRatio);
     }
 
-    function updateElementIndicators() {
+    function updateElementIndicators(pageScrollport) {
         for (const [element, indicator] of elementIndicators.entries()) {
-            updateElementIndicator(element, indicator);
+            if (element === pageScrollport) {
+                hideIndicator(indicator);
+            } else {
+                updateElementIndicator(element, indicator);
+            }
         }
     }
 
     function updateAllIndicators() {
         refreshViewportMetrics();
+        ensureRootIndicator();
 
         if (shouldScanScrollers()) {
             scanForScrollableElements();
         }
 
-        updateRootIndicator();
-        updateElementIndicators();
+        const pageScrollState = getPageScrollState();
+        updateRootIndicator(pageScrollState);
+        updateElementIndicators(pageScrollState?.pageScrollport);
     }
 
     function handleVisualViewportChange() {
@@ -574,8 +679,9 @@
             scheduleUpdate();
         });
 
-        if (document.body) {
-            observer.observe(document.body, {
+        if (document.documentElement || document.body) {
+            // Responsive layouts often toggle classes on <html>, not <body>.
+            observer.observe(document.documentElement || document.body, {
                 childList: true,
                 subtree: true,
                 attributes: true,

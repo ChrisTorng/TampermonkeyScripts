@@ -36,6 +36,10 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-scroll-paint-browser.js
+      - name: Test outer scroll marker visibility and native scrollbar gap
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-root-scroll-browser.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
