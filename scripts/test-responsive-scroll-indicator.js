@@ -340,6 +340,87 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         assert.equal(marker.style.display, 'none', 'Painting changes are rechecked without layout changes.');
     });
 
+    test('a closed popover with a hit-testable empty scrollport does not leak its marker', () => {
+        let scrollport;
+        let item;
+        let isOpen = false;
+        const harness = executeResponsiveScrollIndicator(
+            'https://www.pangram.com/blog/introducing-pangram-image-1-0',
+            (currentHarness) => {
+                const toc = currentHarness.document.createElement('nav');
+                toc._rect = { top: 220, left: 70, right: 640, bottom: 760, width: 570, height: 540 };
+                scrollport = currentHarness.document.createElement('section');
+                scrollport.dataset.overflowY = 'auto';
+                scrollport.clientHeight = 400;
+                scrollport.scrollHeight = 1600;
+                scrollport._rect = { top: 375, left: 90, right: 575, bottom: 775, width: 485, height: 400 };
+                item = currentHarness.document.createElement('a');
+                item.textContent = 'Table of contents entry';
+                scrollport.appendChild(item);
+                toc.appendChild(scrollport);
+                currentHarness.appendToBody(toc);
+
+                // The closed popup still intercepts hits as a blank scrollport,
+                // but the list items themselves are not painted.
+                currentHarness.document.elementFromPoint = () => isOpen ? item : scrollport;
+            }
+        );
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const inner = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert(inner, 'The scrollport remains registered, with the same scroll dimensions.');
+        assert.equal(inner.style.display, 'none');
+        assert.equal(root.style.display, '');
+
+        isOpen = true;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(inner.style.display, '', 'Only visible content should enable the inner indicator.');
+
+        isOpen = false;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(inner.style.display, 'none', 'Closing it hides the marker without any DOM mutation.');
+    });
+
+    test('a zoomed and panned visual viewport still verifies actual content', () => {
+        let scrollport;
+        let item;
+        let open = false;
+        const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
+            scrollport = currentHarness.document.createElement('section');
+            scrollport.dataset.overflowY = 'auto';
+            scrollport.clientHeight = 400;
+            scrollport.scrollHeight = 1200;
+            scrollport._rect = { top: 160, left: 100, right: 500, bottom: 560, width: 400, height: 400 };
+            item = currentHarness.document.createElement('div');
+            scrollport.appendChild(item);
+            currentHarness.appendToBody(scrollport);
+            currentHarness.window.visualViewport.scale = 2;
+            currentHarness.window.visualViewport.offsetLeft = 35;
+            currentHarness.window.visualViewport.offsetTop = 25;
+            currentHarness.window.visualViewport.width = 700;
+            currentHarness.window.visualViewport.height = 650;
+            // Only the visual-viewport coordinate system finds the painted entry.
+            currentHarness.document.elementFromPoint = (x) =>
+                open && x === 165 ? item : scrollport;
+        });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const inner = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert(inner);
+        assert.equal(inner.style.display, 'none', 'Zoom must not bypass paint checks.');
+
+        open = true;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(inner.style.display, '', 'Hit testing must support viewport offsets.');
+        open = false;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(inner.style.display, 'none', 'It hides again even while zoomed.');
+    });
+
     test('semantic closed state and aria-hidden hide a scrollport before animation ends', () => {
         let menu;
         const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
