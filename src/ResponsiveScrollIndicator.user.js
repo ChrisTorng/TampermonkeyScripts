@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-07_1.3.15
-// @description  Keep persistent neutral-gray scroll markers for pages and truly visible nested content.
+// @version      2026-11-07_1.3.16
+// @description  Keep persistent solid-gray scroll markers for pages and truly visible nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -90,9 +90,10 @@
                 left: calc(1px / var(--tm-scroll-scale, 1));
                 width: calc(${BAR_WIDTH - 2}px / var(--tm-scroll-scale, 1));
                 height: ${MIN_VIEWPORT_HEIGHT_PX}px;
-                background: linear-gradient(180deg, rgba(205, 208, 212, 0.88), rgba(181, 187, 193, 0.9));
+                background-color: #c5c9ce !important;
+                background-image: none !important;
                 border-radius: calc(${(BAR_WIDTH - 2) / 2}px / var(--tm-scroll-scale, 1));
-                box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+                box-shadow: none !important;
             }
         `;
 
