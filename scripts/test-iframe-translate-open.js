@@ -10,8 +10,9 @@ const source = fs.readFileSync(
 );
 const channel = 'tm-embedded-reader-v1';
 
-function boot(url = 'https://example.org/article', prepare = () => {}, sharedStore = new Map()) {
-    const h = createHarness({ url });
+function boot(url = 'https://example.org/article', prepare = () => {},
+    sharedStore = new Map(), sessionStorageSeed = {}) {
+    const h = createHarness({ url, sessionStorageSeed });
     const opened = [];
     h.context.GM_setValue = (k, v) => sharedStore.set(k, v);
     h.context.GM_getValue = (k, fallback) => sharedStore.get(k) ?? fallback;
@@ -143,6 +144,114 @@ describe('generic iframe translation reader', () => {
         assert.equal(store.get('tm-embedded-reader:' + request.id).html,
             '<div lang="en"><p>Rich text</p></div>');
         assert.equal(button.textContent, '譯↗');
+    });
+
+
+    function makeReader(id, store, seed = {}) {
+        const title = 'Full source article title, not iframe title';
+        const url = 'https://example.org/articles/42?topic=accessibility#section';
+        const query = new URLSearchParams({ id, title, url });
+        const readerUrl = 'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html?' + query;
+        let anchor, address, target;
+        const result = boot(readerUrl, (h) => {
+            anchor = h.document.createElement('a');
+            anchor.id = 'iframe-viewer-source-link';
+            h.appendToBody(anchor);
+            address = h.document.createElement('div');
+            address.id = 'iframe-viewer-source-url';
+            h.appendToBody(address);
+            target = h.document.createElement('main');
+            target.id = 'iframe-viewer-content';
+            target.replaceChildren = (fragment) => { target.imported = fragment; };
+            h.appendToBody(target);
+            // Mock only the DOM fragment receiver: the real sanitizer and
+            // source-link initialization still run in the userscript.
+            const createElement = h.document.createElement.bind(h.document);
+            h.document.createElement = (tag) => tag === 'template'
+                ? { content: { querySelectorAll: () => [] }, innerHTML: '' }
+                : createElement(tag);
+        }, store, seed);
+        return { ...result, anchor, address, target, title, url, readerUrl };
+    }
+
+    async function settle() {
+        for (let i = 0; i < 9; i++) await Promise.resolve();
+    }
+
+    test('viewer retains full source title and hyperlink from query, and imports into session cache', async () => {
+        const id = 'capture-abcdef12345';
+        const html = '<div lang="en"><h1>Independent content A</h1></div>';
+        const store = new Map([['tm-embedded-reader:' + id,
+            { html, createdAt: Date.now() }]]);
+        const first = makeReader(id, store);
+        await settle();
+        assert.equal(first.anchor.textContent, first.title);
+        assert.equal(first.anchor.href, first.url);
+        assert.equal(first.address.textContent, first.url);
+        assert.equal(first.h.document.title, first.title);
+        assert(first.target.imported, 'HTML should have been imported into the main reader area');
+        const saved = first.h.sessionStorage.getItem('tm-iframe-viewer:' + id);
+        assert(saved);
+        assert.equal(JSON.parse(saved).html, html);
+        assert.equal(store.has('tm-embedded-reader:' + id), false,
+            'GM handoff should be deleted once sessionStorage owns the snapshot');
+
+        const reload = makeReader(id, new Map(), {
+            ['tm-iframe-viewer:' + id]: saved
+        });
+        await settle();
+        assert(reload.target.imported, 'refresh must use the per-tab session cache without GM storage');
+        assert.equal(reload.h.location.replacedUrl, null);
+        assert.equal(reload.anchor.href, first.url);
+    });
+
+    test('different reader ids do not mix and survive independent refreshes', async () => {
+        const oneId = 'capture-one-12345', twoId = 'capture-two-12345';
+        const store = new Map([
+            ['tm-embedded-reader:' + oneId,
+                { html: '<p>One article</p>', createdAt: Date.now() }],
+            ['tm-embedded-reader:' + twoId,
+                { html: '<p>Two article</p>', createdAt: Date.now() }]
+        ]);
+        const one = makeReader(oneId, store), two = makeReader(twoId, store);
+        await settle();
+        const cacheOne = JSON.parse(one.h.sessionStorage.getItem('tm-iframe-viewer:' + oneId));
+        const cacheTwo = JSON.parse(two.h.sessionStorage.getItem('tm-iframe-viewer:' + twoId));
+        assert.equal(cacheOne.html, '<p>One article</p>');
+        assert.equal(cacheTwo.html, '<p>Two article</p>');
+        assert.equal(store.size, 0);
+    });
+
+    test('missing reader content replaces current tab with source, without opening another tab', async () => {
+        const reader = makeReader('capture-missing-12345', new Map());
+        await settle();
+        for (let i = 0; i < 34; i++) {
+            reader.h.runAllIntervals();
+            await settle();
+        }
+        assert.equal(reader.h.location.replacedUrl, reader.url);
+        assert.equal(reader.opened.length, 0);
+    });
+
+    test('invalid source protocols never become a clickable link or redirect target', async () => {
+        const readerUrl = 'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html'
+            + '?id=capture-invalid-12345&title=Source&url='
+            + encodeURIComponent('javascript:alert(1)');
+        const { h } = boot(readerUrl, (h) => {
+            const link = h.document.createElement('a');
+            link.id = 'iframe-viewer-source-link';
+            h.appendToBody(link);
+            const content = h.document.createElement('main');
+            content.id = 'iframe-viewer-content';
+            h.appendToBody(content);
+        });
+        await settle();
+        for (let i = 0; i < 34; i++) {
+            h.runAllIntervals();
+            await settle();
+        }
+        assert.equal(h.document.querySelector('#iframe-viewer-source-link').getAttribute('href'), null);
+        assert.equal(h.location.replacedUrl, null);
     });
 
     test('injected child frame announces only the availability of text', () => {
