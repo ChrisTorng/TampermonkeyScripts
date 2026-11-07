@@ -1,5 +1,6 @@
 // ==UserScript==
-// @name         Claude Artifact Reader (Experimental)
+// @name         Claude Artifact to Clipboard Viewer (Experimental)
+// @name:zh-TW   Claude Artifact Reader（獨立閱讀）
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
 // @version      2026-11-07_0.2.0
 // @description  Capture an accessible Claude artifact iframe into a clean, full-page reader for browser translation.
