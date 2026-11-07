@@ -48,7 +48,8 @@
     };
 
     function diagnostics(phase) {
-        const blocked = Array.from(document.querySelectorAll('[translate="no"], .notranslate, meta[name="google"]'));
+        const blocked = Array.from(document.querySelectorAll('[translate="no"], .notranslate, meta[name="google"]'))
+            .filter((node) => node.id !== hostId && !node.closest?.('#' + hostId));
         return {
             version: '1.0.0',
             phase,
