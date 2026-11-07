@@ -50,6 +50,73 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('Perplexity Hub articles clear native translation opt-outs but retain code exclusions', () => {
+        let heading, main, sourceCode, googleMeta;
+        const harness = execute((h) => {
+            h.document.documentElement.setAttribute('translate', 'no');
+            h.document.body.classList.add('notranslate');
+            googleMeta = h.document.createElement('meta');
+            googleMeta.setAttribute('name', 'google');
+            googleMeta.setAttribute('content', 'notranslate');
+            h.document.head.appendChild(googleMeta);
+            main = h.document.createElement('main');
+            main.setAttribute('translate', 'no');
+            heading = h.document.createElement('h1');
+            heading.classList.add('notranslate');
+            heading.textContent = 'Teammates are agents for complex, ongoing work';
+            sourceCode = h.document.createElement('pre');
+            sourceCode.setAttribute('translate', 'no');
+            sourceCode.classList.add('notranslate');
+            sourceCode.textContent = 'const language = "en";';
+            main.append(heading, sourceCode);
+            h.appendToBody(main);
+        }, 'https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work');
+
+        assert.equal(harness.document.documentElement.getAttribute('translate'), 'yes');
+        assert.equal(harness.document.body.classList.contains('notranslate'), false);
+        assert.equal(main.getAttribute('translate'), 'yes');
+        assert.equal(heading.classList.contains('notranslate'), false);
+        assert.equal(googleMeta.parentNode, null);
+        assert.equal(sourceCode.getAttribute('translate'), 'no');
+        assert.equal(sourceCode.classList.contains('notranslate'), true);
+    });
+
+    test('Perplexity Hub translation opt-outs are cleared for delayed content and attribute changes', () => {
+        const harness = execute(() => {}, 'https://www.perplexity.ai/hub/blog/teammates-are-agents-for-complex-ongoing-work');
+        const article = harness.document.createElement('article');
+        const heading = harness.document.createElement('h2');
+        heading.setAttribute('translate', 'no');
+        heading.className = 'notranslate';
+        article.appendChild(heading);
+        harness.appendToBody(article);
+        harness.triggerMutation([article]);
+        assert.equal(heading.getAttribute('translate'), 'yes');
+        assert.equal(heading.classList.contains('notranslate'), false);
+
+        heading.setAttribute('translate', 'no');
+        heading.classList.add('notranslate');
+        harness.triggerMutation([], { type: 'attributes', target: heading, attributeName: 'class' });
+        assert.equal(heading.getAttribute('translate'), 'yes');
+        assert.equal(heading.classList.contains('notranslate'), false);
+    });
+
+    test('Perplexity interactive pages and unrelated sites retain their translation markers', () => {
+        for (const url of [
+            'https://www.perplexity.ai/search/foobar',
+            'https://example.org/hub/blog/teammates-are-agents-for-complex-ongoing-work'
+        ]) {
+            let heading;
+            execute((h) => {
+                heading = h.document.createElement('h1');
+                heading.setAttribute('translate', 'no');
+                heading.classList.add('notranslate');
+                h.appendToBody(heading);
+            }, url);
+            assert.equal(heading.getAttribute('translate'), 'no', url);
+            assert.equal(heading.classList.contains('notranslate'), true, url);
+        }
+    });
+
     test('ordinary embedded documents do not create an unverified translation opener', () => {
         const harness = execute((h) => {
             const frame = h.document.createElement('iframe');
