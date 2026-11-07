@@ -2,6 +2,15 @@
 
 Updated: 2026-11-07
 
+## OpenSSH vertical menu and bulk updates — 2026-11-07
+
+[Open all five updates](tests/SharedFloatingMenuUpdates/index.html?ref=fix%2Fopenssh-translate-menu-overflow-20261107) — confirm each Tampermonkey Update; install Force Mobile View first if batch opening is not yet enabled.
+
+- [Translate Preformatted Text — 1.5.17](src/TranslatePreformattedText.user.js): OpenSSH release translation, iframe fallback and no observer loop.
+- Shared menu (install together): [All Go Internet Archive — 1.3.10](src/AllGoInternetArchive.user.js), [Internet Archive — 1.5.10](src/InternetArchive.user.js), [Force Mobile View — 2.1.9](src/ForceMobileView.user.js), [Force Dark Mode — 2.0.10](src/ForceDarkMode.user.js), and Translate Preformatted Text above. OpenSSH now follows the visual document using bounded absolute positioning; other sites retain fixed positioning. Reload after updating.
+
+**Tests:** [OpenSSH release notes](https://www.openssh.org/releasenotes.html) (scroll before/after 譯), [batch updater](tests/SharedFloatingMenuUpdates/index.html?ref=fix%2Fopenssh-translate-menu-overflow-20261107) (five tabs).
+
 ## Responsive Scroll Position Indicator — 2026-11-07_1.3.16
 
 [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload after updating.
