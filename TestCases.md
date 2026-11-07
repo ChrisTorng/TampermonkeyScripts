@@ -160,3 +160,8 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; Medium detection and reload-once/session logic only)
 - https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950 [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (global-identity reload skip logic only)
   - Expect a single reload even if Medium rewrites the redirectUrl query parameters on subsequent visits.
+
+# Claude Artifact Clipboard Bridge (Experimental)
+Section note: DOM-harness tests verify script scoping, readiness gating and message source checks. Real Claude iframe injection, rich HTML extraction and browser translation require Android Edge validation; do not treat this as a verified solution.
+- https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (live iframe injection and browser translation not confirmed)
+- https://christorng.idv.tw/InfoProcess/Clipboard/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (existing rich HTML paste is working; experimental automatic import is not yet device-verified)
