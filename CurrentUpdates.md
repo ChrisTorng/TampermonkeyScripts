@@ -1,20 +1,20 @@
 # Current updates
 
-## Translate Preformatted Text — 2026-11-07_1.5.19
+## Translate Preformatted Text — 2026-11-07_1.5.20
 
-[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload open pages after updating.
+[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload pages after updating.
 
-- Add a translucent **譯另開** button at the upper-right of any accessible, text-bearing iframe. It is draggable, anchored to the document (not sticky), never saved, and independent of ≡.
-- Captured HTML opens in a clean [Artifact Reader](ArtifactReader.html) at christorng.idv.tw/TampermonkeyScripts; no Clipboard Viewer or Vercel URL is used.
+- Show an independent, borderless, translucent **譯↗** at the upper-right of readable iframes. Drag without opening; no saved position, no fixed scrolling, no ≡ menu entry.
+- Capture iframe HTML for [Iframe Viewer](IframeViewer.html) under christorng.idv.tw/TampermonkeyScripts/. A complete linked source title and URL stay in its query string.
+- Refresh restores the article from per-tab sessionStorage. If the snapshot is lost, replace the current tab with its source page. GM handoffs are deleted after import and bounded to a short lifetime.
 
 **Test pages:**
-- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — 譯另開 at the content iframe upper-right; drag without activating, then click to open a translated full-page article.
-- [CodePen embed documentation](https://blog.codepen.io/docs/embeds/) — an example of standalone iframe structure; action appears only on frames that allow content-script injection.
-- [Dedicated reader](https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html) — reader HTML file (will be available once the site's normal publication process deploys this commit).
+- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — the user-confirmed iframe content can be captured; test the new generic button and linked-title viewer.
+- [Iframe Viewer](https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html) — static shell; article content appears only when invoked from the userscript.
+- [Astro blog](https://aatishb.com/blog/) — existing navigation translation regression check.
 
-**Note:** Claude HTML capture and Edge translation were confirmed on Android in the earlier isolated experiment. General iframe coverage and this integrated release still require live browser testing.
+**Status:** Unified script remains a draft PR pending Android Edge verification. No Clipboard Viewer or Vercel URL is used.
 
-Updated: 2026-11-07
 
 ## OpenSSH floating menu and five-script updater — 2026-11-07
 
