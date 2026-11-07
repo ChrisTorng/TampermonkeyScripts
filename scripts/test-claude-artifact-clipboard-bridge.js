@@ -98,7 +98,7 @@ describe('Claude Artifact Reader experiment', () => {
         assert.equal(storage.get('tm-claude-reader:' + request.id).html,
             '<div lang="en"><p>Hello world</p></div>');
         assert.equal(opened.length, 1);
-        assert.match(opened[0].url, /^https:\/\/christorng\.idv\.tw\/TampermonkeyScripts\/ArtifactReader\.html\?tmArtifactCapture=/);
+        assert.match(opened[0].url, /^https:\/\/tampermonkey-scripts-git-experiment-df7bf6-christorngs-projects\.vercel\.app\/ArtifactReader\.html\?tmArtifactCapture=/);
     });
 
 
