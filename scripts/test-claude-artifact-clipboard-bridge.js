@@ -56,6 +56,40 @@ describe('Claude Artifact Clipboard Bridge experiment', () => {
         assert.equal(harness.document.querySelector('#tm-artifact-clipboard-transfer').textContent, 'To Clipboard Viewer');
     });
 
+    test('user-initiated capture is stored for Clipboard Viewer without a server upload', async () => {
+        let frame;
+        const messages = [];
+        const { harness, storage, opened } = execute('https://claude.ai/artifact/example', (h) => {
+            frame = h.document.createElement('iframe');
+            frame.setAttribute('src', 'https://1234abcd.frame.claudeusercontent.com/_f/signed');
+            frame.contentWindow = { postMessage: (...args) => messages.push(args[0]) };
+            h.appendToBody(frame);
+        });
+        harness.window.dispatchEvent({
+            type: 'message', source: frame.contentWindow,
+            data: { channel: 'tm-claude-artifact-clipboard-v1', type: 'ready', textLength: 500 }
+        });
+        assert.equal(storage.size, 0);
+        assert.equal(opened.length, 0);
+
+        harness.document.querySelector('#tm-artifact-clipboard-transfer').click();
+        const request = messages.find((message) => message.type === 'capture');
+        assert(request && request.id);
+        harness.window.dispatchEvent({
+            type: 'message', source: frame.contentWindow,
+            data: {
+                channel: 'tm-claude-artifact-clipboard-v1', type: 'captured',
+                id: request.id, html: '<div lang="en"><p>Hello world</p></div>'
+            }
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(storage.get('tm-claude-clipboard:' + request.id).html,
+            '<div lang="en"><p>Hello world</p></div>');
+        assert.equal(opened.length, 1);
+        assert.match(opened[0].url, /^https:\/\/christorng\.idv\.tw\/InfoProcess\/Clipboard\/\?tmArtifactCapture=/);
+    });
+
     test('unrelated iframe source cannot advertise readiness', () => {
         let external;
         const { harness } = execute('https://claude.ai/artifact/example', (h) => {
