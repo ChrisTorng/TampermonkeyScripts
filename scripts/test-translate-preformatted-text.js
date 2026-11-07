@@ -50,6 +50,132 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('ordinary page mutations do not rewrite the floating translation button endlessly', () => {
+        const harness = execute(() => {}, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        let value = button.textContent;
+        let assignments = 0;
+        Object.defineProperty(button, 'textContent', {
+            configurable: true,
+            get() { return value; },
+            set(next) { assignments++; value = next; }
+        });
+
+        for (let index = 0; index < 30; index++) {
+            const paragraph = harness.document.createElement('p');
+            paragraph.textContent = `Dynamic comment ${index}`;
+            harness.appendToBody(paragraph);
+            harness.triggerMutation([paragraph]);
+        }
+        assert.equal(assignments, 0, 're-scanning the document must not recreate unchanged button text');
+    });
+
+    test('iframe fallback updates label only on actual state transitions', () => {
+        const harness = execute(() => {}, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        let value = button.textContent;
+        let assignments = 0;
+        Object.defineProperty(button, 'textContent', {
+            configurable: true,
+            get() { return value; },
+            set(next) { assignments++; value = next; }
+        });
+
+        const pre = harness.document.createElement('pre');
+        pre.textContent = 'Preformatted text';
+        harness.appendToBody(pre);
+        harness.triggerMutation([pre]);
+        assert.equal(value, '譯∞');
+        assert.equal(assignments, 1);
+        for (let index = 0; index < 10; index++) {
+            const p = harness.document.createElement('p');
+            p.textContent = `More comments ${index}`;
+            harness.appendToBody(p);
+            harness.triggerMutation([p]);
+        }
+        assert.equal(assignments, 1, 'unchanged mode must not rewrite button content');
+    });
+
+    test('floating-menu mutations are ignored rather than rescanned as article content', () => {
+        const harness = execute(() => {}, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        const injectedPre = harness.document.createElement('pre');
+        injectedPre.textContent = 'Internal menu content';
+        button.appendChild(injectedPre);
+        harness.triggerMutation([injectedPre], { target: button });
+        assert.equal(injectedPre.closest('[data-tm-translatable-pre-wrapper]'), null);
+    });
+
+    test('large embedded documents offer an explicit standalone translation fallback', () => {
+        const opened = [];
+        const harness = execute((h) => {
+            const frame = h.document.createElement('iframe');
+            frame.setAttribute('src', 'https://sample.frame.claudeusercontent.com/_f/signed-content');
+            frame.clientWidth = 360;
+            frame.clientHeight = 700;
+            h.appendToBody(frame);
+            h.context.window.open = (...args) => opened.push(args);
+        }, 'https://claude.ai/artifact/example');
+
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        assert.equal(button.textContent, '譯↗');
+        assert.equal(button.getAttribute('aria-label'), 'Open an embedded page separately for browser translation');
+        assert.equal(harness.document.querySelector('iframe').getAttribute('src'), 'https://sample.frame.claudeusercontent.com/_f/signed-content');
+        button.click();
+        assert.deepEqual(opened, [[
+            'https://sample.frame.claudeusercontent.com/_f/signed-content',
+            '_blank',
+            'noopener,noreferrer'
+        ]]);
+    });
+
+    test('embedded-frame fallback ignores unsafe, tiny, and media-only frames', () => {
+        const harness = execute((h) => {
+            for (const [src, width, height] of [
+                ['javascript:alert(1)', 350, 500],
+                ['about:blank', 350, 500],
+                ['https://www.youtube.com/embed/test', 350, 500],
+                ['https://example.org/tracking', 1, 1],
+            ]) {
+                const frame = h.document.createElement('iframe');
+                frame.setAttribute('src', src);
+                frame.clientWidth = width;
+                frame.clientHeight = height;
+                h.appendToBody(frame);
+            }
+        }, 'https://example.org/article');
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        assert.equal(button.textContent, '譯↗');
+        assert.equal(button.getAttribute('data-floating-available'), 'false');
+    });
+
+    test('late iframe insertion is detected and multiple frames require a selection', () => {
+        const opened = [];
+        let promptText = '';
+        const harness = execute((h) => {
+            h.context.window.open = (...args) => opened.push(args);
+            h.context.window.prompt = (text) => { promptText = text; return '2'; };
+        }, 'https://example.org/article');
+        for (const [host, width] of [['first.example', 400], ['second.example', 300]]) {
+            const frame = harness.document.createElement('iframe');
+            frame.setAttribute('src', `https://${host}/embed/article`);
+            frame.clientWidth = width;
+            frame.clientHeight = 450;
+            harness.appendToBody(frame);
+            harness.triggerMutation([frame]);
+        }
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert.equal(button.textContent, '譯↗');
+        button.click();
+        assert.match(promptText, /1\. first\.example/);
+        assert.match(promptText, /2\. second\.example/);
+        assert.equal(opened.length, 1);
+        assert.equal(opened[0][0], 'https://second.example/embed/article');
+    });
+
     test('Astro article navigation opts out of swaps while fragments and external links remain unchanged', () => {
         const links = [];
         execute((harness) => {
@@ -245,6 +371,45 @@ describe('Translate Preformatted Text', () => {
         button.click();
         assert.equal(harness.document.querySelector('blockquote'), quote);
         assert.equal(quote.querySelector('code'), code);
+    });
+
+    test('OpenSSH release-note prose without PRE receives translation controls', () => {
+        let heading;
+        let prose;
+        const harness = execute((current) => {
+            heading = current.document.createElement('h3');
+            heading.textContent = 'OpenSSH 10.6p2 (2026-11-05)';
+            current.appendToBody(heading);
+            prose = current.document.createElement('blockquote');
+            prose.textContent = 'Portable OpenSSH 10.6p2 was released. ' + 'Recent security reports need careful review. '.repeat(6);
+            current.appendToBody(prose);
+        }, 'https://www.openssh.org/releasenotes.html');
+
+        const wrapper = harness.document.querySelector('[data-tm-translatable-pre-wrapper]');
+        const button = harness.document.querySelector('.tm-translate-pre-one');
+        assert(wrapper);
+        assert(button);
+        assert.equal(wrapper.querySelector('blockquote'), prose);
+        assert.equal(harness.document.querySelector('[data-floating-tool="translate"]').getAttribute('data-floating-available'), 'true');
+        button.click();
+        assert.match(harness.document.querySelector('[data-tm-translatable-pre-converted]').textContent, /security reports/);
+        button.click();
+        assert.equal(wrapper.querySelector('blockquote'), prose);
+        assert.equal(heading.parentNode, harness.document.body);
+    });
+
+    test('ordinary prose remains untouched on other websites', () => {
+        let prose;
+        const harness = execute((current) => {
+            const heading = current.document.createElement('h3');
+            heading.textContent = 'OpenSSH 10.6p2';
+            current.appendToBody(heading);
+            prose = current.document.createElement('blockquote');
+            prose.textContent = 'Portable OpenSSH notes '.repeat(10);
+            current.appendToBody(prose);
+        }, 'https://example.com/releases');
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-wrapper]'), null);
+        assert.equal(prose.parentNode, harness.document.body);
     });
 
     test('GitHub source code view waits for its translation button to be pressed', () => {
