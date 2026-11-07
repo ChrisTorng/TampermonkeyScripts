@@ -106,6 +106,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
+- https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM harness verifies document/descendant translate=no and notranslate removal, late content, and code preservation; actual Android Edge translation needs manual confirmation)
 - https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (runtime tests cover linked source URL, isolated per-tab sessionStorage, refresh and location.replace fallback; real Android Edge requires verification)
 - https://www.openssh.org/releasenotes.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover OpenSSH release-note translation, document-anchored floating menu and root scroll; native Android Edge was checked by the user)
 - tests/SharedFloatingMenuUpdates/index.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (runtime tests verify five allowlisted GM_openInTab requests, Chromium tests check the fallback; each Tampermonkey Update is confirmed separately)
