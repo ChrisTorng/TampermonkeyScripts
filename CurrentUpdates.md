@@ -1,18 +1,17 @@
 # Current updates
 
-Updated: 2026-11-07
+Updated: 2026-11-08
 
-## Translate Preformatted Text — 2026-11-07_1.5.20 (test)
+## Translate Preformatted Text — 2026-11-08_1.5.21 (device check)
 
-[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload open pages after updating.
+[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload after updating; choose Show original, then Translate again if Edge was already translating.
 
-- Show an independent, borderless translucent **譯↗** at the upper-right of readable iframes. Drag without opening; no saved position, sticky scrolling, or ≡ menu entry.
-- Copy iframe HTML into [Iframe Viewer](IframeViewer.html) at christorng.idv.tw/TampermonkeyScripts/. The full source title and URL remain in the query string.
-- A reader refresh restores content from per-tab sessionStorage; if unavailable, replace the current tab with its source URL. Delete GM handoffs after import.
+- Allow Perplexity blog article text through `translate=no`, `.notranslate` and Google meta opt-outs, including late content. Preserve code blocks and editable controls.
+- Keep existing embedded **譯↗**, Astro, Wikipedia and shared-menu behavior unchanged.
 
-**Test:** [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf), [Iframe Viewer](https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html), [Astro regression](https://aatishb.com/blog/).
+**Test:** [Perplexity Teammates article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — expect the article, not only Edge's translate toolbar, to change to Chinese. [Perplexity Search](https://www.perplexity.ai/) — interactive pages are untouched. [Astro regression](https://aatishb.com/blog/) — link navigation unchanged.
 
-**Status:** Integrated changes remain in a draft PR for Android Edge verification; no Clipboard Viewer or Vercel URL is used.
+**Status:** Opt-out removal has local DOM coverage; no actual Android Edge translation result has been verified.
 
 ## BetaCat title-row collapse — 2026-11-07_1.8.2
 
@@ -27,7 +26,7 @@ Updated: 2026-11-07
 
 [Open all five update tabs](tests/SharedFloatingMenuUpdates/index.html) (confirm each Tampermonkey Update).
 
-- [Translate Preformatted Text — 1.5.20](src/TranslatePreformattedText.user.js): OpenSSH formatting fixes and standalone iframe viewing.
+- [Translate Preformatted Text — 1.5.21](src/TranslatePreformattedText.user.js): OpenSSH formatting fixes and standalone iframe viewing.
 - Shared menu — update together: [All Go Internet Archive — 1.3.10](src/AllGoInternetArchive.user.js), [Internet Archive — 1.5.10](src/InternetArchive.user.js), [Force Mobile View — 2.1.9](src/ForceMobileView.user.js), [Force Dark Mode — 2.0.10](src/ForceDarkMode.user.js), and Translate Preformatted Text above. Dock the menu during OpenSSH scrolling; leave space below the updater links. Reload after updating.
 
 **Tests:** [OpenSSH release notes](https://www.openssh.org/releasenotes.html) — ≡ remains reachable during scrolling; [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — no unverified iframe opener.
