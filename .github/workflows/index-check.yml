@@ -46,6 +46,8 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-transient-controls.js scripts/test-control-browser.js
+      - name: Test Claude artifact clipboard bridge experiment
+        run: node --test scripts/test-claude-artifact-clipboard-bridge.js
       - name: Generate documentation pages
         run: npm run generate:index
       - name: Verify HTML outputs were produced
