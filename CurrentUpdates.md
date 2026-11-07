@@ -1,6 +1,16 @@
 # Current updates
 
-Updated: 2026-11-07
+Updated: 2026-11-08
+
+## Generic page DOM snapshot diagnostics — 2026-11-08_1.0.0 (test)
+
+[Install PageDomSnapshot.user.js](src/PageDomSnapshot.user.js) · Temporary diagnostic only; disable when finished.
+
+- The **HTML↓** control saves the page's live DOM and metadata as a local .html file. Click once on the original page, then again after enabling browser translation. Nothing is uploaded.
+- Snapshots capture the light DOM (not shadow roots or cross-origin iframe contents). These are diagnostic evidence, **not** confirmation that translation is fixed.
+
+**Test:** [Perplexity Teammates article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — compare original/translated downloads; [Astro blog](https://aatishb.com/blog/) — tool captures a normal dynamic web page without rewriting it.
+
 
 ## Translate Preformatted Text — 2026-11-07_1.5.20 (test)
 
