@@ -50,6 +50,37 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+    test('ordinary embedded documents do not create an unverified translation opener', () => {
+        const harness = execute((h) => {
+            const frame = h.document.createElement('iframe');
+            frame.setAttribute('src', 'https://example.net/embedded-article');
+            frame.clientWidth = 400;
+            frame.clientHeight = 700;
+            h.appendToBody(frame);
+        }, 'https://claude.ai/artifact/example');
+
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        assert.equal(button.textContent, '譯∞');
+        assert.equal(button.getAttribute('data-floating-available'), 'false');
+        button.click();
+        assert.equal(harness.window.openCalls.length, 0);
+    });
+
+    test('late-loaded ordinary comments do not expose an iframe action', () => {
+        const harness = execute(() => {}, 'https://github.com/example/repo/issues/1');
+        for (let index = 0; index < 30; index++) {
+            const comment = harness.document.createElement('p');
+            comment.textContent = `New comment ${index}`;
+            harness.appendToBody(comment);
+            harness.triggerMutation([comment]);
+        }
+        const button = harness.document.querySelector('#tm-translate-all-pre');
+        assert(button);
+        assert.equal(button.getAttribute('data-floating-available'), 'false');
+        assert.equal(harness.window.openCalls.length, 0);
+    });
+
     test('Astro article navigation opts out of swaps while fragments and external links remain unchanged', () => {
         const links = [];
         execute((harness) => {
