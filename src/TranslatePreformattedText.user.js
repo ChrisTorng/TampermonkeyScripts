@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.19
+// @version      2026-11-07_1.5.20
 // @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_listValues
 // @grant        GM_deleteValue
 // @grant        GM_openInTab
 // @sandbox      raw
@@ -23,10 +24,11 @@
     // actively report readable content before any control is displayed.
     // Never reuse the iframe URL as the standalone reading URL.
     const readerBridgeChannel = 'tm-embedded-reader-v1';
-    const readerBridgeUrl = 'https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html';
+    const readerBridgeUrl = 'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html';
     const readerBridgeKey = 'tm-embedded-reader:';
+    const readerHandoffLifetime = 10 * 60 * 1000; // GM storage is only a short handoff.
     const isReaderDocument = location.origin === 'https://christorng.idv.tw'
-        && location.pathname === '/TampermonkeyScripts/ArtifactReader.html';
+        && location.pathname === '/TampermonkeyScripts/IframeViewer.html';
     const isOwnerSite = /(^|\.)christorng\.idv\.tw$/i.test(location.hostname);
     const readerForbiddenTags = new Set([
         'SCRIPT', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT',
@@ -179,23 +181,25 @@
             if (known.has(frame) || !document.body) return known.get(frame);
             const bounds = frame.getBoundingClientRect();
             const button = document.createElement('button');
-            const width = 68;
+            const width = 44;
             button.type = 'button';
             button.className = 'tm-iframe-translate-open';
-            button.textContent = '譯另開';
-            button.title = 'Open this embedded article in a separate translatable reading page';
+            button.textContent = '譯↗';
+            button.title = '擷取 iframe 內容，另開獨立檢視頁';
             // Document coordinates, not fixed/sticky; scrolling never follows the button.
             const left = Math.max(0, Math.round((window.scrollX || 0)
                 + Math.min(bounds.right, document.documentElement.clientWidth) - width - 6));
             const top = Math.max(0, Math.round((window.scrollY || 0) + bounds.top + 6));
             button.style.cssText = 'position:absolute !important;left:' + left
                 + 'px !important;top:' + top + 'px !important;right:auto !important;'
-                + 'bottom:auto !important;width:68px !important;'
-                + 'height:32px !important;padding:4px !important;'
-                + 'background:rgba(0,0,0,.38) !important;color:rgba(255,255,255,.85) !important;'
-                + 'opacity:.65 !important;border:1px solid rgba(180,180,180,.4) !important;'
-                + 'border-radius:6px !important;font:600 13px/22px system-ui,sans-serif !important;'
+                + 'bottom:auto !important;width:44px !important;'
+                + 'height:32px !important;padding:0 3px !important;'
+                + 'background:rgba(0,0,0,.35) !important;color:rgba(255,255,255,.75) !important;'
+                + 'opacity:.5 !important;border:0 !important;box-shadow:none !important;'
+                + 'border-radius:4px !important;font:600 15px/22px system-ui,sans-serif !important;'
                 + 'z-index:2147483646 !important;cursor:pointer !important;touch-action:none !important;';
+            button.addEventListener('pointerenter', () => { button.style.opacity = '.9'; });
+            button.addEventListener('pointerleave', () => { button.style.opacity = '.5'; });
             let drag = null;
             let ignoreClick = false;
             let currentLeft = left, currentTop = top;
@@ -254,7 +258,7 @@
                     if (info.pending !== id) return;
                     info.pending = null;
                     button.disabled = false;
-                    button.textContent = '重試譯';
+                    button.textContent = '重試↗';
                 }, 12000);
             });
             document.body.appendChild(button);
@@ -276,7 +280,7 @@
             if (data.type === 'failed') {
                 info.pending = null;
                 info.button.disabled = false;
-                info.button.textContent = '重試譯';
+                info.button.textContent = '重試↗';
                 return;
             }
             if (data.type !== 'captured' || typeof data.html !== 'string'
@@ -285,14 +289,20 @@
             info.pending = null;
             try {
                 await Promise.resolve(GM_setValue(readerBridgeKey + id, {
-                    html: data.html, title: String(data.title || '').slice(0, 160),
-                    createdAt: Date.now()
+                    html: data.html, createdAt: Date.now()
                 }));
-                GM_openInTab(readerBridgeUrl + '?tmReader=' + encodeURIComponent(id),
-                    { active: true });
-                info.button.textContent = '譯另開';
+                // Every opener receives a distinct ID; source metadata stays in
+                // the URL even if the HTML session cache is later unavailable.
+                const query = new URLSearchParams({
+                    id,
+                    title: document.title || String(data.title || ''),
+                    url: location.href
+                });
+                GM_openInTab(readerBridgeUrl + '?' + query.toString(), { active: true });
+                void readerPruneHandoffs();
+                info.button.textContent = '譯↗';
             } catch (_) {
-                info.button.textContent = '重試譯';
+                info.button.textContent = '重試↗';
             }
             info.button.disabled = false;
         });
@@ -316,48 +326,119 @@
         } else whenReady();
     }
 
-    function startStandaloneReader() {
-        const id = new URL(location.href).searchParams.get('tmReader');
-        if (!/^[a-z0-9-]{8,80}$/i.test(id || '')) return;
-        const key = readerBridgeKey + id;
-        let tries = 0;
-        async function load() {
-            const target = document.getElementById('artifact-content');
-            if (!target) return;
-            const record = await Promise.resolve(GM_getValue(key, null));
-            if (!record || typeof record.html !== 'string'
-                || Date.now() - record.createdAt > 10 * 60 * 1000) {
-                if (++tries >= 24) {
-                    target.textContent = 'Captured article unavailable. Please open it again from the original page.';
-                    clearInterval(interval);
-                }
-                return;
+    // The persistent GM slot is only a temporary cross-origin handoff. Once
+    // a reader tab imports the HTML, it keeps its own copy in sessionStorage.
+    // That copy survives refresh and expires when the tab is closed.
+    async function readerPruneHandoffs() {
+        try {
+            const keys = (await Promise.resolve(GM_listValues()))
+                .filter((key) => key.startsWith(readerBridgeKey));
+            const valid = [];
+            for (const key of keys) {
+                const entry = await Promise.resolve(GM_getValue(key, null));
+                if (!entry || typeof entry.html !== 'string'
+                    || !Number.isFinite(entry.createdAt)
+                    || Date.now() - entry.createdAt > readerHandoffLifetime) {
+                    await Promise.resolve(GM_deleteValue(key));
+                } else valid.push({ key, createdAt: entry.createdAt });
             }
-            const template = document.createElement('template');
-            template.innerHTML = record.html;
-            for (const item of Array.from(template.content.querySelectorAll('*'))) {
-                if (readerForbiddenTags.has(item.tagName)) {
-                    item.remove();
-                    continue;
+            valid.sort((a, b) => b.createdAt - a.createdAt);
+            for (const stale of valid.slice(6)) await Promise.resolve(GM_deleteValue(stale.key));
+        } catch (_) { /* Optional cleanup must not block the reader. */ }
+    }
+
+    function readerOriginalUrl(value) {
+        if (!value) return null;
+        try {
+            const url = new URL(value);
+            if (!['http:', 'https:'].includes(url.protocol)
+                || url.href === location.href
+                || url.href.startsWith(readerBridgeUrl + '?')) return null;
+            return url.href;
+        } catch (_) { return null; }
+    }
+
+    function startStandaloneReader() {
+        const query = new URL(location.href).searchParams;
+        const id = query.get('id');
+        if (!/^[a-z0-9-]{8,80}$/i.test(id || '')) return;
+        const originalUrl = readerOriginalUrl(query.get('url'));
+        const originalTitle = query.get('title') || originalUrl || '原始網頁';
+        const link = document.getElementById('iframe-viewer-source-link');
+        const sourceAddress = document.getElementById('iframe-viewer-source-url');
+        if (link) {
+            link.textContent = originalTitle;
+            if (originalUrl) link.href = originalUrl;
+            else link.removeAttribute('href');
+        }
+        if (sourceAddress) sourceAddress.textContent = originalUrl || '';
+        document.title = originalTitle;
+        document.documentElement.lang = 'en';
+
+        const sessionKey = 'tm-iframe-viewer:' + id;
+        const handoffKey = readerBridgeKey + id;
+        let attempts = 0, completed = false, loading = false;
+        async function load() {
+            if (completed || loading) return;
+            const target = document.getElementById('iframe-viewer-content');
+            if (!target) return;
+            loading = true;
+            try {
+                let record = null;
+                try {
+                    const cached = sessionStorage.getItem(sessionKey);
+                    if (cached) record = JSON.parse(cached);
+                } catch (_) { /* Cache may be disabled. */ }
+                let transferred = false;
+                if (!record || typeof record.html !== 'string') {
+                    record = await Promise.resolve(GM_getValue(handoffKey, null));
+                    transferred = true;
                 }
-                readerCleanAttributes(item, readerBridgeUrl, true);
-                if (item.hasAttribute('style')) {
-                    for (const property of Array.from(item.style)) {
-                        if (!readerStyleProperties.includes(property)
-                            || /url\s*\(/i.test(item.style.getPropertyValue(property))) {
-                            item.style.removeProperty(property);
+                if (record && typeof record.html === 'string'
+                    && (!transferred || Date.now() - record.createdAt <= readerHandoffLifetime)) {
+                    const template = document.createElement('template');
+                    template.innerHTML = record.html;
+                    for (const item of Array.from(template.content.querySelectorAll('*'))) {
+                        if (readerForbiddenTags.has(item.tagName)) {
+                            item.remove();
+                            continue;
+                        }
+                        readerCleanAttributes(item, readerBridgeUrl, true);
+                        if (item.hasAttribute('style')) {
+                            for (const property of Array.from(item.style)) {
+                                if (!readerStyleProperties.includes(property)
+                                    || /url\s*\(/i.test(item.style.getPropertyValue(property))) {
+                                    item.style.removeProperty(property);
+                                }
+                            }
                         }
                     }
+                    target.replaceChildren(template.content);
+                    if (transferred) {
+                        let saved = false;
+                        try {
+                            sessionStorage.setItem(sessionKey, JSON.stringify(record));
+                            saved = true;
+                        } catch (_) { /* Retain GM copy if session cache is not available. */ }
+                        if (saved) await Promise.resolve(GM_deleteValue(handoffKey));
+                    }
+                    completed = true;
+                    clearInterval(interval);
+                    return;
                 }
+                if (++attempts >= 32) {
+                    completed = true;
+                    clearInterval(interval);
+                    if (originalUrl) location.replace(originalUrl);
+                    else target.textContent = '找不到暫存內容，且沒有有效的原始網址。';
+                }
+            } finally {
+                loading = false;
             }
-            target.replaceChildren(template.content);
-            document.documentElement.lang = 'en';
-            document.title = record.title || 'Embedded Article Reader';
-            GM_deleteValue(key);
-            clearInterval(interval);
         }
-        const interval = setInterval(load, 250);
+        const interval = setInterval(() => { void load(); }, 250);
         void load();
+        void readerPruneHandoffs();
     }
 
     if (isReaderDocument) { startStandaloneReader(); return; }
