@@ -80,8 +80,8 @@
         const metadata = diagnostics(phase);
         const clone = document.documentElement.cloneNode(true);
         clone.querySelector('#' + hostId)?.remove();
-        const safeJson = JSON.stringify(metadata).replace(/-->/g, '--\u003e');
-        const fullHtml = '<!-- TM_DOM_SNAPSHOT ' + safeJson + ' -->\n'
+        const safeJson = encodeURIComponent(JSON.stringify(metadata));
+        const fullHtml = '<!-- TM_DOM_SNAPSHOT_URLENCODED ' + safeJson + ' -->\n'
             + serializeDoctype() + '\n' + clone.outerHTML;
         const url = URL.createObjectURL(new Blob([fullHtml], { type: 'text/html;charset=utf-8' }));
         const a = document.createElement('a');
