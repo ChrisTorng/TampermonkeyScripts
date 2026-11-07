@@ -1,5 +1,18 @@
 # Current updates
 
+## Claude Artifact Clipboard Bridge — 2026-11-07_0.1.0 (experimental)
+
+[Install ClaudeArtifactClipboardBridge.user.js](src/ClaudeArtifactClipboardBridge.user.js) · Reload the Claude page after installing.
+
+- A separate proof of concept: show "To Clipboard Viewer" only when a Claude content iframe confirms readable text; transfer a safe styled HTML snapshot through Tampermonkey storage without opening its signed URL.
+- Original translation script remains unchanged. HTML/text formatting is preserved selectively; interactive widgets, canvas, external stylesheets, and Shadow DOM are not copied.
+
+**Test pages:**
+- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — if the sandboxed frame is injectable, a transfer button appears after loading; pressing it opens [Clipboard Viewer](https://christorng.idv.tw/InfoProcess/Clipboard/) with imported English content for browser translation.
+- [Unrelated site](https://aatishb.com/blog/) — no new controls, network requests, or behavior changes.
+
+**Note:** Android Edge/Tampermonkey injection and browser translation are unverified; this experimental build is not merged.
+
 Updated: 2026-11-07
 
 ## Responsive Scroll Position Indicator — 2026-11-07_1.3.16
