@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iframe Viewer</title>
+  <style>
+    :root { color-scheme: light dark; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body { background: #1c1c19; color: #e7e5dd; }
+    #iframe-viewer-header {
+      box-sizing: border-box; width: 100%; padding: 14px 20px;
+      border-bottom: 1px solid rgba(160,160,160,.25);
+      font: 16px/1.5 system-ui, sans-serif; overflow-wrap: anywhere;
+    }
+    #iframe-viewer-source-link {
+      display: block; font-weight: 600; font-size: 19px; line-height: 1.45;
+      color: inherit; text-decoration: underline; text-underline-offset: 3px;
+      overflow-wrap: anywhere;
+    }
+    #iframe-viewer-source-link:not([href]) { text-decoration: none; }
+    #iframe-viewer-source-url { margin-top: 4px; font-size: 12px; opacity: .65; overflow-wrap: anywhere; }
+    #iframe-viewer-content { box-sizing: border-box; width: 100%; margin: 0 auto; padding: 0; overflow-wrap: anywhere; }
+    #iframe-viewer-content img, #iframe-viewer-content table { max-width: 100%; }
+    #iframe-viewer-content img { height: auto; }
+    #iframe-viewer-content pre { max-width: 100%; overflow-x: auto; }
+    #iframe-viewer-content a { overflow-wrap: anywhere; }
+    #iframe-viewer-status { font: 16px/1.5 system-ui,sans-serif; padding: 16px 20px; }
+  </style>
+</head>
+<body>
+  <header id="iframe-viewer-header">
+    <a id="iframe-viewer-source-link">原始網頁</a>
+    <div id="iframe-viewer-source-url"></div>
+  </header>
+  <main id="iframe-viewer-content" lang="en">
+    <p id="iframe-viewer-status">Loading iframe content…</p>
+  </main>
+</body>
+</html>
