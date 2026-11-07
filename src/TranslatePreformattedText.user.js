@@ -5,6 +5,7 @@
 // @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
 // @author       Chris Torng
 // @match        *://*/*
+// @exclude      *://*.christorng.idv.tw/*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
