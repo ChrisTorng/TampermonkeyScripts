@@ -40,6 +40,8 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-root-scroll-browser.js
+      - name: Test translation controls and absent iframe fallback
+        run: node --test scripts/test-translate-preformatted-text.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
