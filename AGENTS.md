@@ -3,7 +3,7 @@
 This repository hosts various Tampermonkey user scripts. Follow these rules to keep them consistent.
 
 ## 1. Script versioning
-- Whenever any `.user.js` script changes, **update its metadata `@version`**.
+- Whenever any `.user.js` script changes, **update its metadata `@version`**. Every subsequent content change, including another commit on an existing PR after a user has installed or tested the earlier build, **must increment the numeric version again**. Tampermonkey must recognize each changed script as an update; never publish two different builds with the same `@version`.
 - **Format**: `YYYY-MM-DD_Major.Minor.Patch` (e.g., `2025-11-30_1.0.0`). Fetch the current date programmatically; do not guess.
 
 ## 2. Documentation sync
@@ -49,3 +49,9 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Use public pages that demonstrate the change, or a small local fixture where needed. Link local fixtures relatively in the repository and directly from the PR, so they work on deployed previews.
 - `CurrentUpdates.html`, `TestCases.html`, and `index.html` remain generated and untracked. Build normally with `npm run generate:index`; never commit them.
 - Never invent a preview URL. If a verified deployment URL exists, include it briefly; otherwise use direct source/test URLs without adding placeholder preview links.
+
+## 8. Evidence-first debugging and approved access
+- Inspect existing code and already-tested fixes before adding workaround logic. Prefer extending and reusing the same implementation, rather than introducing a website-specific duplicate.
+- Do not patch production code from guesses. Capture actual HTTP response HTML or rendered DOM first; distinguish an HTTP response, crawler-extracted article text, a saved browser DOM and a mocked fixture. A mock-only test is not proof that a specific website has the assumed marker.
+- When the current execution environment cannot fetch a public page, report the exact failure. Do not use GitHub Actions, CI runners, Vercel deployment jobs, or any unrelated service to fetch external webpages as a workaround for the assistant's network restrictions. GitHub access is for repository work and ordinary tests/builds only, unless the user explicitly authorizes otherwise.
+- Use approved web/browsing capabilities for public pages, or ask the user to switch to a browser-enabled workflow when browser execution is necessary. Do not claim native Android Edge translation is proven solely by passing local DOM tests.

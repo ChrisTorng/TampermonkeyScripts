@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-08_1.5.21
+// @version      2026-11-08_1.5.22
 // @description  Make formatted text and readable articles translatable, including document-level translation opt-outs, and view embedded content separately.
 // @author       Chris Torng
 // @match        *://*/*

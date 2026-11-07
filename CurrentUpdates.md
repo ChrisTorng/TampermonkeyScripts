@@ -2,14 +2,14 @@
 
 Updated: 2026-11-08
 
-## Translate Preformatted Text — 2026-11-08_1.5.21 (Android Edge check)
+## Translate Preformatted Text — 2026-11-08_1.5.22 (Android Edge check)
 
 [Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload after updating.
 
 - For any readable article with enough prose, remove a document-wide `<html translate="no">` blocker; preserve child opt-outs and interactive pages.
-- Verified against real [Perplexity HTTP HTML evidence](https://github.com/ChrisTorng/TampermonkeyScripts/actions) and browser-style DOM tests. Android Edge translation still requires confirmation.
+- Article root opt-out was verified in the original Perplexity HTML; the 1.5.21 browser fix was confirmed by the user. Version 1.5.22 reuses one opt-out helper; tests cover related regressions.
 
-**Test:** [Perplexity Teammates article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — use Show original then Translate to verify the actual article text; [Astro blog](https://aatishb.com/blog/) — navigation unchanged.
+**Test:** [Perplexity Teammates article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — verify the confirmed fix still works after updating to 1.5.22; [Astro blog](https://aatishb.com/blog/) — navigation unchanged.
 
 ## BetaCat title-row collapse — 2026-11-07_1.8.2
 
