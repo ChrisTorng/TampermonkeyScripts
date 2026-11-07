@@ -1,5 +1,19 @@
 # Current updates
 
+## Translate Preformatted Text — 2026-11-07_1.5.19
+
+[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload open pages after updating.
+
+- Add a translucent **譯另開** button at the upper-right of any accessible, text-bearing iframe. It is draggable, anchored to the document (not sticky), never saved, and independent of ≡.
+- Captured HTML opens in a clean [Artifact Reader](ArtifactReader.html) at christorng.idv.tw/TampermonkeyScripts; no Clipboard Viewer or Vercel URL is used.
+
+**Test pages:**
+- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — 譯另開 at the content iframe upper-right; drag without activating, then click to open a translated full-page article.
+- [CodePen embed documentation](https://blog.codepen.io/docs/embeds/) — an example of standalone iframe structure; action appears only on frames that allow content-script injection.
+- [Dedicated reader](https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html) — reader HTML file (will be available once the site's normal publication process deploys this commit).
+
+**Note:** Claude HTML capture and Edge translation were confirmed on Android in the earlier isolated experiment. General iframe coverage and this integrated release still require live browser testing.
+
 Updated: 2026-11-07
 
 ## OpenSSH floating menu and five-script updater — 2026-11-07
