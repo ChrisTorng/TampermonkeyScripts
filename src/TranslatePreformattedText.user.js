@@ -1071,8 +1071,8 @@
     // Page translation can be suppressed by a document-level or article-level
     // translate=no/notranslate marker. Repair only Perplexity blog articles,
     // not its interactive app, and leave code and editable elements protected.
-    const isPerplexityBlogArticle = /(^|\\.)perplexity\\.ai$/i.test(location.hostname)
-        && /^\\/(?:[a-z]{2}(?:-[a-z]{2})?\\/)?hub\\/blog\\/[^/]+\\/?$/i.test(location.pathname);
+    const isPerplexityBlogArticle = /(^|\.)perplexity\.ai$/i.test(location.hostname)
+        && /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?hub\/blog\/[^/]+\/?$/i.test(location.pathname);
 
     function enablePerplexityArticleTranslation(root, includeDescendants = true) {
         if (!isPerplexityBlogArticle || !root) return;
@@ -1085,7 +1085,7 @@
         for (const node of nodes) {
             if (node.tagName === 'META') {
                 if ((node.getAttribute('name') || '').toLowerCase() === 'google'
-                    && /(?:^|\\s|,)notranslate(?:$|\\s|,)/i.test(node.getAttribute('content') || '')) {
+                    && /(?:^|\s|,)notranslate(?:$|\s|,)/i.test(node.getAttribute('content') || '')) {
                     node.remove();
                 }
                 continue;
