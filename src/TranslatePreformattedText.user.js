@@ -213,8 +213,12 @@
                 if (!drag.moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
                 drag.moved = true;
                 event.preventDefault?.();
-                const maxX = Math.max(0, document.documentElement.scrollWidth - width);
-                const maxY = Math.max(0, document.documentElement.scrollHeight - 32);
+                const pageWidth = document.documentElement.scrollWidth
+                    || document.documentElement.clientWidth || window.innerWidth;
+                const pageHeight = document.documentElement.scrollHeight
+                    || document.documentElement.clientHeight || window.innerHeight;
+                const maxX = Math.max(0, pageWidth - width);
+                const maxY = Math.max(0, pageHeight - 32);
                 currentLeft = Math.min(maxX, Math.max(0, drag.left + dx));
                 currentTop = Math.min(maxY, Math.max(0, drag.top + dy));
                 button.style.setProperty('left', currentLeft + 'px', 'important');
