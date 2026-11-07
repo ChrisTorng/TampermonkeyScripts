@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.20
+// @version      2026-11-08_1.5.21
 // @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1068,6 +1068,45 @@
         && location.pathname === '/releasenotes.html';
     let astroNavigationEnabled = false;
 
+    // Page translation can be suppressed by a document-level or article-level
+    // translate=no/notranslate marker. Repair only Perplexity blog articles,
+    // not its interactive app, and leave code and editable elements protected.
+    const isPerplexityBlogArticle = /(^|\\.)perplexity\\.ai$/i.test(location.hostname)
+        && /^\\/(?:[a-z]{2}(?:-[a-z]{2})?\\/)?hub\\/blog\\/[^/]+\\/?$/i.test(location.pathname);
+
+    function enablePerplexityArticleTranslation(root, includeDescendants = true) {
+        if (!isPerplexityBlogArticle || !root) return;
+        const nodes = [];
+        if (root.nodeType === 9 && document.documentElement) nodes.push(document.documentElement);
+        if (root.nodeType === 1) nodes.push(root);
+        if (includeDescendants && root.querySelectorAll) {
+            nodes.push(...root.querySelectorAll('[translate="no"], .notranslate, meta[name="google"]'));
+        }
+        for (const node of nodes) {
+            if (node.tagName === 'META') {
+                if ((node.getAttribute('name') || '').toLowerCase() === 'google'
+                    && /(?:^|\\s|,)notranslate(?:$|\\s|,)/i.test(node.getAttribute('content') || '')) {
+                    node.remove();
+                }
+                continue;
+            }
+            // Keep syntax and user input out of the browser's translation pass.
+            let protectedNode = false;
+            for (let ancestor = node; ancestor && ancestor.nodeType === 1; ancestor = ancestor.parentElement) {
+                if (['PRE', 'CODE', 'KBD', 'SAMP', 'SVG', 'MATH', 'SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT'].includes(ancestor.tagName)
+                    || ancestor.getAttribute('contenteditable') === 'true') {
+                    protectedNode = true;
+                    break;
+                }
+            }
+            if (protectedNode) continue;
+            if ((node.getAttribute('translate') || '').toLowerCase().trim() === 'no') {
+                node.setAttribute('translate', 'yes');
+            }
+            if (node.classList?.contains('notranslate')) node.classList.remove('notranslate');
+        }
+    }
+
     const style = document.createElement('style');
     style.textContent = `
         [${wrapperAttribute}] {
@@ -1379,6 +1418,7 @@
     }
 
     function scan(root = document) {
+        enablePerplexityArticleTranslation(root);
         if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
         enableMastodonTranslation(root);
@@ -1522,6 +1562,7 @@
             }
             if (mutation.type === 'attributes') {
                 revealWikipediaSections(mutation.target);
+                enablePerplexityArticleTranslation(mutation.target, false);
                 return;
             }
             mutation.addedNodes.forEach((node) => {
@@ -1530,8 +1571,9 @@
             });
         });
     }).observe(document.documentElement, {
-        attributes: isWikipedia,
-        attributeFilter: isWikipedia ? ['hidden'] : undefined,
+        attributes: isWikipedia || isPerplexityBlogArticle,
+        attributeFilter: isWikipedia ? ['hidden']
+            : isPerplexityBlogArticle ? ['translate', 'class', 'content'] : undefined,
         characterData: true,
         childList: true,
         subtree: true,
