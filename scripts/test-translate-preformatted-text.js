@@ -50,6 +50,131 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+    // The public Perplexity HTML response captured on 2026-11-08 contains
+    // <html lang="en-GB" translate="no"> and a full article with 1 H1 and
+    // 24 paragraphs. These runtime tests reproduce that observed structure;
+    // native Edge translation still requires a separate device check.
+    test('document-level translation opt-out is removed for a readable article', () => {
+        let article;
+        const harness = execute((h) => {
+            h.document.documentElement.setAttribute('lang', 'en-GB');
+            h.document.documentElement.setAttribute('translate', 'no');
+            article = h.document.createElement('article');
+            const heading = h.document.createElement('h1');
+            heading.textContent = 'Teammates are agents for complex, ongoing work';
+            article.appendChild(heading);
+            for (let i = 0; i < 4; i++) {
+                const p = h.document.createElement('p');
+                p.textContent = 'A teammate coordinates other agents and handles ongoing projects as priorities change. '.repeat(2);
+                article.appendChild(p);
+            }
+            h.appendToBody(article);
+        }, 'https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work');
+
+        assert.equal(harness.document.documentElement.getAttribute('translate'), null);
+        assert.equal(article.querySelector('h1').textContent,
+            'Teammates are agents for complex, ongoing work');
+    });
+
+    test('root notranslate class uses the same shared opt-out handling', () => {
+        const harness = execute((h) => {
+            h.document.documentElement.classList.add('notranslate');
+            const article = h.document.createElement('article');
+            const heading = h.document.createElement('h1');
+            heading.textContent = 'An article intended for translation';
+            article.appendChild(heading);
+            for (let i = 0; i < 3; i++) {
+                const paragraph = h.document.createElement('p');
+                paragraph.textContent = 'Readable prose on a public news website should not inherit a site-wide translation opt-out. '.repeat(2);
+                article.appendChild(paragraph);
+            }
+            h.appendToBody(article);
+        }, 'https://reader.example.org/posts/article');
+        assert.equal(harness.document.documentElement.classList.contains('notranslate'), false);
+    });
+
+    test('generic article unblocking also applies to unrelated domains', () => {
+        for (const url of ['https://example.org/essay', 'https://news.example.net/articles/topic']) {
+            const harness = execute((h) => {
+                h.document.documentElement.setAttribute('translate', 'no');
+                const main = h.document.createElement('main');
+                const h1 = h.document.createElement('h1');
+                h1.textContent = 'How to manage ongoing work';
+                main.appendChild(h1);
+                for (let i = 0; i < 3; i++) {
+                    const p = h.document.createElement('p');
+                    p.textContent = 'An article paragraph with sufficiently long prose intended for human readers. '.repeat(2);
+                    main.appendChild(p);
+                }
+                h.appendToBody(main);
+            }, url);
+            assert.equal(harness.document.documentElement.getAttribute('translate'), null, url);
+        }
+    });
+
+    test('interactive applications and short pages retain their document-level opt-out', () => {
+        const harness = execute((h) => {
+            h.document.documentElement.setAttribute('translate', 'no');
+            const main = h.document.createElement('main');
+            const input = h.document.createElement('input');
+            main.appendChild(input);
+            h.appendToBody(main);
+        }, 'https://www.perplexity.ai/search/example');
+        assert.equal(harness.document.documentElement.getAttribute('translate'), 'no');
+    });
+
+    test('dynamically loaded readable articles become translatable after content arrives', () => {
+        const harness = execute((h) => {
+            h.document.documentElement.setAttribute('translate', 'no');
+        }, 'https://news.example.org/');
+        assert.equal(harness.document.documentElement.getAttribute('translate'), 'no');
+        const article = harness.document.createElement('article');
+        const h1 = harness.document.createElement('h1');
+        h1.textContent = 'An article loaded after initial navigation';
+        article.appendChild(h1);
+        harness.appendToBody(article);
+        harness.triggerMutation([article]);
+        assert.equal(harness.document.documentElement.getAttribute('translate'), 'no');
+
+        for (let i = 0; i < 3; i++) {
+            const p = harness.document.createElement('p');
+            p.textContent = 'This content is written for human readers, with a full paragraph that should be translated. '.repeat(2);
+            article.appendChild(p);
+            harness.triggerMutation([p], { target: article });
+        }
+        assert.equal(harness.document.documentElement.getAttribute('translate'), null);
+
+        // If hydration restores the original opt-out, the observer repairs it.
+        harness.document.documentElement.setAttribute('translate', 'no');
+        harness.triggerMutation([], {
+            type: 'attributes', target: harness.document.documentElement, attributeName: 'translate'
+        });
+        assert.equal(harness.document.documentElement.getAttribute('translate'), null);
+    });
+
+    test('an article-specific translate=no remains untouched after root unblocking', () => {
+        let aside;
+        const harness = execute((h) => {
+            h.document.documentElement.setAttribute('translate', 'no');
+            const article = h.document.createElement('article');
+            const heading = h.document.createElement('h1');
+            heading.textContent = 'Long research report with exclusions';
+            article.appendChild(heading);
+            for (let i = 0; i < 3; i++) {
+                const p = h.document.createElement('p');
+                p.textContent = 'The body of this article is readable prose which should be available for translation. '.repeat(2);
+                article.appendChild(p);
+            }
+            aside = h.document.createElement('aside');
+            aside.setAttribute('translate', 'no');
+            aside.textContent = 'UNTRANSLATED_APP_TOKEN';
+            article.appendChild(aside);
+            h.appendToBody(article);
+        });
+        assert.equal(harness.document.documentElement.getAttribute('translate'), null);
+        assert.equal(aside.getAttribute('translate'), 'no');
+    });
+
     test('ordinary embedded documents do not create an unverified translation opener', () => {
         const harness = execute((h) => {
             const frame = h.document.createElement('iframe');
