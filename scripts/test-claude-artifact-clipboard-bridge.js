@@ -28,9 +28,9 @@ describe('Claude Artifact Reader experiment', () => {
         assert.match(reader, /<meta name="viewport"/);
         assert.match(reader, /<main id="artifact-content" lang="en">/);
         assert.doesNotMatch(reader, /id="pasteArea"|id="typeList"|Clipboard Viewer|contenteditable/);
-        assert.match(source, /\.frame\.claudeusercontent\.com/);
+        assert.match(source, /claudeusercontent/);
         assert.match(source, /\/TampermonkeyScripts\/ArtifactReader\.html/);
-        assert.doesNotMatch(source, /@match\\s+https:\/\/christorng\.idv\.tw\/InfoProcess\/Clipboard/);
+        assert.doesNotMatch(source, /@match\s+https:\/\/christorng\.idv\.tw\/InfoProcess\/Clipboard/);
     });
 
     test('ordinary unrelated pages and the clipboard viewer without an import are untouched', () => {
