@@ -2,6 +2,15 @@
 
 Updated: 2026-11-07
 
+## BetaCat title-row collapse — 2026-11-07_1.8.2
+
+[Install AutoOpenNewArticles.user.js](src/AutoOpenNewArticles.user.js) · Update Blog Bookmarks separately, then reload.
+
+- Place each collapse arrow in its article's title row; only the title is inset, keeping images and summaries full width. The bookmark star remains accessible on collapsed articles.
+- Remove the extra article toolbar row. The page-wide floating collapse button stays unchanged.
+
+**Test pages:** [Latest](https://hackernews.betacat.io/) — arrows share title rows; [Daily archive](https://hackernews.betacat.io/daily/2026-11-06) — summaries retain full width.
+
 ## OpenSSH floating menu and five-script updater — 2026-11-07
 
 [Open all five update tabs](tests/SharedFloatingMenuUpdates/index.html) (confirm each Tampermonkey Update).

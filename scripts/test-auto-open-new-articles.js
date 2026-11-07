@@ -141,6 +141,9 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
 
         const injectedStyle = harness.document.getElementById('auto-open-new-articles-style').textContent;
         assert.match(injectedStyle, /\.auto-open-new-articles-seen\s*\{\s*opacity: 0\.68 !important;/);
+        assert.match(injectedStyle, /article\.post-item\.auto-open-new-articles-managed > \.post-title/);
+        assert.match(injectedStyle, /padding-left: 34px !important/);
+        assert.match(injectedStyle, /:not\(\.tm-blog-bookmarks-save\)/);
         assert.equal(newest.classList.contains('auto-open-new-articles-seen'), false);
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-seen'), true);
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-collapsed'), true);
@@ -149,6 +152,8 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         const itemToggle = previouslyListed.querySelector('.auto-open-new-articles-item-toggle');
         assert.equal(itemToggle.textContent, '▶');
         assert.equal(itemToggle.getAttribute('aria-expanded'), 'false');
+        assert.equal(itemToggle.parentNode, previouslyListed.querySelector('.post-title'));
+        assert.equal(previouslyListed.querySelector('.tm-betacat-article-tools'), null);
         itemToggle.click();
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-collapsed'), false);
         assert.equal(previouslyListed.classList.contains('auto-open-new-articles-seen'), false);
