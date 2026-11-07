@@ -278,6 +278,45 @@ describe('Translate Preformatted Text', () => {
         assert.equal(quote.querySelector('code'), code);
     });
 
+    test('OpenSSH release-note prose without PRE receives translation controls', () => {
+        let heading;
+        let prose;
+        const harness = execute((current) => {
+            heading = current.document.createElement('h3');
+            heading.textContent = 'OpenSSH 10.6p2 (2026-11-05)';
+            current.appendToBody(heading);
+            prose = current.document.createElement('blockquote');
+            prose.textContent = 'Portable OpenSSH 10.6p2 was released. ' + 'Recent security reports need careful review. '.repeat(6);
+            current.appendToBody(prose);
+        }, 'https://www.openssh.org/releasenotes.html');
+
+        const wrapper = harness.document.querySelector('[data-tm-translatable-pre-wrapper]');
+        const button = harness.document.querySelector('.tm-translate-pre-one');
+        assert(wrapper);
+        assert(button);
+        assert.equal(wrapper.querySelector('blockquote'), prose);
+        assert.equal(harness.document.querySelector('[data-floating-tool="translate"]').getAttribute('data-floating-available'), 'true');
+        button.click();
+        assert.match(harness.document.querySelector('[data-tm-translatable-pre-converted]').textContent, /security reports/);
+        button.click();
+        assert.equal(wrapper.querySelector('blockquote'), prose);
+        assert.equal(heading.parentNode, harness.document.body);
+    });
+
+    test('ordinary prose remains untouched on other websites', () => {
+        let prose;
+        const harness = execute((current) => {
+            const heading = current.document.createElement('h3');
+            heading.textContent = 'OpenSSH 10.6p2';
+            current.appendToBody(heading);
+            prose = current.document.createElement('blockquote');
+            prose.textContent = 'Portable OpenSSH notes '.repeat(10);
+            current.appendToBody(prose);
+        }, 'https://example.com/releases');
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-wrapper]'), null);
+        assert.equal(prose.parentNode, harness.document.body);
+    });
+
     test('GitHub source code view waits for its translation button to be pressed', () => {
         assert.match(okfPlainFixture, /class="react-code-lines"/);
         let source;
