@@ -364,16 +364,20 @@
         if (!/^[a-z0-9-]{8,80}$/i.test(id || '')) return;
         const originalUrl = readerOriginalUrl(query.get('url'));
         const originalTitle = query.get('title') || originalUrl || '原始網頁';
-        const link = document.getElementById('iframe-viewer-source-link');
-        const sourceAddress = document.getElementById('iframe-viewer-source-url');
-        if (link) {
-            link.textContent = originalTitle;
-            if (originalUrl) link.href = originalUrl;
-            else link.removeAttribute('href');
+        // @run-at document-start: these elements are not necessarily parsed
+        // yet, so render the permanent source link only after the body exists.
+        function renderSourceHeader() {
+            const link = document.getElementById('iframe-viewer-source-link');
+            const sourceAddress = document.getElementById('iframe-viewer-source-url');
+            if (link) {
+                link.textContent = originalTitle;
+                if (originalUrl) link.href = originalUrl;
+                else link.removeAttribute('href');
+            }
+            if (sourceAddress) sourceAddress.textContent = originalUrl || '';
+            document.title = originalTitle;
+            document.documentElement.lang = 'en';
         }
-        if (sourceAddress) sourceAddress.textContent = originalUrl || '';
-        document.title = originalTitle;
-        document.documentElement.lang = 'en';
 
         const sessionKey = 'tm-iframe-viewer:' + id;
         const handoffKey = readerBridgeKey + id;
@@ -382,6 +386,7 @@
             if (completed || loading) return;
             const target = document.getElementById('iframe-viewer-content');
             if (!target) return;
+            renderSourceHeader();
             loading = true;
             try {
                 let record = null;
