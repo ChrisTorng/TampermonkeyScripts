@@ -2,7 +2,7 @@
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
 // @version      2026-11-08_1.5.21
-// @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
+// @description  Make preformatted text translatable, remove Perplexity article translation blockers, and open readable embedded articles separately.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
