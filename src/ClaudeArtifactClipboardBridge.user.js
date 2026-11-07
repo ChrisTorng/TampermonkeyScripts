@@ -102,8 +102,11 @@
             if (styles.length) target.setAttribute('style', styles.join(';'));
         }
         // No executable scripts, event handlers, external stylesheets, or source tokens.
-        const html = '<div lang="en" style="' + (clonedBody.getAttribute('style') || '')
-            + '">' + clonedBody.innerHTML + '</div>';
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('lang', 'en');
+        if (clonedBody.hasAttribute('style')) wrapper.setAttribute('style', clonedBody.getAttribute('style'));
+        wrapper.innerHTML = clonedBody.innerHTML;
+        const html = wrapper.outerHTML;
         if (html.length > 1800000) throw new Error('Capture exceeds 1.8 MB');
         return { html, textLength: text.length };
     }
