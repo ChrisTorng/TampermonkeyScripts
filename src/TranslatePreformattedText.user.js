@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-01_1.5.8
+// @version      2026-11-07_1.5.11
 // @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
 // @author       Chris Torng
 // @match        *://*/*
