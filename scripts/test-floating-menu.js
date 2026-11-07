@@ -461,9 +461,17 @@ describe('shared floating menu', () => {
         assert.equal(harness.document.getElementById('tm-shared-floating-menu'), null);
         assert.equal(harness.document.getElementById('tm-force-dark-mode-style'), null);
         assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 0);
-        for (const text of Object.values(source)) {
-            assert.match(text, /@exclude\s+\*:\/\/christorng\.idv\.tw\/\*/);
+        for (const [feature, text] of Object.entries(source)) {
             assert.match(text, /@exclude\s+\*:\/\/\*\.christorng\.idv\.tw\/\*/);
+            if (feature === 'translate') {
+                // Allow only the standalone reader on the root domain; all
+                // other owned pages return before shared controls initialize.
+                assert.match(text, /if \(isOwnerSite\) return;/);
+                assert.match(text, /location\.pathname === '\/TampermonkeyScripts\/IframeViewer\.html'/);
+                assert.doesNotMatch(text, /@exclude\s+\*:\/\/christorng\.idv\.tw\/\*/);
+            } else {
+                assert.match(text, /@exclude\s+\*:\/\/christorng\.idv\.tw\/\*/);
+            }
         }
     });
 
