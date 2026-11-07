@@ -53,7 +53,7 @@ describe('generic iframe translation reader', () => {
         const html = fs.readFileSync(path.join(__dirname, '..', 'IframeViewer.html'), 'utf8');
         assert.match(html, /<main id="iframe-viewer-content"/);
         assert.doesNotMatch(html, /Clipboard Viewer|pasteArea|typeList|contenteditable/);
-        assert.match(source, /https:\/\/christorng\.idv\.tw\/TampermonkeyScripts\/ArtifactReader\.html/);
+        assert.match(source, /https:\/\/christorng\.idv\.tw\/TampermonkeyScripts\/IframeViewer\.html/);
         assert.doesNotMatch(source, /tampermonkey-scripts-git-experiment|frame\.claudeusercontent\.com/);
     });
 
