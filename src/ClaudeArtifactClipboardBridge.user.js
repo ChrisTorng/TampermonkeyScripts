@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         Claude Artifact to Clipboard Viewer (Experimental)
+// @name         Claude Artifact Reader (Experimental)
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_0.1.0
-// @description  Experimentally capture a readable Claude artifact frame and transfer styled HTML to Clipboard Viewer, without opening the frame URL.
+// @version      2026-11-07_0.2.0
+// @description  Capture an accessible Claude artifact iframe into a clean, full-page reader for browser translation.
 // @author       Chris Torng
 // @match        https://claude.ai/artifact/*
 // @match        https://claude.ai/code/artifact/*
 // @match        https://claude.ai/public/artifacts/*
 // @match        https://*.frame.claudeusercontent.com/*
-// @match        https://christorng.idv.tw/InfoProcess/Clipboard/*
+// @match        https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -19,9 +19,9 @@
 (() => {
     'use strict';
 
-    const channel = 'tm-claude-artifact-clipboard-v1';
-    const viewerUrl = 'https://christorng.idv.tw/InfoProcess/Clipboard/';
-    const storagePrefix = 'tm-claude-clipboard:';
+    const channel = 'tm-claude-artifact-reader-v1';
+    const readerUrl = 'https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html';
+    const storagePrefix = 'tm-claude-reader:';
     const frameHost = /^(?:[0-9a-f-]+)\.frame\.claudeusercontent\.com$/i;
     const forbiddenTags = new Set([
         'SCRIPT', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT',
@@ -159,10 +159,10 @@
         }
         function showDiagnostic(text) {
             if (!debug) return;
-            let status = document.getElementById('tm-artifact-clipboard-status');
+            let status = document.getElementById('tm-artifact-reader-status');
             if (!status) {
                 status = document.createElement('div');
-                status.id = 'tm-artifact-clipboard-status';
+                status.id = 'tm-artifact-reader-status';
                 status.style.cssText = 'position:fixed;bottom:60px;right:6px;z-index:2147483646;'
                     + 'background:#fff;color:#111;border:1px solid #888;padding:5px;font:12px sans-serif;';
                 document.body.appendChild(status);
@@ -172,13 +172,17 @@
         function mountButton() {
             if (button || !document.body) return;
             button = document.createElement('button');
-            button.id = 'tm-artifact-clipboard-transfer';
+            button.id = 'tm-artifact-reader-open';
             button.type = 'button';
-            button.textContent = 'To Clipboard Viewer';
-            button.title = 'Capture the rendered artifact into a translatable Clipboard Viewer page';
-            button.style.cssText = 'position:fixed;right:6px;bottom:64px;z-index:2147483646;'
-                + 'background:#333;color:white;border:1px solid #777;border-radius:6px;'
-                + 'padding:7px 10px;font:13px system-ui,sans-serif;opacity:.85;';
+            button.textContent = '譯另開';
+            button.title = 'Open a clean, standalone page with the rendered artifact for Edge translation';
+            // Document-anchored at the start of the artifact, not fixed or sticky.
+            // This single-purpose action intentionally does not join the ≡ menu.
+            const frameTop = window.scrollY + confirmedFrame.getBoundingClientRect().top;
+            button.style.cssText = 'position:absolute;top:' + Math.max(0, Math.round(frameTop + 8)) + 'px;'
+                + 'left:12px;right:auto;bottom:auto;z-index:2147483646;'
+                + 'background:rgba(0,0,0,.58);color:#eee;border:1px solid #777;border-radius:6px;'
+                + 'padding:6px 10px;font:600 14px/20px system-ui,sans-serif;cursor:pointer;opacity:.87;';
             button.addEventListener('click', () => {
                 if (!confirmedFrame || pending) return;
                 const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
@@ -190,7 +194,7 @@
                     if (pending !== id) return;
                     pending = null;
                     button.disabled = false;
-                    button.textContent = 'Retry Clipboard Viewer';
+                    button.textContent = '重試譯另開';
                     showDiagnostic('Frame did not respond to capture');
                 }, 12000);
             });
@@ -213,15 +217,15 @@
                     await Promise.resolve(GM_setValue(storagePrefix + id, {
                         html: data.html, createdAt: Date.now()
                     }));
-                    GM_openInTab(viewerUrl + '?tmArtifactCapture=' + encodeURIComponent(id), { active: true });
+                    GM_openInTab(readerUrl + '?tmArtifactCapture=' + encodeURIComponent(id), { active: true });
                     if (button) {
                         button.disabled = false;
-                        button.textContent = 'To Clipboard Viewer';
+                        button.textContent = '譯另開';
                     }
                 } catch (error) {
                     if (button) {
                         button.disabled = false;
-                        button.textContent = 'Retry Clipboard Viewer';
+                        button.textContent = '重試譯另開';
                     }
                     showDiagnostic('Transfer failed: ' + String(error));
                 }
@@ -229,7 +233,7 @@
                 pending = null;
                 if (button) {
                     button.disabled = false;
-                    button.textContent = 'Retry Clipboard Viewer';
+                    button.textContent = '重試譯另開';
                 }
                 showDiagnostic('Capture failed: ' + String(data.message));
             }
@@ -257,9 +261,9 @@
         let attempts = 0;
         async function loadCapture() {
             attempts++;
-            const container = document.getElementById('htmlContent');
+            const container = document.getElementById('artifact-content');
             if (!container) return;
-            const backupKey = 'tm-artifact-html:' + id;
+            const backupKey = 'tm-artifact-reader-html:' + id;
             const saved = sessionStorage.getItem(backupKey);
             const record = saved
                 ? { html: saved, createdAt: Date.now() }
@@ -279,7 +283,7 @@
                     element.remove();
                     continue;
                 }
-                sanitiseAttributes(element, viewerUrl, true);
+                sanitiseAttributes(element, readerUrl, true);
                 // Styles must contain only the visual properties we generated.
                 if (element.hasAttribute('style')) {
                     const declarations = element.style;
@@ -292,10 +296,8 @@
                 }
             }
             container.replaceChildren(template.content);
-            const typeList = document.getElementById('typeList');
-            if (typeList) typeList.textContent = 'Imported HTML from Claude Artifact';
             document.documentElement.lang = 'en';
-            document.title = 'Clipboard Viewer — Imported Artifact';
+            document.title = 'Artifact Reader';
             if (!saved) {
                 try { sessionStorage.setItem(backupKey, record.html); } catch (_) {}
                 GM_deleteValue(key);
@@ -308,5 +310,5 @@
 
     if (location.hostname === 'claude.ai') startParent();
     else if (frameHost.test(location.hostname)) startFrame();
-    else if (location.hostname === 'christorng.idv.tw' && location.pathname.startsWith('/InfoProcess/Clipboard/')) startViewer();
+    else if (location.hostname === 'christorng.idv.tw' && location.pathname === '/TampermonkeyScripts/ArtifactReader.html') startViewer();
 })();
