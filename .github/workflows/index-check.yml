@@ -42,6 +42,8 @@ jobs:
         run: node --test scripts/test-root-scroll-browser.js
       - name: Test shared menu, safe translation and GM update tabs
         run: node --test scripts/test-floating-menu.js scripts/test-translate-preformatted-text.js scripts/test-bulk-update-gm.js
+      - name: Test generic iframe translation reader and dragging
+        run: node --test scripts/test-iframe-translate-open.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
