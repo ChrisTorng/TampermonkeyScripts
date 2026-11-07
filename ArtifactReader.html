@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Embedded Article Reader</title>
+  <style>
+    :root { color-scheme: light dark; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body { background: #1c1c19; color: #e7e5dd; }
+    #artifact-content { box-sizing: border-box; width: 100%; margin: 0 auto; padding: 0; overflow-wrap: anywhere; }
+    #artifact-content img, #artifact-content table { max-width: 100%; }
+    #artifact-content img { height: auto; }
+    #artifact-content pre { max-width: 100%; overflow-x: auto; }
+    #artifact-content a { overflow-wrap: anywhere; }
+    #reader-status { font: 16px/1.5 system-ui,sans-serif; padding: 16px; }
+  </style>
+</head>
+<body>
+  <main id="artifact-content" lang="en">
+    <p id="reader-status">Loading embedded article…</p>
+  </main>
+</body>
+</html>
