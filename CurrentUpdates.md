@@ -9,7 +9,7 @@
 
 **Test pages:**
 - [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — press 譯另開 near the top; the clean full-page reader should display the article for Edge translation.
-- [Artifact Reader](ArtifactReader.html) — standalone HTML shell; the captured content is supplied through Tampermonkey on navigation.
+- [Artifact Reader preview](https://tampermonkey-scripts-git-experiment-df7bf6-christorngs-projects.vercel.app/ArtifactReader.html) — standalone HTML shell served by a READY preview deployment; the captured article is supplied through Tampermonkey.
 - [Astro blog](https://aatishb.com/blog/) — no new UI.
 
 **Note:** The prior HTML transfer and Edge translation were confirmed on Android. The new dedicated reader URL still requires device verification; PR remains draft.
