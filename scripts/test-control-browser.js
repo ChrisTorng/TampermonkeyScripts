@@ -39,12 +39,69 @@ test('real browser keeps translation inside its horizontal scrollport and render
                         assert(rect.bottom <= outer.top + scroller.clientTop + scroller.clientHeight, 'Translation must be above the scrollbar');
                         assert(document.elementFromPoint(rect.left + 12, rect.top + 12) === button, 'Translation must be reachable without horizontal scrolling');
                     }
+                    // OpenSSH changes its line wrapping when 譯 is clicked.
+                    // The floating menu must dock identically both before and after.
+                    const translationMenu = document.getElementById('tm-shared-floating-menu');
+                    document.body.style.minHeight = '2800px';
+                    window.scrollTo({ top: 650, behavior: 'instant' });
+                    window.dispatchEvent(new Event('scroll'));
+                    await frame();
+                    assert(translationMenu && Math.abs(translationMenu.getBoundingClientRect().top) < 2,
+                        'Before translation the menu should already dock to the top');
                     button.click();
                     await frame();
                     assert(button.getAttribute('aria-pressed') === 'true', 'Translation should convert');
+                    assert(Math.abs(translationMenu.getBoundingClientRect().top) < 2,
+                        'Translation must not be required before the menu docks');
                     button.click();
                     await frame();
                     assert(button.getAttribute('aria-pressed') === 'false', 'Translation should restore');
+                    document.body.style.minHeight = '';
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    window.dispatchEvent(new Event('scroll'));
+                    await frame();
+                    // Reproduce a legacy document wider than the viewport (as on OpenSSH).
+                    // A fixed menu follows horizontal scrolling without contributing to scrollWidth.
+                    const menu = document.getElementById('tm-shared-floating-menu');
+                    assert(menu && !menu.hidden, 'Floating menu should be available with translation controls');
+                    document.body.style.minWidth = '1800px';
+                    await frame();
+                    const initialPageWidth = document.documentElement.scrollWidth;
+                    for (const left of [0, 200, 500, 0]) {
+                        window.scrollTo({ left, top: 0, behavior: 'instant' });
+                        window.dispatchEvent(new Event('scroll'));
+                        await frame();
+                        const menuRect = menu.getBoundingClientRect();
+                        const visibleRight = window.visualViewport
+                            ? window.visualViewport.offsetLeft + window.visualViewport.width
+                            : window.innerWidth;
+                        assert(getComputedStyle(menu).position === 'fixed',
+                            'Menu should use fixed layout while unzoomed');
+                        assert(Math.abs(menuRect.right - visibleRight) < 2,
+                            'Menu must stay at the visible right edge after horizontal scroll: ' + menuRect.right);
+                        assert(document.documentElement.scrollWidth === initialPageWidth,
+                            'Menu must not grow page scrollWidth while tracking horizontal scroll');
+                    }
+                    // In particular, the menu must remain visible on tall
+                    // legacy-format documents while the page scrolls vertically.
+                    document.body.style.minHeight = '3000px';
+                    for (const top of [0, 140, 850, 1400, 0]) {
+                        window.scrollTo({ left: 0, top, behavior: 'instant' });
+                        window.dispatchEvent(new Event('scroll'));
+                        await frame();
+                        const rect = menu.getBoundingClientRect();
+                        const expectedTop = window.visualViewport.offsetTop + Math.max(70 - top, 0);
+                        assert(Math.abs(rect.top - expectedTop) < 2,
+                            'Menu must remain vertically visible after page scroll: scrollY=' +
+                                window.scrollY + ', top=' + rect.top + ', expected=' + expectedTop);
+                        assert(document.documentElement.scrollWidth === initialPageWidth,
+                            'Vertical scrolling must not grow page width');
+                    }
+                    document.body.style.minHeight = '';
+                    document.body.style.minWidth = '';
+                    window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
+                    window.dispatchEvent(new Event('scroll'));
+                    await frame();
                     const fullscreen = document.getElementById('tm-fullscreen-game-view-button');
                     assert(fullscreen && !fullscreen.hidden, 'Fullscreen test button must be available');
                     assert(getComputedStyle(fullscreen).color === 'rgb(240, 240, 240)', 'Fullscreen icon must match the menu foreground');
