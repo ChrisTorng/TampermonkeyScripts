@@ -37,9 +37,9 @@ Translate code blocks with draggable per-block controls and a shared-menu action
 
 Update each script below separately as needed.
 
-### [Claude Artifact to Clipboard Viewer (Experimental)](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ClaudeArtifactClipboardBridge.user.js)
+### [Claude Artifact Reader (Experimental)](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ClaudeArtifactClipboardBridge.user.js)
 
-Capture an accessible Claude artifact iframe and import styled, non-interactive HTML into Clipboard Viewer; no control appears without a live frame response.
+Open captured Claude artifact HTML in a standalone, translatable full-page reader with a single non-sticky button.
 
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
