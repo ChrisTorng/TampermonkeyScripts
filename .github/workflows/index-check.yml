@@ -40,10 +40,16 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-root-scroll-browser.js
+      - name: Test shared floating menu, preformatted translation and GM update tabs
+        run: node --test scripts/test-floating-menu.js scripts/test-translate-preformatted-text.js scripts/test-bulk-update-gm.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-transient-controls.js scripts/test-control-browser.js
+      - name: Test one-click shared-menu update launcher
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-update-tabs-browser.js
       - name: Generate documentation pages
         run: npm run generate:index
       - name: Verify HTML outputs were produced
