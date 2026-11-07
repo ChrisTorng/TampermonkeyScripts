@@ -1,18 +1,371 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.18
-// @description  Translate OpenSSH release notes and code blocks with draggable controls; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
+// @version      2026-11-07_1.5.19
+// @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
 // @author       Chris Torng
 // @match        *://*/*
-// @exclude      *://christorng.idv.tw/*
 // @exclude      *://*.christorng.idv.tw/*
-// @grant        none
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_deleteValue
+// @grant        GM_openInTab
+// @sandbox      raw
 // @run-at       document-start
 // ==/UserScript==
 
 (function () {
     'use strict';
+
+
+    // BEGIN EMBEDDED READER BRIDGE
+    // Runs in both top-level pages and their accessible iframes. A frame must
+    // actively report readable content before any control is displayed.
+    // Never reuse the iframe URL as the standalone reading URL.
+    const readerBridgeChannel = 'tm-embedded-reader-v1';
+    const readerBridgeUrl = 'https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html';
+    const readerBridgeKey = 'tm-embedded-reader:';
+    const isReaderDocument = location.origin === 'https://christorng.idv.tw'
+        && location.pathname === '/TampermonkeyScripts/ArtifactReader.html';
+    const isOwnerSite = /(^|\.)christorng\.idv\.tw$/i.test(location.hostname);
+    const readerForbiddenTags = new Set([
+        'SCRIPT', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT',
+        'BUTTON', 'SELECT', 'TEXTAREA', 'META', 'BASE', 'LINK', 'STYLE',
+        'TEMPLATE', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO'
+    ]);
+    const readerStyleProperties = [
+        'display', 'font-family', 'font-size', 'font-weight', 'font-style',
+        'line-height', 'letter-spacing', 'color', 'background-color',
+        'text-align', 'text-decoration', 'white-space', 'word-break',
+        'list-style-type', 'list-style-position', 'margin', 'padding',
+        'border', 'border-radius', 'vertical-align'
+    ];
+
+    function readerCleanAttributes(element, baseUrl, allowStyle = false) {
+        for (const attr of Array.from(element.attributes || [])) {
+            const name = attr.name.toLowerCase();
+            if (!['href', 'src', 'alt', 'title', 'colspan', 'rowspan'].includes(name)
+                && !(allowStyle && name === 'style')) {
+                element.removeAttribute(attr.name);
+                continue;
+            }
+            if (name !== 'href' && name !== 'src') continue;
+            try {
+                const value = new URL(attr.value, baseUrl);
+                const isImageData = name === 'src'
+                    && /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(attr.value)
+                    && attr.value.length < 120000;
+                if (!['https:', 'http:'].includes(value.protocol) && !isImageData) {
+                    element.removeAttribute(attr.name);
+                } else {
+                    element.setAttribute(attr.name, isImageData ? attr.value : value.href);
+                }
+            } catch (_) {
+                element.removeAttribute(attr.name);
+            }
+        }
+        if (element.tagName === 'A') element.setAttribute('rel', 'noopener noreferrer');
+    }
+
+    function readerText() {
+        return (document.body && (document.body.innerText || document.body.textContent) || '').trim();
+    }
+
+    function readerCapture() {
+        const text = readerText();
+        if (text.length < 100 || !document.body) throw new Error('No readable article content');
+        if (document.body.querySelector('input[type="password"]')) throw new Error('Login form excluded');
+        const sourceNodes = [document.body, ...document.body.querySelectorAll('*')];
+        if (sourceNodes.length > 3000) throw new Error('Article exceeds element limit');
+        const copy = document.body.cloneNode(true);
+        const copyNodes = [copy, ...copy.querySelectorAll('*')];
+        for (let index = 0; index < sourceNodes.length; index++) {
+            const source = sourceNodes[index];
+            const target = copyNodes[index];
+            if (!target) continue;
+            if (readerForbiddenTags.has(source.tagName)) {
+                target.remove();
+                continue;
+            }
+            const computed = getComputedStyle(source);
+            if (computed.display === 'none' || computed.visibility === 'hidden') {
+                target.remove();
+                continue;
+            }
+            readerCleanAttributes(target, location.href);
+            const declarations = [];
+            for (const property of readerStyleProperties) {
+                const value = computed.getPropertyValue(property);
+                if (value && value.length <= 160 && !/url\s*\(/i.test(value)) {
+                    declarations.push(property + ':' + value);
+                }
+            }
+            if (declarations.length) target.setAttribute('style', declarations.join(';'));
+        }
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('lang', document.documentElement.lang || 'en');
+        if (copy.hasAttribute('style')) wrapper.setAttribute('style', copy.getAttribute('style'));
+        wrapper.innerHTML = copy.innerHTML;
+        const html = wrapper.outerHTML;
+        if (html.length > 1800000) throw new Error('Article exceeds capture limit');
+        return { html, title: document.title.slice(0, 160) };
+    }
+
+    function startReaderInFrame() {
+        if (window === window.parent) return;
+        function announce() {
+            if (!document.body || document.body.querySelector('input[type="password"]')) return;
+            const text = readerText();
+            if (text.length >= 100) {
+                window.parent.postMessage({
+                    channel: readerBridgeChannel, type: 'ready', textLength: text.length
+                }, '*');
+            }
+        }
+        window.addEventListener('message', (event) => {
+            if (event.source !== window.parent) return;
+            const data = event.data;
+            if (!data || data.channel !== readerBridgeChannel) return;
+            if (data.type === 'probe') announce();
+            if (data.type !== 'capture' || !/^[a-z0-9-]{8,80}$/i.test(data.id || '')) return;
+            try {
+                const result = readerCapture();
+                window.parent.postMessage({
+                    channel: readerBridgeChannel, type: 'captured', id: data.id,
+                    html: result.html, title: result.title
+                }, '*');
+            } catch (error) {
+                window.parent.postMessage({
+                    channel: readerBridgeChannel, type: 'failed', id: data.id,
+                    message: String(error && error.message || error)
+                }, '*');
+            }
+        });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', announce, { once: true });
+        } else announce();
+        window.addEventListener('load', announce);
+        [500, 1500, 4000].forEach((delay) => setTimeout(announce, delay));
+    }
+
+    function startReaderInParent() {
+        if (window !== window.top) return;
+        const known = new WeakMap();
+        let sequence = 0;
+        function eligible(frame) {
+            if (!frame || !frame.isConnected || !frame.contentWindow) return false;
+            const raw = frame.getAttribute('src');
+            if (!raw) return false;
+            try {
+                const address = new URL(raw, document.baseURI || location.href);
+                if (!['http:', 'https:'].includes(address.protocol)) return false;
+                if (/^(?:www\.)?(?:youtube\.com|youtube-nocookie\.com|vimeo\.com|google\.com|recaptcha\.net|doubleclick\.net)$/.test(address.hostname)) return false;
+            } catch (_) { return false; }
+            const bounds = frame.getBoundingClientRect();
+            return bounds.width >= 180 && bounds.height >= 85;
+        }
+        function sourceFrame(source) {
+            return Array.from(document.querySelectorAll('iframe[src]'))
+                .find((frame) => frame.contentWindow === source && eligible(frame));
+        }
+        function probe() {
+            for (const frame of document.querySelectorAll('iframe[src]')) {
+                if (eligible(frame)) frame.contentWindow.postMessage({
+                    channel: readerBridgeChannel, type: 'probe'
+                }, '*');
+            }
+        }
+        function addButton(frame) {
+            if (known.has(frame) || !document.body) return known.get(frame);
+            const bounds = frame.getBoundingClientRect();
+            const button = document.createElement('button');
+            const width = 68;
+            button.type = 'button';
+            button.className = 'tm-iframe-translate-open';
+            button.textContent = '譯另開';
+            button.title = 'Open this embedded article in a separate translatable reading page';
+            // Document coordinates, not fixed/sticky; scrolling never follows the button.
+            const left = Math.max(0, Math.round((window.scrollX || 0)
+                + Math.min(bounds.right, document.documentElement.clientWidth) - width - 6));
+            const top = Math.max(0, Math.round((window.scrollY || 0) + bounds.top + 6));
+            button.style.cssText = 'position:absolute !important;left:' + left
+                + 'px !important;top:' + top + 'px !important;right:auto !important;'
+                + 'bottom:auto !important;width:68px !important;'
+                + 'height:32px !important;padding:4px !important;'
+                + 'background:rgba(0,0,0,.38) !important;color:rgba(255,255,255,.85) !important;'
+                + 'opacity:.65 !important;border:1px solid rgba(180,180,180,.4) !important;'
+                + 'border-radius:6px !important;font:600 13px/22px system-ui,sans-serif !important;'
+                + 'z-index:2147483646 !important;cursor:pointer !important;touch-action:none !important;';
+            let drag = null;
+            let ignoreClick = false;
+            let currentLeft = left, currentTop = top;
+            button.addEventListener('pointerdown', (event) => {
+                if (event.isPrimary === false || (event.button !== undefined && event.button !== 0)) return;
+                drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
+                    left: currentLeft, top: currentTop, moved: false };
+                ignoreClick = false;
+                button.setPointerCapture?.(event.pointerId);
+                event.stopPropagation?.();
+            });
+            button.addEventListener('pointermove', (event) => {
+                if (!drag || event.pointerId !== drag.id) return;
+                const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+                if (!drag.moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+                drag.moved = true;
+                event.preventDefault?.();
+                const pageWidth = document.documentElement.scrollWidth
+                    || document.documentElement.clientWidth || window.innerWidth;
+                const pageHeight = document.documentElement.scrollHeight
+                    || document.documentElement.clientHeight || window.innerHeight;
+                const maxX = Math.max(0, pageWidth - width);
+                const maxY = Math.max(0, pageHeight - 32);
+                currentLeft = Math.min(maxX, Math.max(0, drag.left + dx));
+                currentTop = Math.min(maxY, Math.max(0, drag.top + dy));
+                button.style.setProperty('left', currentLeft + 'px', 'important');
+                button.style.setProperty('top', currentTop + 'px', 'important');
+            });
+            const finish = (event) => {
+                if (!drag || event.pointerId !== drag.id) return;
+                ignoreClick = drag.moved;
+                drag = null;
+                if (button.hasPointerCapture?.(event.pointerId)) button.releasePointerCapture(event.pointerId);
+            };
+            button.addEventListener('pointerup', finish);
+            button.addEventListener('pointercancel', finish);
+            button.addEventListener('click', (event) => {
+                if (ignoreClick) {
+                    ignoreClick = false;
+                    event.preventDefault?.();
+                    event.stopImmediatePropagation?.();
+                }
+            }, true);
+            button.addEventListener('click', () => {
+                const info = known.get(frame);
+                if (!info || info.pending) return;
+                const id = Date.now().toString(36) + '-' + (++sequence).toString(36)
+                    + '-' + Math.random().toString(36).slice(2, 9);
+                info.pending = id;
+                button.disabled = true;
+                button.textContent = '擷取中';
+                frame.contentWindow.postMessage({
+                    channel: readerBridgeChannel, type: 'capture', id
+                }, '*');
+                setTimeout(() => {
+                    if (info.pending !== id) return;
+                    info.pending = null;
+                    button.disabled = false;
+                    button.textContent = '重試譯';
+                }, 12000);
+            });
+            document.body.appendChild(button);
+            const info = { button, pending: null };
+            known.set(frame, info);
+            return info;
+        }
+        window.addEventListener('message', async (event) => {
+            const frame = sourceFrame(event.source);
+            if (!frame) return;
+            const data = event.data;
+            if (!data || data.channel !== readerBridgeChannel) return;
+            if (data.type === 'ready' && Number(data.textLength) >= 100) {
+                addButton(frame);
+                return;
+            }
+            const info = known.get(frame);
+            if (!info || !info.pending || info.pending !== data.id) return;
+            if (data.type === 'failed') {
+                info.pending = null;
+                info.button.disabled = false;
+                info.button.textContent = '重試譯';
+                return;
+            }
+            if (data.type !== 'captured' || typeof data.html !== 'string'
+                || data.html.length > 1800000) return;
+            const id = info.pending;
+            info.pending = null;
+            try {
+                await Promise.resolve(GM_setValue(readerBridgeKey + id, {
+                    html: data.html, title: String(data.title || '').slice(0, 160),
+                    createdAt: Date.now()
+                }));
+                GM_openInTab(readerBridgeUrl + '?tmReader=' + encodeURIComponent(id),
+                    { active: true });
+                info.button.textContent = '譯另開';
+            } catch (_) {
+                info.button.textContent = '重試譯';
+            }
+            info.button.disabled = false;
+        });
+        function whenReady() {
+            probe();
+            let times = 0;
+            const timer = setInterval(() => {
+                probe();
+                if (++times >= 12) clearInterval(timer);
+            }, 1000);
+            new MutationObserver((mutations) => {
+                if (mutations.some((mutation) => Array.from(mutation.addedNodes || [])
+                    .some((node) => node.nodeType === 1
+                        && (node.tagName === 'IFRAME' || node.querySelector?.('iframe'))))) {
+                    probe();
+                }
+            }).observe(document.documentElement, { childList: true, subtree: true });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', whenReady, { once: true });
+        } else whenReady();
+    }
+
+    function startStandaloneReader() {
+        const id = new URL(location.href).searchParams.get('tmReader');
+        if (!/^[a-z0-9-]{8,80}$/i.test(id || '')) return;
+        const key = readerBridgeKey + id;
+        let tries = 0;
+        async function load() {
+            const target = document.getElementById('artifact-content');
+            if (!target) return;
+            const record = await Promise.resolve(GM_getValue(key, null));
+            if (!record || typeof record.html !== 'string'
+                || Date.now() - record.createdAt > 10 * 60 * 1000) {
+                if (++tries >= 24) {
+                    target.textContent = 'Captured article unavailable. Please open it again from the original page.';
+                    clearInterval(interval);
+                }
+                return;
+            }
+            const template = document.createElement('template');
+            template.innerHTML = record.html;
+            for (const item of Array.from(template.content.querySelectorAll('*'))) {
+                if (readerForbiddenTags.has(item.tagName)) {
+                    item.remove();
+                    continue;
+                }
+                readerCleanAttributes(item, readerBridgeUrl, true);
+                if (item.hasAttribute('style')) {
+                    for (const property of Array.from(item.style)) {
+                        if (!readerStyleProperties.includes(property)
+                            || /url\s*\(/i.test(item.style.getPropertyValue(property))) {
+                            item.style.removeProperty(property);
+                        }
+                    }
+                }
+            }
+            target.replaceChildren(template.content);
+            document.documentElement.lang = 'en';
+            document.title = record.title || 'Embedded Article Reader';
+            GM_deleteValue(key);
+            clearInterval(interval);
+        }
+        const interval = setInterval(load, 250);
+        void load();
+    }
+
+    if (isReaderDocument) { startStandaloneReader(); return; }
+    // The main site was excluded by @exclude before introducing the reader.
+    if (isOwnerSite) return;
+    if (window === window.top) startReaderInParent();
+    else startReaderInFrame();
+    // END EMBEDDED READER BRIDGE
 
     // BEGIN SHARED FLOATING MENU
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
