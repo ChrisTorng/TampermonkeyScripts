@@ -106,6 +106,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
+- https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (DOM harness verifies no generic iframe-opening translation action; embedded content remains untranslatable by the built-in browser translation and requires Android Edge validation)
 Section note: automated tests use representative inline code, preformatted blocks, Mastodon app markers, mobile Wikipedia sections, and the shared floating menu in the local DOM harness; live browser translation still requires manual validation.
 - https://aatishb.com/blog/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM harness verifies router-marker detection, late detection, initial/dynamic links, and fragment/external-link preservation; the site-specific fix was confirmed on the user's device, generalized browser translation needs device validation)
 - https://aatishb.com/blog/2026/introducing-myriad/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (open from the listing; confirm auto-translation continues with generic router detection)

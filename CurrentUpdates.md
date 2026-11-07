@@ -25,15 +25,16 @@ Updated: 2026-11-07
 - [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — floating → opens Meowing; Back returns to this first viewer.
 - [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — floating → opens X; Back returns to this second viewer.
 
-## Translate Preformatted Text — 2026-11-01_1.5.8
+## Translate Preformatted Text — 2026-11-07_1.5.11
 
-[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload the page once after updating.
+[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload after updating.
 
-- Automatically detect Astro ClientRouter sites and use full-page navigation so browser auto-translation can run after opening pages.
+- Restore the verified 1.5.8 behavior with a higher version number; remove unverified iframe-opening controls from 1.5.9/1.5.10.
+- Keep the code-block and Astro translation workarounds unchanged.
 
 **Test pages:**
-- [Blog](https://aatishb.com/blog/) → [article](https://aatishb.com/blog/2026/introducing-myriad/) — open the article from the listing; expect auto-translation without a manual reload.
-- [Metasora Blog](https://metasora.com/blog/) — open the first article in the same tab; expect auto-translation.
-- [Bag of Tricks](https://events-3bg.pages.dev/) — open Reusable Components in the same tab; expect auto-translation.
+- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — no iframe-only 譯↗ action; native iframe translation remains unsupported.
+- [Astro blog](https://aatishb.com/blog/) → [article](https://aatishb.com/blog/2026/introducing-myriad/) — full-page article navigation still supports browser translation.
+
 
 Update each listed script independently.
