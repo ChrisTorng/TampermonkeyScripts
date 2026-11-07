@@ -467,7 +467,7 @@ describe('shared floating menu', () => {
                 // Allow only the standalone reader on the root domain; all
                 // other owned pages return before shared controls initialize.
                 assert.match(text, /if \(isOwnerSite\) return;/);
-                assert.match(text, /location\.pathname === '\/TampermonkeyScripts\/ArtifactReader\.html'/);
+                assert.match(text, /location\.pathname === '\/TampermonkeyScripts\/IframeViewer\.html'/);
                 assert.doesNotMatch(text, /@exclude\s+\*:\/\/christorng\.idv\.tw\/\*/);
             } else {
                 assert.match(text, /@exclude\s+\*:\/\/christorng\.idv\.tw\/\*/);
