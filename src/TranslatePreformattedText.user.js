@@ -198,10 +198,11 @@
                 + 'z-index:2147483646 !important;cursor:pointer !important;touch-action:none !important;';
             let drag = null;
             let ignoreClick = false;
+            let currentLeft = left, currentTop = top;
             button.addEventListener('pointerdown', (event) => {
                 if (event.isPrimary === false || (event.button !== undefined && event.button !== 0)) return;
                 drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
-                    left: parseFloat(button.style.left), top: parseFloat(button.style.top), moved: false };
+                    left: currentLeft, top: currentTop, moved: false };
                 ignoreClick = false;
                 button.setPointerCapture?.(event.pointerId);
                 event.stopPropagation?.();
@@ -214,8 +215,10 @@
                 event.preventDefault?.();
                 const maxX = Math.max(0, document.documentElement.scrollWidth - width);
                 const maxY = Math.max(0, document.documentElement.scrollHeight - 32);
-                button.style.left = Math.min(maxX, Math.max(0, drag.left + dx)) + 'px';
-                button.style.top = Math.min(maxY, Math.max(0, drag.top + dy)) + 'px';
+                currentLeft = Math.min(maxX, Math.max(0, drag.left + dx));
+                currentTop = Math.min(maxY, Math.max(0, drag.top + dy));
+                button.style.setProperty('left', currentLeft + 'px', 'important');
+                button.style.setProperty('top', currentTop + 'px', 'important');
             });
             const finish = (event) => {
                 if (!drag || event.pointerId !== drag.id) return;
