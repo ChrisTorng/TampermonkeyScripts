@@ -45,11 +45,12 @@
         }
     }
 
-    function sanitiseAttributes(element, baseUrl) {
+    function sanitiseAttributes(element, baseUrl, keepSafeStyle = false) {
         const attributes = Array.from(element.attributes);
         for (const attribute of attributes) {
             const key = attribute.name.toLowerCase();
-            if (!['href', 'src', 'alt', 'title', 'colspan', 'rowspan'].includes(key)) {
+            if (!['href', 'src', 'alt', 'title', 'colspan', 'rowspan'].includes(key)
+                && !(keepSafeStyle && key === 'style')) {
                 element.removeAttribute(attribute.name);
                 continue;
             }
@@ -275,7 +276,7 @@
                     element.remove();
                     continue;
                 }
-                sanitiseAttributes(element, viewerUrl);
+                sanitiseAttributes(element, viewerUrl, true);
                 // Styles must contain only the visual properties we generated.
                 if (element.hasAttribute('style')) {
                     const declarations = element.style;
