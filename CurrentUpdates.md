@@ -1,17 +1,19 @@
 # Current updates
 
-## Claude Artifact Clipboard Bridge — 2026-11-07_0.1.0 (experimental)
+## Claude Artifact Reader — 2026-11-07_0.2.0 (experimental)
 
-[Install ClaudeArtifactClipboardBridge.user.js](src/ClaudeArtifactClipboardBridge.user.js) · Reload the Claude page after installing.
+[Install ClaudeArtifactClipboardBridge.user.js](src/ClaudeArtifactClipboardBridge.user.js) · Reload Claude after updating.
 
-- A separate proof of concept: show "To Clipboard Viewer" only when a Claude content iframe confirms readable text; transfer a safe styled HTML snapshot through Tampermonkey storage without opening its signed URL.
-- Original translation script remains unchanged. HTML/text formatting is preserved selectively; interactive widgets, canvas, external stylesheets, and Shadow DOM are not copied.
+- Capture the article into a standalone [Artifact Reader](ArtifactReader.html), preserving its readable HTML and selected computed styles without Clipboard Viewer.
+- Show one independent **譯另開** button near the article start, only after an iframe reports readable content; never pin it during scrolling or add it to the ≡ menu.
 
 **Test pages:**
-- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — if the sandboxed frame is injectable, a transfer button appears after loading; pressing it opens [Clipboard Viewer](https://christorng.idv.tw/InfoProcess/Clipboard/) with imported English content for browser translation.
-- [Unrelated site](https://aatishb.com/blog/) — no new controls, network requests, or behavior changes.
+- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — press 譯另開 near the top; the clean full-page reader should display the article for Edge translation.
+- [Artifact Reader](ArtifactReader.html) — standalone HTML shell; the captured content is supplied through Tampermonkey on navigation.
+- [Astro blog](https://aatishb.com/blog/) — no new UI.
 
-**Note:** Android Edge/Tampermonkey injection and browser translation are unverified; this experimental build is not merged.
+**Note:** The prior HTML transfer and Edge translation were confirmed on Android. The new dedicated reader URL still requires device verification; PR remains draft.
+
 
 Updated: 2026-11-07
 
