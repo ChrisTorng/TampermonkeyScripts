@@ -48,7 +48,7 @@ test('generic snapshot captures actual browser DOM before and after a page rewri
             '    && secondDoc.querySelector("#tm-dom-snapshot-control") === null',
             '    && window.__downloads.length === 2',
             '    && window.__downloads[0] !== window.__downloads[1];',
-                       '  document.documentElement.dataset.snapshotTest = firstValid && secondValid ? "passed" : "failed";',
+            '  document.documentElement.dataset.snapshotTest = firstValid && secondValid ? "passed" : "failed";',
             '});',
             '</script>',
             '</body></html>'
