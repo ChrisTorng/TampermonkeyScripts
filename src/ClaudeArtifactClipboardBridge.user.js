@@ -10,6 +10,7 @@
 // @match        https://claude.ai/public/artifacts/*
 // @match        https://*.frame.claudeusercontent.com/*
 // @match        https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html*
+// @match        https://tampermonkey-scripts-git-experiment-df7bf6-christorngs-projects.vercel.app/ArtifactReader.html*
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -21,7 +22,7 @@
     'use strict';
 
     const channel = 'tm-claude-artifact-reader-v1';
-    const readerUrl = 'https://christorng.idv.tw/TampermonkeyScripts/ArtifactReader.html';
+    const readerUrl = 'https://tampermonkey-scripts-git-experiment-df7bf6-christorngs-projects.vercel.app/ArtifactReader.html';
     const storagePrefix = 'tm-claude-reader:';
     const frameHost = /^(?:[0-9a-f-]+)\.frame\.claudeusercontent\.com$/i;
     const forbiddenTags = new Set([
@@ -311,5 +312,7 @@
 
     if (location.hostname === 'claude.ai') startParent();
     else if (frameHost.test(location.hostname)) startFrame();
-    else if (location.hostname === 'christorng.idv.tw' && location.pathname === '/TampermonkeyScripts/ArtifactReader.html') startViewer();
+    else if ((location.hostname === 'christorng.idv.tw' && location.pathname === '/TampermonkeyScripts/ArtifactReader.html')
+        || (location.hostname === 'tampermonkey-scripts-git-experiment-df7bf6-christorngs-projects.vercel.app'
+            && location.pathname === '/ArtifactReader.html')) startViewer();
 })();
