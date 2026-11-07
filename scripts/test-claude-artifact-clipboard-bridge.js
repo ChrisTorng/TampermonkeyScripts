@@ -22,6 +22,17 @@ function execute(url, prepare = () => {}) {
 }
 
 describe('Claude Artifact Reader experiment', () => {
+    test('dedicated reader is an unobstructed full HTML page without Clipboard Viewer UI', () => {
+        const reader = fs.readFileSync(path.join(__dirname, '..', 'ArtifactReader.html'), 'utf8');
+        assert.match(reader, /<html lang="en">/);
+        assert.match(reader, /<meta name="viewport"/);
+        assert.match(reader, /<main id="artifact-content" lang="en">/);
+        assert.doesNotMatch(reader, /id="pasteArea"|id="typeList"|Clipboard Viewer|contenteditable/);
+        assert.match(source, /\.frame\.claudeusercontent\.com/);
+        assert.match(source, /\/TampermonkeyScripts\/ArtifactReader\.html/);
+        assert.doesNotMatch(source, /@match\\s+https:\/\/christorng\.idv\.tw\/InfoProcess\/Clipboard/);
+    });
+
     test('ordinary unrelated pages and the clipboard viewer without an import are untouched', () => {
         const ordinary = execute('https://example.org/article');
         assert.equal(ordinary.harness.document.querySelector('#tm-artifact-reader-open'), null);
