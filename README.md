@@ -31,7 +31,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Translate OpenSSH release notes and code blocks with draggable controls; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
+Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
 
 ---
 
