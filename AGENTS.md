@@ -26,6 +26,7 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
   - Use `node:test` with explicit `test(...)` and/or `describe(...)` blocks so VS Code Testing can discover them.
   - Keep the full suite runnable with `node --test`.
 - Prefer runtime-style tests that **inject the userscript into a local DOM harness and assert behavior**. Avoid static string checks when direct execution is feasible.
+- Before adding page-wide translation UI, verify an actual benefit on a direct public test URL in the target browser. Opening an iframe URL or passing a DOM mock alone is not proof that browser translation works. Do not expose unverified generic iframe controls. Test DOM observers against self-triggered mutation loops.
 - If a script depends on Tampermonkey-specific APIs or browser-only APIs, mock only the minimal surface needed for the test and keep the mocked behavior explicit in the test file.
 - Anti-bot, auth-only, or non-HTML captures may still use automated tests, but only for logic that can be validated locally (for example redirect rules, URL decisions, metadata detection, or session behavior). Do not label those cases as full-content coverage unless the content-dependent behavior is actually exercised.
 - Keep **[TestCases.md](TestCases.md)** synchronized with the current automated coverage:
