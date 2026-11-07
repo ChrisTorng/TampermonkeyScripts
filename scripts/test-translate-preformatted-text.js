@@ -76,6 +76,23 @@ describe('Translate Preformatted Text', () => {
             'Teammates are agents for complex, ongoing work');
     });
 
+    test('root notranslate class uses the same shared opt-out handling', () => {
+        const harness = execute((h) => {
+            h.document.documentElement.classList.add('notranslate');
+            const article = h.document.createElement('article');
+            const heading = h.document.createElement('h1');
+            heading.textContent = 'An article intended for translation';
+            article.appendChild(heading);
+            for (let i = 0; i < 3; i++) {
+                const paragraph = h.document.createElement('p');
+                paragraph.textContent = 'Readable prose on a public news website should not inherit a site-wide translation opt-out. '.repeat(2);
+                article.appendChild(paragraph);
+            }
+            h.appendToBody(article);
+        }, 'https://reader.example.org/posts/article');
+        assert.equal(harness.document.documentElement.classList.contains('notranslate'), false);
+    });
+
     test('generic article unblocking also applies to unrelated domains', () => {
         for (const url of ['https://example.org/essay', 'https://news.example.net/articles/topic']) {
             const harness = execute((h) => {
