@@ -1068,6 +1068,14 @@
         && location.pathname === '/releasenotes.html';
     let astroNavigationEnabled = false;
 
+    // Shared opt-out handling for code replacements, Mastodon and article roots.
+    // Explicit "yes" is needed inside apps that may inherit an ancestor's "no".
+    function makeContentTranslatable(element, overrideAncestor = false) {
+        if (overrideAncestor) element.setAttribute('translate', 'yes');
+        else element.removeAttribute('translate');
+        element.classList.remove('notranslate');
+    }
+
     // The HTML translate attribute is inherited. A single translate="no"
     // on <html> suppresses translation of an entire readable article, even
     // when the article itself contains no opt-out markers. Only clear this
@@ -1076,7 +1084,8 @@
     function allowTranslationForReadableArticle() {
         if (window !== window.top) return;
         const html = document.documentElement;
-        if (!html || (html.getAttribute('translate') || '').toLowerCase() !== 'no') return;
+        if (!html || ((html.getAttribute('translate') || '').toLowerCase() !== 'no'
+            && !html.classList.contains('notranslate'))) return;
 
         const candidates = document.querySelectorAll('article, main');
         for (const candidate of candidates) {
@@ -1096,7 +1105,7 @@
 
             // Restore native browser translation without moving or rewriting
             // the article nodes. Child-level translation exclusions remain.
-            html.removeAttribute('translate');
+            makeContentTranslatable(html);
             break;
         }
     }
@@ -1343,8 +1352,7 @@
         }
         if (shouldConvert) {
             copyAttributes(current, replacement);
-            replacement.removeAttribute('translate');
-            replacement.classList.remove('notranslate');
+            makeContentTranslatable(replacement);
             replacement.classList.remove('react-code-lines');
             replacement.removeAttribute('data-type');
             replacement.setAttribute(convertedAttribute, 'true');
@@ -1487,8 +1495,7 @@
             candidates.push(...root.querySelectorAll('#mastodon.app-holder'));
         }
         candidates.forEach((app) => {
-            app.classList.remove('notranslate');
-            app.setAttribute('translate', 'yes');
+            makeContentTranslatable(app, true);
         });
     }
 
