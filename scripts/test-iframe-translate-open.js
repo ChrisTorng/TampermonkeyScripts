@@ -15,6 +15,7 @@ function boot(url = 'https://example.org/article', prepare = () => {}, sharedSto
     const opened = [];
     h.context.GM_setValue = (k, v) => sharedStore.set(k, v);
     h.context.GM_getValue = (k, fallback) => sharedStore.get(k) ?? fallback;
+    h.context.GM_listValues = () => Array.from(sharedStore.keys());
     h.context.GM_deleteValue = (k) => sharedStore.delete(k);
     h.context.GM_openInTab = (url, options) => opened.push({ url, options });
     prepare(h);
@@ -48,8 +49,8 @@ describe('generic iframe translation reader', () => {
         assert.match(source, /@grant\s+GM_setValue/);
         assert.match(source, /@grant\s+GM_getValue/);
         assert.match(source, /@sandbox\s+raw/);
-        const html = fs.readFileSync(path.join(__dirname, '..', 'ArtifactReader.html'), 'utf8');
-        assert.match(html, /<main id="artifact-content"/);
+        const html = fs.readFileSync(path.join(__dirname, '..', 'IframeViewer.html'), 'utf8');
+        assert.match(html, /<main id="iframe-viewer-content"/);
         assert.doesNotMatch(html, /Clipboard Viewer|pasteArea|typeList|contenteditable/);
         assert.match(source, /https:\/\/christorng\.idv\.tw\/TampermonkeyScripts\/ArtifactReader\.html/);
         assert.doesNotMatch(source, /tampermonkey-scripts-git-experiment|frame\.claudeusercontent\.com/);
@@ -66,10 +67,12 @@ describe('generic iframe translation reader', () => {
         frameMessage(h, frame, { type: 'ready', textLength: 260 });
         const buttons = h.document.querySelectorAll('.tm-iframe-translate-open');
         assert.equal(buttons.length, 1);
-        assert.equal(buttons[0].textContent, '譯另開');
+        assert.equal(buttons[0].textContent, '譯↗');
         assert.match(buttons[0].style.cssText, /position:absolute/);
-        assert.match(buttons[0].style.cssText, /left:336px/);
+        assert.match(buttons[0].style.cssText, /left:360px/);
         assert.match(buttons[0].style.cssText, /top:256px/);
+        assert.match(buttons[0].style.cssText, /border:0 !important/);
+        assert.match(buttons[0].style.cssText, /background:rgba\(0,0,0,\.35\)/);
         assert.doesNotMatch(buttons[0].style.cssText, /position:fixed|position:sticky/);
         frameMessage(h, frame, { type: 'ready', textLength: 260 });
         assert.equal(h.document.querySelectorAll('.tm-iframe-translate-open').length, 1);
@@ -99,12 +102,12 @@ describe('generic iframe translation reader', () => {
         frameMessage(h, frame, { type: 'ready', textLength: 240 });
         const button = h.document.querySelector('.tm-iframe-translate-open');
         // The DOM harness does not parse cssText into properties automatically.
-        button.style.left = '336px';
+        button.style.left = '360px';
         button.style.top = '256px';
         button.dispatchEvent({ type: 'pointerdown', pointerId: 1, clientX: 350, clientY: 270, button: 0 });
         button.dispatchEvent({ type: 'pointermove', pointerId: 1, clientX: 310, clientY: 340, preventDefault() {} });
         button.dispatchEvent({ type: 'pointerup', pointerId: 1 });
-        assert.equal(button.style.left, '296px');
+        assert.equal(button.style.left, '320px');
         assert.equal(button.style.top, '326px');
         button.click();
         assert.equal(opened.length, 0);
@@ -117,6 +120,7 @@ describe('generic iframe translation reader', () => {
         const messages = [];
         const { h, opened, store } = boot('https://example.org/story', (h) => {
             frame = embed(h, 'embed.example.com');
+            h.document.title = 'Original source story';
             frame.contentWindow.postMessage = (message) => messages.push(message);
         });
         frameMessage(h, frame, { type: 'ready', textLength: 300 });
@@ -130,10 +134,15 @@ describe('generic iframe translation reader', () => {
         await Promise.resolve();
         await Promise.resolve();
         assert.equal(opened.length, 1);
-        assert.match(opened[0].url,
-            /^https:\/\/christorng\.idv\.tw\/TampermonkeyScripts\/ArtifactReader\.html\?tmReader=/);
-        assert.equal(store.get('tm-embedded-reader:' + request.id).title, 'Readable article');
-        assert.equal(button.textContent, '譯另開');
+        const readerAddress = new URL(opened[0].url);
+        assert.equal(readerAddress.origin + readerAddress.pathname,
+            'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html');
+        assert.equal(readerAddress.searchParams.get('id'), request.id);
+        assert.equal(readerAddress.searchParams.get('title'), 'Original source story');
+        assert.equal(readerAddress.searchParams.get('url'), 'https://example.org/story');
+        assert.equal(store.get('tm-embedded-reader:' + request.id).html,
+            '<div lang="en"><p>Rich text</p></div>');
+        assert.equal(button.textContent, '譯↗');
     });
 
     test('injected child frame announces only the availability of text', () => {
