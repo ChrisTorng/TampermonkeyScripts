@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.11
-// @description  Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
+// @version      2026-11-07_1.5.18
+// @description  Translate OpenSSH release notes and code blocks with draggable controls; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
@@ -140,6 +140,7 @@
             ['page', 'This page'],
             ['path', 'This folder path'],
             ['domain', 'This entire domain'],
+            ['reset', 'Reset floating button position'],
             ['cancel', 'Cancel'],
         ].forEach(([scope, label]) => {
             const button = document.createElement('button');
@@ -157,25 +158,122 @@
         const settings = floatingMenuSettings();
         let anchorX = Number.isFinite(settings.x) ? settings.x : null;
         let anchorY = Number.isFinite(settings.y) ? Math.max(0, settings.y) : 70;
-        const scrollX = () => window.scrollX || 0;
-        const scrollY = () => Math.max(0, window.scrollY || 0);
+        // Fixed positioning prevents the menu from changing document scrollWidth.
+        // The visual viewport can differ from the layout viewport on legacy mobile pages.
+        const menuWidth = 38;
+        // This legacy desktop-width document places CSS-fixed controls outside
+        // the visual scrolling viewport on Android Edge. Use a bounded document
+        // position for it; other sites retain their existing fixed behavior.
+        const documentDock = /(^|\.)openssh\.org$/i.test(location.hostname)
+            && location.pathname === '/releasenotes.html';
+        const layoutWidth = () => Math.max(menuWidth, Math.min(
+            window.innerWidth || menuWidth,
+            document.documentElement.clientWidth || window.innerWidth || menuWidth));
+        const visualBounds = () => {
+            const viewport = window.visualViewport;
+            return {
+                left: viewport ? viewport.offsetLeft : 0,
+                top: viewport ? viewport.offsetTop : 0,
+                width: Math.max(menuWidth, viewport ? viewport.width : layoutWidth()),
+            };
+        };
+        const clampX = (x) => {
+            const viewport = visualBounds();
+            return Math.max(viewport.left, Math.min(x, viewport.left + viewport.width - menuWidth));
+        };
+        const scrollX = () => Math.max(0, window.scrollX || 0);
+        // Older pages and mobile browser engines can scroll through body/html
+        // while window.scrollY remains zero; read all root-scroller representations.
+        const scrollY = () => {
+            const viewport = window.visualViewport;
+            const viewportPageScroll = viewport && Number.isFinite(viewport.pageTop)
+                ? viewport.pageTop - (viewport.offsetTop || 0) : 0;
+            return Math.max(0, window.scrollY || 0,
+                document.scrollingElement ? document.scrollingElement.scrollTop || 0 : 0,
+                document.documentElement.scrollTop || 0,
+                document.body ? document.body.scrollTop || 0 : 0,
+                viewportPageScroll);
+        };
+        // Capture an overflow ceiling before moving the menu. Never let the
+        // absolutely-positioned handle enlarge the document and then chase it.
+        const unzoomedDocumentWidth = Math.max(
+            layoutWidth(), document.documentElement.scrollWidth || 0);
+        const pageTop = () => {
+            const viewport = window.visualViewport;
+            return Math.max(scrollY(), viewport && Number.isFinite(viewport.pageTop)
+                ? viewport.pageTop : 0);
+        };
+        const pageLeft = () => {
+            const viewport = window.visualViewport;
+            return Math.max(scrollX(), viewport && Number.isFinite(viewport.pageLeft)
+                ? viewport.pageLeft : 0);
+        };
+        const dockX = () => {
+            const viewport = visualBounds();
+            const relativeX = anchorX === null ? viewport.width - menuWidth : anchorX;
+            return Math.max(0, Math.min(
+                pageLeft() + Math.max(0, Math.min(relativeX, viewport.width - menuWidth)),
+                unzoomedDocumentWidth - menuWidth));
+        };
         let documentY = anchorY;
         let previousScrollY = scrollY();
-        // Pages without a mobile viewport declaration can start below scale 1.
-        let normalScale = Math.min(1, window.visualViewport ? window.visualViewport.scale : 1);
+        // A scale change alone is NOT a pinch gesture. Legacy desktop-width pages
+        // (e.g. OpenSSH on Android) can auto-refit after load/translation or when
+        // the browser toolbar moves, which previously froze the vertical menu.
+        let normalScale = window.visualViewport ? window.visualViewport.scale : 1;
+        let pinchGestureArmed = false;
         const zoomed = () => {
             if (!window.visualViewport) return false;
-            normalScale = Math.min(normalScale, window.visualViewport.scale);
-            return window.visualViewport.scale > normalScale * 1.01;
+            const current = window.visualViewport.scale;
+            if (!pinchAnchored && !pinchGestureArmed) normalScale = current;
+            return (pinchAnchored || pinchGestureArmed) && current > normalScale * 1.01;
         };
-        const place = (x, y) => {
-            root.style.setProperty('position', 'absolute', 'important');
+        document.addEventListener('touchstart', (event) => {
+            if (!pinchAnchored && event.touches && event.touches.length >= 2) {
+                normalScale = window.visualViewport ? window.visualViewport.scale : 1;
+                pinchGestureArmed = true;
+            }
+        }, { capture: true, passive: true });
+        document.addEventListener('touchend', (event) => {
+            if (!pinchAnchored && (!event.touches || event.touches.length < 2)) {
+                pinchGestureArmed = false;
+            }
+        }, { capture: true, passive: true });
+        document.addEventListener('touchcancel', () => {
+            if (!pinchAnchored) pinchGestureArmed = false;
+        }, { capture: true, passive: true });
+        const place = (x, y, fixed) => {
+            root.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
         };
+        let pinchAnchored = false;
         const position = () => {
-            if (zoomed() || dragging) return;
+            if (dragging) return;
+            if (zoomed()) {
+                if (!pinchAnchored) {
+                    // Freeze the document position when pinch-zoom starts. Switching
+                    // from fixed to absolute stops following the visual viewport.
+                    if (!documentDock) {
+                        const documentWidth = Math.max(unzoomedDocumentWidth, layoutWidth(), document.documentElement.scrollWidth || 0);
+                        const x = Math.max(0, Math.min(scrollX() + parseFloat(root.style.left), documentWidth - menuWidth));
+                        place(x, scrollY() + parseFloat(root.style.top), false);
+                    }
+                    pinchAnchored = true;
+                }
+                // Keep the handle's physical size unchanged at higher zoom levels.
+                root.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+                root.style.setProperty('transform-origin', 'top right', 'important');
+                return;
+            }
+            if (pinchAnchored) {
+                pinchAnchored = false;
+                pinchGestureArmed = false;
+                root.style.removeProperty('transform');
+                root.style.removeProperty('transform-origin');
+                previousScrollY = scrollY();
+            }
             const currentScrollY = scrollY();
             // A temporary placement returns smoothly to the saved clearance on the way up.
             if (currentScrollY < previousScrollY && previousScrollY > 0) {
@@ -183,8 +281,18 @@
             }
             if (currentScrollY >= Math.max(documentY, anchorY)) documentY = anchorY;
             previousScrollY = currentScrollY;
-            const x = anchorX === null ? window.innerWidth - 38 : anchorX;
-            place(scrollX() + Math.max(0, Math.min(x, window.innerWidth - 38)), Math.max(documentY, currentScrollY));
+            const viewport = visualBounds();
+            const x = anchorX === null ? viewport.width - menuWidth : anchorX;
+            // CSS position:fixed uses the layout viewport's top. Adding
+            // visualViewport.offsetTop here double-counts mobile viewport
+            // panning on desktop-width pages, leaving the handle far below
+            // the top until translation changes the page's reflow.
+            if (documentDock) {
+                place(dockX(), Math.max(documentY, pageTop()), false);
+            } else {
+                place(clampX(viewport.left + x),
+                    Math.max(documentY, currentScrollY) - currentScrollY, true);
+            }
         };
 
         let dragging = false;
@@ -193,11 +301,22 @@
         let startY = 0;
         let originX = 0;
         let originY = 0;
-        // Initialize even if the page loads with an already zoomed visual viewport.
-        place(Math.max(0, anchorX === null ? window.innerWidth - 38 : anchorX), Math.max(anchorY, scrollY()));
+        // Start inside the visual viewport without contributing to page overflow.
+        const viewport = visualBounds();
+        if (documentDock) {
+            place(dockX(), Math.max(anchorY, pageTop()), false);
+        } else {
+            place(clampX(viewport.left + (anchorX === null ? viewport.width - menuWidth : anchorX)),
+                Math.max(anchorY - scrollY(), 0), true);
+        }
         window.addEventListener('scroll', position, { passive: true });
+        // Capture scroll on body/html in browsers that don't forward it to window.
+        document.addEventListener('scroll', position, { capture: true, passive: true });
         window.addEventListener('resize', position);
-        if (window.visualViewport) window.visualViewport.addEventListener('resize', position);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', position);
+            window.visualViewport.addEventListener('scroll', position);
+        }
         const pointer = (event) => event.touches ? event.touches[0] : event;
         const onMove = (event) => {
             if (!dragging) return;
@@ -210,17 +329,25 @@
             if (!moved && Math.abs(point.clientX - startX) < 3 && Math.abs(point.clientY - startY) < 3) return;
             moved = true;
             event.preventDefault();
-            const x = Math.max(0, Math.min(originX + point.clientX - startX, window.innerWidth - 38));
-            const y = Math.max(0, Math.min(originY + point.clientY - startY, window.innerHeight - 32));
-            place(scrollX() + x, scrollY() + y);
+            const x = clampX(originX + point.clientX - startX);
+            const y = Math.max(0,
+                Math.min(originY + point.clientY - startY,
+                    (window.visualViewport ? window.visualViewport.height : window.innerHeight) - 32));
+            if (documentDock) {
+                const documentX = Math.max(0, Math.min(pageLeft() + x - visualBounds().left,
+                    unzoomedDocumentWidth - menuWidth));
+                place(documentX, pageTop() + y, false);
+            } else {
+                place(x, y, true);
+            }
         };
         const onEnd = () => {
             if (!dragging) return;
             dragging = false;
             if (moved) {
                 const next = floatingMenuSettings();
-                anchorX = parseFloat(root.style.left) - scrollX();
-                documentY = parseFloat(root.style.top);
+                anchorX = parseFloat(root.style.left) - (documentDock ? pageLeft() : visualBounds().left);
+                documentY = parseFloat(root.style.top) + (documentDock ? 0 : scrollY());
                 previousScrollY = scrollY();
                 // Only a drag at page top changes the persistent top clearance.
                 if (previousScrollY === 0) anchorY = documentY;
@@ -231,13 +358,14 @@
         };
         const onStart = (event) => {
             if (event.touches && event.touches.length !== 1) return;
+            if (zoomed() || pinchGestureArmed) return;
             const point = pointer(event);
             dragging = true;
             moved = false;
             startX = point.clientX;
             startY = point.clientY;
-            originX = parseFloat(root.style.left) - scrollX();
-            originY = parseFloat(root.style.top) - scrollY();
+            originX = parseFloat(root.style.left) - (documentDock ? pageLeft() - visualBounds().left : 0);
+            originY = parseFloat(root.style.top) - (documentDock ? pageTop() : 0);
         };
         toggle.addEventListener('mousedown', onStart);
         toggle.addEventListener('touchstart', onStart);
@@ -271,6 +399,14 @@
             if (scope === 'cancel') {
                 dialog.hidden = true;
                 floatingMenuRender(root);
+                return;
+            }
+            if (scope === 'reset') {
+                const next = floatingMenuSettings();
+                delete next.x;
+                delete next.y;
+                floatingMenuSave(next);
+                window.location.reload();
                 return;
             }
             const next = floatingMenuSettings();
@@ -489,6 +625,8 @@
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
     const originalBlocks = new WeakMap();
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
+    const isOpenSSHReleaseNotes = /(^|\.)openssh\.org$/i.test(location.hostname)
+        && location.pathname === '/releasenotes.html';
     let astroNavigationEnabled = false;
 
     const style = document.createElement('style');
@@ -694,6 +832,31 @@
         return children.map((child) => getBlockText(child)).join('');
     }
 
+    // Preserve hyperlinks while turning preformatted text into translatable text.
+    function copyTranslatableNodes(source, target) {
+        const children = Array.from(source.childNodes || source.children || []);
+        if (!children.length) {
+            target.textContent = source.textContent || '';
+            return;
+        }
+        for (const child of children) {
+            if (child.nodeType === 3) {
+                target.appendChild(document.createTextNode(child.nodeValue || ''));
+            } else if (child.nodeType === 1 && child.tagName === 'BR') {
+                target.appendChild(document.createTextNode('\n'));
+            } else if (child.nodeType === 1 && child.tagName === 'A') {
+                const link = document.createElement('a');
+                for (const name of ['href', 'title', 'target', 'rel']) {
+                    if (child.hasAttribute(name)) link.setAttribute(name, child.getAttribute(name));
+                }
+                copyTranslatableNodes(child, link);
+                target.appendChild(link);
+            } else if (child.nodeType === 1) {
+                copyTranslatableNodes(child, target);
+            }
+        }
+    }
+
     function setConverted(wrapper, shouldConvert) {
         if (!wrapper) {
             return;
@@ -713,7 +876,11 @@
             replacement.classList.remove('react-code-lines');
             replacement.removeAttribute('data-type');
             replacement.setAttribute(convertedAttribute, 'true');
-            replacement.textContent = getBlockText(current);
+            if (current.querySelector('a') && !current.classList.contains('react-code-lines')) {
+                copyTranslatableNodes(current, replacement);
+            } else {
+                replacement.textContent = getBlockText(current);
+            }
         } else {
             replacement.removeAttribute(convertedAttribute);
         }
@@ -751,7 +918,29 @@
         });
     }
 
+    // OpenSSH uses long, sometimes non-PRE release-note blocks. Convert only
+    // the release body siblings, never the headings or navigation.
+    function enhanceOpenSSHReleaseNotes() {
+        if (!isOpenSSHReleaseNotes) return;
+        for (const heading of document.querySelectorAll('h3')) {
+            if (!/^OpenSSH\s+\d/i.test(heading.textContent.trim())) continue;
+            let element = heading.nextElementSibling;
+            while (element && !/^H[1-6]$/.test(element.tagName)) {
+                const next = element.nextElementSibling;
+                const tag = element.tagName;
+                if (['P', 'DIV', 'BLOCKQUOTE', 'TT', 'SAMP'].includes(tag)
+                    && !element.closest(`[${wrapperAttribute}]`)
+                    && !element.querySelector('pre')
+                    && element.textContent.trim().length >= 100) {
+                    enhance(element);
+                }
+                element = next;
+            }
+        }
+    }
+
     function scan(root = document) {
+        if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
         enableMastodonTranslation(root);
         revealWikipediaSections(root);

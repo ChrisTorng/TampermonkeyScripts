@@ -40,12 +40,16 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-root-scroll-browser.js
-      - name: Test translation controls and absent iframe fallback
-        run: node --test scripts/test-translate-preformatted-text.js
+      - name: Test shared menu, safe translation and GM update tabs
+        run: node --test scripts/test-floating-menu.js scripts/test-translate-preformatted-text.js scripts/test-bulk-update-gm.js
       - name: Test content controls and real browser clipping
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-transient-controls.js scripts/test-control-browser.js
+      - name: Test five update tabs launcher in Chromium
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-update-tabs-browser.js
       - name: Generate documentation pages
         run: npm run generate:index
       - name: Verify HTML outputs were produced

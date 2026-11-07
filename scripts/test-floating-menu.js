@@ -71,6 +71,57 @@ describe('shared floating menu', () => {
         assert.equal(harness.document.querySelector('[data-floating-tool="translate"]').hidden, true);
     });
 
+    test('horizontal scrolling keeps the menu at the visible edge without expanding page width', () => {
+        const harness = run(['dark']);
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        assert.equal(menu.style.position, 'fixed');
+        assert.equal(menu.style.left, '1242px');
+        for (const offset of [0, 300, 600, 120, 0]) {
+            harness.window.scrollX = offset;
+            harness.dispatchWindowEvent('scroll');
+            assert.equal(menu.style.left, '1242px');
+            assert.equal(menu.style.position, 'fixed');
+        }
+        harness.window.visualViewport.offsetLeft = 150;
+        harness.window.visualViewport.width = 550;
+        harness.dispatchVisualViewportEvent('scroll');
+        assert.equal(menu.style.left, '662px');
+        harness.window.visualViewport.offsetLeft = 0;
+        harness.window.visualViewport.width = 400;
+        harness.window.innerWidth = 400;
+        harness.document.documentElement.clientWidth = 400;
+        harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.left, '362px');
+    });
+
+    test('previously saved X is clamped to the visible viewport when horizontal scrolling', () => {
+        const harness = run(['dark'], { localStorageSeed: { [key]: JSON.stringify({ x: 100000, y: 70 }) } });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        assert.equal(menu.style.left, '1242px');
+        harness.window.scrollX = 600;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.left, '1242px');
+        harness.window.innerWidth = 400;
+        harness.window.visualViewport.width = 400;
+        harness.document.documentElement.clientWidth = 400;
+        harness.dispatchWindowEvent('resize');
+        assert.equal(menu.style.left, '362px');
+    });
+
+    test('reset position removes only saved coordinates and reloads', () => {
+        const saved = JSON.stringify({ x: 550, y: 95, disabledPaths: ['/unrelated/'] });
+        const harness = run(['archive'], { localStorageSeed: { [key]: saved } });
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.left, '550px');
+        harness.document.querySelector('[data-floating-toggle]').click();
+        harness.document.querySelector('[data-floating-close]').click();
+        harness.document.querySelector('[data-floating-dialog]').dispatchEvent({
+            type: 'click',
+            target: harness.document.querySelector('[data-floating-hide-scope="reset"]'),
+        });
+        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { disabledPaths: ['/unrelated/'] });
+        assert.equal(harness.location.reloadCallCount, 1);
+    });
+
     test('drag position is saved by hostname and restored on the next page', () => {
         const first = run(['archive']);
         const toggle = first.document.querySelector('[data-floating-toggle]');
@@ -93,16 +144,128 @@ describe('shared floating menu', () => {
             for (const [scroll, top] of [[0, 70], [30, 70], [120, 120], [20, 70], [0, 70]]) {
                 harness.window.scrollY = scroll;
                 harness.dispatchWindowEvent('scroll');
-                assert.equal(menu.style.top, `${top}px`);
-                assert.equal(menu.style.position, 'absolute');
+                assert.equal(menu.style.top, `${Math.max(0, top - scroll)}px`);
+                assert.equal(menu.style.position, 'fixed');
             }
         }
+    });
+
+    test('legacy page auto-fit and vertical scroll keep the menu in the visible area without pinch', () => {
+        const harness = run(['translate'], { pre: true, scale: 0.4 });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        assert.equal(menu.style.top, '70px');
+        assert.equal(menu.style.position, 'fixed');
+        // Auto-fit, browser toolbar movement and scroll are not pinch gestures.
+        for (const [scale, scrollY, offsetTop, top] of [
+            [0.43, 100, 15, 0],
+            [0.55, 800, 145, 0],
+            [0.48, 1700, 190, 0],
+            [0.4, 30, 20, 40],
+            [0.4, 0, 0, 70]
+        ]) {
+            harness.window.visualViewport.scale = scale;
+            harness.window.scrollY = scrollY;
+            harness.window.visualViewport.offsetTop = offsetTop;
+            harness.dispatchVisualViewportEvent('resize');
+            harness.dispatchVisualViewportEvent('scroll');
+            harness.dispatchWindowEvent('scroll');
+            assert.equal(menu.style.position, 'fixed');
+            assert.equal(menu.style.top, `${top}px`, `scale=${scale}, scrollY=${scrollY}`);
+            assert.equal(menu.style.transform || '', '', 'ordinary browser resizing must not inverse-scale the menu');
+        }
+    });
+
+    test('OpenSSH-style body scrolling docks the handle without window.scrollY', () => {
+        const harness = run(['archive'], { scale: 0.4 });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.window.visualViewport.offsetTop = 130;
+        harness.document.body.scrollTop = 900;
+        harness.document.dispatchEvent({ type: 'scroll', target: harness.document.body });
+        assert.equal(menu.style.position, 'fixed');
+        assert.equal(menu.style.top, '0px');
+
+        harness.document.body.scrollTop = 0;
+        harness.document.documentElement.scrollTop = 650;
+        harness.document.dispatchEvent({ type: 'scroll', target: harness.document.documentElement });
+        assert.equal(menu.style.top, '0px');
+        harness.document.documentElement.scrollTop = 0;
+        harness.window.visualViewport.offsetTop = 0;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '70px');
+    });
+
+    test('OpenSSH release notes follow the visible document vertically before and after conversion', () => {
+        const harness = run(['dark', 'translate'], {
+            url: 'https://www.openssh.org/releasenotes.html', scale: 0.4, pre: true,
+        });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        assert.equal(menu.style.position, 'absolute');
+        assert.equal(menu.style.top, '70px');
+        for (const offset of [100, 500, 1300, 2600, 400, 0]) {
+            harness.window.scrollY = offset;
+            harness.dispatchWindowEvent('scroll');
+            assert.equal(menu.style.position, 'absolute');
+            assert.equal(menu.style.top, `${Math.max(70, offset)}px`,
+                'the document-anchored menu must not disappear when scrolling');
+        }
+        // Translation changes element layout but must not be required for docking.
+        const translate = harness.document.querySelector('.tm-translate-pre-one');
+        assert(translate);
+        harness.window.scrollY = 750;
+        harness.dispatchWindowEvent('scroll');
+        translate.click();
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '750px');
+        translate.click();
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '750px');
+    });
+
+    test('OpenSSH horizontal pan follows visible edge but never enlarges saved document width', () => {
+        const harness = run(['dark'], {
+            url: 'https://www.openssh.org/releasenotes.html', scale: 0.4,
+        });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        const oldWidth = harness.document.documentElement.scrollWidth || 1280;
+        assert.equal(menu.style.position, 'absolute');
+        assert.equal(menu.style.left, '1242px');
+        harness.window.visualViewport.width = 320;
+        for (const offset of [0, 180, 440, 920, 2500]) {
+            harness.window.scrollX = offset;
+            harness.dispatchWindowEvent('scroll');
+            assert.equal(menu.style.left,
+                `${Math.min(offset + 282, Math.max(1280, oldWidth) - 38)}px`);
+            assert.equal(menu.style.position, 'absolute');
+        }
+    });
+
+    test('OpenSSH pinch freezes its document position and restores scrolling afterward', () => {
+        const harness = run(['dark'], {
+            url: 'https://www.openssh.org/releasenotes.html', scale: 0.4,
+        });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.window.scrollY = 800;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '800px');
+        harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
+        harness.window.visualViewport.scale = 0.8;
+        harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.transform, 'scale(0.5)');
+        harness.window.scrollY = 1200;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.top, '800px');
+        harness.window.visualViewport.scale = 0.4;
+        harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.position, 'absolute');
+        assert.equal(menu.style.top, '1200px');
+        assert.equal(menu.style.transform || '', '');
     });
 
     test('pinch zoom and panning do not reposition or save the menu', () => {
         const saved = JSON.stringify({ x: 1000, y: 170 });
         const harness = run(['translate', 'dark'], { pre: true, localStorageSeed: { [key]: saved } });
         const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
         harness.window.visualViewport.scale = 3;
         harness.window.visualViewport.offsetTop = 250;
         harness.window.visualViewport.offsetLeft = 500;
@@ -113,13 +276,28 @@ describe('shared floating menu', () => {
         harness.dispatchVisualViewportEvent('scroll');
         harness.dispatchWindowEvent('resize');
         harness.dispatchWindowEvent('scroll');
-        assert.equal(menu.style.top, '170px');
+        assert.equal(menu.style.position, 'absolute');
+        assert.equal(menu.style.top, '470px');
         assert.equal(menu.style.left, '1000px');
+        assert.equal(menu.style.transform, 'scale(0.3333333333333333)');
         assert.equal(harness.window.localStorage.getItem(key), saved);
+        harness.window.scrollX = 200;
+        harness.window.scrollY = 400;
+        harness.window.visualViewport.offsetLeft = 700;
+        harness.dispatchVisualViewportEvent('scroll');
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(menu.style.left, '1000px');
+        assert.equal(menu.style.top, '470px');
         harness.window.visualViewport.scale = 1;
+        harness.window.visualViewport.offsetLeft = 0;
+        harness.window.visualViewport.offsetTop = 0;
+        harness.window.visualViewport.width = 1280;
         harness.window.innerWidth = 1280;
+        harness.window.scrollX = 0;
         harness.window.scrollY = 0;
         harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.position, 'fixed');
+        assert.equal(menu.style.transform || '', '');
         assert.equal(menu.style.top, '170px');
         assert.equal(menu.style.left, '1000px');
     });
@@ -133,12 +311,12 @@ describe('shared floating menu', () => {
         harness.document.dispatchEvent({ type: 'mousemove', clientX: 1070, clientY: 180, preventDefault() {} });
         harness.document.dispatchEvent({ type: 'mouseup' });
         const menu = harness.document.getElementById('tm-shared-floating-menu');
-        assert.equal(menu.style.top, '570px');
+        assert.equal(menu.style.top, '170px');
         assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { x: 1042, y: 70 });
         for (const [scroll, viewportTop] of [[420, 150], [500, 70], [570, 0], [800, 0], [400, 0], [20, 50], [0, 70]]) {
             harness.window.scrollY = scroll;
             harness.dispatchWindowEvent('scroll');
-            assert.equal(parseFloat(menu.style.top) - scroll, viewportTop);
+            assert.equal(parseFloat(menu.style.top), viewportTop);
         }
     });
 
@@ -154,7 +332,7 @@ describe('shared floating menu', () => {
         for (const [scroll, viewportTop] of [[400, 170], [200, 135], [0, 100]]) {
             harness.window.scrollY = scroll;
             harness.dispatchWindowEvent('scroll');
-            assert.equal(parseFloat(menu.style.top) - scroll, viewportTop);
+            assert.equal(parseFloat(menu.style.top), viewportTop);
         }
         assert.equal(JSON.parse(harness.window.localStorage.getItem(key)).y, 100);
     });
@@ -202,10 +380,13 @@ describe('shared floating menu', () => {
     test('pinch zoom is detected on pages whose initial fit scale is below one', () => {
         const harness = run(['archive'], { scale: 0.4 });
         const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
         harness.window.visualViewport.scale = 0.8;
         harness.window.scrollY = 300;
         harness.dispatchWindowEvent('scroll');
-        assert.equal(menu.style.top, '70px');
+        assert.equal(menu.style.position, 'absolute');
+        assert.equal(menu.style.top, '370px');
+        assert.equal(menu.style.transform, 'scale(0.5)');
         harness.window.visualViewport.scale = 0.4;
         harness.window.scrollY = 0;
         harness.dispatchVisualViewportEvent('resize');

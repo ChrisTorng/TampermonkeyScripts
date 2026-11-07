@@ -2,6 +2,15 @@
 
 Updated: 2026-11-07
 
+## OpenSSH floating menu and five-script updater — 2026-11-07
+
+[Open all five update tabs](tests/SharedFloatingMenuUpdates/index.html) (confirm each Tampermonkey Update).
+
+- [Translate Preformatted Text — 1.5.18](src/TranslatePreformattedText.user.js): translate OpenSSH release notes while retaining safe, no-iframe behavior.
+- Shared menu — update together: [All Go Internet Archive — 1.3.10](src/AllGoInternetArchive.user.js), [Internet Archive — 1.5.10](src/InternetArchive.user.js), [Force Mobile View — 2.1.9](src/ForceMobileView.user.js), [Force Dark Mode — 2.0.10](src/ForceDarkMode.user.js), and Translate Preformatted Text above. Dock the menu during OpenSSH scrolling; leave space below the updater links. Reload after updating.
+
+**Tests:** [OpenSSH release notes](https://www.openssh.org/releasenotes.html) — ≡ remains reachable during scrolling; [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — no unverified iframe opener.
+
 ## Responsive Scroll Position Indicator — 2026-11-07_1.3.16
 
 [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) · Reload after updating.
@@ -24,17 +33,5 @@ Updated: 2026-11-07
 - [X post](https://x.com/cocktailpeanut/status/1860756706357022812) — follow both arrows, then Back returns through Meowing, Tiekoetter, and the original X entry; reopen the X link to start again.
 - [First viewer](https://nitter.tiekoetter.com/cocktailpeanut/status/1860756706357022812) — floating → opens Meowing; Back returns to this first viewer.
 - [Second viewer](https://nitter.meowing.monster/cocktailpeanut/status/1860756706357022812) — floating → opens X; Back returns to this second viewer.
-
-## Translate Preformatted Text — 2026-11-07_1.5.11
-
-[Install TranslatePreformattedText.user.js](src/TranslatePreformattedText.user.js) · Reload after updating.
-
-- Restore the verified 1.5.8 behavior with a higher version number; remove unverified iframe-opening controls from 1.5.9/1.5.10.
-- Keep the code-block and Astro translation workarounds unchanged.
-
-**Test pages:**
-- [Claude Artifact](https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf) — no iframe-only 譯↗ action; native iframe translation remains unsupported.
-- [Astro blog](https://aatishb.com/blog/) → [article](https://aatishb.com/blog/2026/introducing-myriad/) — full-page article navigation still supports browser translation.
-
 
 Update each listed script independently.

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-31_2.1.2
+// @version      2026-11-07_2.1.9
 // @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -54,8 +54,6 @@
 // @exclude      *://*.arxiv.org/*
 // @exclude      *://cht.com.tw/*
 // @exclude      *://*.cht.com.tw/*
-// @exclude      *://*.vercel.app/*
-// @exclude      *://vercel.app/*
 // @exclude      *://openai.com/*
 // @exclude      *://*.openai.com/*
 // @exclude      *://anthropic.com/*
@@ -74,11 +72,55 @@
 // @exclude      *://instagram.com/*
 // @exclude      *://*.instagram.com/*
 // @grant        GM_info
+// @grant        GM_openInTab
 // @run-at       document-start
 // ==/UserScript==
 
 (function () {
     'use strict';
+
+    // The Vercel preview is excluded from mobile-layout changes. The one
+    // repository-owned updater page is allowed only to open userscript tabs.
+    // This reimplements the previous metadata Vercel exclusion at runtime.
+    if (location.hostname === 'vercel.app' || location.hostname.endsWith('.vercel.app')) {
+        const isUpdater = location.hostname.startsWith('tampermonkey-scripts-')
+            && location.pathname === '/tests/SharedFloatingMenuUpdates/index.html';
+        if (isUpdater && typeof GM_openInTab === 'function') {
+            const files = new Set([
+                'TranslatePreformattedText.user.js',
+                'AllGoInternetArchive.user.js',
+                'InternetArchive.user.js',
+                'ForceMobileView.user.js',
+                'ForceDarkMode.user.js'
+            ]);
+            document.addEventListener('click', (event) => {
+                if (!event.target || !event.target.closest
+                    || !event.target.closest('#open-all')) return;
+                const links = Array.from(document.querySelectorAll('#links a[href]'));
+                const urls = links.map((link) => {
+                    try { return new URL(link.href); }
+                    catch (_) { return null; }
+                });
+                const names = urls.map((url) => url && url.pathname.split('/').pop());
+                // No arbitrary open-URL bridge: exact repository, ref, and five files.
+                const valid = urls.length === files.size
+                    && names.every((name) => files.has(name))
+                    && new Set(names).size === files.size
+                    && urls.every((url) => url && url.origin === 'https://github.com'
+                        && url.pathname.startsWith('/ChrisTorng/TampermonkeyScripts/raw/refs/heads/')
+                        && url.pathname.endsWith('/src/' + url.pathname.split('/').pop())
+                        && !url.search && !url.hash);
+                if (!valid) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                for (const url of urls) GM_openInTab(url.href, { active: false, insert: true });
+                const status = document.getElementById('status');
+                if (status) status.textContent =
+                    'Requested five Tampermonkey update tabs. Confirm Update separately in each tab.';
+            }, true);
+        }
+        return;
+    }
 
     // BEGIN SHARED FLOATING MENU
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
@@ -206,6 +248,7 @@
             ['page', 'This page'],
             ['path', 'This folder path'],
             ['domain', 'This entire domain'],
+            ['reset', 'Reset floating button position'],
             ['cancel', 'Cancel'],
         ].forEach(([scope, label]) => {
             const button = document.createElement('button');
@@ -223,25 +266,122 @@
         const settings = floatingMenuSettings();
         let anchorX = Number.isFinite(settings.x) ? settings.x : null;
         let anchorY = Number.isFinite(settings.y) ? Math.max(0, settings.y) : 70;
-        const scrollX = () => window.scrollX || 0;
-        const scrollY = () => Math.max(0, window.scrollY || 0);
+        // Fixed positioning prevents the menu from changing document scrollWidth.
+        // The visual viewport can differ from the layout viewport on legacy mobile pages.
+        const menuWidth = 38;
+        // This legacy desktop-width document places CSS-fixed controls outside
+        // the visual scrolling viewport on Android Edge. Use a bounded document
+        // position for it; other sites retain their existing fixed behavior.
+        const documentDock = /(^|\.)openssh\.org$/i.test(location.hostname)
+            && location.pathname === '/releasenotes.html';
+        const layoutWidth = () => Math.max(menuWidth, Math.min(
+            window.innerWidth || menuWidth,
+            document.documentElement.clientWidth || window.innerWidth || menuWidth));
+        const visualBounds = () => {
+            const viewport = window.visualViewport;
+            return {
+                left: viewport ? viewport.offsetLeft : 0,
+                top: viewport ? viewport.offsetTop : 0,
+                width: Math.max(menuWidth, viewport ? viewport.width : layoutWidth()),
+            };
+        };
+        const clampX = (x) => {
+            const viewport = visualBounds();
+            return Math.max(viewport.left, Math.min(x, viewport.left + viewport.width - menuWidth));
+        };
+        const scrollX = () => Math.max(0, window.scrollX || 0);
+        // Older pages and mobile browser engines can scroll through body/html
+        // while window.scrollY remains zero; read all root-scroller representations.
+        const scrollY = () => {
+            const viewport = window.visualViewport;
+            const viewportPageScroll = viewport && Number.isFinite(viewport.pageTop)
+                ? viewport.pageTop - (viewport.offsetTop || 0) : 0;
+            return Math.max(0, window.scrollY || 0,
+                document.scrollingElement ? document.scrollingElement.scrollTop || 0 : 0,
+                document.documentElement.scrollTop || 0,
+                document.body ? document.body.scrollTop || 0 : 0,
+                viewportPageScroll);
+        };
+        // Capture an overflow ceiling before moving the menu. Never let the
+        // absolutely-positioned handle enlarge the document and then chase it.
+        const unzoomedDocumentWidth = Math.max(
+            layoutWidth(), document.documentElement.scrollWidth || 0);
+        const pageTop = () => {
+            const viewport = window.visualViewport;
+            return Math.max(scrollY(), viewport && Number.isFinite(viewport.pageTop)
+                ? viewport.pageTop : 0);
+        };
+        const pageLeft = () => {
+            const viewport = window.visualViewport;
+            return Math.max(scrollX(), viewport && Number.isFinite(viewport.pageLeft)
+                ? viewport.pageLeft : 0);
+        };
+        const dockX = () => {
+            const viewport = visualBounds();
+            const relativeX = anchorX === null ? viewport.width - menuWidth : anchorX;
+            return Math.max(0, Math.min(
+                pageLeft() + Math.max(0, Math.min(relativeX, viewport.width - menuWidth)),
+                unzoomedDocumentWidth - menuWidth));
+        };
         let documentY = anchorY;
         let previousScrollY = scrollY();
-        // Pages without a mobile viewport declaration can start below scale 1.
-        let normalScale = Math.min(1, window.visualViewport ? window.visualViewport.scale : 1);
+        // A scale change alone is NOT a pinch gesture. Legacy desktop-width pages
+        // (e.g. OpenSSH on Android) can auto-refit after load/translation or when
+        // the browser toolbar moves, which previously froze the vertical menu.
+        let normalScale = window.visualViewport ? window.visualViewport.scale : 1;
+        let pinchGestureArmed = false;
         const zoomed = () => {
             if (!window.visualViewport) return false;
-            normalScale = Math.min(normalScale, window.visualViewport.scale);
-            return window.visualViewport.scale > normalScale * 1.01;
+            const current = window.visualViewport.scale;
+            if (!pinchAnchored && !pinchGestureArmed) normalScale = current;
+            return (pinchAnchored || pinchGestureArmed) && current > normalScale * 1.01;
         };
-        const place = (x, y) => {
-            root.style.setProperty('position', 'absolute', 'important');
+        document.addEventListener('touchstart', (event) => {
+            if (!pinchAnchored && event.touches && event.touches.length >= 2) {
+                normalScale = window.visualViewport ? window.visualViewport.scale : 1;
+                pinchGestureArmed = true;
+            }
+        }, { capture: true, passive: true });
+        document.addEventListener('touchend', (event) => {
+            if (!pinchAnchored && (!event.touches || event.touches.length < 2)) {
+                pinchGestureArmed = false;
+            }
+        }, { capture: true, passive: true });
+        document.addEventListener('touchcancel', () => {
+            if (!pinchAnchored) pinchGestureArmed = false;
+        }, { capture: true, passive: true });
+        const place = (x, y, fixed) => {
+            root.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
         };
+        let pinchAnchored = false;
         const position = () => {
-            if (zoomed() || dragging) return;
+            if (dragging) return;
+            if (zoomed()) {
+                if (!pinchAnchored) {
+                    // Freeze the document position when pinch-zoom starts. Switching
+                    // from fixed to absolute stops following the visual viewport.
+                    if (!documentDock) {
+                        const documentWidth = Math.max(unzoomedDocumentWidth, layoutWidth(), document.documentElement.scrollWidth || 0);
+                        const x = Math.max(0, Math.min(scrollX() + parseFloat(root.style.left), documentWidth - menuWidth));
+                        place(x, scrollY() + parseFloat(root.style.top), false);
+                    }
+                    pinchAnchored = true;
+                }
+                // Keep the handle's physical size unchanged at higher zoom levels.
+                root.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+                root.style.setProperty('transform-origin', 'top right', 'important');
+                return;
+            }
+            if (pinchAnchored) {
+                pinchAnchored = false;
+                pinchGestureArmed = false;
+                root.style.removeProperty('transform');
+                root.style.removeProperty('transform-origin');
+                previousScrollY = scrollY();
+            }
             const currentScrollY = scrollY();
             // A temporary placement returns smoothly to the saved clearance on the way up.
             if (currentScrollY < previousScrollY && previousScrollY > 0) {
@@ -249,8 +389,18 @@
             }
             if (currentScrollY >= Math.max(documentY, anchorY)) documentY = anchorY;
             previousScrollY = currentScrollY;
-            const x = anchorX === null ? window.innerWidth - 38 : anchorX;
-            place(scrollX() + Math.max(0, Math.min(x, window.innerWidth - 38)), Math.max(documentY, currentScrollY));
+            const viewport = visualBounds();
+            const x = anchorX === null ? viewport.width - menuWidth : anchorX;
+            // CSS position:fixed uses the layout viewport's top. Adding
+            // visualViewport.offsetTop here double-counts mobile viewport
+            // panning on desktop-width pages, leaving the handle far below
+            // the top until translation changes the page's reflow.
+            if (documentDock) {
+                place(dockX(), Math.max(documentY, pageTop()), false);
+            } else {
+                place(clampX(viewport.left + x),
+                    Math.max(documentY, currentScrollY) - currentScrollY, true);
+            }
         };
 
         let dragging = false;
@@ -259,11 +409,22 @@
         let startY = 0;
         let originX = 0;
         let originY = 0;
-        // Initialize even if the page loads with an already zoomed visual viewport.
-        place(Math.max(0, anchorX === null ? window.innerWidth - 38 : anchorX), Math.max(anchorY, scrollY()));
+        // Start inside the visual viewport without contributing to page overflow.
+        const viewport = visualBounds();
+        if (documentDock) {
+            place(dockX(), Math.max(anchorY, pageTop()), false);
+        } else {
+            place(clampX(viewport.left + (anchorX === null ? viewport.width - menuWidth : anchorX)),
+                Math.max(anchorY - scrollY(), 0), true);
+        }
         window.addEventListener('scroll', position, { passive: true });
+        // Capture scroll on body/html in browsers that don't forward it to window.
+        document.addEventListener('scroll', position, { capture: true, passive: true });
         window.addEventListener('resize', position);
-        if (window.visualViewport) window.visualViewport.addEventListener('resize', position);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', position);
+            window.visualViewport.addEventListener('scroll', position);
+        }
         const pointer = (event) => event.touches ? event.touches[0] : event;
         const onMove = (event) => {
             if (!dragging) return;
@@ -276,17 +437,25 @@
             if (!moved && Math.abs(point.clientX - startX) < 3 && Math.abs(point.clientY - startY) < 3) return;
             moved = true;
             event.preventDefault();
-            const x = Math.max(0, Math.min(originX + point.clientX - startX, window.innerWidth - 38));
-            const y = Math.max(0, Math.min(originY + point.clientY - startY, window.innerHeight - 32));
-            place(scrollX() + x, scrollY() + y);
+            const x = clampX(originX + point.clientX - startX);
+            const y = Math.max(0,
+                Math.min(originY + point.clientY - startY,
+                    (window.visualViewport ? window.visualViewport.height : window.innerHeight) - 32));
+            if (documentDock) {
+                const documentX = Math.max(0, Math.min(pageLeft() + x - visualBounds().left,
+                    unzoomedDocumentWidth - menuWidth));
+                place(documentX, pageTop() + y, false);
+            } else {
+                place(x, y, true);
+            }
         };
         const onEnd = () => {
             if (!dragging) return;
             dragging = false;
             if (moved) {
                 const next = floatingMenuSettings();
-                anchorX = parseFloat(root.style.left) - scrollX();
-                documentY = parseFloat(root.style.top);
+                anchorX = parseFloat(root.style.left) - (documentDock ? pageLeft() : visualBounds().left);
+                documentY = parseFloat(root.style.top) + (documentDock ? 0 : scrollY());
                 previousScrollY = scrollY();
                 // Only a drag at page top changes the persistent top clearance.
                 if (previousScrollY === 0) anchorY = documentY;
@@ -297,13 +466,14 @@
         };
         const onStart = (event) => {
             if (event.touches && event.touches.length !== 1) return;
+            if (zoomed() || pinchGestureArmed) return;
             const point = pointer(event);
             dragging = true;
             moved = false;
             startX = point.clientX;
             startY = point.clientY;
-            originX = parseFloat(root.style.left) - scrollX();
-            originY = parseFloat(root.style.top) - scrollY();
+            originX = parseFloat(root.style.left) - (documentDock ? pageLeft() - visualBounds().left : 0);
+            originY = parseFloat(root.style.top) - (documentDock ? pageTop() : 0);
         };
         toggle.addEventListener('mousedown', onStart);
         toggle.addEventListener('touchstart', onStart);
@@ -337,6 +507,14 @@
             if (scope === 'cancel') {
                 dialog.hidden = true;
                 floatingMenuRender(root);
+                return;
+            }
+            if (scope === 'reset') {
+                const next = floatingMenuSettings();
+                delete next.x;
+                delete next.y;
+                floatingMenuSave(next);
+                window.location.reload();
                 return;
             }
             const next = floatingMenuSettings();

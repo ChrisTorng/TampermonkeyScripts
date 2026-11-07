@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Floating Menu Updates</title>
+<style>
+  body { color-scheme: light dark; box-sizing: border-box; max-width: 700px; margin: 30px auto; padding: 0 18px calc(220px + env(safe-area-inset-bottom, 0px)); font: 16px/1.55 system-ui,sans-serif; }
+  button { min-height: 48px; padding: 10px 20px; font: inherit; font-weight: 650; cursor: pointer; border-radius: 8px; }
+  li { margin: 10px 0; overflow-wrap: anywhere; }
+  p { max-width: 65ch; }
+  a { text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+<h1>Shared Floating Menu Updates</h1>
+<p>With Force Mobile View 2.1.7 or later installed, Tampermonkey opens all five update tabs. Confirm Update in each tab.</p>
+<p><button id="open-all" type="button">Open all 5 update tabs</button></p>
+<p id="status" role="status" aria-live="polite">Without an updated Force Mobile View script, the page falls back to window.open, which browsers may block. If tabs do not open, use the links below.</p>
+<ol id="links"></ol>
+<script>
+(() => {
+  'use strict';
+  const scripts = [
+    ['Translate Preformatted Text', 'TranslatePreformattedText.user.js'],
+    ['All Go Internet Archive', 'AllGoInternetArchive.user.js'],
+    ['Internet Archive', 'InternetArchive.user.js'],
+    ['Force Mobile View', 'ForceMobileView.user.js'],
+    ['Force Dark Mode', 'ForceDarkMode.user.js']
+  ];
+  const requestedRef = new URLSearchParams(location.search).get('ref');
+  const ref = requestedRef && /^[a-zA-Z0-9._/-]+$/.test(requestedRef) && !requestedRef.includes('..')
+    ? requestedRef : 'main';
+  const base = 'https://github.com/ChrisTorng/TampermonkeyScripts/raw/refs/heads/'
+    + ref.split('/').map(encodeURIComponent).join('/') + '/src/';
+  const entries = scripts.map(([name, file]) => ({ name, url: base + file }));
+  const list = document.getElementById('links');
+  for (const entry of entries) {
+    const item = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = entry.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = entry.name;
+    item.append(link);
+    list.append(item);
+  }
+  document.getElementById('open-all').addEventListener('click', () => {
+    // Calls must be synchronous in the same user gesture; delays trigger popup blockers.
+    for (const entry of entries) window.open(entry.url, '_blank');
+    document.getElementById('status').textContent =
+      'Requested all five update tabs using browser fallback. If blocked, install the updated Force Mobile View script first or select the links below.';
+  });
+})();
+</script>
+</body>
+</html>

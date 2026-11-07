@@ -6,6 +6,8 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ## Shared floating-menu scripts — update together when the menu changes
 
+[Open all five script update tabs](tests/SharedFloatingMenuUpdates/index.html) (each Tampermonkey Update still needs confirmation).
+
 **When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. Independent feature updates (such as Fullscreen Game View or an individual block control) do not require a five-script menu update.
 
 ### [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
@@ -29,7 +31,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Translate code blocks with draggable per-block controls and a shared-menu action; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
+Translate OpenSSH release notes and code blocks with draggable controls; improve inline code, Mastodon, Wikipedia, and Astro navigation translation.
 
 ---
 
