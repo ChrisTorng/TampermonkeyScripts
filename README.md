@@ -35,6 +35,14 @@ Translate formatted text and provide a translucent, draggable 譯↗ to view rea
 
 ---
 
+## Optional diagnostic scripts — install only when investigating a page
+
+### [Page DOM Snapshot Diagnostics](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/PageDomSnapshot.user.js)
+
+Download an on-demand live DOM snapshot and translation diagnostics locally; no uploads.
+
+---
+
 ## Independent scripts — update individually
 
 Update each script below separately as needed.
