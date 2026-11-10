@@ -107,10 +107,10 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         harness.window.innerWidth = 390;
         harness.window.innerHeight = 844;
         let locks = 0, unlocks = 0;
-        harness.window.screen.orientation = {
+        harness.window.screen = { orientation: {
             lock(value) { assert.equal(value, 'landscape'); locks++; return Promise.resolve(); },
             unlock() { unlocks++; }
-        };
+        } };
         const wrapper = harness.document.createElement('div');
         const frame = harness.document.createElement('iframe');
         frame.src = 'https://www.youtube.com/embed/nCg3aXn5F3M';
@@ -153,9 +153,9 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         harness.window.innerWidth = 390;
         harness.window.innerHeight = 844;
         let locks = 0;
-        harness.window.screen.orientation = {
+        harness.window.screen = { orientation: {
             lock() { locks++; return Promise.reject(new Error('NotSupportedError')); }
-        };
+        } };
         const wrapper = harness.document.createElement('div');
         const frame = harness.document.createElement('iframe');
         frame.src = 'https://www.youtube.com/embed/nCg3aXn5F3M';
