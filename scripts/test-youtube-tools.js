@@ -501,6 +501,7 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         assert.equal(root.classList.contains('tm-yt-embedded-landscape-rotated'), false);
         harness.document.fullscreenElement = null;
         harness.dispatchDocumentEvent('fullscreenchange');
+        await new Promise(resolve => setImmediate(resolve));
         assert.equal(unlocks, 1);
     });
 
