@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-28_1.0.6
-// @description  Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
+// @version      2026-11-10_1.1.0
+// @description  Expand embedded games and videos; rotate landscape YouTube fullscreen on Android while preserving page position.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -181,6 +181,7 @@
         button.addEventListener('pointercancel', finish);
         button.addEventListener('lostpointercapture', finish);
         // Register before the action handler so a drag never activates translation or fullscreen.
+        requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             if (!suppressClick) return;
             suppressClick = false;
@@ -277,6 +278,35 @@ html.tm-fullscreen-game-view-active body {
     z-index: 2147483646 !important;
 }
 
+/* Rotate a landscape video's fullscreen surface only when the browser refuses
+   orientation locking and the physical viewport remains portrait. */
+.tm-fullscreen-game-view-landscape-rotated:fullscreen,
+.tm-fullscreen-game-view-target.tm-fullscreen-game-view-fallback.tm-fullscreen-game-view-landscape-rotated {
+    position: fixed !important;
+    inset: auto !important;
+    top: 0 !important;
+    left: 100dvw !important;
+    width: 100dvh !important;
+    height: 100dvw !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform-origin: top left !important;
+    transform: rotate(90deg) !important;
+    overflow: hidden !important;
+}
+.tm-fullscreen-game-view-landscape-rotated iframe,
+.tm-fullscreen-game-view-landscape-rotated video {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+}
+
 /* ARC Prize tasks use a content-box handheld shell that can overflow narrow viewports. */
 body:has(#task-detail-root) {
     overflow-x: hidden !important;
@@ -338,6 +368,119 @@ body:has(#task-detail-root) {
     function isFullscreen(target) {
         return document.fullscreenElement === target || target.classList.contains(FALLBACK_CLASS);
     }
+
+    // A cross-origin YouTube iframe reports intrinsic video dimensions from its
+    // own userscript. Do not assume a 16:9 iframe contains a landscape video.
+    const youtubeDimensions = new WeakMap();
+    const rotatedClass = 'tm-fullscreen-game-view-landscape-rotated';
+    const isAndroid = /Android/i.test(window.navigator?.userAgent || '');
+    let orientationSession = null;
+
+    function youtubeFrame(frame) {
+        if (!frame?.src) return false;
+        try {
+            const host = new URL(frame.src, window.location.href).hostname;
+            return /^(?:www\.)?(?:youtube\.com|youtube-nocookie\.com)$/.test(host);
+        } catch (_error) {
+            return false;
+        }
+    }
+
+    function requestFrameDimensions(root) {
+        const frames = root?.matches?.('iframe') ? [root] : Array.from(root?.querySelectorAll?.('iframe') || []);
+        for (const frame of frames) {
+            if (!youtubeFrame(frame)) continue;
+            try {
+                frame.contentWindow?.postMessage?.({ tmYoutubeOrientationRequest: 1 }, new URL(frame.src, window.location.href).origin);
+            } catch (_error) { /* The frame can navigate or disappear. */ }
+        }
+    }
+
+    function videoShape(root) {
+        if (!root) return null;
+        const videos = root.matches?.('video') ? [root] : Array.from(root.querySelectorAll?.('video') || []);
+        for (const video of videos) {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                return video.videoWidth > video.videoHeight ? 'landscape' : 'portrait';
+            }
+        }
+        const frames = root.matches?.('iframe') ? [root] : Array.from(root.querySelectorAll?.('iframe') || []);
+        for (const frame of frames) {
+            if (!youtubeFrame(frame)) continue;
+            const metadata = youtubeDimensions.get(frame);
+            if (metadata?.src === frame.src && metadata.width > 0 && metadata.height > 0) {
+                return metadata.width > metadata.height ? 'landscape' : 'portrait';
+            }
+        }
+        return null;
+    }
+
+    function releaseOrientation() {
+        const session = orientationSession;
+        orientationSession = null;
+        if (!session) return;
+        session.target.classList.remove(rotatedClass);
+        if (session.locked) {
+            try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Lock already released. */ }
+        }
+    }
+
+    function syncMediaOrientation() {
+        const nativeTarget = document.fullscreenElement;
+        const fallbackTarget = savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
+            ? savedPageState.target : null;
+        const target = nativeTarget || fallbackTarget;
+        if (!isAndroid || !target || videoShape(target) !== 'landscape') {
+            releaseOrientation();
+            return;
+        }
+        if (!orientationSession || orientationSession.target !== target) {
+            releaseOrientation();
+            orientationSession = { target, requested: false, locked: false };
+            requestFrameDimensions(target);
+        }
+        const session = orientationSession;
+        // CSS is a visual backup. The actual screen is rotated by the browser API
+        // when permission is granted; resizing then removes this CSS rotation.
+        target.classList.toggle(rotatedClass, window.innerHeight > window.innerWidth);
+        if (!nativeTarget || session.requested) return;
+        const orientation = window.screen?.orientation;
+        if (typeof orientation?.lock !== 'function') return;
+        session.requested = true;
+        try {
+            Promise.resolve(orientation.lock('landscape')).then(() => {
+                if (orientationSession !== session) {
+                    if (!orientationSession?.locked) orientation.unlock?.();
+                    return;
+                }
+                session.locked = true;
+                syncMediaOrientation();
+            }).catch(() => {
+                // Unsupported/rejected lock: CSS rotation remains available.
+                if (orientationSession === session) syncMediaOrientation();
+            });
+        } catch (_error) { /* CSS fallback remains active. */ }
+    }
+
+    window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (!data || data.tmYoutubeVideoOrientation !== 1 ||
+            !Number.isFinite(data.width) || !Number.isFinite(data.height) ||
+            data.width <= 0 || data.height <= 0 ||
+            !/^https:\/\/(?:www\.)?(?:youtube\.com|youtube-nocookie\.com)$/.test(event.origin || '')) return;
+        const frames = Array.from(document.querySelectorAll('iframe'));
+        const frame = frames.find((candidate) => youtubeFrame(candidate) &&
+            candidate.contentWindow === event.source &&
+            new URL(candidate.src, window.location.href).origin === event.origin);
+        if (!frame) return;
+        youtubeDimensions.set(frame, { src: frame.src, width: data.width, height: data.height });
+        syncMediaOrientation();
+    });
+    document.addEventListener('loadedmetadata', syncMediaOrientation, true);
+    document.addEventListener('fullscreenchange', syncMediaOrientation);
+    window.addEventListener('resize', syncMediaOrientation);
+    window.addEventListener('orientationchange', syncMediaOrientation);
+    window.screen?.orientation?.addEventListener?.('change', syncMediaOrientation);
 
     function updateButton(button, target) {
         const active = isFullscreen(target);
@@ -406,6 +549,7 @@ body:has(#task-detail-root) {
         }
 
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
+        syncMediaOrientation();
         updateButton(button, target);
         refreshTransientControls();
     }
@@ -437,6 +581,7 @@ body:has(#task-detail-root) {
         const exitFallback = () => {
             if (!target.classList.contains(FALLBACK_CLASS)) return;
             target.classList.remove(FALLBACK_CLASS);
+            syncMediaOrientation();
             document.documentElement.classList.remove('tm-fullscreen-game-view-active');
             updateButton(button, target);
             restorePageState(target);
