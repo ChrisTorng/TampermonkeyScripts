@@ -475,6 +475,13 @@ describe('YouTube Tools in-flow playback toolbar', () => {
             data: { tmYoutubeOrientationRequest: 1 }
         });
         assert.equal(messages.length, 3, 'Late iframe requests must get the current dimensions.');
+        harness.document.fullscreenElement = video.parentElement;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(messages[3].data.tmYoutubeNativeFullscreen, 1);
+        assert.equal(messages[3].data.active, true);
+        harness.document.fullscreenElement = null;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(messages[4].data.active, false);
     });
 
     test('native fullscreen in a YouTube embed locks and unlocks landscape', async () => {
