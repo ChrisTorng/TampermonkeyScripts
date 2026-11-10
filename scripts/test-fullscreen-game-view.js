@@ -100,6 +100,90 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(button.textContent, '⛶');
     });
 
+
+    test('embedded YouTube orientation reaches the generic fullscreen entry and restores on exit', async () => {
+        const harness = createHarness({ url: 'https://www.anthropic.com/claude-fable-and-mythos-5-2' });
+        harness.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/150.0' };
+        harness.window.innerWidth = 390;
+        harness.window.innerHeight = 844;
+        let locks = 0, unlocks = 0;
+        harness.window.screen.orientation = {
+            lock(value) { assert.equal(value, 'landscape'); locks++; return Promise.resolve(); },
+            unlock() { unlocks++; }
+        };
+        const wrapper = harness.document.createElement('div');
+        const frame = harness.document.createElement('iframe');
+        frame.src = 'https://www.youtube.com/embed/nCg3aXn5F3M';
+        const sent = [];
+        frame.contentWindow = {postMessage(data, origin) { sent.push({data, origin}); }};
+        wrapper.appendChild(frame);
+        harness.document.body.appendChild(wrapper);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        assert(sent.some(x => x.data.tmYoutubeOrientationRequest === 1),
+            'Request true video dimensions from embedded player rather than guessing the iframe shape.');
+        const button = harness.document.getElementById('tm-fullscreen-game-view-button');
+        assert(button);
+        wrapper.requestFullscreen = () => {
+            harness.document.fullscreenElement = wrapper;
+            harness.dispatchDocumentEvent('fullscreenchange');
+            return Promise.resolve();
+        };
+        harness.window.dispatchEvent({
+            type: 'message', origin: 'https://www.youtube.com', source: frame.contentWindow,
+            data: {tmYoutubeVideoOrientation: 1, width: 1920, height: 1080}
+        });
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(locks, 1);
+        assert(wrapper.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        harness.window.innerWidth = 844;
+        harness.window.innerHeight = 390;
+        harness.dispatchWindowEvent('resize');
+        assert(!wrapper.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        harness.document.fullscreenElement = null;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(unlocks, 1);
+    });
+
+    test('native iframe fullscreen uses video dimensions and rejects spoofed/portrait metadata', () => {
+        const harness = createHarness({ url: 'https://www.anthropic.com/claude-fable-and-mythos-5-2' });
+        harness.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/150.0' };
+        harness.window.innerWidth = 390;
+        harness.window.innerHeight = 844;
+        let locks = 0;
+        harness.window.screen.orientation = {
+            lock() { locks++; return Promise.reject(new Error('NotSupportedError')); }
+        };
+        const wrapper = harness.document.createElement('div');
+        const frame = harness.document.createElement('iframe');
+        frame.src = 'https://www.youtube.com/embed/nCg3aXn5F3M';
+        frame.contentWindow = { postMessage() {} };
+        wrapper.appendChild(frame);
+        harness.document.body.appendChild(wrapper);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        harness.document.fullscreenElement = frame;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(locks, 0, 'Unknown video dimensions cannot be assumed landscape.');
+        const dispatch = (origin, source, width, height) => harness.window.dispatchEvent({
+            type: 'message', origin, source,
+            data: {tmYoutubeVideoOrientation: 1, width, height}
+        });
+        dispatch('https://malicious.example', frame.contentWindow, 1920, 1080);
+        dispatch('https://www.youtube.com', {}, 1920, 1080);
+        assert.equal(locks, 0);
+        dispatch('https://www.youtube.com', frame.contentWindow, 1080, 1920);
+        assert.equal(locks, 0);
+        dispatch('https://www.youtube.com', frame.contentWindow, 1920, 1080);
+        assert.equal(locks, 1);
+        assert(frame.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        harness.document.fullscreenElement = null;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert(!frame.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+    });
+
     test('uses the largest generic game surface outside ARC Prize', () => {
         const harness = createHarness({ url: 'https://example.com/game' });
         const wrapper = harness.document.createElement('main');
