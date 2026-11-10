@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.2.0
+// @version      2026-11-10_1.2.1
 // @description  Expand embedded games and videos; rotate landscape YouTube fullscreen on Android while preserving page position.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -689,7 +689,8 @@ body:has(#task-detail-root) {
         });
     }
     function isMediaNode(node) {
-        return Boolean(node?.matches?.(GENERIC_MEDIA_SELECTOR) ||
+        return Boolean(['iframe', 'video', 'canvas', '[role="application"]'].some(
+            (selector) => node?.matches?.(selector)) ||
             node?.querySelector?.(GENERIC_MEDIA_SELECTOR));
     }
     new MutationObserver((changes) => {
