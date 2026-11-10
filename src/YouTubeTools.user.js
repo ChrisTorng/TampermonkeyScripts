@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.8.2
+// @version      2026-11-10_1.8.3
 // @description  Control YouTube playback speed and Android Edge fullscreen; rotate landscape embedded videos automatically.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -1408,6 +1408,16 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
             } catch (_error) { /* The embedding page may have closed. */ }
         }
 
+        function reportNativeFullscreen() {
+            if (!window.parent || window.parent === window) return;
+            try {
+                window.parent.postMessage({
+                    tmYoutubeNativeFullscreen: 1,
+                    active: Boolean(document.fullscreenElement)
+                }, '*');
+            } catch (_error) { /* The embedding page may have closed. */ }
+        }
+
         function releaseNativeOrientation() {
             const session = nativeSession;
             nativeSession = null;
@@ -1494,7 +1504,10 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
             observeVideo();
             reportVideoSize();
         });
-        document.addEventListener('fullscreenchange', syncNativeOrientation);
+        document.addEventListener('fullscreenchange', () => {
+            reportNativeFullscreen();
+            syncNativeOrientation();
+        });
         window.addEventListener('resize', syncNativeOrientation);
         window.addEventListener('orientationchange', syncNativeOrientation);
         window.screen?.orientation?.addEventListener?.('change', syncNativeOrientation);
