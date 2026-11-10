@@ -193,6 +193,102 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert(!frame.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
     });
 
+    test('each lazy YouTube embed gets a fullscreen button after poster-to-iframe replacement', async () => {
+        const harness = createHarness({
+            url: 'https://www.anthropic.com/claude-fable-and-mythos-5-2'
+        });
+        harness.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/150.0' };
+        harness.window.innerWidth = 390;
+        harness.window.innerHeight = 844;
+        const slots = [];
+        for (let i = 0; i < 3; i++) {
+            const slot = harness.document.createElement('div');
+            slot.className = 'video-preview';
+            const poster = harness.document.createElement('img');
+            poster.src = 'https://example.com/poster-' + i + '.gif';
+            slot.appendChild(poster);
+            harness.document.body.appendChild(slot);
+            slots.push(slot);
+        }
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 0,
+            'Image/GIF preview alone does not create a YouTube fullscreen control.');
+
+        const activate = (index) => {
+            const frame = harness.document.createElement('iframe');
+            frame.src = 'https://www.youtube.com/embed/dynamic-video-' + index;
+            frame.contentWindow = { postMessage() {} };
+            slots[index].appendChild(frame);
+            harness.triggerMutation([frame]);
+            harness.flushAnimationFrames();
+            return frame;
+        };
+        const first = activate(0);
+        const firstButton = slots[0].querySelector('.tm-fullscreen-game-view-button');
+        assert(firstButton);
+        assert.equal(firstButton.id, 'tm-fullscreen-game-view-button');
+        const second = activate(1);
+        assert(slots[1].querySelector('.tm-fullscreen-game-view-button'));
+        activate(2);
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 3);
+        assert.equal(slots[0].querySelector('.tm-fullscreen-game-view-button'), firstButton,
+            'A later embed must not replace the first already working control.');
+
+        const secondButton = slots[1].querySelector('.tm-fullscreen-game-view-button');
+        assert.notEqual(secondButton, firstButton);
+        harness.window.dispatchEvent({
+            type: 'message', origin: 'https://www.youtube.com', source: second.contentWindow,
+            data: { tmYoutubeVideoOrientation: 1, width: 1920, height: 1080 }
+        });
+        secondButton.click();
+        await Promise.resolve();
+        assert(slots[1].classList.contains('tm-fullscreen-game-view-fallback'),
+            'The second button enters its own player, not the first.');
+        assert(slots[1].classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert(!slots[0].classList.contains('tm-fullscreen-game-view-fallback'));
+        harness.document.dispatchEvent({type: 'keydown', key: 'Escape'});
+        assert(!slots[1].classList.contains('tm-fullscreen-game-view-fallback'));
+        assert.equal(slots[0].querySelector('.tm-fullscreen-game-view-button'), firstButton);
+        assert.equal(first.parentElement, slots[0]);
+    });
+
+    test('changing a lazy iframe src or replacing its child does not duplicate the button', () => {
+        const harness = createHarness({url: 'https://www.anthropic.com/claude-fable-and-mythos-5-2'});
+        const top = harness.document.createElement('section');
+        const initial = harness.document.createElement('iframe');
+        initial.src = 'https://www.youtube.com/embed/first';
+        top.appendChild(initial);
+        const lower = harness.document.createElement('section');
+        const lazy = harness.document.createElement('iframe');
+        lazy.src = 'about:blank';
+        lower.appendChild(lazy);
+        harness.document.body.append(top, lower);
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        assert.equal(lower.querySelector('.tm-fullscreen-game-view-button'), null);
+
+        lazy.src = 'https://www.youtube-nocookie.com/embed/after-click';
+        harness.triggerMutation([], {type: 'attributes', target: lazy, attributeName: 'src'});
+        harness.flushAnimationFrames();
+        const button = lower.querySelector('.tm-fullscreen-game-view-button');
+        assert(button);
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
+
+        const replacement = harness.document.createElement('iframe');
+        replacement.src = 'https://www.youtube.com/embed/new-player';
+        replacement.contentWindow = {postMessage() {}};
+        lazy.remove();
+        lower.appendChild(replacement);
+        harness.triggerMutation([replacement], {removedNodes: [lazy]});
+        harness.flushAnimationFrames();
+        assert.equal(lower.querySelector('.tm-fullscreen-game-view-button'), button);
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
+        harness.triggerMutation([], {type: 'attributes', target: lower, attributeName: 'class'});
+        harness.flushAnimationFrames();
+        assert.equal(lower.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+    });
+
     test('uses the largest generic game surface outside ARC Prize', () => {
         const harness = createHarness({ url: 'https://example.com/game' });
         const wrapper = harness.document.createElement('main');
