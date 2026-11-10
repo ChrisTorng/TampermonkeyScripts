@@ -144,6 +144,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert(!wrapper.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         harness.document.fullscreenElement = null;
         harness.dispatchDocumentEvent('fullscreenchange');
+        await new Promise(resolve => setImmediate(resolve));
         assert.equal(unlocks, 1);
     });
 
