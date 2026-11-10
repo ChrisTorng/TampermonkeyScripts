@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.1.0
+// @version      2026-11-10_1.1.1
 // @description  Expand embedded games and videos; rotate landscape YouTube fullscreen on Android while preserving page position.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -372,6 +372,7 @@ body:has(#task-detail-root) {
     // A cross-origin YouTube iframe reports intrinsic video dimensions from its
     // own userscript. Do not assume a 16:9 iframe contains a landscape video.
     const youtubeDimensions = new WeakMap();
+    const youtubeNativeFullscreen = new WeakMap();
     const rotatedClass = 'tm-fullscreen-game-view-landscape-rotated';
     const isAndroid = /Android/i.test(window.navigator?.userAgent || '');
     let orientationSession = null;
@@ -415,6 +416,11 @@ body:has(#task-detail-root) {
         return null;
     }
 
+    function childOwnsFullscreen(root) {
+        const frames = root?.matches?.('iframe') ? [root] : Array.from(root?.querySelectorAll?.('iframe') || []);
+        return frames.some(frame => youtubeFrame(frame) && youtubeNativeFullscreen.get(frame) === true);
+    }
+
     function releaseOrientation() {
         const session = orientationSession;
         orientationSession = null;
@@ -430,7 +436,10 @@ body:has(#task-detail-root) {
         const fallbackTarget = savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
             ? savedPageState.target : null;
         const target = nativeTarget || fallbackTarget;
-        if (!isAndroid || !target || videoShape(target) !== 'landscape') {
+        // The child YouTube document already controls its own native player.
+        // Rotating both the iframe and its fullscreen player would rotate twice.
+        if (!isAndroid || !target || (nativeTarget && childOwnsFullscreen(target)) ||
+            videoShape(target) !== 'landscape') {
             releaseOrientation();
             return;
         }
@@ -464,16 +473,21 @@ body:has(#task-detail-root) {
 
     window.addEventListener('message', (event) => {
         const data = event.data;
-        if (!data || data.tmYoutubeVideoOrientation !== 1 ||
-            !Number.isFinite(data.width) || !Number.isFinite(data.height) ||
-            data.width <= 0 || data.height <= 0 ||
+        if (!data || (data.tmYoutubeVideoOrientation !== 1 && data.tmYoutubeNativeFullscreen !== 1) ||
             !/^https:\/\/(?:www\.)?(?:youtube\.com|youtube-nocookie\.com)$/.test(event.origin || '')) return;
         const frames = Array.from(document.querySelectorAll('iframe'));
         const frame = frames.find((candidate) => youtubeFrame(candidate) &&
             candidate.contentWindow === event.source &&
             new URL(candidate.src, window.location.href).origin === event.origin);
         if (!frame) return;
-        youtubeDimensions.set(frame, { src: frame.src, width: data.width, height: data.height });
+        if (data.tmYoutubeNativeFullscreen === 1) {
+            if (typeof data.active !== 'boolean') return;
+            youtubeNativeFullscreen.set(frame, data.active);
+        } else {
+            if (!Number.isFinite(data.width) || !Number.isFinite(data.height) ||
+                data.width <= 0 || data.height <= 0) return;
+            youtubeDimensions.set(frame, { src: frame.src, width: data.width, height: data.height });
+        }
         syncMediaOrientation();
     });
     document.addEventListener('loadedmetadata', syncMediaOrientation, true);
