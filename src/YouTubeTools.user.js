@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.8.1
+// @version      2026-11-10_1.8.2
 // @description  Control YouTube playback speed and Android Edge fullscreen; rotate landscape embedded videos automatically.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -1422,7 +1422,7 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
             const root = document.fullscreenElement;
             const video = observedVideo || document.querySelector('video');
             if (!android || !root || !isLandscapeVideo(video) ||
-                !(root === video || root.contains?.(video))) {
+                !(root === video || root.querySelector?.('video') === video || root.contains?.(video))) {
                 releaseNativeOrientation();
                 return;
             }
