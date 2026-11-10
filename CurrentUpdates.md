@@ -4,7 +4,7 @@ Updated: 2026-11-10
 
 ## Embedded YouTube landscape fullscreen — 2026-11-10
 
-- [Install YouTubeTools.user.js — 2026-11-10_1.8.1](src/YouTubeTools.user.js) — embedded YouTube reports actual video dimensions and handles native fullscreen orientation.
+- [Install YouTubeTools.user.js — 2026-11-10_1.8.2](src/YouTubeTools.user.js) — embedded YouTube reports actual video dimensions and handles native fullscreen orientation.
 - [Install FullscreenGameView.user.js — 2026-11-10_1.1.0](src/FullscreenGameView.user.js) — generic fullscreen and native iframe fullscreen request landscape on Android; CSS rotates when locking is denied. Update both scripts, then reload the test page.
 
 **Test:** [Anthropic Fable/Mythos](https://www.anthropic.com/claude-fable-and-mythos-5-2) — open a landscape embedded YouTube video and check both fullscreen controls; portrait videos must stay upright. Android Edge confirmation still required.
