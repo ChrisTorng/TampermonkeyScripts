@@ -176,7 +176,15 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(locks, 0);
         dispatch('https://www.youtube.com', frame.contentWindow, 1080, 1920);
         assert.equal(locks, 0);
+        harness.window.dispatchEvent({type: 'message', origin: 'https://www.youtube.com',
+            source: frame.contentWindow,
+            data: {tmYoutubeNativeFullscreen: 1, active: true}});
         dispatch('https://www.youtube.com', frame.contentWindow, 1920, 1080);
+        assert.equal(locks, 0, 'Child-owned fullscreen must not be rotated or locked again by the parent.');
+        assert(!frame.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        harness.window.dispatchEvent({type: 'message', origin: 'https://www.youtube.com',
+            source: frame.contentWindow,
+            data: {tmYoutubeNativeFullscreen: 1, active: false}});
         assert.equal(locks, 1);
         assert(frame.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         harness.document.fullscreenElement = null;
