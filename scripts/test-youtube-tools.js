@@ -66,6 +66,7 @@ function executeYouTubeTools(url, options = {}) {
     if (options.history) {
         harness.window.history = options.history;
     }
+    if (options.parentWindow) harness.window.parent = options.parentWindow;
     if (options.nativeFullscreen) {
         const createElement = harness.document.createElement.bind(harness.document);
         harness.document.createElement = (tagName) => {
@@ -450,6 +451,80 @@ describe('YouTube Tools in-flow playback toolbar', () => {
         await Promise.resolve();
         assert.equal(harness.document.getElementById(rootId)
             .classList.contains('tm-yt-alternative-fullscreen-rotated'), true);
+    });
+
+
+    test('embedded landscape video relays intrinsic dimensions to the article', () => {
+        const messages = [];
+        const parentWindow = { postMessage(data, origin) { messages.push({data, origin}); } };
+        const { harness, video } = executeYouTubeTools(
+            'https://www.youtube.com/embed/nCg3aXn5F3M',
+            { userAgent: androidEdge, parentWindow, videoWidth: 1920, videoHeight: 1080 }
+        );
+        assert.equal(harness.document.getElementById(barId), null, 'Embeds should not get a watch-page toolbar.');
+        assert.equal(messages.length, 1);
+        assert.equal(messages[0].origin, '*');
+        assert.equal(messages[0].data.tmYoutubeVideoOrientation, 1);
+        assert.deepEqual([messages[0].data.width, messages[0].data.height], [1920, 1080]);
+        video.videoWidth = 1080;
+        video.videoHeight = 1920;
+        video.dispatchEvent({type: 'resize'});
+        assert.deepEqual([messages[1].data.width, messages[1].data.height], [1080, 1920]);
+        harness.window.dispatchEvent({
+            type: 'message', source: parentWindow,
+            data: { tmYoutubeOrientationRequest: 1 }
+        });
+        assert.equal(messages.length, 3, 'Late iframe requests must get the current dimensions.');
+    });
+
+    test('native fullscreen in a YouTube embed locks and unlocks landscape', async () => {
+        let locks = 0, unlocks = 0;
+        const orientation = {
+            lock(direction) { assert.equal(direction, 'landscape'); locks++; return Promise.resolve(); },
+            unlock() { unlocks++; }
+        };
+        const { harness, video } = executeYouTubeTools(
+            'https://www.youtube.com/embed/nCg3aXn5F3M',
+            { userAgent: androidEdge, viewportWidth: 390, viewportHeight: 844,
+                videoWidth: 1920, videoHeight: 1080, orientation }
+        );
+        const root = video.parentElement;
+        harness.document.fullscreenElement = root;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(root.classList.contains('tm-yt-embedded-landscape-rotated'), true);
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(locks, 1);
+        harness.window.innerWidth = 844;
+        harness.window.innerHeight = 390;
+        harness.dispatchWindowEvent('resize');
+        assert.equal(root.classList.contains('tm-yt-embedded-landscape-rotated'), false);
+        harness.document.fullscreenElement = null;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(unlocks, 1);
+    });
+
+    test('portrait and unknown embedded videos never force landscape', () => {
+        let locks = 0;
+        const orientation = { lock() { locks++; return Promise.resolve(); } };
+        const { harness, video } = executeYouTubeTools(
+            'https://www.youtube-nocookie.com/embed/nCg3aXn5F3M',
+            { userAgent: androidEdge, viewportWidth: 390, viewportHeight: 844,
+                videoWidth: 1080, videoHeight: 1920, orientation }
+        );
+        const root = video.parentElement;
+        harness.document.fullscreenElement = root;
+        harness.dispatchDocumentEvent('fullscreenchange');
+        assert.equal(locks, 0);
+        assert.equal(root.classList.contains('tm-yt-embedded-landscape-rotated'), false);
+        video.videoWidth = 0;
+        video.videoHeight = 0;
+        video.dispatchEvent({type: 'loadedmetadata'});
+        assert.equal(locks, 0);
+        video.videoWidth = 1920;
+        video.videoHeight = 1080;
+        video.dispatchEvent({type: 'loadedmetadata'});
+        assert.equal(locks, 1, 'Metadata that arrives after fullscreen must trigger the lock.');
     });
 
     test('browser Back, SPA navigation and generic game control are handled', () => {
