@@ -118,7 +118,7 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Show responsive YouTube playback-speed controls with highlighted active presets and Android Edge alternative fullscreen.
+Control YouTube playback speed and Android Edge fullscreen; rotate landscape embedded videos automatically.
 
 ### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
@@ -126,7 +126,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
+Expand embedded games and videos; rotate landscape YouTube fullscreen on Android while preserving page position.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
