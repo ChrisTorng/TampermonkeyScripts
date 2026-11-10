@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-28_1.0.6
-// @description  Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
+// @version      2026-11-10_1.2.2
+// @description  Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -198,6 +198,7 @@
     // END SHARED TRANSIENT CONTROL
 
     const BUTTON_ID = 'tm-fullscreen-game-view-button';
+    const BUTTON_CLASS = 'tm-fullscreen-game-view-button';
     const TARGET_CLASS = 'tm-fullscreen-game-view-target';
     const FALLBACK_CLASS = 'tm-fullscreen-game-view-fallback';
     const STYLE_ID = 'tm-fullscreen-game-view-style';
@@ -215,7 +216,7 @@ html.tm-fullscreen-game-view-active body {
     position: relative !important;
 }
 
-#${BUTTON_ID} {
+.${BUTTON_CLASS} {
     align-items: center !important;
     background: rgba(0, 0, 0, .55) !important;
     border: 0 !important;
@@ -239,19 +240,19 @@ html.tm-fullscreen-game-view-active body {
     text-decoration: none !important;
 }
 
-#${BUTTON_ID}[hidden],
-#${BUTTON_ID}[aria-pressed="true"] {
+.${BUTTON_CLASS}[hidden],
+.${BUTTON_CLASS}[aria-pressed="true"] {
     display: none !important;
 }
 
-#${BUTTON_ID}:hover {
+.${BUTTON_CLASS}:hover {
     background: rgba(0, 0, 0, .75) !important;
 }
-#${BUTTON_ID}:hover, #${BUTTON_ID}:focus, #${BUTTON_ID}:active {
+.${BUTTON_CLASS}:hover, .${BUTTON_CLASS}:focus, .${BUTTON_CLASS}:active {
     text-decoration: none !important;
 }
 
-#${BUTTON_ID}:focus-visible {
+.${BUTTON_CLASS}:focus-visible {
     outline: 3px solid #4da3ff !important;
     outline-offset: 2px !important;
 }
@@ -275,6 +276,35 @@ html.tm-fullscreen-game-view-active body {
     inset: 0 !important;
     position: fixed !important;
     z-index: 2147483646 !important;
+}
+
+/* Rotate a landscape video's fullscreen surface only when the browser refuses
+   orientation locking and the physical viewport remains portrait. */
+.tm-fullscreen-game-view-landscape-rotated:fullscreen,
+.tm-fullscreen-game-view-target.tm-fullscreen-game-view-fallback.tm-fullscreen-game-view-landscape-rotated {
+    position: fixed !important;
+    inset: auto !important;
+    top: 0 !important;
+    left: 100dvw !important;
+    width: 100dvh !important;
+    height: 100dvw !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transform-origin: top left !important;
+    transform: rotate(90deg) !important;
+    overflow: hidden !important;
+}
+.tm-fullscreen-game-view-landscape-rotated iframe,
+.tm-fullscreen-game-view-landscape-rotated video {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
 }
 
 /* ARC Prize tasks use a content-box handheld shell that can overflow narrow viewports. */
@@ -338,6 +368,133 @@ body:has(#task-detail-root) {
     function isFullscreen(target) {
         return document.fullscreenElement === target || target.classList.contains(FALLBACK_CLASS);
     }
+
+    // A cross-origin YouTube iframe reports intrinsic video dimensions from its
+    // own userscript. Do not assume a 16:9 iframe contains a landscape video.
+    const youtubeDimensions = new WeakMap();
+    const youtubeNativeFullscreen = new WeakMap();
+    const rotatedClass = 'tm-fullscreen-game-view-landscape-rotated';
+    const isAndroid = /Android/i.test(window.navigator?.userAgent || '');
+    let orientationSession = null;
+
+    function youtubeFrame(frame) {
+        if (!frame?.src) return false;
+        try {
+            const host = new URL(frame.src, window.location.href).hostname;
+            return /^(?:www\.)?(?:youtube\.com|youtube-nocookie\.com)$/.test(host);
+        } catch (_error) {
+            return false;
+        }
+    }
+
+    function requestFrameDimensions(root) {
+        const frames = root?.matches?.('iframe') ? [root] : Array.from(root?.querySelectorAll?.('iframe') || []);
+        for (const frame of frames) {
+            if (!youtubeFrame(frame)) continue;
+            try {
+                frame.contentWindow?.postMessage?.({ tmYoutubeOrientationRequest: 1 }, new URL(frame.src, window.location.href).origin);
+            } catch (_error) { /* The frame can navigate or disappear. */ }
+        }
+    }
+
+    function videoShape(root) {
+        if (!root) return null;
+        const videos = root.matches?.('video') ? [root] : Array.from(root.querySelectorAll?.('video') || []);
+        for (const video of videos) {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                return video.videoWidth > video.videoHeight ? 'landscape' : 'portrait';
+            }
+        }
+        const frames = root.matches?.('iframe') ? [root] : Array.from(root.querySelectorAll?.('iframe') || []);
+        for (const frame of frames) {
+            if (!youtubeFrame(frame)) continue;
+            const metadata = youtubeDimensions.get(frame);
+            if (metadata?.src === frame.src && metadata.width > 0 && metadata.height > 0) {
+                return metadata.width > metadata.height ? 'landscape' : 'portrait';
+            }
+        }
+        return null;
+    }
+
+    function childOwnsFullscreen(root) {
+        const frames = root?.matches?.('iframe') ? [root] : Array.from(root?.querySelectorAll?.('iframe') || []);
+        return frames.some(frame => youtubeFrame(frame) && youtubeNativeFullscreen.get(frame) === true);
+    }
+
+    function releaseOrientation() {
+        const session = orientationSession;
+        orientationSession = null;
+        if (!session) return;
+        session.target.classList.remove(rotatedClass);
+        if (session.locked) {
+            try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Lock already released. */ }
+        }
+    }
+
+    function syncMediaOrientation() {
+        const nativeTarget = document.fullscreenElement;
+        const fallbackTarget = savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
+            ? savedPageState.target : null;
+        const target = nativeTarget || fallbackTarget;
+        // The child YouTube document already controls its own native player.
+        // Rotating both the iframe and its fullscreen player would rotate twice.
+        if (!isAndroid || !target || (nativeTarget && childOwnsFullscreen(target)) ||
+            videoShape(target) !== 'landscape') {
+            releaseOrientation();
+            return;
+        }
+        if (!orientationSession || orientationSession.target !== target) {
+            releaseOrientation();
+            orientationSession = { target, requested: false, locked: false };
+            requestFrameDimensions(target);
+        }
+        const session = orientationSession;
+        // CSS is a visual backup. The actual screen is rotated by the browser API
+        // when permission is granted; resizing then removes this CSS rotation.
+        target.classList.toggle(rotatedClass, window.innerHeight > window.innerWidth);
+        if (!nativeTarget || session.requested) return;
+        const orientation = window.screen?.orientation;
+        if (typeof orientation?.lock !== 'function') return;
+        session.requested = true;
+        try {
+            Promise.resolve(orientation.lock('landscape')).then(() => {
+                if (orientationSession !== session) {
+                    if (!orientationSession?.locked) orientation.unlock?.();
+                    return;
+                }
+                session.locked = true;
+                syncMediaOrientation();
+            }).catch(() => {
+                // Unsupported/rejected lock: CSS rotation remains available.
+                if (orientationSession === session) syncMediaOrientation();
+            });
+        } catch (_error) { /* CSS fallback remains active. */ }
+    }
+
+    window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (!data || (data.tmYoutubeVideoOrientation !== 1 && data.tmYoutubeNativeFullscreen !== 1) ||
+            !/^https:\/\/(?:www\.)?(?:youtube\.com|youtube-nocookie\.com)$/.test(event.origin || '')) return;
+        const frames = Array.from(document.querySelectorAll('iframe'));
+        const frame = frames.find((candidate) => youtubeFrame(candidate) &&
+            candidate.contentWindow === event.source &&
+            new URL(candidate.src, window.location.href).origin === event.origin);
+        if (!frame) return;
+        if (data.tmYoutubeNativeFullscreen === 1) {
+            if (typeof data.active !== 'boolean') return;
+            youtubeNativeFullscreen.set(frame, data.active);
+        } else {
+            if (!Number.isFinite(data.width) || !Number.isFinite(data.height) ||
+                data.width <= 0 || data.height <= 0) return;
+            youtubeDimensions.set(frame, { src: frame.src, width: data.width, height: data.height });
+        }
+        syncMediaOrientation();
+    });
+    document.addEventListener('loadedmetadata', syncMediaOrientation, true);
+    document.addEventListener('fullscreenchange', syncMediaOrientation);
+    window.addEventListener('resize', syncMediaOrientation);
+    window.addEventListener('orientationchange', syncMediaOrientation);
+    window.screen?.orientation?.addEventListener?.('change', syncMediaOrientation);
 
     function updateButton(button, target) {
         const active = isFullscreen(target);
@@ -406,52 +563,100 @@ body:has(#task-detail-root) {
         }
 
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
+        syncMediaOrientation();
         updateButton(button, target);
         refreshTransientControls();
     }
 
-    function mountButton() {
-        if (document.getElementById(BUTTON_ID)) {
-            return;
-        }
+    const mountedButtons = new Map();
+    const watchedFrameSources = new WeakMap();
+    const watchedFrames = new WeakSet();
+    let additionalButtonNumber = 0;
 
-        const target = getTarget();
-        if (!target) {
-            return;
-        }
-
+    function mountButtonOnTarget(target) {
+        if (!target?.isConnected || mountedButtons.has(target)) return;
         target.classList.add(TARGET_CLASS);
         const button = document.createElement('button');
-        button.id = BUTTON_ID;
+        button.id = document.getElementById(BUTTON_ID)
+            ? `${BUTTON_ID}-${++additionalButtonNumber}` : BUTTON_ID;
+        button.className = BUTTON_CLASS;
         button.type = 'button';
         updateButton(button, target);
         target.appendChild(button);
         makeTransientControlDraggable(button, target, { size: 38, height: 32, inset: 4,
             stationaryOnPinchZoom: true, avoidFloatingMenu: true });
+        requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation?.();
             void enterFullscreen(target, button);
         });
+        mountedButtons.set(target, button);
+    }
 
-        const exitFallback = () => {
-            if (!target.classList.contains(FALLBACK_CLASS)) return;
+    function updateFrameRequests() {
+        for (const frame of document.querySelectorAll('iframe')) {
+            if (!youtubeFrame(frame)) continue;
+            if (!watchedFrames.has(frame)) {
+                watchedFrames.add(frame);
+                // A lazy iframe may not have a loaded child when its src is set.
+                frame.addEventListener('load', () => {
+                    if (youtubeFrame(frame)) requestFrameDimensions(frame);
+                });
+            }
+            if (watchedFrameSources.get(frame) !== frame.src) {
+                watchedFrameSources.set(frame, frame.src);
+                requestFrameDimensions(frame);
+            }
+        }
+    }
+
+    function mountButtons() {
+        const targets = new Set();
+        const primary = getTarget();
+        if (primary?.isConnected) targets.add(primary);
+
+        // Every YouTube iframe needs a control of its own, including players
+        // created after clicking GIF/video posters or scrolling into view.
+        for (const frame of document.querySelectorAll('iframe')) {
+            if (!youtubeFrame(frame) || !frame.parentElement) continue;
+            targets.add(frame.parentElement);
+        }
+
+        for (const [target, button] of mountedButtons) {
+            if (targets.has(target) && target.isConnected && button.isConnected) continue;
+            mountedButtons.delete(target);
+            button.remove();
+            target.classList.remove(TARGET_CLASS);
+        }
+        for (const target of targets) mountButtonOnTarget(target);
+        updateFrameRequests();
+        refreshTransientControls();
+    }
+
+    function exitFallback() {
+        for (const [target, button] of mountedButtons) {
+            if (!target.classList.contains(FALLBACK_CLASS)) continue;
             target.classList.remove(FALLBACK_CLASS);
+            syncMediaOrientation();
             document.documentElement.classList.remove('tm-fullscreen-game-view-active');
             updateButton(button, target);
             restorePageState(target);
-        };
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') exitFallback();
-        }, true);
-        window.addEventListener('popstate', exitFallback);
+        }
+    }
 
-        document.addEventListener('fullscreenchange', () => {
-            document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') exitFallback();
+    }, true);
+    window.addEventListener('popstate', exitFallback);
+    document.addEventListener('fullscreenchange', () => {
+        const active = Array.from(mountedButtons).some(([target]) => isFullscreen(target));
+        document.documentElement.classList.toggle('tm-fullscreen-game-view-active', active);
+        for (const [target, button] of mountedButtons) {
             updateButton(button, target);
             if (!isFullscreen(target)) restorePageState(target);
-        });
-    }
+        }
+    });
 
     let watchedFloatingMenu = null;
     let menuObserver = null;
@@ -469,11 +674,41 @@ body:has(#task-detail-root) {
         }
         refreshTransientControls();
     }
-    mountButton();
+    mountButtons();
     watchFloatingMenu();
-    // Menu integration is optional: both userscripts work independently.
-    new MutationObserver(() => {
-        mountButton();
+    // Do not repeatedly write to the document in our own mutation callback.
+    // React to lazy iframe src updates and visibility changes as well as DOM swaps.
+    let mediaRefreshPending = false;
+    function scheduleMediaRefresh() {
+        if (mediaRefreshPending) return;
+        mediaRefreshPending = true;
+        window.requestAnimationFrame(() => {
+            mediaRefreshPending = false;
+            mountButtons();
+            watchFloatingMenu();
+        });
+    }
+    function isMediaNode(node) {
+        return Boolean(['iframe', 'video', 'canvas', '[role="application"]'].some(
+            (selector) => node?.matches?.(selector)) ||
+            node?.querySelector?.(GENERIC_MEDIA_SELECTOR));
+    }
+    new MutationObserver((changes) => {
+        const relevant = changes.some((change) => {
+            if (change.type === 'childList') {
+                return Array.from(change.addedNodes || []).some(isMediaNode) ||
+                    Array.from(change.removedNodes || []).some(isMediaNode);
+            }
+            if (change.type === 'attributes') {
+                if (change.target?.classList?.contains(BUTTON_CLASS)) return false;
+                return isMediaNode(change.target);
+            }
+            return false;
+        });
+        if (relevant) scheduleMediaRefresh();
         watchFloatingMenu();
-    }).observe(document.documentElement, { childList: true, subtree: true });
+    }).observe(document.documentElement, {
+        childList: true, subtree: true, attributes: true,
+        attributeFilter: ['src', 'data-src', 'class', 'style', 'hidden']
+    });
 })();
