@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.1.1
+// @version      2026-11-10_1.1.2
 // @description  Expand embedded games and videos; rotate landscape YouTube fullscreen on Android while preserving page position.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -181,7 +181,6 @@
         button.addEventListener('pointercancel', finish);
         button.addEventListener('lostpointercapture', finish);
         // Register before the action handler so a drag never activates translation or fullscreen.
-        requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             if (!suppressClick) return;
             suppressClick = false;
@@ -586,6 +585,7 @@ body:has(#task-detail-root) {
         target.appendChild(button);
         makeTransientControlDraggable(button, target, { size: 38, height: 32, inset: 4,
             stationaryOnPinchZoom: true, avoidFloatingMenu: true });
+        requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation?.();
