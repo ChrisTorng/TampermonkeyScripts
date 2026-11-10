@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.2.1
-// @description  Expand embedded games and videos; rotate landscape YouTube fullscreen on Android while preserving page position.
+// @version      2026-11-10_1.2.2
+// @description  Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
