@@ -20,6 +20,8 @@ jobs:
         run: node --test scripts/test-math-translation-strategies.js
       - name: Test Hacker News article navigation and read states
         run: node --test scripts/test-auto-open-new-articles.js
+      - name: Test mobile readability and Hacker News comment-only auto-enlargement
+        run: node --test scripts/test-force-mobile-view.js
       - name: Test Archive Today and Wayback redirect ownership
         run: npm run test:archive-redirects
       - name: Test Reddit redirect behavior
