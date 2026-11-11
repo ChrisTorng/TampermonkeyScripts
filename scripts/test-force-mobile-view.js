@@ -109,6 +109,55 @@ describe('ForceMobileView on captured pages', () => {
     });
 
 
+    test('Hacker News listings and profiles are not auto-enlarged even with translated tiny text', () => {
+        const urls = [
+            'https://news.ycombinator.com/',
+            'https://news.ycombinator.com/news',
+            'https://news.ycombinator.com/front?day=2024-11-08',
+            'https://news.ycombinator.com/user?id=mailyk',
+            'https://news.ycombinator.com/item?other=46255285'
+        ];
+        for (const url of urls) {
+            const { harness } = executeForceMobileView(url, {
+                userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+                setupBody(harness) {
+                    for (let i = 0; i < 5; i++) {
+                        const item = harness.document.createElement('p');
+                        item.textContent = 'This translated story list has many lines of tiny text that would otherwise trigger the mobile auto-reader.';
+                        harness.appendToBody(item);
+                    }
+                },
+                computedStyle(element) {
+                    return {
+                        fontSize: element.style.getPropertyValue('font-size') || '9px',
+                        lineHeight: element.style.getPropertyValue('line-height') || '12px'
+                    };
+                }
+            });
+            harness.dispatchDocumentEvent('DOMContentLoaded');
+            harness.runAllTimeouts();
+            harness.dispatchWindowEvent('load');
+            harness.runAllTimeouts();
+            assert.equal(harness.document.getElementById('tm-force-width-style'), null, url);
+            assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null, url);
+            assert.equal(harness.document.querySelector('[data-floating-tool="mobile"]').getAttribute('aria-pressed'), 'false', url);
+        }
+    });
+
+    test('Hacker News front list retains a manual mobile toggle', () => {
+        const { harness } = executeForceMobileView('https://news.ycombinator.com/front?day=2024-11-08', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)'
+        });
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        assert.equal(button.getAttribute('aria-pressed'), 'false');
+        button.click();
+        assert(harness.document.getElementById('tm-force-width-style'));
+        assert.equal(button.getAttribute('aria-pressed'), 'true');
+        button.click();
+        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+    });
+
     test('paulbourke.net pages auto-enable mobile view by default', () => {
         const { harness } = executeForceMobileView('https://paulbourke.net/geometry/');
         harness.dispatchDocumentEvent('DOMContentLoaded');
