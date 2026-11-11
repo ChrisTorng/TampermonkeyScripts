@@ -2,6 +2,12 @@
 
 Updated: 2026-11-12
 
+## Hacker News comment-only automatic enlargement — 2026-11-12
+
+- [Install ForceMobileView.user.js — 2026-11-12_2.1.10](src/ForceMobileView.user.js) — automatically enlarge only HN story comments, not lists or profiles. Other sites and manual ↔ are unchanged. Reload after updating.
+
+**Tests:** [Historical list](https://news.ycombinator.com/front?day=2024-11-08) — no auto-enlargement after translation; [Homepage](https://news.ycombinator.com/) — stays compact; [Comments](https://news.ycombinator.com/item?id=46255285) — still auto-enlarges.
+
 ## Scroll indicator visibility — 2026-11-12_1.4.0
 
 - [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) — show extra markers only when less than half of content is visible; hide mostly off-screen slide-out menus. Reload after updating.
