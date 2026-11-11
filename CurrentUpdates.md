@@ -1,6 +1,12 @@
 # Current updates
 
-Updated: 2026-11-10
+Updated: 2026-11-12
+
+## Scroll indicator visibility — 2026-11-12_1.4.0
+
+- [Install ResponsiveScrollIndicator.user.js](src/ResponsiveScrollIndicator.user.js) — show extra markers only when less than half of content is visible; hide mostly off-screen slide-out menus. Reload after updating.
+
+**Tests:** [CBS News mobile drawer](https://www.cbsnews.com/chicago/news/field-museum-karl-patterson-schmidt-deadly-snakebite-diary/) — closed menu has no stray left marker; open/close it to verify. [IndieWeb POSSE](https://indieweb.org/POSSE) — long page retains its right-edge marker.
 
 ## Embedded YouTube landscape fullscreen — 2026-11-10
 
