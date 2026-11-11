@@ -106,7 +106,7 @@ Stretch Git diffs edge-to-edge and slim line numbers on [ChatGPT Codex tasks](ht
 
 ### [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
 
-Keep persistent solid-gray scroll markers for pages and truly visible nested content.
+Keep solid-gray scroll markers only for long, truly visible page and nested content.
 
 ### [Translation Crash Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
 
