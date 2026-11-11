@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-07_2.1.9
-// @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
+// @version      2026-11-12_2.1.10
+// @description  Improve tiny mobile text, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -586,6 +586,14 @@
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
     let earlyReflow = false;
 
+    // Hacker News listing/profile pages should keep their own compact layout.
+    // The explicit auto-enable rule is reserved for numeric story comment IDs.
+    function isHackerNewsNonDiscussion() {
+        return location.hostname.toLowerCase() === 'news.ycombinator.com'
+            && (location.pathname !== '/item'
+                || !/^\d+$/.test(new URLSearchParams(location.search).get('id') || ''));
+    }
+
     function isAndroidBrowser() {
         return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
     }
@@ -636,6 +644,7 @@
     // The automatic path deliberately avoids the legacy body * layout overrides.
     // A reversible viewport adjustment is only attempted for a scaled-down desktop layout.
     function mobileAutoEligible() {
+        if (isHackerNewsNonDiscussion()) return false;
         if (!shouldEnforceMinFontSize() || !document.body || document.hidden) return false;
         const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
         return /Android/i.test(agent) || (!agent && window.innerWidth <= 1100);
@@ -1157,6 +1166,7 @@
     }
 
     function shouldAutoEnableForUrl() {
+        if (isHackerNewsNonDiscussion()) return false;
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
             return false;
