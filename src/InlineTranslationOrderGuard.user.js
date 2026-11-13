@@ -15,7 +15,8 @@
     'use strict';
 
     // Placement only: conversion and formula protection are owned by other scripts.
-    const itemSelector = '[data-tm-translatable-inline-code], [data-tm-math-protected]';
+    const itemSelectors = ['[data-tm-translatable-inline-code]', '[data-tm-math-protected]'];
+    const itemSelector = itemSelectors.join(', ');
     const anchorAttribute = 'data-tm-translation-order-anchor';
     const tracked = new WeakMap();
     const entries = new Set();
@@ -30,7 +31,7 @@
 
     function track(element) {
         if (!element || element.nodeType !== 1 || !element.parentNode ||
-            !element.matches(itemSelector) || tracked.has(element)) return;
+            !itemSelectors.some((selector) => element.matches(selector)) || tracked.has(element)) return;
         // A MathJax output may be nested inside a previously anchored source
         // container. Never introduce competing anchors for one formula.
         if (element.parentElement && element.parentElement.closest('[data-tm-math-protected]')) return;
@@ -50,7 +51,7 @@
 
     function scan(root) {
         if (!root) return;
-        if (root.nodeType === 1 && root.matches(itemSelector)) track(root);
+        if (root.nodeType === 1 && itemSelectors.some((selector) => root.matches(selector))) track(root);
         if (root.querySelectorAll) root.querySelectorAll(itemSelector).forEach(track);
     }
 
