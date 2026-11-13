@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Inline Translation Order Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-13_1.0.0
+// @version      2026-11-13_1.0.1
 // @description  Keep translated inline code and math slots beside their original DOM anchors.
 // @author       Chris Torng
 // @match        *://*/*
@@ -38,7 +38,7 @@
         if (element.closest('pre')) return;
 
         const anchor = document.createElement('span');
-        anchor.setAttribute(anchorAttribute, '');
+        anchor.setAttribute(anchorAttribute, 'true');
         anchor.setAttribute('translate', 'no');
         anchor.setAttribute('aria-hidden', 'true');
         anchor.style.setProperty('font-size', '0', 'important');
