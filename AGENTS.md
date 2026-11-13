@@ -56,3 +56,9 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - `MathTranslationGuard.user.js` owns formula-source/rendered-output protection. Do not move formulas to the end of paragraphs, generate alternate MathJax previews, or reorder translated prose.
 - `InlineTranslationOrderGuard.user.js` alone anchors and repairs positions for both protected inline code and math. Never run competing position observers from the math guard.
 - Avoid guaranteed-fix claims based only on synthetic DOM or headless Chromium tests. Native Edge translation must be checked on an actual page, including scroll and Show original/re-translation.
+
+### MathJax dual-original fallback (2026-11-14)
+- The native Android Edge A/B/C/D/E diagnostics recorded a real failure for individually protected inline TeX: C moved all formulas to the paragraph tail. Do not revive this C approach for alexwang.ai.
+- On alexwang.ai, use a normal translatable original `<p>` and one separate complete `translate="no"` reference paragraph. The reference should remain immediately after the original and be created at most once, including for dynamic paragraphs. Do not reorder formulas or edit the translated text.
+- Initial support is intentionally limited to the reported MathJax 4 site. Keep the older Plover experiments distinct; do not promote them as proven fixes.
+- A real Chromium DOM/syntax test can prove that two independent copies exist, but cannot establish native Android Edge translation survival. Keep the experimental PR unmerged until the real-page behavior is observed.
