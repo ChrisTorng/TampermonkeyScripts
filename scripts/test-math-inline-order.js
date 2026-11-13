@@ -57,9 +57,9 @@ function paragraph(h, ...contents) {
 }
 
 describe('Math protection without position mutations', () => {
-    test('Alex Wang source: both inline TeX and display TeX remain inside their original paragraph', () => {
+    test('Plover source: both inline TeX and display TeX remain in place when source protection is enabled', () => {
         let p;
-        execute('https://alexwang.ai/posts/reasoning-as-pathfinding/', (h) => {
+        execute('https://blog.plover.com/math/ordinals/02-wellfoundedness.html', (h) => {
             p = paragraph(h, 'Consider $1 + 2 + 3 + \\cdots + 10$ and then $1 + 10$.');
         }, { math: true, order: false });
         const formulae = p.children.filter((element) => element.getAttribute &&
@@ -72,7 +72,7 @@ describe('Math protection without position mutations', () => {
             'Consider $1 + 2 + 3 + \\cdots + 10$ and then $1 + 10$.');
     });
 
-    test('display math and MathJax output are protected independently of translation ordering', () => {
+    test('Plover display math and MathJax output are protected independently of translation ordering', () => {
         let display;
         let output;
         execute('https://alexwang.ai/posts/reasoning-as-pathfinding/', (h) => {
