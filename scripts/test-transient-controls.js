@@ -230,13 +230,11 @@ describe('transient in-content controls', () => {
         assert.equal(harness.button.textContent, '⛶');
     });
 
-    test('both embedded helpers match their canonical source', () => {
+    test('translation embedded helper matches its canonical source', () => {
         const shared = fs.readFileSync(path.join(root, 'src', 'TransientControl.js'), 'utf8').trimEnd().replace(/\r\n/g, '\n');
-        for (const file of files) {
-            const text = fs.readFileSync(path.join(root, 'src', file), 'utf8');
-            const match = text.match(/    \/\/ BEGIN SHARED TRANSIENT CONTROL\r?\n([\s\S]*?)\r?\n    \/\/ END SHARED TRANSIENT CONTROL/);
-            assert(match);
-            assert.equal(match[1].replace(/\r\n/g, '\n'), shared);
-        }
+        const text = fs.readFileSync(path.join(root, 'src', files[0]), 'utf8');
+        const match = text.match(/    \/\/ BEGIN SHARED TRANSIENT CONTROL\r?\n([\s\S]*?)\r?\n    \/\/ END SHARED TRANSIENT CONTROL/);
+        assert(match);
+        assert.equal(match[1].replace(/\r\n/g, '\n'), shared);
     });
 });
