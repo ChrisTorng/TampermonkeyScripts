@@ -51,3 +51,24 @@ Reports are stored in a dedicated Cloudflare Workers KV namespace, with no IP ad
 Before interpreting native Edge translation results, disable **all page-modifying Tampermonkey scripts** on the lab domain, specifically `TranslatePreformattedText.user.js`, `TranslationCrashGuard.user.js`, `MathTranslationGuard.user.js`, and `InlineTranslationOrderGuard.user.js`. Do not assume missing DOM markers prove a globally matched userscript is inactive: TranslatePreformattedText can run without generating an inline-code marker when no `code` element is present. The clean experiment should exclude other page-changing extensions as well when feasible, then re-enable scripts **one at a time** only after the baseline is established.
 
 There is plausible interaction, but **no demonstrated causality from TranslatePreformattedText to MathJax disappearing** in this article. PR #96 documented a clean Android Edge SVG case with `T0 M0 T1 M1 T2` changed to `T0 M0 M1 T1 T2` even with userscripts disabled. Treat the native Edge order issue separately from scripts until comparative evidence says otherwise.
+
+
+## Android Edge native translation findings — 2026-11-14 05:30 Taipei
+
+**Received and analyzed:** 15 stored DOM reports (five modes, two copies per mode), with a separate server self-test excluded. A native translation control sentence changed from English to Traditional Chinese for all five modes. These are genuine Edge-generated client-side snapshots, not cloud Chromium simulations.
+
+| Mode | Paragraph prose | Formula presence in both copies | Direct child order after translation | Conclusion |
+| --- | --- | --- | --- | --- |
+| A baseline | Chinese | 5/5 MathJax containers per copy | T0 M0 T1 M1 T2 M2 T3 M3 T4 M4 T5 | Good in this *controlled span-split HTML* |
+| B output guard | Chinese | 5/5 MathJax containers per copy | Same, intact | Guard not needed to keep formulas in this fixture |
+| C source guard | Chinese | 5/5 MathJax containers per copy | **M0 M1 M2 M3 M4** as remaining direct labeled children; translated prose appears before all formulas | **Reproduces formula displacement** |
+| D whole paragraph no-translate | **English, deliberately** | 5/5 MathJax containers per copy | Original order preserved | **Conservative visibility fallback** |
+| E atomic SVG images | Chinese | 5/5 loaded images per copy, nonzero image natural widths and geometry | Original labeled direct child order preserved | **Good visibility candidate for this fixture** |
+
+**Key failure evidence for C:** A real post-translation paragraph serializes as `請考慮這個數學問題：「什麼是？」……結論是一樣的。1 +2 +3 +⋯ +10 1 +10 2 +9 3 +8 5 +6`. The original translated text spans still exist but are no longer the paragraph's direct children; Edge has regrouped them and left all independently protected formula spans at the end. This directly contradicts using standalone `translate=no` inline-source wrappers as a universal fix.
+
+**Important boundaries:** The report records DOM, boxes, styles, MathJax nodes, image load and native translation control text. There were no uploaded PNG reports, so actual pixels were **not** independently verified. `mathGuard:false` / `inlineOrder:false` record the absence of *those DOM markers*, **not** proof that every userscript was disabled. The user's earlier message says the scripts including preformatted were disabled for clean testing, but the lab cannot itself audit the full extension state.
+
+**Why original article can still fail when A/B succeed:** The live Alex Wang site has raw prose text nodes and direct `mjx-container` children inside `p` after MathJax 4 renders. This lab deliberately pre-splits all prose into `span[data-part=T]` and all math into `span[data-part=M]`. That structural boundary is a material difference. A/B success therefore supports investigating the *translation-unit/DOM structure* rather than simply adding more `notranslate` attributes; it does not validate that the original article is solved.
+
+**Next lowest-risk validation target:** Compare (a) original bare-text-node paragraph with MathJax-direct-child, (b) only prose split into span siblings with math left untouched, and (c) both prose/math wrapped but **without** formula translate=no flags; do not rewrite TeX source nor reorder DOM after translation. Keep D whole-paragraph `translate=no` as a source-preserving fallback when no native-translation-safe structure is established. Do not promote #148 or ship more math-order mutation patches based on these results.
