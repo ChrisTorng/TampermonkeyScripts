@@ -226,7 +226,7 @@
         window.visualViewport.addEventListener('resize', refreshFullscreenControls);
     }
 
-    function makeDockedFullscreenControl(button, target) {
+    function makeDockedFullscreenControl(button, target, alignWithMenuDefault) {
         let placement = null;
         let drag = null;
         let suppressClick = false;
@@ -244,10 +244,12 @@
             const rect = target.getBoundingClientRect();
             return {
                 left, right,
-                minX: Math.max(rect.left, left),
-                maxX: Math.min(rect.right, right) - FULLSCREEN_WIDTH,
-                minY: Math.max(rect.top, 0),
-                maxY: Math.min(rect.bottom, bottom) - FULLSCREEN_HEIGHT,
+                visible: Math.min(rect.right, right) - Math.max(rect.left, left) >= FULLSCREEN_WIDTH &&
+                    Math.min(rect.bottom, bottom) - Math.max(rect.top, 0) >= FULLSCREEN_HEIGHT,
+                minX: alignWithMenuDefault ? left : Math.max(rect.left, left),
+                maxX: (alignWithMenuDefault ? right : Math.min(rect.right, right)) - FULLSCREEN_WIDTH,
+                minY: alignWithMenuDefault ? 0 : Math.max(rect.top, 0),
+                maxY: (alignWithMenuDefault ? bottom : Math.min(rect.bottom, bottom)) - FULLSCREEN_HEIGHT,
             };
         };
         const place = (x, y, fixed = true) => {
@@ -284,7 +286,7 @@
             }
             if (drag) return;
             const area = bounds();
-            const hidden = area.maxX < area.minX || area.maxY < area.minY;
+            const hidden = !area.visible || area.maxX < area.minX || area.maxY < area.minY;
             if (button.hidden !== hidden) button.hidden = hidden;
             if (hidden) return;
             // Only the DEFAULT coordinates account for the menu's DEFAULT position.
@@ -732,7 +734,7 @@ body:has(#task-detail-root) {
     const watchedFrames = new WeakSet();
     let additionalButtonNumber = 0;
 
-    function mountButtonOnTarget(target) {
+    function mountButtonOnTarget(target, alignWithMenuDefault = false) {
         if (!target?.isConnected || mountedButtons.has(target)) return;
         target.classList.add(TARGET_CLASS);
         const button = document.createElement('button');
@@ -742,7 +744,7 @@ body:has(#task-detail-root) {
         button.type = 'button';
         updateButton(button, target);
         target.appendChild(button);
-        makeDockedFullscreenControl(button, target);
+        makeDockedFullscreenControl(button, target, alignWithMenuDefault);
         requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
@@ -787,7 +789,7 @@ body:has(#task-detail-root) {
             button.remove();
             target.classList.remove(TARGET_CLASS);
         }
-        for (const target of targets) mountButtonOnTarget(target);
+        for (const target of targets) mountButtonOnTarget(target, target === primary);
         updateFrameRequests();
         refreshFullscreenControls();
     }
