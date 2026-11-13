@@ -8,7 +8,7 @@ export default {
             const url = new URL(origin);
             const host = url.hostname.toLowerCase();
             allowed = url.protocol === 'https:' &&
-                (host.endsWith('.vercel.app') || host === 'christorng.idv.tw' ||
+                (host.endsWith('.vercel.app') || host === 'tm-math-translation-lab.christorng.workers.dev' || host === 'christorng.idv.tw' ||
                  host.endsWith('.christorng.idv.tw') || host.endsWith('.github.io'));
         } catch (_) {}
         const cors = allowed ? {
@@ -21,6 +21,21 @@ export default {
             status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
         });
         const path = new URL(request.url).pathname;
+        // Public self-contained test page. Source remains versioned in GitHub.
+        if (request.method === 'GET' && (path === '/' || path === '/index.html' || path === '/lab.js')) {
+            const name = path === '/lab.js' ? 'lab.js' : 'index.html';
+            const upstream = 'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/lab/math-visibility-diagnostics-20261114/tests/MathVisibilityLab/' + name;
+            const source = await fetch(upstream);
+            if (!source.ok) return reply({ error: 'fixture-unavailable', status: source.status }, 502);
+            return new Response(await source.text(), {
+                status: 200, headers: {
+                    'Content-Type': name === 'lab.js' ? 'application/javascript; charset=utf-8' : 'text/html; charset=utf-8',
+                    'Cache-Control': 'no-cache',
+                    'X-Content-Type-Options': 'nosniff',
+                    'Referrer-Policy': 'no-referrer'
+                }
+            });
+        }
         if (request.method === 'GET' && path === '/health') return reply({ service: 'tm-math-translation-lab', ready: true });
         if (request.method === 'OPTIONS' && allowed) return new Response(null, { headers: cors });
         if (request.method !== 'POST' || path !== '/report') return reply({ error: 'not-found' }, 404);
