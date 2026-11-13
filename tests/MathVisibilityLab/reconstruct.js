@@ -225,5 +225,21 @@
         return results;
     }
 
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest?.('[data-hybrid-toggle]');
+        if (!button) return;
+        const article = button.closest('article');
+        if (!article) return;
+        const hybrid = button.closest('[data-hybrid-root]');
+        if (hybrid?.dataset.reconstruction !== 'complete') {
+            button.textContent = '尚未完整重建，請保留前兩份';
+            return;
+        }
+        article.classList.toggle('math-hybrid-focus');
+        button.textContent = article.classList.contains('math-hybrid-focus')
+            ? '展開翻譯版與完整原文'
+            : '只看重建版（收合前兩份）';
+    });
+
     window.MathVisibilityReconstructor = { rebuildPair, buildPartPieces, buildMarkerPieces, sentenceGroups };
 })();
