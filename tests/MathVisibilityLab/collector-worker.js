@@ -24,7 +24,7 @@ export default {
         // Public self-contained test page. Source remains versioned in GitHub.
         if (request.method === 'GET' && (path === '/' || path === '/index.html' || path === '/lab.js')) {
             const name = path === '/lab.js' ? 'lab.js' : 'index.html';
-            const upstream = 'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/cea6c9cc6a94ce0f51641226fd4f4cb6a6ceaa8c/tests/MathVisibilityLab/' + name;
+            const upstream = 'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/c2d60be598de543e0808be2db283e46b486caa41/tests/MathVisibilityLab/' + name;
             const source = await fetch(upstream);
             if (!source.ok) return reply({ error: 'fixture-unavailable', status: source.status }, 502);
             return new Response(await source.text(), {
