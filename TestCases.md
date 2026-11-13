@@ -180,3 +180,8 @@ Section note: new runtime tests use synthetic MathJax, MathML, code, and the sou
 - https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (runtime tests cover the reported inline `$...$` and display `$$...$$` patterns; native Edge translated math, scrolling, and retranslation still need live confirmation)
 - https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (custom `!!...!!` sources and MathJax output are preserved in synthetic DOM; real native Edge ordering remains unverified)
 - https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (the order guard anchors the inline-code spans produced by the existing Translate Preformatted Text script; DOM reorder simulation is automated)
+
+
+## Alex Wang dual original and translation fallback (Draft)
+- https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 4 page: verify each math-containing paragraph has normal translatable prose and an adjacent protected full-English/math reference; no per-formula splitting. Chrome DOM checks pass after-load injection, native Android Edge pending.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (Existing D case now displays both normal translatable paragraph and protected original, in both near/late zones. Real Edge native translation pending.)
