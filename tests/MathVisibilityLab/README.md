@@ -91,3 +91,12 @@ The Android Edge session `53231fd4-…` produced two stored reports on the **new
 - G tests the exact same reconstruction on MathJax 4 CommonHTML, KaTeX HTML/MathML and native MathML. An alternate `?mode=engines&mathjax=3` loads MathJax 3 CommonHTML for comparison. These are renderer-specific smoke tests, not a blanket guarantee for all TeX, extensions, unsupported commands, or custom output libraries.
 
 The third view changes DOM only **outside** the already translated paragraph and protected source paragraph. Do not merge an automatic on-site rewrite based solely on the remote Chromium simulation; the native Edge diagnostics and on-screen readability are the acceptance tests.
+
+
+## Renderer coverage caveats
+- MathJax 3 and 4: CommonHTML and native SVG output (choose `?mode=engines&mathjax=3&output=svg`, `?mode=engines&output=svg`). The merge copies the **entire renderer output node**; it does not re-run MathJax's TeX parser.
+- KaTeX 0.18.9: HTML + assistive MathML. The merge copies the complete `.katex` output, not MathJax-specific internals.
+- Browser-native MathML: the MathML subtree is cloned, with no JavaScript math renderer required.
+- SVG local `id`/glyph references are namespaced and their `href`, `xlink:href` and `url(#id)` references rewritten in reconstructed copies to prevent clone-induced missing glyphs.
+- Historical MathJax 2/legacy HTML-CSS, SVG external symbols, unusual TeX plugins, custom canvas renderers, contenteditable regions, and sites that re-render math on each translation remain **outside verified coverage**.
+- A successful Chromium render proves DOM compatibility only; all on-device native Edge Translate outcomes must be checked separately.
