@@ -2,16 +2,16 @@
 
 Updated: 2026-11-13
 
-## Shared floating menu DOM recovery — 2026-11-13
+## Shared floating menu restore and reset — 2026-11-13
 
 Update all five menu scripts together, then reload:
-- [AllGoInternetArchive.user.js — 2026-11-13_1.3.11](src/AllGoInternetArchive.user.js)
-- [InternetArchive.user.js — 2026-11-13_1.5.11](src/InternetArchive.user.js)
-- [ForceMobileView.user.js — 2026-11-13_2.1.11](src/ForceMobileView.user.js)
-- [ForceDarkMode.user.js — 2026-11-13_2.0.11](src/ForceDarkMode.user.js)
-- [TranslatePreformattedText.user.js — 2026-11-13_1.5.21](src/TranslatePreformattedText.user.js)
+- [AllGoInternetArchive.user.js — 2026-11-13_1.3.12](src/AllGoInternetArchive.user.js)
+- [InternetArchive.user.js — 2026-11-13_1.5.12](src/InternetArchive.user.js)
+- [ForceMobileView.user.js — 2026-11-13_2.1.12](src/ForceMobileView.user.js)
+- [ForceDarkMode.user.js — 2026-11-13_2.0.12](src/ForceDarkMode.user.js)
+- [TranslatePreformattedText.user.js — 2026-11-13_1.5.22](src/TranslatePreformattedText.user.js)
 
-Restore registered menu actions and styling if site re-rendering or translation removes them. A missing script still requires enabling it in Tampermonkey.
+Restore registered actions after DOM replacement; reset the floating position without reloading the article, and keep the × panel on-screen. If a userscript never starts, it still needs investigation in Tampermonkey.
 
 **Test:** [Nieman Lab article](https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/) — expanded ≡ should include →, ↔, and ☽ when those scripts run.
 

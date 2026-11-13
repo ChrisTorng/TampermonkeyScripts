@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-13_2.1.11
+// @version      2026-11-13_2.1.12
 // @description  Improve tiny mobile text, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -175,6 +175,24 @@
         floatingMenuRender(root);
     }
 
+    function floatingMenuPositionDialog(root) {
+        const dialog = root.querySelector('[data-floating-dialog]');
+        if (!dialog || dialog.hidden) return;
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport ? viewport.offsetLeft : 0;
+        const viewportWidth = viewport ? viewport.width : window.innerWidth;
+        const width = Math.max(1, Math.min(290, viewportWidth - 24));
+        const rect = root.getBoundingClientRect();
+        const proposedLeft = rect.right - width;
+        const left = Math.max(viewportLeft + 12,
+            Math.min(proposedLeft, viewportLeft + viewportWidth - width - 12));
+        // Use a horizontal offset relative to the handle, rather than
+        // assuming that the handle is always on the viewport's right edge.
+        dialog.style.setProperty('width', `${width}px`, 'important');
+        dialog.style.setProperty('left', `${left - rect.left}px`, 'important');
+        dialog.style.setProperty('right', 'auto', 'important');
+    }
+
     function floatingMenuRender(root) {
         const toggle = root.querySelector('[data-floating-toggle]');
         const close = root.querySelector('[data-floating-close]');
@@ -195,6 +213,7 @@
         buttons.forEach((button) => {
             button.hidden = !expanded || !dialog.hidden || button.getAttribute('data-floating-available') !== 'true';
         });
+        floatingMenuPositionDialog(root);
     }
 
     function floatingMenuRoot() {
@@ -355,6 +374,7 @@
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
+            floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
         const position = () => {
@@ -514,7 +534,14 @@
                 delete next.x;
                 delete next.y;
                 floatingMenuSave(next);
-                window.location.reload();
+                anchorX = null;
+                anchorY = 70;
+                documentY = anchorY;
+                previousScrollY = scrollY();
+                // Reset just the floating position. Reloading would restart
+                // browser translation and can disturb the article's layout.
+                floatingMenuCollapse(root);
+                position();
                 return;
             }
             const next = floatingMenuSettings();
