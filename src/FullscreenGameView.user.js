@@ -254,8 +254,8 @@
         };
         const place = (x, y, fixed = true) => {
             button.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
-            button.style.setProperty('left', \`\${x}px\`, 'important');
-            button.style.setProperty('top', \`\${y}px\`, 'important');
+            button.style.setProperty('left', `${x}px`, 'important');
+            button.style.setProperty('top', `${y}px`, 'important');
             button.style.setProperty('right', 'auto', 'important');
             button.style.setProperty('bottom', 'auto', 'important');
         };
@@ -274,7 +274,7 @@
                         fullscreenScrollY() + (parseFloat(button.style.top) || 0), false);
                     pinchAnchored = true;
                 }
-                button.style.setProperty('transform', \`scale(\${normalScale / scale})\`, 'important');
+                button.style.setProperty('transform', `scale(${normalScale / scale})`, 'important');
                 button.style.setProperty('transform-origin', 'top left', 'important');
                 return;
             }
