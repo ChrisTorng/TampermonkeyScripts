@@ -134,7 +134,7 @@ describe('shared floating menu', () => {
         assert.equal(menu.style.left, '362px');
     });
 
-    test('reset position removes only saved coordinates and reloads', () => {
+    test('reset position removes only saved coordinates without reloading', () => {
         const saved = JSON.stringify({ x: 550, y: 95, disabledPaths: ['/unrelated/'] });
         const harness = run(['archive'], { localStorageSeed: { [key]: saved } });
         assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.left, '550px');
@@ -449,7 +449,10 @@ describe('shared floating menu', () => {
         harness.dispatchWindowEvent('scroll');
         harness.document.querySelector('[data-floating-toggle]').click();
         harness.document.querySelector('[data-floating-close]').click();
-        harness.document.querySelector('[data-floating-hide-scope="reset"]').click();
+        harness.document.querySelector('[data-floating-dialog]').dispatchEvent({
+            type: 'click',
+            target: harness.document.querySelector('[data-floating-hide-scope="reset"]'),
+        });
         assert.equal(harness.location.reloadCallCount, 0);
         assert.equal(harness.window.scrollY, 400);
         assert.equal(article.isConnected, true);
