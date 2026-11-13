@@ -5,7 +5,7 @@ Updated: 2026-11-13
 ## Math source and inline order — 2026-11-13
 
 - [Install MathTranslationGuard.user.js — 2026-11-13_1.0.0](src/MathTranslationGuard.user.js) — preserve TeX source and rendered formulas without reordering prose.
-- [Install InlineTranslationOrderGuard.user.js — 2026-11-13_1.0.0](src/InlineTranslationOrderGuard.user.js) — anchor inline code and math consistently. Install both and reload.
+- [Install InlineTranslationOrderGuard.user.js — 2026-11-13_1.0.1](src/InlineTranslationOrderGuard.user.js) — anchor inline code and math consistently. Install both and reload.
 
 **Tests:** [Alex Wang MathJax article](https://alexwang.ai/posts/reasoning-as-pathfinding/) — formulas must stay in sentences; [Plover math article](https://blog.plover.com/math/ordinals/02-wellfoundedness.html) — custom formula source and scrolling. Real Android Edge verification is pending; older #94/#97 strategies remain experimental.
 
