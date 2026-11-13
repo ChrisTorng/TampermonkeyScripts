@@ -72,7 +72,7 @@ describe('Math protection without position mutations', () => {
             'Consider $1 + 2 + 3 + \\cdots + 10$ and then $1 + 10$.');
     });
 
-    test('Plover display math and MathJax output are protected independently of translation ordering', () => {
+    test('Rendered MathJax output is protected on ordinary sites without rewriting source', () => {
         let display;
         let output;
         execute('https://alexwang.ai/posts/reasoning-as-pathfinding/', (h) => {
@@ -81,7 +81,7 @@ describe('Math protection without position mutations', () => {
             output.appendChild(h.document.createElement('math'));
             h.appendToBody(output);
         }, { math: true, order: false });
-        assert.equal(display.children[0].getAttribute('data-tm-math-protected'), 'source');
+        assert.equal(display.children[0].nodeType, 3, 'Source is left untouched on sites without known TeX delimiters');
         assert.equal(output.getAttribute('data-tm-math-protected'), 'output');
         assert.equal(output.getAttribute('translate'), 'no');
         assert.equal(output.children[0].getAttribute('data-tm-math-protected'), null,
