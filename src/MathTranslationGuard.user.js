@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-14_1.1.0
+// @version      2026-11-14_1.1.1
 // @description  Keep an untranslated original alongside translated math paragraphs on Alex Wang; preserve MathJax elsewhere.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
 // @exclude      *://*.christorng.idv.tw/*
+// @exclude      https://tm-math-translation-lab.christorng.workers.dev/*
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
@@ -65,6 +66,7 @@
         function cloneMathParagraph(paragraph) {
             if (!paragraph || !paragraph.isConnected || !paragraph.parentElement ||
                 paragraph.hasAttribute(originalAttr) ||
+                paragraph.nextElementSibling?.hasAttribute(referenceAttr) ||
                 paragraph.closest('[' + referenceAttr + ']') ||
                 paragraph.closest('script, style, noscript, textarea, pre, [contenteditable="true"]') ||
                 !containsMath(paragraph)) return;
