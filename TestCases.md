@@ -185,3 +185,6 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=placeholder [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (F tests native translation of ⟦MATH_0⟧ placeholders, literal token recovery and safe incomplete fallback.)
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=engines [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (G: MathJax 4, KaTeX, native MathML; independently rebuild rendered formula nodes, without promising TeX conversion across engines.)
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&mathjax=3 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (G alternate MathJax 3 renderer; native Edge translation and pixels still unverified.)
+
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&output=svg [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 4 SVG output clones with internal symbol references; native Android Edge translation unverified.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&mathjax=3&output=svg [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 3 SVG output clones; check after native Edge translation.)
