@@ -76,3 +76,18 @@ There is plausible interaction, but **no demonstrated causality from TranslatePr
 ## D variant update — 2026-11-14: bilingual fallback
 
 Mode D now serves **two complete independent static HTML paragraphs** at each position: a normal, native-translatable first paragraph (may lose/reorder formulae under Edge), immediately followed by a copy of the full original English paragraph with `translate="no"`. Both are shipped before JavaScript runs. This directly tests the user's preferred fallback: read the Chinese version and refer to an intact original math paragraph. Do not conflate this with prior D, which only served the protected original. The experiment uses the **same URL** and the existing opt-in diagnostics receiver; no new website or userscript is required.
+
+
+## D follow-up reports — 2026-11-14 07:01–07:02 Taipei
+
+The Android Edge session `53231fd4-…` produced two stored reports on the **new two-copy D fixture**, both containing ten recent DOM events each. All events showed ordinary page translation occurred; the near and late translated paragraphs each retained five rendered MathJax formulas in canonical order, and the protected English reference copies also retained all formulas. Client viewport width was 288 CSS pixels. No screenshot report was uploaded.
+
+**Next experiment (this same lab URL, not a new website):**
+- D now contains a **third dynamically reconstructed paragraph**. It takes translated text from identified `T0 … Tn` fragments, but takes *only rendered math DOM* from the complete `translate=no` original `M0 … Mn` fragments, ordered by that original reference. No TeX string parsing or re-typesetting in the result. It is a single `translate=no` reconstruction.
+- A sentence boundary is detected from punctuation; original and translation sentences are paired **only** when both the sentence count and per-sentence math-ID sequences match. Otherwise it leaves the full original reference available and does not guess sentence alignment.
+- A missing translation fragment or missing rendered math means `data-reconstruction=incomplete`; do **not** call the result successful or hide the reference.
+- An explicit toggle collapses the two full versions if the third version is complete. Individual sentence originals remain expandable beside the merged Chinese sentence. This is optional to avoid interfering with native translation and diagnostics.
+- F uses the conventional text token `⟦MATH_0⟧` as a native-translatable placeholder, then attempts a literal marker lookup and math-DOM reinsertion from a complete protected reference. If Edge changes or drops a marker, it must refuse reconstruction. This is the old placeholder idea tested against **real native Edge**, not the earlier PR #96 mock translation.
+- G tests the exact same reconstruction on MathJax 4 CommonHTML, KaTeX HTML/MathML and native MathML. An alternate `?mode=engines&mathjax=3` loads MathJax 3 CommonHTML for comparison. These are renderer-specific smoke tests, not a blanket guarantee for all TeX, extensions, unsupported commands, or custom output libraries.
+
+The third view changes DOM only **outside** the already translated paragraph and protected source paragraph. Do not merge an automatic on-site rewrite based solely on the remote Chromium simulation; the native Edge diagnostics and on-screen readability are the acceptance tests.
