@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.2.2
+// @version      2026-11-13_1.2.3
 // @description  Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -197,6 +197,162 @@
     }
     // END SHARED TRANSIENT CONTROL
 
+
+    // Keep the independent fullscreen entry as steady as the shared fixed-position menu.
+    // The menu's default is top:70/right:0, so the entry defaults 42px to its left.
+    const fullscreenControlLayouts = new Set();
+    const FULLSCREEN_WIDTH = 38;
+    const FULLSCREEN_HEIGHT = 32;
+    const clampFullscreen = (value, low, high) => Math.max(low, Math.min(value, high));
+    const fullscreenScrollY = () => {
+        const viewport = window.visualViewport;
+        return Math.max(0, window.scrollY || 0,
+            document.scrollingElement?.scrollTop || 0,
+            document.documentElement.scrollTop || 0,
+            document.body?.scrollTop || 0,
+            viewport && Number.isFinite(viewport.pageTop)
+                ? viewport.pageTop - (viewport.offsetTop || 0) : 0);
+    };
+    function refreshFullscreenControls() {
+        fullscreenControlLayouts.forEach((layout) => layout());
+    }
+    // Unlike animation-frame placement of in-block translation controls, a fixed
+    // fullscreen entry docks synchronously and does not trail normal scrolling.
+    window.addEventListener('scroll', refreshFullscreenControls, { passive: true });
+    document.addEventListener('scroll', refreshFullscreenControls, { capture: true, passive: true });
+    window.addEventListener('resize', refreshFullscreenControls);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('scroll', refreshFullscreenControls);
+        window.visualViewport.addEventListener('resize', refreshFullscreenControls);
+    }
+
+    function makeDockedFullscreenControl(button, target) {
+        let placement = null;
+        let drag = null;
+        let suppressClick = false;
+        let pinchAnchored = false;
+        let pinchArmed = false;
+        let normalScale = window.visualViewport?.scale || 1;
+        let observer;
+        const bounds = () => {
+            const viewport = window.visualViewport;
+            const width = Math.max(FULLSCREEN_WIDTH, Math.min(window.innerWidth || FULLSCREEN_WIDTH,
+                document.documentElement.clientWidth || window.innerWidth || FULLSCREEN_WIDTH));
+            const left = viewport ? viewport.offsetLeft : 0;
+            const right = left + (viewport ? viewport.width : width);
+            const bottom = viewport ? viewport.height : window.innerHeight;
+            const rect = target.getBoundingClientRect();
+            return {
+                left, right,
+                minX: Math.max(rect.left, left),
+                maxX: Math.min(rect.right, right) - FULLSCREEN_WIDTH,
+                minY: Math.max(rect.top, 0),
+                maxY: Math.min(rect.bottom, bottom) - FULLSCREEN_HEIGHT,
+            };
+        };
+        const place = (x, y, fixed = true) => {
+            button.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
+            button.style.setProperty('left', \`\${x}px\`, 'important');
+            button.style.setProperty('top', \`\${y}px\`, 'important');
+            button.style.setProperty('right', 'auto', 'important');
+            button.style.setProperty('bottom', 'auto', 'important');
+        };
+        const layout = () => {
+            if (!button.isConnected || !target.isConnected) {
+                fullscreenControlLayouts.delete(layout);
+                observer?.disconnect();
+                return;
+            }
+            const scale = window.visualViewport?.scale || 1;
+            if (!pinchAnchored && !pinchArmed) normalScale = scale;
+            if ((pinchAnchored || pinchArmed) && scale > normalScale * 1.01) {
+                if (!pinchAnchored) {
+                    // The shared menu freezes its document position during a real pinch.
+                    place((window.scrollX || 0) + (parseFloat(button.style.left) || 0),
+                        fullscreenScrollY() + (parseFloat(button.style.top) || 0), false);
+                    pinchAnchored = true;
+                }
+                button.style.setProperty('transform', \`scale(\${normalScale / scale})\`, 'important');
+                button.style.setProperty('transform-origin', 'top left', 'important');
+                return;
+            }
+            if (pinchAnchored) {
+                pinchAnchored = false;
+                pinchArmed = false;
+                button.style.removeProperty('transform');
+                button.style.removeProperty('transform-origin');
+            }
+            if (drag) return;
+            const area = bounds();
+            const hidden = area.maxX < area.minX || area.maxY < area.minY;
+            if (button.hidden !== hidden) button.hidden = hidden;
+            if (hidden) return;
+            // Only the DEFAULT coordinates account for the menu's DEFAULT position.
+            // A moved menu or a manually dragged entry may overlap; never chase either.
+            const defaultX = area.right - FULLSCREEN_WIDTH * 2 - 4;
+            const defaultY = Math.max(70 - fullscreenScrollY(), 0);
+            place(clampFullscreen(placement ? placement.x : defaultX, area.minX, area.maxX),
+                clampFullscreen(placement ? placement.y : defaultY, area.minY, area.maxY));
+        };
+        const touchStart = (event) => {
+            if (!pinchAnchored && event.touches?.length >= 2) {
+                normalScale = window.visualViewport?.scale || 1;
+                pinchArmed = true;
+            }
+        };
+        const touchEnd = (event) => {
+            if (!pinchAnchored && (!event.touches || event.touches.length < 2)) pinchArmed = false;
+        };
+        document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
+        document.addEventListener('touchend', touchEnd, { capture: true, passive: true });
+        document.addEventListener('touchcancel', touchEnd, { capture: true, passive: true });
+        button.addEventListener('pointerdown', (event) => {
+            if (event.isPrimary === false || (event.button !== undefined && event.button !== 0)) return;
+            suppressClick = false;
+            drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
+                left: parseFloat(button.style.left), top: parseFloat(button.style.top), moved: false };
+            button.setPointerCapture?.(event.pointerId);
+            event.stopPropagation?.();
+        });
+        button.addEventListener('pointermove', (event) => {
+            if (!drag || drag.id !== event.pointerId) return;
+            const dx = event.clientX - drag.x;
+            const dy = event.clientY - drag.y;
+            if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+            drag.moved = true;
+            event.preventDefault?.();
+            event.stopPropagation?.();
+            const area = bounds();
+            placement = {
+                x: clampFullscreen(drag.left + dx, area.minX, area.maxX),
+                y: clampFullscreen(drag.top + dy, area.minY, area.maxY),
+            };
+            place(placement.x, placement.y);
+        });
+        const finish = (event) => {
+            if (!drag || drag.id !== event.pointerId) return;
+            suppressClick = drag.moved;
+            drag = null;
+            if (button.hasPointerCapture?.(event.pointerId)) button.releasePointerCapture(event.pointerId);
+            layout();
+        };
+        button.addEventListener('pointerup', finish);
+        button.addEventListener('pointercancel', finish);
+        button.addEventListener('lostpointercapture', finish);
+        button.addEventListener('click', (event) => {
+            if (!suppressClick) return;
+            suppressClick = false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
+        fullscreenControlLayouts.add(layout);
+        if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver(layout);
+            observer.observe(target);
+        }
+        layout();
+    }
+
     const BUTTON_ID = 'tm-fullscreen-game-view-button';
     const BUTTON_CLASS = 'tm-fullscreen-game-view-button';
     const TARGET_CLASS = 'tm-fullscreen-game-view-target';
@@ -217,23 +373,26 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS} {
-    align-items: center !important;
-    background: rgba(0, 0, 0, .55) !important;
+    appearance: none !important;
+    background: rgba(0,0,0,.55) !important;
     border: 0 !important;
     border-radius: 5px !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .25) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25) !important;
     box-sizing: border-box !important;
     color: #f0f0f0 !important;
     cursor: pointer !important;
-    display: flex !important;
-    font: 600 15px/32px system-ui, sans-serif !important;
+    display: block !important;
+    font: 600 15px/32px system-ui,sans-serif !important;
     height: 32px !important;
-    justify-content: center !important;
+    max-width: 38px !important;
+    min-width: 38px !important;
+    min-height: 32px !important;
     margin: 0 !important;
     padding: 0 !important;
-    position: absolute !important;
-    right: max(4px, env(safe-area-inset-right)) !important;
-    top: max(4px, env(safe-area-inset-top)) !important;
+    position: fixed !important;
+    text-align: center !important;
+    opacity: 1 !important;
+    user-select: none !important;
     width: 38px !important;
     z-index: 2147483647 !important;
     touch-action: none !important;
@@ -246,7 +405,7 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS}:hover {
-    background: rgba(0, 0, 0, .75) !important;
+    background: rgba(0,0,0,.75) !important;
 }
 .${BUTTON_CLASS}:hover, .${BUTTON_CLASS}:focus, .${BUTTON_CLASS}:active {
     text-decoration: none !important;
@@ -583,8 +742,7 @@ body:has(#task-detail-root) {
         button.type = 'button';
         updateButton(button, target);
         target.appendChild(button);
-        makeTransientControlDraggable(button, target, { size: 38, height: 32, inset: 4,
-            stationaryOnPinchZoom: true, avoidFloatingMenu: true });
+        makeDockedFullscreenControl(button, target);
         requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
@@ -631,7 +789,7 @@ body:has(#task-detail-root) {
         }
         for (const target of targets) mountButtonOnTarget(target);
         updateFrameRequests();
-        refreshTransientControls();
+        refreshFullscreenControls();
     }
 
     function exitFallback() {
@@ -658,24 +816,7 @@ body:has(#task-detail-root) {
         }
     });
 
-    let watchedFloatingMenu = null;
-    let menuObserver = null;
-    function watchFloatingMenu() {
-        const menu = document.getElementById('tm-shared-floating-menu');
-        if (menu === watchedFloatingMenu) return;
-        menuObserver?.disconnect();
-        watchedFloatingMenu = menu;
-        if (menu) {
-            menuObserver = new MutationObserver(refreshTransientControls);
-            menuObserver.observe(menu, {
-                attributes: true, attributeFilter: ['style', 'hidden', 'data-floating-expanded'],
-                childList: true, subtree: true,
-            });
-        }
-        refreshTransientControls();
-    }
     mountButtons();
-    watchFloatingMenu();
     // Do not repeatedly write to the document in our own mutation callback.
     // React to lazy iframe src updates and visibility changes as well as DOM swaps.
     let mediaRefreshPending = false;
@@ -685,7 +826,6 @@ body:has(#task-detail-root) {
         window.requestAnimationFrame(() => {
             mediaRefreshPending = false;
             mountButtons();
-            watchFloatingMenu();
         });
     }
     function isMediaNode(node) {
@@ -706,7 +846,6 @@ body:has(#task-detail-root) {
             return false;
         });
         if (relevant) scheduleMediaRefresh();
-        watchFloatingMenu();
     }).observe(document.documentElement, {
         childList: true, subtree: true, attributes: true,
         attributeFilter: ['src', 'data-src', 'class', 'style', 'hidden']
