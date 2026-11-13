@@ -22,14 +22,14 @@ export default {
         });
         const path = new URL(request.url).pathname;
         // Public self-contained test page. Source remains versioned in GitHub.
-        if (request.method === 'GET' && (path === '/' || path === '/index.html' || path === '/lab.js')) {
-            const name = path === '/lab.js' ? 'lab.js' : 'index.html';
-            const upstream = 'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/4e140d398d509f6ac76f87f77a5854eb8d28045e/tests/MathVisibilityLab/' + name;
+        if (request.method === 'GET' && (path === '/' || path === '/index.html' || path === '/lab.js' || path === '/reconstruct.js')) {
+            const name = path === '/lab.js' ? 'lab.js' : path === '/reconstruct.js' ? 'reconstruct.js' : 'index.html';
+            const upstream = 'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/202cbc05bae9ff81b16a1247a15e7f61dfbd6def/tests/MathVisibilityLab/' + name;
             const source = await fetch(upstream);
             if (!source.ok) return reply({ error: 'fixture-unavailable', status: source.status }, 502);
             return new Response(await source.text(), {
                 status: 200, headers: {
-                    'Content-Type': name === 'lab.js' ? 'application/javascript; charset=utf-8' : 'text/html; charset=utf-8',
+                    'Content-Type': name.endsWith('.js') ? 'application/javascript; charset=utf-8' : 'text/html; charset=utf-8',
                     'Cache-Control': 'no-cache',
                     'X-Content-Type-Options': 'nosniff',
                     'Referrer-Policy': 'no-referrer'
