@@ -6,16 +6,22 @@ const root = path.join(__dirname, '..', 'tests', 'MathVisibilityLab');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const js = fs.readFileSync(path.join(root, 'lab.js'), 'utf8');
 
-test('native Edge lab has server-delivered English and all five modes', () => {
+test('native Edge lab has seven modes including reconstruction, markers and renderer comparison', () => {
     assert.match(html, /<html lang="en"/);
     assert.match(html, /This ordinary English control sentence should be translated/);
-    for (const mode of ['baseline', 'output', 'source', 'paragraph', 'image']) {
+    for (const mode of ['baseline', 'output', 'source', 'paragraph', 'image', 'placeholder']) {
         assert.match(html, new RegExp('id="case-' + mode + '"'));
         assert.match(html, new RegExp('id="example-' + mode + '-near"'));
         assert.match(html, new RegExp('id="example-' + mode + '-late"'));
         assert.match(html, new RegExp('data-select-method="' + mode + '"'));
     }
+    assert.match(html, /id="case-engines"/);
+    assert.match(html, /data-engine-case="mathjax"/);
+    assert.match(html, /data-engine-case="katex"/);
+    assert.match(html, /data-engine-case="mathml"/);
+    assert.match(html, /mathjax@3\/es5\/tex-mml-chtml\.js/);
     assert.match(html, /mathjax@4\/tex-mml-chtml\.js/);
+    assert.match(html, /katex@0\.18\.9/);
     assert.match(html, /height:135vh/);
 });
 
@@ -24,7 +30,12 @@ test('D case provides an independently translated paragraph and protected origin
         assert.match(html, new RegExp('id="example-paragraph-' + pos + '">'));
         assert.match(html, new RegExp('id="example-paragraph-' + pos + '-reference"[^>]*translate="no"'));
     }
-    assert.equal((html.match(/data-original-reference="true"/g) || []).length, 2);
+    assert.equal((html.match(/data-original-reference="true"/g) || []).length, 4);
+    assert.equal((html.match(/data-hybrid-root="(near|late)"/g) || []).length, 4);
+    assert.match(html, /reconstruct\.js/);
+    assert.match(html, /id="example-placeholder-near"/);
+    assert.match(html, /id="example-placeholder-late"/);
+    assert.equal((html.match(/⟦MATH_0⟧/g) || []).length, 2);
     assert.doesNotMatch(html, /id="example-baseline-near" translate="no"/);
     assert.match(html, /id="example-source-near"/);
     assert.match(html, /data-part="M0" data-math-index="0" translate="no"/);
