@@ -4,10 +4,10 @@
 <meta name="description" content="English math translation cases to compare math survival after native browser translation.">
 <style>
 :root{color-scheme:dark;font-family:system-ui,Segoe UI,sans-serif;background:#18212a;color:#f3f4f6}
-body{margin:0}header{padding:12px 16px;border-bottom:1px solid #465261;background:#18212a}
-h1{font-size:1.25rem;line-height:1.4;margin:0 0 8px} h2{font-size:1.1rem;margin:12px 0}
-p{line-height:1.65} #plain-control{font:17px/1.5 Georgia,serif;padding:6px 0}
-.tools{padding:12px 14px;background:#243343;font-size:14px;line-height:1.5}
+body{margin:0}header{padding:8px 16px;border-bottom:1px solid #465261;background:#18212a}
+h1{font-size:1.1rem;line-height:1.3;margin:0 0 4px} h2{font-size:1.1rem;margin:12px 0}
+p{line-height:1.65} #plain-control{font:16px/1.35 Georgia,serif;margin:4px 0;padding:0}
+.tools{padding:8px 14px;background:#243343;font-size:14px;line-height:1.5}
 .links{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
 .links a,.buttons button{background:#344f69;color:#fff;padding:9px 10px;border-radius:6px;text-decoration:none;border:1px solid #5b7087;font-size:14px}
 .links a[aria-current=page]{background:#08734b;border-color:#29bf84}
@@ -20,7 +20,7 @@ html[data-lab-mode=output] #case-output,
 html[data-lab-mode=source] #case-source,
 html[data-lab-mode=paragraph] #case-paragraph,
 html[data-lab-mode=image] #case-image{display:block}
-article{background:#1f2b38;border:1px solid #425165;border-radius:9px;padding:14px;margin:12px 0}
+ .case > h2 {display:none} article{background:#1f2b38;border:1px solid #425165;border-radius:9px;padding:14px;margin:12px 0}
 p[data-example]{font:21px/1.75 Georgia,"Noto Serif",serif;margin:4px 0}
 p[data-example] [data-part]{display:inline}
 p[data-example] [data-math-index]{white-space:nowrap}
@@ -37,17 +37,16 @@ details{margin:12px 0} pre{max-height:350px;overflow:auto;white-space:pre-wrap;o
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script src="lab.js" defer></script>
 </head><body>
-<header><h1>Math Visibility Lab: can formulas survive page translation?</h1>
-<p id="plain-control">This ordinary English control sentence should be translated to Chinese when the browser's native page translation is working.</p></header>
+<header><h1>Math Visibility Lab</h1>
+<p id="plain-control">This ordinary English control sentence should be translated into Chinese.</p></header>
 <div class="tools" lang="zh-TW" translate="no">
 <strong>先選測試方法，再用 Edge 內建翻譯整頁；不用安裝新腳本</strong>
 <div class="links"><a data-select-method="baseline" href="?mode=baseline">baseline</a><a data-select-method="output" href="?mode=output">output</a><a data-select-method="source" href="?mode=source">source</a><a data-select-method="paragraph" href="?mode=paragraph">paragraph</a><a data-select-method="image" href="?mode=image">image</a></div>
-<div>目前方法：<strong id="current-method"></strong>。優先測 D（整段不翻譯）及 E（公式圖片）。</div>
+
 <div class="buttons"><button id="enable-report">開始自動回報</button></div><details><summary>展開其他診斷工具</summary><div class="buttons"><button id="capture-now">記錄目前 DOM</button><button id="capture-image">擷取測試區 PNG</button><button id="download-json">下載 JSON</button><button id="copy-json">複製 JSON</button><button id="send-now">傳送目前結果</button></div></details>
-<div class="muted">僅收集本測試頁的公開測試內容、DOM 與視窗資訊，不讀取 Cookie、不收集其他分頁。點「開始自動回報」後才上傳，48 小時後自動刪除。</div>
-<div id="control-status"></div><div id="formula-status"></div><div id="report-status"></div>
-<small>診斷代碼：<code id="session-id"></code></small>
-<details><summary>檢視 DOM 診斷 JSON</summary><pre id="log"></pre></details>
+
+<div id="report-status"></div>
+<details><summary>診斷狀態與隱私說明</summary><div id="current-method"></div><div id="control-status"></div><div id="formula-status"></div><small>診斷代碼：<code id="session-id"></code></small><p class="muted">僅收集本頁公開測試內容、DOM、User Agent 與視窗資訊；點開始後才上傳，48 小時後刪除。</p><pre id="log"></pre></details>
 </div>
 <main id="samples"><section id="case-baseline" class="case"><h2 translate="no">A — No protection. Original MathJax source.</h2><article data-near="true"><h3 translate="no">First copy: near the top</h3><p data-example="near" id="example-baseline-near"><span data-part="T0" data-text-index="0">Consider this math problem: “What is </span><span data-part="M0" data-math-index="0">\(1 + 2 + 3 + \cdots + 10\)</span><span data-part="T1" data-text-index="1">?” One route adds numbers one by one. Another pairs the outside terms: </span><span data-part="M1" data-math-index="1">\(1 + 10\)</span><span data-part="T2" data-text-index="2">, then </span><span data-part="M2" data-math-index="2">\(2 + 9\)</span><span data-part="T3" data-text-index="3">, then </span><span data-part="M3" data-math-index="3">\(3 + 8\)</span><span data-part="T4" data-text-index="4">, and finally </span><span data-part="M4" data-math-index="4">\(5 + 6\)</span><span data-part="T5" data-text-index="5">. Each pair is eleven, and the total is fifty-five. The conclusion is the same.</span></p></article><div class="spacer" translate="no">Scroll down to compare the second copy.<br>第二段測試位於下方。</div><article ><h3 translate="no">Second copy: after scrolling</h3><p data-example="late" id="example-baseline-late"><span data-part="T0" data-text-index="0">Consider this math problem: “What is </span><span data-part="M0" data-math-index="0">\(1 + 2 + 3 + \cdots + 10\)</span><span data-part="T1" data-text-index="1">?” One route adds numbers one by one. Another pairs the outside terms: </span><span data-part="M1" data-math-index="1">\(1 + 10\)</span><span data-part="T2" data-text-index="2">, then </span><span data-part="M2" data-math-index="2">\(2 + 9\)</span><span data-part="T3" data-text-index="3">, then </span><span data-part="M3" data-math-index="3">\(3 + 8\)</span><span data-part="T4" data-text-index="4">, and finally </span><span data-part="M4" data-math-index="4">\(5 + 6\)</span><span data-part="T5" data-text-index="5">. Each pair is eleven, and the total is fifty-five. The conclusion is the same.</span></p></article></section>
 <section id="case-output" class="case"><h2 translate="no">B — Protect MathJax output after it renders.</h2><article data-near="true"><h3 translate="no">First copy: near the top</h3><p data-example="near" id="example-output-near"><span data-part="T0" data-text-index="0">Consider this math problem: “What is </span><span data-part="M0" data-math-index="0">\(1 + 2 + 3 + \cdots + 10\)</span><span data-part="T1" data-text-index="1">?” One route adds numbers one by one. Another pairs the outside terms: </span><span data-part="M1" data-math-index="1">\(1 + 10\)</span><span data-part="T2" data-text-index="2">, then </span><span data-part="M2" data-math-index="2">\(2 + 9\)</span><span data-part="T3" data-text-index="3">, then </span><span data-part="M3" data-math-index="3">\(3 + 8\)</span><span data-part="T4" data-text-index="4">, and finally </span><span data-part="M4" data-math-index="4">\(5 + 6\)</span><span data-part="T5" data-text-index="5">. Each pair is eleven, and the total is fifty-five. The conclusion is the same.</span></p></article><div class="spacer" translate="no">Scroll down to compare the second copy.<br>第二段測試位於下方。</div><article ><h3 translate="no">Second copy: after scrolling</h3><p data-example="late" id="example-output-late"><span data-part="T0" data-text-index="0">Consider this math problem: “What is </span><span data-part="M0" data-math-index="0">\(1 + 2 + 3 + \cdots + 10\)</span><span data-part="T1" data-text-index="1">?” One route adds numbers one by one. Another pairs the outside terms: </span><span data-part="M1" data-math-index="1">\(1 + 10\)</span><span data-part="T2" data-text-index="2">, then </span><span data-part="M2" data-math-index="2">\(2 + 9\)</span><span data-part="T3" data-text-index="3">, then </span><span data-part="M3" data-math-index="3">\(3 + 8\)</span><span data-part="T4" data-text-index="4">, and finally </span><span data-part="M4" data-math-index="4">\(5 + 6\)</span><span data-part="T5" data-text-index="5">. Each pair is eleven, and the total is fifty-five. The conclusion is the same.</span></p></article></section>
