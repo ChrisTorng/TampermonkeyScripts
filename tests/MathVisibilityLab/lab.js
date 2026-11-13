@@ -102,6 +102,9 @@
             '；MathJax ' + value.mathJaxCount + ' 個；已記錄 ' + history.length + ' 次';
         get('control-status').textContent = value.controlTranslated
             ? '英文對照文字已變化' : '英文對照文字尚未翻譯';
+        if (value.scriptsActive.mathGuard || value.scriptsActive.inlineOrder) {
+            status('偵測到已安裝的數學/順序實驗腳本：純淨比較請先在本網址停用它們，再重整測試頁。');
+        }
         void autoSend();
     }
     function enqueue(reason) { clearTimeout(timer); timer = setTimeout(() => record(reason || 'change'), 500); }
