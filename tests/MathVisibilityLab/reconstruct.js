@@ -15,12 +15,48 @@
                 !el.parentElement?.closest('[data-part]') && !el.closest('[data-hybrid-root]'));
     }
 
-    function stripIds(root) {
+    let cloneInstance = 0;
+    // SVG formulas can reference local glyph/clip IDs via <use href="#glyph">.
+    // Removing the IDs makes those formulas vanish despite intact DOM.
+    // Rewrite IDs *and their local references* instead of simply removing them.
+    function namespaceIds(root) {
         if (root.nodeType !== 1) return;
-        root.removeAttribute('id');
-        root.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        // Cloned MathJax internals sometimes include hidden assistive branches:
-        // leave them intact; removing those branches can break the visible layout.
+        const withIds = [root, ...root.querySelectorAll('[id]')].filter(el => el.hasAttribute('id'));
+        const translations = new Map();
+        for (const element of withIds) {
+            const oldId = element.getAttribute('id');
+            if (!oldId) continue;
+            const nextId = 'tm-math-copy-' + (++cloneInstance) + '-' +
+                oldId.replace(/[^a-zA-Z0-9_-]/g, '_');
+            translations.set(oldId, nextId);
+            element.setAttribute('id', nextId);
+        }
+        if (!translations.size) return;
+        const elements = [root, ...root.querySelectorAll('*')];
+        const attrs = ['href','xlink:href','aria-labelledby','aria-describedby',
+            'clip-path','mask','filter','fill','stroke','style'];
+        for (const element of elements) {
+            for (const attr of attrs) {
+                const value = element.getAttribute(attr);
+                if (!value) continue;
+                let updated = value.replace(/url\(#([^)]+)\)/g,
+                    (all, id) => translations.has(id) ? 'url(#' + translations.get(id) + ')' : all);
+                if ((attr === 'href' || attr === 'xlink:href') && updated.startsWith('#')) {
+                    updated = '#' + (translations.get(updated.slice(1)) || updated.slice(1));
+                }
+                if (attr === 'aria-labelledby' || attr === 'aria-describedby') {
+                    updated = updated.split(/\s+/).map(id => translations.get(id) || id).join(' ');
+                }
+                if (value !== updated) element.setAttribute(attr, updated);
+            }
+        }
+        root.querySelectorAll('style').forEach(style => {
+            let css = style.textContent || '';
+            for (const [oldId,newId] of translations) {
+                css = css.split('url(#' + oldId + ')').join('url(#' + newId + ')');
+            }
+            style.textContent = css;
+        });
     }
 
     function cloneMath(referencePart) {
@@ -31,7 +67,7 @@
         clone.removeAttribute('data-math-index');
         clone.setAttribute('translate', 'no');
         clone.setAttribute('data-restored-formula', referencePart.dataset.part);
-        stripIds(clone);
+        namespaceIds(clone);
         return clone;
     }
 
@@ -138,7 +174,11 @@
     function appendPieces(target, pieces, document) {
         for (const piece of pieces) {
             if (piece.kind === 'math') {
-                if (piece.node) target.appendChild(piece.node.cloneNode(true));
+                if (piece.node) {
+                const copy = piece.node.cloneNode(true);
+                namespaceIds(copy);
+                target.appendChild(copy);
+            }
             } else if (piece.value) target.appendChild(document.createTextNode(piece.value));
         }
     }
