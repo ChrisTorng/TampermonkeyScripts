@@ -45,7 +45,7 @@
         if (!element || element.nodeType !== 1 || !outputSelectors.some((selector) => element.matches(selector))) return;
         if (element.closest('.MathJax_Preview')) return;
         // Only protect the outermost rendered formula. Nested MathML is not a new slot.
-        if (element.parentElement && element.parentElement.closest(outputSelector)) return;
+        if (element.parentElement && outputSelectors.some((selector) => element.parentElement.closest(selector))) return;
         markMath(element, 'output');
     }
 
