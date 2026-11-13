@@ -75,7 +75,7 @@ describe('Math protection without position mutations', () => {
     test('Rendered MathJax output is protected on Plover alongside math source', () => {
         let display;
         let output;
-        execute('https://alexwang.ai/posts/reasoning-as-pathfinding/', (h) => {
+        execute('https://blog.plover.com/math/ordinals/02-wellfoundedness.html', (h) => {
             display = paragraph(h, '$$p_x = \\sum_z \\pi(z \\mid x)$$');
             output = h.document.createElement('mjx-container');
             output.appendChild(h.document.createElement('math'));
