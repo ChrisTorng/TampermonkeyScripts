@@ -3,6 +3,11 @@
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
 - `N/A`: reference sample with no matching userscript behavior expected.
 
+# Fullscreen Game View
+Section note: local DOM-harness tests validate fixed viewport docking, menu-default separation without later collision avoidance, drag/pinch behavior, and per-player mounting. Native mobile compositor behavior requires Android Edge verification.
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (local DOM-harness validates game control geometry, docking, fullscreen fallback, and restoration; live mobile scroll needs device testing)
+- https://www.anthropic.com/claude-fable-and-mythos-5-2 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (lazy YouTube iframe mounting and rotation tested with a simulated DOM; live embedded players require device testing)
+
 # Hacker News Comments
 Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
