@@ -41,7 +41,7 @@ Update each script below separately as needed.
 
 ### [Math Translation Guard User Script](src/MathTranslationGuard.user.js)
 
-Protect MathJax, KaTeX and MathML expressions and TeX source without changing paragraph order.
+Preserve full English math-containing paragraphs beside their normal translated versions on alexwang.ai (MathJax 4); retain MathJax/KaTeX/MathML handling elsewhere. The dual-copy fallback avoids splitting inline formulas into protected spans on the affected site.
 
 ### [Inline Translation Order Guard User Script](src/InlineTranslationOrderGuard.user.js)
 
