@@ -4,10 +4,10 @@ Updated: 2026-11-13
 
 ## Math source and inline order — 2026-11-13
 
-- [Install MathTranslationGuard.user.js — 2026-11-13_1.0.0](src/MathTranslationGuard.user.js) — preserve TeX source and rendered formulas without reordering prose.
+- [Install MathTranslationGuard.user.js — 2026-11-14_1.1.0](src/MathTranslationGuard.user.js) — preserve TeX source and rendered formulas without reordering prose.
 - [Install InlineTranslationOrderGuard.user.js — 2026-11-13_1.0.1](src/InlineTranslationOrderGuard.user.js) — anchor inline code and math consistently. Install both and reload.
 
-**Tests:** [Alex Wang MathJax article](https://alexwang.ai/posts/reasoning-as-pathfinding/) — formulas must stay in sentences; [Plover math article](https://blog.plover.com/math/ordinals/02-wellfoundedness.html) — custom formula source and scrolling. Real Android Edge verification is pending; older #94/#97 strategies remain experimental.
+**New MathJax 4 fallback:** On alexwang.ai, each math-containing paragraph has a second intact English reference beneath the translatable paragraph. This replaces per-formula source protection on that domain. [Live D dual-copy lab](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph) records the same arrangement; no new lab page is needed. Native Android Edge acceptance on the real article remains pending.\n\n**Tests:** [Alex Wang MathJax article](https://alexwang.ai/posts/reasoning-as-pathfinding/) — formulas must stay in sentences; [Plover math article](https://blog.plover.com/math/ordinals/02-wellfoundedness.html) — custom formula source and scrolling. Real Android Edge verification is pending; older #94/#97 strategies remain experimental.
 
 ## Fullscreen button docking — 2026-11-13
 
