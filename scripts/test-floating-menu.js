@@ -62,6 +62,32 @@ describe('shared floating menu', () => {
         assert(menuTools(harness).every((button) => !button.hidden));
     });
 
+    test('recovers previously registered controls after a site removes the menu or a button', () => {
+        const page = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
+        const harness = run(['mobile', 'dark', 'archive'], { url: page });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        const style = harness.document.getElementById('tm-shared-floating-menu-style');
+        assert.deepEqual(menuTools(harness).map((button) => button.getAttribute('data-floating-tool')),
+            ['archive', 'mobile', 'dark']);
+
+        menu.parentNode.removeChild(menu);
+        style.parentNode.removeChild(style);
+        harness.triggerMutation([], { target: harness.document.documentElement, removedNodes: [menu] });
+        assert.equal(menu.isConnected, true);
+        assert.equal(style.isConnected, true);
+        assert.equal(harness.document.querySelectorAll('#tm-shared-floating-menu').length, 1);
+
+        menu.querySelector('[data-floating-toggle]').click();
+        const dark = menu.querySelector('[data-floating-tool="dark"]');
+        assert.equal(dark.hidden, false);
+        menu.removeChild(dark);
+        harness.triggerMutation([], { target: menu, removedNodes: [dark] });
+        assert.equal(menu.querySelector('[data-floating-tool="dark"]'), dark);
+        dark.click();
+        assert.equal(dark.getAttribute('aria-pressed'), 'true');
+        assert.equal(menu.getAttribute('data-floating-expanded'), 'false');
+    });
+
     test('unavailable translation control and empty menu stay hidden', () => {
         const onlyTranslation = run(['translate']);
         assert.equal(onlyTranslation.document.getElementById('tm-shared-floating-menu').hidden, true);

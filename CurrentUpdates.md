@@ -1,6 +1,19 @@
 # Current updates
 
-Updated: 2026-11-12
+Updated: 2026-11-13
+
+## Shared floating menu DOM recovery — 2026-11-13
+
+Update all five menu scripts together, then reload:
+- [AllGoInternetArchive.user.js — 2026-11-13_1.3.11](src/AllGoInternetArchive.user.js)
+- [InternetArchive.user.js — 2026-11-13_1.5.11](src/InternetArchive.user.js)
+- [ForceMobileView.user.js — 2026-11-13_2.1.11](src/ForceMobileView.user.js)
+- [ForceDarkMode.user.js — 2026-11-13_2.0.11](src/ForceDarkMode.user.js)
+- [TranslatePreformattedText.user.js — 2026-11-13_1.5.21](src/TranslatePreformattedText.user.js)
+
+Restore registered menu actions and styling if site re-rendering or translation removes them. A missing script still requires enabling it in Tampermonkey.
+
+**Test:** [Nieman Lab article](https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/) — expanded ≡ should include →, ↔, and ☽ when those scripts run.
 
 ## Hacker News comment-only automatic enlargement — 2026-11-12
 
