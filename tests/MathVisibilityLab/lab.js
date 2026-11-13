@@ -1,7 +1,7 @@
 /* Math Visibility Lab: browser-native translation diagnostics; no userscript needed. */
 (() => {
     'use strict';
-    const modes = ['baseline', 'output', 'source', 'paragraph', 'image', 'placeholder'];
+    const modes = ['baseline', 'output', 'source', 'paragraph', 'image', 'placeholder', 'engines'];
     const selected = new URLSearchParams(location.search).get('mode');
     const mode = modes.includes(selected) ? selected : 'paragraph';
     const url = 'https://tm-math-translation-lab.christorng.workers.dev/report';
@@ -65,6 +65,7 @@
             samples: samples.map(inspect),
             reconstructed: within(block, '[data-hybrid-root]').map(root => ({
                 position: root.dataset.hybridRoot,
+                engine: root.closest('[data-engine-case]')?.dataset.engineCase || '',
                 status: root.dataset.reconstruction,
                 formulaIds: root.dataset.formulaIds || '',
                 formulaCount: root.querySelectorAll('[data-restored-formula]').length,
@@ -170,12 +171,32 @@
                 status('已複製診斷');
             } catch (_) { status('剪貼簿無法使用，請下載 JSON'); }
         };
-        const experiment = mode === 'paragraph' || mode === 'placeholder';
+        const experiment = mode === 'paragraph' || mode === 'placeholder' || mode === 'engines';
         let latestReconstruction = [];
+        function paintKaTeX() {
+            if (mode !== 'engines' || !window.katex?.render) return;
+            block.querySelectorAll('[data-katex-tex]').forEach(node => {
+                if (node.dataset.katexReady === 'true') return;
+                try {
+                    window.katex.render(node.dataset.katexTex, node, {
+                        throwOnError: false, output: 'htmlAndMathml'
+                    });
+                    node.dataset.katexReady = 'true';
+                } catch (error) {
+                    node.dataset.katexError = String(error?.message || error);
+                }
+            });
+        }
         const rebuild = () => {
             if (!experiment) return;
-            latestReconstruction = window.MathVisibilityReconstructor
-                ?.rebuildPair(block, mode === 'placeholder' ? 'markers' : 'slots') || [];
+            paintKaTeX();
+            if (mode === 'engines') {
+                latestReconstruction = Array.from(block.querySelectorAll('[data-engine-case]'))
+                    .flatMap(section => window.MathVisibilityReconstructor?.rebuildPair(section,'slots') || []);
+            } else {
+                latestReconstruction = window.MathVisibilityReconstructor
+                    ?.rebuildPair(block, mode === 'placeholder' ? 'markers' : 'slots') || [];
+            }
         };
         const queueRebuild = () => {
             if (!experiment) return;
@@ -183,6 +204,7 @@
             rebuildTimer = setTimeout(() => { rebuild(); enqueue('reconstructed'); }, 220);
         };
         rebuild();
+        if (mode === 'engines') window.addEventListener('katex-loaded', () => queueRebuild());
         // Probe the test content, but do not recursively rebuild a reconstructed result.
         new MutationObserver((records) => {
             mutations += records.length;
