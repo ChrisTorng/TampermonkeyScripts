@@ -13,7 +13,7 @@ p{line-height:1.65} #plain-control{font:17px/1.5 Georgia,serif;padding:6px 0}
 .links a[aria-current=page]{background:#08734b;border-color:#29bf84}
 .buttons{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
 .buttons button{cursor:pointer}
-small, .muted {color:#b9c7d7} #report-status{min-height:1.7em;display:block}
+small, .muted {color:#b9c7d7} .tools details{margin:4px 0} .tools .buttons{margin:4px 0} .tools .buttons button{padding:7px 9px} #report-status{min-height:1.7em;display:block}
 .case{display:none;padding:10px 16px}
 html[data-lab-mode=baseline] #case-baseline,
 html[data-lab-mode=output] #case-output,
@@ -43,7 +43,7 @@ details{margin:12px 0} pre{max-height:350px;overflow:auto;white-space:pre-wrap;o
 <strong>先選測試方法，再用 Edge 內建翻譯整頁；不用安裝新腳本</strong>
 <div class="links"><a data-select-method="baseline" href="?mode=baseline">baseline</a><a data-select-method="output" href="?mode=output">output</a><a data-select-method="source" href="?mode=source">source</a><a data-select-method="paragraph" href="?mode=paragraph">paragraph</a><a data-select-method="image" href="?mode=image">image</a></div>
 <div>目前方法：<strong id="current-method"></strong>。優先測 D（整段不翻譯）及 E（公式圖片）。</div>
-<div class="buttons"><button id="enable-report">開始自動回報</button><button id="capture-now">記錄目前 DOM</button><button id="capture-image">擷取測試區 PNG</button><button id="download-json">下載 JSON</button><button id="copy-json">複製 JSON</button><button id="send-now">傳送目前結果</button></div>
+<div class="buttons"><button id="enable-report">開始自動回報</button></div><details><summary>展開其他診斷工具</summary><div class="buttons"><button id="capture-now">記錄目前 DOM</button><button id="capture-image">擷取測試區 PNG</button><button id="download-json">下載 JSON</button><button id="copy-json">複製 JSON</button><button id="send-now">傳送目前結果</button></div></details>
 <div class="muted">僅收集本測試頁的公開測試內容、DOM 與視窗資訊，不讀取 Cookie、不收集其他分頁。點「開始自動回報」後才上傳，48 小時後自動刪除。</div>
 <div id="control-status"></div><div id="formula-status"></div><div id="report-status"></div>
 <small>診斷代碼：<code id="session-id"></code></small>
