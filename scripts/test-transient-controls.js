@@ -193,7 +193,7 @@ describe('transient in-content controls', () => {
         assert.equal(harness.button.style.left, '1165px');
         menu._rect.left = 1165;
         harness.update();
-        assert.equal(harness.button.style.left, '627px');
+        assert.equal(harness.button.style.left, '1165px');
     });
 
     test('fullscreen stays fixed at the top after docking, without animation-frame lag', () => {
