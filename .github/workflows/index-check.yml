@@ -44,6 +44,8 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-root-scroll-browser.js
+      - name: Validate no-install native math lab and its syntax
+        run: node --check tests/MathVisibilityLab/lab.js && node --test scripts/test-math-visibility-lab.js
       - name: Test shared menu, safe translation and GM update tabs
         run: node --test scripts/test-floating-menu.js scripts/test-translate-preformatted-text.js scripts/test-bulk-update-gm.js
       - name: Test generic iframe translation reader and dragging
