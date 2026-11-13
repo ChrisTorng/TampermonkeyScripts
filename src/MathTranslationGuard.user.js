@@ -16,7 +16,8 @@
 
     // Formula protection only. Inline position repair belongs to
     // InlineTranslationOrderGuard.user.js, never to this userscript.
-    const outputSelector = '.MathJax, .MathJax_Display, mjx-container, .katex, math';
+    const outputSelectors = ['.MathJax', '.MathJax_Display', 'mjx-container', '.katex', 'math'];
+    const outputSelector = outputSelectors.join(', ');
     const sourceAttribute = 'data-tm-math-protected';
     const mathHosts = new Set(['alexwang.ai', 'blog.plover.com']);
     const isPlover = location.hostname === 'blog.plover.com';
@@ -41,7 +42,7 @@
     }
 
     function protectOutput(element) {
-        if (!element || element.nodeType !== 1 || !element.matches(outputSelector)) return;
+        if (!element || element.nodeType !== 1 || !outputSelectors.some((selector) => element.matches(selector))) return;
         if (element.closest('.MathJax_Preview')) return;
         // Only protect the outermost rendered formula. Nested MathML is not a new slot.
         if (element.parentElement && element.parentElement.closest(outputSelector)) return;
