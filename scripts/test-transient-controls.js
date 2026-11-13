@@ -145,10 +145,10 @@ describe('transient in-content controls', () => {
         });
     }
 
-    test('fullscreen remains document-anchored and compact during pinch zoom', () => {
+    test('fullscreen freezes its document position and size during a real pinch gesture', () => {
         const harness = execute(files[1]);
-        const left = harness.button.style.left;
-        const top = harness.button.style.top;
+        const left = parseFloat(harness.button.style.left);
+        const top = parseFloat(harness.button.style.top);
         const viewport = harness.window.visualViewport;
         harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
         viewport.scale = 2;
@@ -157,19 +157,21 @@ describe('transient in-content controls', () => {
         viewport.width = 350;
         viewport.height = 260;
         harness.dispatchVisualViewportEvent('resize');
-        harness.flushAnimationFrames();
-        assert.equal(harness.button.style.left, left);
-        assert.equal(harness.button.style.top, top);
+        assert.equal(harness.button.style.position, 'absolute');
+        assert.equal(parseFloat(harness.button.style.left), left - 100);
+        assert.equal(parseFloat(harness.button.style.top), top - 100);
         assert.equal(harness.button.style.transform, 'scale(0.5)');
         harness.dispatchVisualViewportEvent('scroll');
-        harness.flushAnimationFrames();
-        assert.equal(harness.button.style.left, left);
-        assert.equal(harness.button.style.top, top);
+        assert.equal(parseFloat(harness.button.style.left), left - 100);
         viewport.scale = 1;
         viewport.offsetLeft = 0;
         viewport.offsetTop = 0;
+        viewport.width = 1280;
+        viewport.height = 720;
         harness.dispatchVisualViewportEvent('resize');
-        harness.flushAnimationFrames();
+        assert.equal(harness.button.style.position, 'fixed');
+        assert.equal(harness.button.style.left, `${left}px`);
+        assert.equal(harness.button.style.top, `${top}px`);
         assert.equal(harness.button.style.transform || '', '');
     });
 
