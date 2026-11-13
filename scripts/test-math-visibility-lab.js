@@ -30,7 +30,7 @@ test('D case provides an independently translated paragraph and protected origin
         assert.match(html, new RegExp('id="example-paragraph-' + pos + '"[^>]*data-hybrid-translated="' + pos + '"'));
         assert.match(html, new RegExp('id="example-paragraph-' + pos + '-reference"[^>]*translate="no"'));
     }
-    assert.equal((html.match(/data-original-reference="true"/g) || []).length, 4);
+    assert.equal((html.match(/data-original-reference="true"/g) || []).length, 7);
     assert.equal((html.match(/data-hybrid-root="(near|late)"/g) || []).length, 7);
     assert.match(html, /reconstruct\.js/);
     assert.match(html, /id="example-placeholder-near"/);
