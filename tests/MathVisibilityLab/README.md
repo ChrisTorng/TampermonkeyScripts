@@ -46,3 +46,8 @@ Reports are stored in a dedicated Cloudflare Workers KV namespace, with no IP ad
 - [PR #148](https://github.com/ChrisTorng/TampermonkeyScripts/pull/148)
 
 **Unresolved:** whether Android Edge honors the paragraph-level `translate=no` reliably, whether source wrappers preserve inline math, and whether all visible formulas remain in semantic order. Do not merge a production fix until the live evidence resolves visibility first.
+
+## Clean-test isolation (2026-11-14)
+Before interpreting native Edge translation results, disable **all page-modifying Tampermonkey scripts** on the lab domain, specifically `TranslatePreformattedText.user.js`, `TranslationCrashGuard.user.js`, `MathTranslationGuard.user.js`, and `InlineTranslationOrderGuard.user.js`. Do not assume missing DOM markers prove a globally matched userscript is inactive: TranslatePreformattedText can run without generating an inline-code marker when no `code` element is present. The clean experiment should exclude other page-changing extensions as well when feasible, then re-enable scripts **one at a time** only after the baseline is established.
+
+There is plausible interaction, but **no demonstrated causality from TranslatePreformattedText to MathJax disappearing** in this article. PR #96 documented a clean Android Edge SVG case with `T0 M0 T1 M1 T2` changed to `T0 M0 M1 T1 T2` even with userscripts disabled. Treat the native Edge order issue separately from scripts until comparative evidence says otherwise.
