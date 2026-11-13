@@ -178,3 +178,10 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (whole-paragraph translate=no control, shipped as initial HTML; remote Chromium rendering and native-Edge translation are different engines)
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=image [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (atomic SVG formula images and translated-prose sibling reordering diagnostics; native Edge still requires live evidence)
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=source [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (early source wrapper protection; not yet verified in native Edge)
+
+
+## Third-copy reconstruction on original lab (experimental; pending native Edge reports)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (D has translated paragraph, intact original, and third reconstructed/dual-language sentence view. Test native Edge translation; reconstruction must recover all 5 formulas and allow collapsing other copies.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=placeholder [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (F tests native translation of ⟦MATH_0⟧ placeholders, literal token recovery and safe incomplete fallback.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (G: MathJax 4, KaTeX, native MathML; independently rebuild rendered formula nodes, without promising TeX conversion across engines.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&mathjax=3 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (G alternate MathJax 3 renderer; native Edge translation and pixels still unverified.)
