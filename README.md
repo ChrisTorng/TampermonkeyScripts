@@ -39,6 +39,14 @@ Translate formatted text and provide a translucent, draggable 譯↗ to view rea
 
 Update each script below separately as needed.
 
+### [Math Translation Guard User Script](src/MathTranslationGuard.user.js)
+
+Protect MathJax, KaTeX and MathML expressions and TeX source without changing paragraph order.
+
+### [Inline Translation Order Guard User Script](src/InlineTranslationOrderGuard.user.js)
+
+Keep inline code and formulas next to their original DOM positions during browser translation. Install alongside Math Translation Guard for formula placement.
+
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
 Add an article button for Hacker News comments, including pages reached through redirects.
