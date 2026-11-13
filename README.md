@@ -136,6 +136,10 @@ Simplify Discord input buttons; keep Android Edge keyboard layout unchanged by d
 
 Reload [Medium](https://medium.com/) and Medium-powered domains once per session to avoid hangups.
 
+## Math translation visibility lab
+
+[Open the no-install Math Visibility Lab](https://tm-math-translation-lab.christorng.workers.dev/) · [Historical findings and test methods](tests/MathVisibilityLab/README.md). Real Android Edge native translation remains the acceptance test.
+
 ## Test Cases
 
 See [TestCases.md](TestCases.md) for sample URLs across the scripts.
