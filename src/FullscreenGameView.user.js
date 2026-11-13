@@ -263,6 +263,9 @@
             if (!button.isConnected || !target.isConnected) {
                 fullscreenControlLayouts.delete(layout);
                 observer?.disconnect();
+                document.removeEventListener('touchstart', touchStart, true);
+                document.removeEventListener('touchend', touchEnd, true);
+                document.removeEventListener('touchcancel', touchEnd, true);
                 return;
             }
             const scale = window.visualViewport?.scale || 1;
@@ -270,8 +273,13 @@
             if ((pinchAnchored || pinchArmed) && scale > normalScale * 1.01) {
                 if (!pinchAnchored) {
                     // The shared menu freezes its document position during a real pinch.
-                    place((window.scrollX || 0) + (parseFloat(button.style.left) || 0),
-                        fullscreenScrollY() + (parseFloat(button.style.top) || 0), false);
+                    const rect = target.getBoundingClientRect();
+                    const originX = rect.left + (target.clientLeft || 0) - (target.scrollLeft || 0);
+                    const originY = rect.top + (target.clientTop || 0) - (target.scrollTop || 0);
+                    // Absolute coordinates are relative to the media container;
+                    // subtract its viewport origin to preserve document position.
+                    place((parseFloat(button.style.left) || 0) - originX,
+                        (parseFloat(button.style.top) || 0) - originY, false);
                     pinchAnchored = true;
                 }
                 button.style.setProperty('transform', `scale(${normalScale / scale})`, 'important');
@@ -700,6 +708,7 @@ body:has(#task-detail-root) {
             });
             if (typeof window.scrollTo === 'function') window.scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' });
             refreshTransientControls();
+            refreshFullscreenControls();
         };
         // Fullscreen exit and overflow removal can reset scrolling after fullscreenchange.
         // Restore immediately and across two layout frames; a new entry invalidates old callbacks.
@@ -727,6 +736,7 @@ body:has(#task-detail-root) {
         syncMediaOrientation();
         updateButton(button, target);
         refreshTransientControls();
+        refreshFullscreenControls();
     }
 
     const mountedButtons = new Map();
@@ -815,6 +825,7 @@ body:has(#task-detail-root) {
         for (const [target, button] of mountedButtons) {
             updateButton(button, target);
             if (!isFullscreen(target)) restorePageState(target);
+            refreshFullscreenControls();
         }
     });
 
