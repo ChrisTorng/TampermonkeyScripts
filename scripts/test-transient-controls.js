@@ -145,52 +145,72 @@ describe('transient in-content controls', () => {
         });
     }
 
-    test('fullscreen remains document-anchored and compact during pinch zoom', () => {
+    test('fullscreen freezes its document position and size during a real pinch gesture', () => {
         const harness = execute(files[1]);
-        const left = harness.button.style.left;
-        const top = harness.button.style.top;
+        const left = parseFloat(harness.button.style.left);
+        const top = parseFloat(harness.button.style.top);
         const viewport = harness.window.visualViewport;
+        harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
         viewport.scale = 2;
         viewport.offsetLeft = 300;
         viewport.offsetTop = 200;
         viewport.width = 350;
         viewport.height = 260;
         harness.dispatchVisualViewportEvent('resize');
-        harness.flushAnimationFrames();
-        assert.equal(harness.button.style.left, left);
-        assert.equal(harness.button.style.top, top);
+        assert.equal(harness.button.style.position, 'absolute');
+        assert.equal(parseFloat(harness.button.style.left), left - 100);
+        assert.equal(parseFloat(harness.button.style.top), top - 100);
         assert.equal(harness.button.style.transform, 'scale(0.5)');
         harness.dispatchVisualViewportEvent('scroll');
-        harness.flushAnimationFrames();
-        assert.equal(harness.button.style.left, left);
-        assert.equal(harness.button.style.top, top);
+        assert.equal(parseFloat(harness.button.style.left), left - 100);
         viewport.scale = 1;
         viewport.offsetLeft = 0;
         viewport.offsetTop = 0;
+        viewport.width = 1280;
+        viewport.height = 720;
         harness.dispatchVisualViewportEvent('resize');
-        harness.flushAnimationFrames();
+        assert.equal(harness.button.style.position, 'fixed');
+        assert.equal(harness.button.style.left, `${left}px`);
+        assert.equal(harness.button.style.top, `${top}px`);
         assert.equal(harness.button.style.transform || '', '');
     });
 
-    test('fullscreen moves beside the independently mounted floating menu', () => {
+    test('fullscreen uses only the default menu position and never follows its movement', () => {
         const harness = execute(files[1]);
         const menu = harness.document.createElement('div');
         menu.id = 'tm-shared-floating-menu';
-        const left = 100 + parseFloat(harness.button.style.left) + 2;
-        const top = 100 + parseFloat(harness.button.style.top) + 1;
-        menu._rect = { left, top, right: left + 38, bottom: top + 32, width: 38, height: 32 };
+        menu._rect = { left: 1165, top: 70, right: 1203, bottom: 102, width: 38, height: 32 };
+        menu.getBoundingClientRect = () => { throw new Error('Fullscreen must not inspect the menu'); };
         harness.document.documentElement.appendChild(menu);
-        assert.equal(harness.document.getElementById('tm-shared-floating-menu'), menu);
-        let reads = 0;
-        const getRect = menu.getBoundingClientRect.bind(menu);
-        menu.getBoundingClientRect = () => { reads++; return getRect(); };
+        assert.equal(harness.button.style.position, 'fixed');
+        assert.equal(harness.button.style.left, '1200px');
+        assert.equal(harness.button.style.top, '70px');
         harness.triggerMutation([menu], { target: harness.document.documentElement });
         harness.update();
-        assert(reads > 0, 'Fullscreen layout must measure the menu after it mounts');
-        assert.equal(harness.button.style.left, `${left - 100 - 38 - 4}px`); // Leaves a 4 px gap.
-        menu._rect = { left: 600, top: 105, right: 638, bottom: 137, width: 38, height: 32 };
+        assert.equal(harness.button.style.left, '1200px');
+        // A manual drag may overlap the menu, and later menu movement must not reposition it.
+        harness.pointer('pointerdown', 670, 110);
+        harness.pointer('pointermove', 635, 110);
+        harness.pointer('pointerup', 635, 110);
+        assert.equal(harness.button.style.left, '1165px');
+        menu._rect.left = 1165;
         harness.update();
-        assert.equal(harness.button.style.left, '558px'); // Restores the default when clear.
+        assert.equal(harness.button.style.left, '1165px');
+    });
+
+    test('fullscreen stays fixed at the top after docking, without animation-frame lag', () => {
+        const harness = execute(files[1]);
+        harness.window.scrollY = 350;
+        harness.container._rect.top = -200;
+        harness.container._rect.bottom = 800;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(harness.button.style.position, 'fixed');
+        assert.equal(harness.button.style.top, '0px');
+        harness.window.scrollY = 420;
+        harness.container._rect.top = -270;
+        harness.container._rect.bottom = 730;
+        harness.dispatchWindowEvent('scroll');
+        assert.equal(harness.button.style.top, '0px');
     });
 
     test('fullscreen shares menu-like translucent styling and hides while active', () => {
@@ -198,7 +218,7 @@ describe('transient in-content controls', () => {
         // Color rendering is outside this DOM harness; verify the emitted CSS.
         const css = harness.document.getElementById('tm-fullscreen-game-view-style').textContent;
         assert.match(css, /color: #f0f0f0 !important/);
-        assert.match(css, /background: rgba\(0, 0, 0, \.55\) !important/);
+        assert.match(css, /background: rgba\(0,0,0,\.55\) !important/);
         assert.match(css, /width: 38px !important/);
         assert.match(css, /height: 32px !important/);
         assert.match(css, /border-radius: 5px !important/);
@@ -210,13 +230,11 @@ describe('transient in-content controls', () => {
         assert.equal(harness.button.textContent, '⛶');
     });
 
-    test('both embedded helpers match their canonical source', () => {
+    test('translation embedded helper matches its canonical source', () => {
         const shared = fs.readFileSync(path.join(root, 'src', 'TransientControl.js'), 'utf8').trimEnd().replace(/\r\n/g, '\n');
-        for (const file of files) {
-            const text = fs.readFileSync(path.join(root, 'src', file), 'utf8');
-            const match = text.match(/    \/\/ BEGIN SHARED TRANSIENT CONTROL\r?\n([\s\S]*?)\r?\n    \/\/ END SHARED TRANSIENT CONTROL/);
-            assert(match);
-            assert.equal(match[1].replace(/\r\n/g, '\n'), shared);
-        }
+        const text = fs.readFileSync(path.join(root, 'src', files[0]), 'utf8');
+        const match = text.match(/    \/\/ BEGIN SHARED TRANSIENT CONTROL\r?\n([\s\S]*?)\r?\n    \/\/ END SHARED TRANSIENT CONTROL/);
+        assert(match);
+        assert.equal(match[1].replace(/\r\n/g, '\n'), shared);
     });
 });

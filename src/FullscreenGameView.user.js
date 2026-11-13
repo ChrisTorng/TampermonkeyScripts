@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-10_1.2.2
+// @version      2026-11-13_1.2.3
 // @description  Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -16,140 +16,125 @@
 (function () {
     'use strict';
 
-    // BEGIN SHARED TRANSIENT CONTROL
-    // Shared source for draggable in-content controls. Run scripts/sync-transient-controls.js after editing.
-    const transientControlLayouts = new Set();
-    let transientControlFrame = null;
-    function refreshTransientControls() {
-        if (transientControlFrame !== null) return;
-        transientControlFrame = window.requestAnimationFrame(() => {
-            transientControlFrame = null;
-            transientControlLayouts.forEach((layout) => layout());
-        });
+
+    // Keep the independent fullscreen entry as steady as the shared fixed-position menu.
+    // The menu's default is top:70/right:0, so the entry defaults 42px to its left.
+    const fullscreenControlLayouts = new Set();
+    const FULLSCREEN_WIDTH = 38;
+    const FULLSCREEN_HEIGHT = 32;
+    const clampFullscreen = (value, low, high) => Math.max(low, Math.min(value, high));
+    const fullscreenScrollY = () => {
+        const viewport = window.visualViewport;
+        return Math.max(0, window.scrollY || 0,
+            document.scrollingElement?.scrollTop || 0,
+            document.documentElement.scrollTop || 0,
+            document.body?.scrollTop || 0,
+            viewport && Number.isFinite(viewport.pageTop)
+                ? viewport.pageTop - (viewport.offsetTop || 0) : 0);
+    };
+    function refreshFullscreenControls() {
+        fullscreenControlLayouts.forEach((layout) => layout());
     }
-    window.addEventListener('scroll', refreshTransientControls, { capture: true, passive: true });
-    window.addEventListener('resize', refreshTransientControls);
-    document.addEventListener('fullscreenchange', refreshTransientControls);
+    // Unlike animation-frame placement of in-block translation controls, a fixed
+    // fullscreen entry docks synchronously and does not trail normal scrolling.
+    window.addEventListener('scroll', refreshFullscreenControls, { passive: true });
+    document.addEventListener('scroll', refreshFullscreenControls, { capture: true, passive: true });
+    window.addEventListener('resize', refreshFullscreenControls);
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('scroll', refreshTransientControls);
-        window.visualViewport.addEventListener('resize', refreshTransientControls);
+        window.visualViewport.addEventListener('scroll', refreshFullscreenControls);
+        window.visualViewport.addEventListener('resize', refreshFullscreenControls);
     }
 
-    function makeTransientControlDraggable(button, container, { bottom = false, size = 24, height = size, inset = 6,
-        stationaryOnPinchZoom = false, avoidFloatingMenu = false } = {}) {
+    function makeDockedFullscreenControl(button, target, alignWithMenuDefault) {
         let placement = null;
         let drag = null;
         let suppressClick = false;
+        let pinchAnchored = false;
+        let pinchArmed = false;
+        let normalScale = window.visualViewport?.scale || 1;
         let observer;
-        let positioned = false;
-        let normalScale = Math.min(1, window.visualViewport?.scale || 1);
-        const isPinchZoomed = () => {
-            if (!window.visualViewport) return false;
-            normalScale = Math.min(normalScale, window.visualViewport.scale);
-            return window.visualViewport.scale > normalScale * 1.01;
+        const bounds = () => {
+            const viewport = window.visualViewport;
+            const width = Math.max(FULLSCREEN_WIDTH, Math.min(window.innerWidth || FULLSCREEN_WIDTH,
+                document.documentElement.clientWidth || window.innerWidth || FULLSCREEN_WIDTH));
+            const left = viewport ? viewport.offsetLeft : 0;
+            const right = left + (viewport ? viewport.width : width);
+            const bottom = viewport ? viewport.height : window.innerHeight;
+            const rect = target.getBoundingClientRect();
+            return {
+                left, right,
+                visible: Math.min(rect.right, right) - Math.max(rect.left, left) >= FULLSCREEN_WIDTH &&
+                    Math.min(rect.bottom, bottom) - Math.max(rect.top, 0) >= FULLSCREEN_HEIGHT,
+                minX: alignWithMenuDefault ? left : Math.max(rect.left, left),
+                maxX: (alignWithMenuDefault ? right : Math.min(rect.right, right)) - FULLSCREEN_WIDTH,
+                minY: alignWithMenuDefault ? 0 : Math.max(rect.top, 0),
+                maxY: (alignWithMenuDefault ? bottom : Math.min(rect.bottom, bottom)) - FULLSCREEN_HEIGHT,
+            };
         };
-        const geometry = () => {
-            const rect = container.getBoundingClientRect();
-            const viewport = stationaryOnPinchZoom ? null : window.visualViewport;
-            let left = viewport ? viewport.offsetLeft : 0;
-            let top = viewport ? viewport.offsetTop : 0;
-            let right = left + (viewport ? viewport.width : window.innerWidth);
-            let lower = top + (viewport ? viewport.height : window.innerHeight);
-            // A block may be wider than an ancestor's scrollport even when it fits the screen.
-            // Intersect every clipping ancestor, excluding borders and scrollbar gutters.
-            for (let ancestor = container; ancestor && ancestor !== document.documentElement; ancestor = ancestor.parentElement) {
-                const css = window.getComputedStyle(ancestor);
-                const clips = (axis) => /^(auto|scroll|hidden|clip|overlay)$/.test(
-                    css[`overflow${axis}`] || css.getPropertyValue?.(`overflow-${axis.toLowerCase()}`) || css.overflow || '');
-                if (!clips('X') && !clips('Y')) {
-                    if (ancestor === document.fullscreenElement) break;
-                    continue;
-                }
-                const bounds = ancestor.getBoundingClientRect();
-                const innerLeft = bounds.left + (ancestor.clientLeft || 0);
-                const innerTop = bounds.top + (ancestor.clientTop || 0);
-                if (clips('X')) {
-                    left = Math.max(left, innerLeft);
-                    right = Math.min(right, innerLeft + ancestor.clientWidth);
-                }
-                if (clips('Y')) {
-                    top = Math.max(top, innerTop);
-                    lower = Math.min(lower, innerTop + ancestor.clientHeight);
-                }
-                // Native fullscreen content escapes clipping by ancestors outside the top layer.
-                if (ancestor === document.fullscreenElement) break;
-            }
-            // Absolute child coordinates start at the container's inner border edge.
-            const originX = rect.left + (container.clientLeft || 0) - (container.scrollLeft || 0);
-            const originY = rect.top + (container.clientTop || 0) - (container.scrollTop || 0);
-            const minX = Math.max(rect.left, left) - originX;
-            const minY = Math.max(rect.top, top) - originY;
-            const maxX = Math.min(rect.right, right) - originX - size;
-            const maxY = Math.min(rect.bottom, lower) - originY - height;
-            return { originX, originY, minX, minY, maxX, maxY };
-        };
-        const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
-        const place = (x, y) => {
+        const place = (x, y, fixed = true) => {
+            button.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             button.style.setProperty('left', `${x}px`, 'important');
             button.style.setProperty('top', `${y}px`, 'important');
             button.style.setProperty('right', 'auto', 'important');
             button.style.setProperty('bottom', 'auto', 'important');
         };
-        const avoidMenuOverlap = (x, y, area) => {
-            if (!avoidFloatingMenu) return { x, y };
-            const menu = document.getElementById('tm-shared-floating-menu');
-            if (!menu || menu.hidden) return { x, y };
-            const elements = [menu, menu.querySelector('[data-floating-close]'),
-                menu.querySelector('[data-floating-dialog]')];
-            const obstacles = elements.filter((element) => element && !element.hidden)
-                .map((element) => element.getBoundingClientRect())
-                .filter((rect) => rect.width > 0 && rect.height > 0);
-            const gap = 4;
-            const overlaps = (px, py) => obstacles.some((rect) =>
-                area.originX + px < rect.right + gap && area.originX + px + size > rect.left - gap &&
-                area.originY + py < rect.bottom + gap && area.originY + py + height > rect.top - gap);
-            if (!overlaps(x, y)) return { x, y };
-            const candidates = obstacles.flatMap((rect) => [
-                { x: rect.left - area.originX - size - gap, y },
-                { x: rect.right - area.originX + gap, y },
-                { x, y: rect.top - area.originY - height - gap },
-                { x, y: rect.bottom - area.originY + gap },
-            ]);
-            // Prefer placing the independent button beside the menu, never on top of it.
-            candidates.sort((a, b) => (Number(a.x === x) - Number(b.x === x)) ||
-                (Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)));
-            return candidates.find((candidate) =>
-                candidate.x >= area.minX && candidate.x <= area.maxX &&
-                candidate.y >= area.minY && candidate.y <= area.maxY &&
-                !overlaps(candidate.x, candidate.y)) || { x, y };
-        };
         const layout = () => {
-            if (!button.isConnected) {
-                transientControlLayouts.delete(layout);
-                if (observer) observer.disconnect();
+            if (!button.isConnected || !target.isConnected) {
+                fullscreenControlLayouts.delete(layout);
+                observer?.disconnect();
+                document.removeEventListener('touchstart', touchStart, true);
+                document.removeEventListener('touchend', touchEnd, true);
+                document.removeEventListener('touchcancel', touchEnd, true);
                 return;
             }
-            // Pinch zoom must neither reposition the button nor enlarge its screen footprint.
-            const zoomed = stationaryOnPinchZoom && isPinchZoomed();
-            if (zoomed) {
-                button.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+            const scale = window.visualViewport?.scale || 1;
+            if (!pinchAnchored && !pinchArmed) normalScale = scale;
+            if ((pinchAnchored || pinchArmed) && scale > normalScale * 1.01) {
+                if (!pinchAnchored) {
+                    // The shared menu freezes its document position during a real pinch.
+                    const rect = target.getBoundingClientRect();
+                    const originX = rect.left + (target.clientLeft || 0) - (target.scrollLeft || 0);
+                    const originY = rect.top + (target.clientTop || 0) - (target.scrollTop || 0);
+                    // Absolute coordinates are relative to the media container;
+                    // subtract its viewport origin to preserve document position.
+                    place((parseFloat(button.style.left) || 0) - originX,
+                        (parseFloat(button.style.top) || 0) - originY, false);
+                    pinchAnchored = true;
+                }
+                button.style.setProperty('transform', `scale(${normalScale / scale})`, 'important');
                 button.style.setProperty('transform-origin', 'top left', 'important');
-                if (positioned) return;
-            } else if (stationaryOnPinchZoom) {
-                button.style.removeProperty('transform');
+                return;
             }
-            const area = geometry();
-            const hidden = area.maxX < area.minX || area.maxY < area.minY;
+            if (pinchAnchored) {
+                pinchAnchored = false;
+                pinchArmed = false;
+                button.style.removeProperty('transform');
+                button.style.removeProperty('transform-origin');
+            }
+            if (drag) return;
+            const area = bounds();
+            const hidden = !area.visible || area.maxX < area.minX || area.maxY < area.minY;
             if (button.hidden !== hidden) button.hidden = hidden;
-            if (hidden || drag) return;
-            const x = clamp(placement ? placement.x : area.maxX - inset, area.minX, area.maxX);
-            const y = clamp(placement ? placement.y : bottom ? area.maxY - inset : area.minY + inset, area.minY, area.maxY);
-            const clear = avoidMenuOverlap(x, y, area);
-            place(clear.x, clear.y);
-            positioned = true;
+            if (hidden) return;
+            // Only the DEFAULT coordinates account for the menu's DEFAULT position.
+            // A moved menu or a manually dragged entry may overlap; never chase either.
+            const defaultX = area.right - FULLSCREEN_WIDTH * 2 - 4;
+            const defaultY = Math.max(70 - fullscreenScrollY(), 0);
+            place(clampFullscreen(placement ? placement.x : defaultX, area.minX, area.maxX),
+                clampFullscreen(placement ? placement.y : defaultY, area.minY, area.maxY));
         };
-        button.style.setProperty('touch-action', 'none', 'important');
-        button.style.setProperty('text-decoration', 'none', 'important');
+        const touchStart = (event) => {
+            if (!pinchAnchored && event.touches?.length >= 2) {
+                normalScale = window.visualViewport?.scale || 1;
+                pinchArmed = true;
+            }
+        };
+        const touchEnd = (event) => {
+            if (!pinchAnchored && (!event.touches || event.touches.length < 2)) pinchArmed = false;
+        };
+        document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
+        document.addEventListener('touchend', touchEnd, { capture: true, passive: true });
+        document.addEventListener('touchcancel', touchEnd, { capture: true, passive: true });
         button.addEventListener('pointerdown', (event) => {
             if (event.isPrimary === false || (event.button !== undefined && event.button !== 0)) return;
             suppressClick = false;
@@ -159,19 +144,22 @@
             event.stopPropagation?.();
         });
         button.addEventListener('pointermove', (event) => {
-            if (!drag || event.pointerId !== drag.id) return;
+            if (!drag || drag.id !== event.pointerId) return;
             const dx = event.clientX - drag.x;
             const dy = event.clientY - drag.y;
             if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
             drag.moved = true;
-            event.preventDefault();
+            event.preventDefault?.();
             event.stopPropagation?.();
-            const area = geometry();
-            placement = { x: clamp(drag.left + dx, area.minX, area.maxX), y: clamp(drag.top + dy, area.minY, area.maxY) };
+            const area = bounds();
+            placement = {
+                x: clampFullscreen(drag.left + dx, area.minX, area.maxX),
+                y: clampFullscreen(drag.top + dy, area.minY, area.maxY),
+            };
             place(placement.x, placement.y);
         });
         const finish = (event) => {
-            if (!drag || event.pointerId !== drag.id) return;
+            if (!drag || drag.id !== event.pointerId) return;
             suppressClick = drag.moved;
             drag = null;
             if (button.hasPointerCapture?.(event.pointerId)) button.releasePointerCapture(event.pointerId);
@@ -180,22 +168,19 @@
         button.addEventListener('pointerup', finish);
         button.addEventListener('pointercancel', finish);
         button.addEventListener('lostpointercapture', finish);
-        // Register before the action handler so a drag never activates translation or fullscreen.
         button.addEventListener('click', (event) => {
             if (!suppressClick) return;
             suppressClick = false;
             event.preventDefault();
             event.stopImmediatePropagation();
         }, true);
-        transientControlLayouts.add(layout);
+        fullscreenControlLayouts.add(layout);
         if (typeof ResizeObserver !== 'undefined') {
-            observer = new ResizeObserver(refreshTransientControls);
-            observer.observe(container);
+            observer = new ResizeObserver(layout);
+            observer.observe(target);
         }
         layout();
-        return layout;
     }
-    // END SHARED TRANSIENT CONTROL
 
     const BUTTON_ID = 'tm-fullscreen-game-view-button';
     const BUTTON_CLASS = 'tm-fullscreen-game-view-button';
@@ -217,23 +202,26 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS} {
-    align-items: center !important;
-    background: rgba(0, 0, 0, .55) !important;
+    appearance: none !important;
+    background: rgba(0,0,0,.55) !important;
     border: 0 !important;
     border-radius: 5px !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .25) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25) !important;
     box-sizing: border-box !important;
     color: #f0f0f0 !important;
     cursor: pointer !important;
-    display: flex !important;
-    font: 600 15px/32px system-ui, sans-serif !important;
+    display: block !important;
+    font: 600 15px/32px system-ui,sans-serif !important;
     height: 32px !important;
-    justify-content: center !important;
+    max-width: 38px !important;
+    min-width: 38px !important;
+    min-height: 32px !important;
     margin: 0 !important;
     padding: 0 !important;
-    position: absolute !important;
-    right: max(4px, env(safe-area-inset-right)) !important;
-    top: max(4px, env(safe-area-inset-top)) !important;
+    position: fixed !important;
+    text-align: center !important;
+    opacity: 1 !important;
+    user-select: none !important;
     width: 38px !important;
     z-index: 2147483647 !important;
     touch-action: none !important;
@@ -246,7 +234,7 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS}:hover {
-    background: rgba(0, 0, 0, .75) !important;
+    background: rgba(0,0,0,.75) !important;
 }
 .${BUTTON_CLASS}:hover, .${BUTTON_CLASS}:focus, .${BUTTON_CLASS}:active {
     text-decoration: none !important;
@@ -538,7 +526,8 @@ body:has(#task-detail-root) {
                 else { element.scrollLeft = left; element.scrollTop = top; }
             });
             if (typeof window.scrollTo === 'function') window.scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' });
-            refreshTransientControls();
+            refreshFullscreenControls();
+            refreshFullscreenControls();
         };
         // Fullscreen exit and overflow removal can reset scrolling after fullscreenchange.
         // Restore immediately and across two layout frames; a new entry invalidates old callbacks.
@@ -565,7 +554,8 @@ body:has(#task-detail-root) {
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
         syncMediaOrientation();
         updateButton(button, target);
-        refreshTransientControls();
+        refreshFullscreenControls();
+        refreshFullscreenControls();
     }
 
     const mountedButtons = new Map();
@@ -573,7 +563,7 @@ body:has(#task-detail-root) {
     const watchedFrames = new WeakSet();
     let additionalButtonNumber = 0;
 
-    function mountButtonOnTarget(target) {
+    function mountButtonOnTarget(target, alignWithMenuDefault = false) {
         if (!target?.isConnected || mountedButtons.has(target)) return;
         target.classList.add(TARGET_CLASS);
         const button = document.createElement('button');
@@ -583,8 +573,7 @@ body:has(#task-detail-root) {
         button.type = 'button';
         updateButton(button, target);
         target.appendChild(button);
-        makeTransientControlDraggable(button, target, { size: 38, height: 32, inset: 4,
-            stationaryOnPinchZoom: true, avoidFloatingMenu: true });
+        makeDockedFullscreenControl(button, target, alignWithMenuDefault);
         requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
@@ -629,9 +618,9 @@ body:has(#task-detail-root) {
             button.remove();
             target.classList.remove(TARGET_CLASS);
         }
-        for (const target of targets) mountButtonOnTarget(target);
+        for (const target of targets) mountButtonOnTarget(target, target === primary);
         updateFrameRequests();
-        refreshTransientControls();
+        refreshFullscreenControls();
     }
 
     function exitFallback() {
@@ -655,27 +644,11 @@ body:has(#task-detail-root) {
         for (const [target, button] of mountedButtons) {
             updateButton(button, target);
             if (!isFullscreen(target)) restorePageState(target);
+            refreshFullscreenControls();
         }
     });
 
-    let watchedFloatingMenu = null;
-    let menuObserver = null;
-    function watchFloatingMenu() {
-        const menu = document.getElementById('tm-shared-floating-menu');
-        if (menu === watchedFloatingMenu) return;
-        menuObserver?.disconnect();
-        watchedFloatingMenu = menu;
-        if (menu) {
-            menuObserver = new MutationObserver(refreshTransientControls);
-            menuObserver.observe(menu, {
-                attributes: true, attributeFilter: ['style', 'hidden', 'data-floating-expanded'],
-                childList: true, subtree: true,
-            });
-        }
-        refreshTransientControls();
-    }
     mountButtons();
-    watchFloatingMenu();
     // Do not repeatedly write to the document in our own mutation callback.
     // React to lazy iframe src updates and visibility changes as well as DOM swaps.
     let mediaRefreshPending = false;
@@ -685,7 +658,6 @@ body:has(#task-detail-root) {
         window.requestAnimationFrame(() => {
             mediaRefreshPending = false;
             mountButtons();
-            watchFloatingMenu();
         });
     }
     function isMediaNode(node) {
@@ -706,7 +678,6 @@ body:has(#task-detail-root) {
             return false;
         });
         if (relevant) scheduleMediaRefresh();
-        watchFloatingMenu();
     }).observe(document.documentElement, {
         childList: true, subtree: true, attributes: true,
         attributeFilter: ['src', 'data-src', 'class', 'style', 'hidden']
