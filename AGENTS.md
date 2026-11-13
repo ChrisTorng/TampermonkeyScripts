@@ -49,3 +49,10 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Use public pages that demonstrate the change, or a small local fixture where needed. Link local fixtures relatively in the repository and directly from the PR, so they work on deployed previews.
 - `CurrentUpdates.html`, `TestCases.html`, and `index.html` remain generated and untracked. Build normally with `npm run generate:index`; never commit them.
 - Never invent a preview URL. If a verified deployment URL exists, include it briefly; otherwise use direct source/test URLs without adding placeholder preview links.
+
+
+## 8. Math and inline translation ownership
+- `TranslatePreformattedText.user.js` owns inline-code conversion and code-text restoration, but **not** position repair. Keep existing preformatted-block and reader behavior independent.
+- `MathTranslationGuard.user.js` owns formula-source/rendered-output protection. Do not move formulas to the end of paragraphs, generate alternate MathJax previews, or reorder translated prose.
+- `InlineTranslationOrderGuard.user.js` alone anchors and repairs positions for both protected inline code and math. Never run competing position observers from the math guard.
+- Avoid guaranteed-fix claims based only on synthetic DOM or headless Chromium tests. Native Edge translation must be checked on an actual page, including scroll and Show original/re-translation.
