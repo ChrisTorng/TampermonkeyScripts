@@ -138,7 +138,7 @@ Reload [Medium](https://medium.com/) and Medium-powered domains once per session
 
 ## Math translation visibility lab
 
-[Open the no-install Math Visibility Lab](https://tm-math-translation-lab.christorng.workers.dev/) · [Historical findings and test methods](tests/MathVisibilityLab/README.md). Real Android Edge native translation remains the acceptance test.
+[Open the no-install Math Visibility Lab — includes third reconstructed view](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph) · [Historical findings and test methods](tests/MathVisibilityLab/README.md). Real Android Edge native translation remains the acceptance test.
 
 ## Test Cases
 
