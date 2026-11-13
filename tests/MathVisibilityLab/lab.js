@@ -1,7 +1,7 @@
 /* Math Visibility Lab: browser-native translation diagnostics; no userscript needed. */
 (() => {
     'use strict';
-    const modes = ['baseline', 'output', 'source', 'paragraph', 'image'];
+    const modes = ['baseline', 'output', 'source', 'paragraph', 'image', 'placeholder'];
     const selected = new URLSearchParams(location.search).get('mode');
     const mode = modes.includes(selected) ? selected : 'paragraph';
     const url = 'https://tm-math-translation-lab.christorng.workers.dev/report';
@@ -16,6 +16,7 @@
     let mutations = 0;
     let lastUpload = 0;
     let uploadPending = false;
+    let rebuildTimer = null;
     document.documentElement.dataset.labMode = mode;
     const get = (id) => document.getElementById(id);
     const within = (root, selector) => Array.from(root.querySelectorAll(selector));
@@ -61,7 +62,18 @@
                 mathGuard: !!document.querySelector('[data-tm-math-protected]'),
                 inlineOrder: !!document.querySelector('[data-tm-translation-order-anchor]')
             },
-            samples: samples.map(inspect)
+            samples: samples.map(inspect),
+            reconstructed: within(block, '[data-hybrid-root]').map(root => ({
+                position: root.dataset.hybridRoot,
+                status: root.dataset.reconstruction,
+                formulaIds: root.dataset.formulaIds || '',
+                formulaCount: root.querySelectorAll('[data-restored-formula]').length,
+                mathJaxNodes: root.querySelectorAll('mjx-container').length,
+                sentences: root.querySelectorAll('.math-hybrid-sentence').length,
+                sentenceAligned: root.dataset.sentenceAligned || '',
+                statusMessage: root.querySelector('[data-hybrid-note]')?.textContent || '',
+                text: trim(root.querySelector('[data-hybrid-content]')?.textContent, 850)
+            }))
         };
     }
     function data() {
@@ -88,7 +100,7 @@
     }
     function record(reason) {
         const value = snapshot(reason);
-        const next = JSON.stringify(value.samples) + value.controlText + (value.viewport.scrollY > 300 ? 'scrolled' : 'top');
+        const next = JSON.stringify(value.samples) + JSON.stringify(value.reconstructed) + value.controlText + (value.viewport.scrollY > 300 ? 'scrolled' : 'top');
         if (next === hash && reason === 'change') return;
         hash = next;
         history.push(value);
@@ -99,7 +111,7 @@
         const visible = formulas.filter((item) => item.rect.w > 0 && item.rect.h > 0
             && item.rect.display !== 'none').length;
         get('formula-status').textContent = 'DOM 區域可測量 ' + visible + '/' + formulas.length +
-            '；MathJax ' + value.mathJaxCount + ' 個；已記錄 ' + history.length + ' 次';
+            '；MathJax ' + value.mathJaxCount + ' 個；第三版 ' + value.reconstructed.map(x=>x.status+':'+x.formulaIds).join(' / ') + '；已記錄 ' + history.length + ' 次';
         get('control-status').textContent = value.controlTranslated
             ? '英文對照文字已變化' : '英文對照文字尚未翻譯';
         if (value.scriptsActive.mathGuard || value.scriptsActive.inlineOrder) {
@@ -158,13 +170,27 @@
                 status('已複製診斷');
             } catch (_) { status('剪貼簿無法使用，請下載 JSON'); }
         };
-        // Probe only the samples/control, never observe the reporting UI itself.
+        const experiment = mode === 'paragraph' || mode === 'placeholder';
+        let latestReconstruction = [];
+        const rebuild = () => {
+            if (!experiment) return;
+            latestReconstruction = window.MathVisibilityReconstructor
+                ?.rebuildPair(block, mode === 'placeholder' ? 'markers' : 'slots') || [];
+        };
+        const queueRebuild = () => {
+            if (!experiment) return;
+            clearTimeout(rebuildTimer);
+            rebuildTimer = setTimeout(() => { rebuild(); enqueue('reconstructed'); }, 220);
+        };
+        rebuild();
+        // Probe the test content, but do not recursively rebuild a reconstructed result.
         new MutationObserver((records) => {
             mutations += records.length;
+            if (records.some(r => !r.target.closest?.('[data-hybrid-root]'))) queueRebuild();
             enqueue();
         }).observe(block, { childList: true, subtree: true, characterData: true,
             attributes: true, attributeFilter: ['class', 'style', 'hidden', 'translate'] });
-        new MutationObserver(() => enqueue()).observe(get('plain-control'), {
+        new MutationObserver(() => { queueRebuild(); enqueue('translation-control'); }).observe(get('plain-control'), {
             childList: true, subtree: true, characterData: true
         });
         if (mode === 'output') {
@@ -178,8 +204,8 @@
         addEventListener('scroll', () => enqueue('scroll'), { passive: true });
         addEventListener('pageshow', () => enqueue('pageshow'));
         record('initial');
-        setTimeout(() => record('after-mathjax'), 2300);
-        setTimeout(() => record('late'), 6300);
+        setTimeout(() => { rebuild(); record('after-mathjax'); }, 2300);
+        setTimeout(() => { rebuild(); record('late'); }, 6300);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready, { once: true });
     else ready();
