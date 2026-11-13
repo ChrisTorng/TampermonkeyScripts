@@ -131,8 +131,8 @@ describe('transient in-content controls', () => {
             harness.pointer('pointerdown', 500, 300);
             harness.pointer('pointermove', -2000, -1000);
             harness.pointer('pointerup', -2000, -1000);
-            assert.equal(harness.button.style.left, file === files[0] ? '0px' : '100px');
-            assert.equal(harness.button.style.top, file === files[0] ? '0px' : '100px');
+            assert.equal(harness.button.style.left, '0px');
+            assert.equal(harness.button.style.top, '0px');
             harness.container._rect.top = 800;
             harness.container._rect.bottom = 1700;
             harness.update();
@@ -141,7 +141,7 @@ describe('transient in-content controls', () => {
             harness.container._rect.bottom = 1000;
             harness.update();
             assert.equal(harness.button.hidden, false);
-            assert.equal(harness.button.style.left, file === files[0] ? '0px' : '100px');
+            assert.equal(harness.button.style.left, '0px');
         });
     }
 
@@ -177,21 +177,21 @@ describe('transient in-content controls', () => {
         const harness = execute(files[1]);
         const menu = harness.document.createElement('div');
         menu.id = 'tm-shared-floating-menu';
-        menu._rect = { left: 620, top: 100, right: 658, bottom: 132, width: 38, height: 32 };
+        menu._rect = { left: 1165, top: 70, right: 1203, bottom: 102, width: 38, height: 32 };
         menu.getBoundingClientRect = () => { throw new Error('Fullscreen must not inspect the menu'); };
         harness.document.documentElement.appendChild(menu);
         assert.equal(harness.button.style.position, 'fixed');
-        assert.equal(harness.button.style.left, '662px');
-        assert.equal(harness.button.style.top, '100px');
+        assert.equal(harness.button.style.left, '1200px');
+        assert.equal(harness.button.style.top, '70px');
         harness.triggerMutation([menu], { target: harness.document.documentElement });
         harness.update();
-        assert.equal(harness.button.style.left, '662px');
+        assert.equal(harness.button.style.left, '1200px');
         // A manual drag may overlap the menu, and later menu movement must not reposition it.
         harness.pointer('pointerdown', 670, 110);
         harness.pointer('pointermove', 635, 110);
         harness.pointer('pointerup', 635, 110);
-        assert.equal(harness.button.style.left, '627px');
-        menu._rect.left = 627;
+        assert.equal(harness.button.style.left, '1165px');
+        menu._rect.left = 1165;
         harness.update();
         assert.equal(harness.button.style.left, '627px');
     });
