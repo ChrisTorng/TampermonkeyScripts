@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-13_1.0.0
-// @description  Keep MathJax, KaTeX and MathML formulas intact during browser translation without reordering prose.
+// @version      2026-11-14_1.1.0
+// @description  Keep an untranslated original alongside translated math paragraphs on Alex Wang; preserve MathJax elsewhere.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
@@ -13,6 +13,119 @@
 
 (function () {
     'use strict';
+
+    // Alex Wang uses MathJax 4. Isolating each formula with translate=no
+    // demonstrably moves formulas to the paragraph tail in native Android Edge.
+    // The supported safe fallback is one translatable paragraph AND a complete
+    // original sibling, protected as a whole translation unit. Neither sibling
+    // has its MathJax formula children reparented or reordered by this script.
+    if (location.hostname === 'alexwang.ai' || location.hostname.endsWith('.alexwang.ai')) {
+        const originalAttr = 'data-tm-math-dual-original';
+        const referenceAttr = 'data-tm-math-dual-reference';
+        const refClass = 'tm-math-original-reference';
+        const sourcePattern = /\$\$[\s\S]+?\$\$|\$[^\r\n$]{1,500}\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/;
+        const mathOutputSelector = 'mjx-container, .MathJax, .katex, math';
+        const pendingTypeset = new WeakSet();
+
+        function containsMath(paragraph) {
+            if (!paragraph || paragraph.nodeType !== 1 || paragraph.tagName !== 'P') return false;
+            if (paragraph.querySelector(mathOutputSelector)) return true;
+            return sourcePattern.test(paragraph.textContent || '');
+        }
+
+        function cleanClonedIds(clone) {
+            if (clone.hasAttribute('id')) clone.removeAttribute('id');
+            clone.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+        }
+
+        function scheduleTypeset(originalCopy) {
+            if (pendingTypeset.has(originalCopy)) return;
+            pendingTypeset.add(originalCopy);
+            const tryTypeset = () => {
+                if (!originalCopy.isConnected ||
+                    originalCopy.querySelector(mathOutputSelector) ||
+                    !sourcePattern.test(originalCopy.textContent || '')) return;
+                const mathjax = window.MathJax;
+                if (!mathjax || typeof mathjax.typesetPromise !== 'function') return;
+                Promise.resolve(mathjax.typesetPromise([originalCopy])).catch((error) => {
+                    console.warn('Math Translation Guard: cannot typeset untranslated copy', error);
+                });
+            };
+            // MathJax normally typesets the whole document; only assist if the
+            // duplicated source was inserted after the initial typesetting pass.
+            const startup = window.MathJax?.startup?.promise;
+            if (startup && typeof startup.then === 'function') {
+                Promise.resolve(startup).then(tryTypeset).catch(() => {});
+            } else {
+                document.addEventListener('load', tryTypeset, { once: true });
+                window.addEventListener('load', tryTypeset, { once: true });
+            }
+        }
+
+        function cloneMathParagraph(paragraph) {
+            if (!paragraph || !paragraph.isConnected || !paragraph.parentElement ||
+                paragraph.hasAttribute(originalAttr) ||
+                paragraph.closest('[' + referenceAttr + ']') ||
+                paragraph.closest('script, style, noscript, textarea, pre, [contenteditable="true"]') ||
+                !containsMath(paragraph)) return;
+
+            // Mark first so mutations from insertion cannot recursively clone.
+            paragraph.setAttribute(originalAttr, 'true');
+            const wrapper = document.createElement('div');
+            wrapper.setAttribute(referenceAttr, 'true');
+            wrapper.setAttribute('translate', 'no');
+            wrapper.className = refClass;
+            wrapper.style.cssText = 'border-left:2px solid #788da0;padding:4px 0 4px 10px;margin:9px 0 16px;opacity:.9;';
+            const title = document.createElement('div');
+            title.setAttribute('translate', 'no');
+            title.textContent = '原文參考（數學式保留）';
+            title.style.cssText = 'font:12px/1.5 system-ui,sans-serif;color:inherit;opacity:.75;margin-bottom:3px;';
+            const copy = paragraph.cloneNode(true);
+            copy.removeAttribute(originalAttr);
+            cleanClonedIds(copy);
+            copy.setAttribute('translate', 'no');
+            copy.classList.add('notranslate');
+            // Keep the complete paragraph as a single untranslated unit.
+            // Do NOT insert protected spans around individual math expressions.
+            wrapper.appendChild(title);
+            wrapper.appendChild(copy);
+            paragraph.parentNode.insertBefore(wrapper, paragraph.nextSibling);
+            scheduleTypeset(copy);
+        }
+
+        function scanParagraphs(root) {
+            if (!root) return;
+            if (root.nodeType === 1) {
+                if (root.matches('p')) cloneMathParagraph(root);
+                const parent = root.closest('p');
+                if (parent) cloneMathParagraph(parent);
+            }
+            if (root.querySelectorAll) root.querySelectorAll('p').forEach(cloneMathParagraph);
+        }
+
+        function startDualCopies() {
+            scanParagraphs(document.documentElement);
+            const observer = new MutationObserver((records) => {
+                for (const record of records) {
+                    if (record.type === 'characterData') {
+                        scanParagraphs(record.target.parentElement);
+                    } else {
+                        for (const node of record.addedNodes) scanParagraphs(node);
+                    }
+                }
+            });
+            observer.observe(document.documentElement, {
+                subtree: true, childList: true, characterData: true
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startDualCopies, { once: true });
+        } else {
+            startDualCopies();
+        }
+        return;
+    }
 
     // Formula protection only. Inline position repair belongs to
     // InlineTranslationOrderGuard.user.js, never to this userscript.
