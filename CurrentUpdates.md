@@ -1,6 +1,12 @@
 # Current updates
 
-Updated: 2026-11-12
+Updated: 2026-11-13
+
+## Fullscreen button docking — 2026-11-13
+
+- [Install FullscreenGameView.user.js — 2026-11-13_1.2.3](src/FullscreenGameView.user.js) — match ≡ styling and top docking; default just left of ≡, without automatic avoidance. Dragging may overlap; scroll stays fixed. Reload after updating.
+
+**Tests:** [ARC Prize game](https://arcprize.org/tasks/ls20) — default placement, drag overlap and scroll docking; [Anthropic embedded YouTube](https://www.anthropic.com/claude-fable-and-mythos-5-2) — per-player buttons remain available.
 
 ## Hacker News comment-only automatic enlargement — 2026-11-12
 
