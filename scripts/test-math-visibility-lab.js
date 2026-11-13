@@ -19,9 +19,12 @@ test('native Edge lab has server-delivered English and all five modes', () => {
     assert.match(html, /height:135vh/);
 });
 
-test('conservative paragraph case is protected before translation, not injected after load', () => {
-    assert.match(html, /id="example-paragraph-near" translate="no"/);
-    assert.match(html, /id="example-paragraph-late" translate="no"/);
+test('D case provides an independently translated paragraph and protected original in initial HTML', () => {
+    for (const pos of ['near', 'late']) {
+        assert.match(html, new RegExp('id="example-paragraph-' + pos + '">'));
+        assert.match(html, new RegExp('id="example-paragraph-' + pos + '-reference"[^>]*translate="no"'));
+    }
+    assert.equal((html.match(/data-original-reference="true"/g) || []).length, 2);
     assert.doesNotMatch(html, /id="example-baseline-near" translate="no"/);
     assert.match(html, /id="example-source-near"/);
     assert.match(html, /data-part="M0" data-math-index="0" translate="no"/);
