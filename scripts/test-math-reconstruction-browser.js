@@ -26,6 +26,7 @@ test('reconstruction repairs reordered math using protected source and refuses m
         function math(type, n) {
             if (type === 'katex') return '<span class="katex">rendered-' + n + '</span>';
             if (type === 'mathml') return '<math><mi>x</mi><mn>'+n+'</mn></math>';
+            if (type === 'svg') return '<svg width="35" height="35" viewBox="0 0 35 35"><defs><path id="glyph-'+n+'" d="M3 3 L30 30" stroke="white"/></defs><use href="#glyph-'+n+'"/></svg>';
             return '<mjx-container>rendered-' + n + '</mjx-container>';
         }
         function pair(type) {
@@ -59,14 +60,14 @@ test('reconstruction repairs reordered math using protected source and refuses m
         ].join('');
         const html = [
             '<!doctype html><html lang="en"><head><meta charset="utf-8"><script>' + script + '</script></head><body>',
-            '<div id="fixtures">' + pair('mathjax') + pair('katex') + pair('mathml') + markerSection + '</div>',
+            '<div id="fixtures">' + pair('mathjax') + pair('katex') + pair('mathml') + pair('svg') + markerSection + '</div>',
             '<pre id="result"></pre>',
             '<script>',
             'const api=window.MathVisibilityReconstructor;',
             'const failed=[];const evidence={};',
             'function requireValue(x,m){if(!x)throw Error(m)}',
             'try {',
-            ' for(const type of ["mathjax","katex","mathml"]) {',
+            ' for(const type of ["mathjax","katex","mathml","svg"]) {',
             '  const s=document.getElementById(type),p=s.querySelector("[data-hybrid-translated]");',
             '  // Edge can nest translated T nodes under its own wrapper and move the M nodes.',
             '  const nested=document.createElement("div");',
@@ -79,7 +80,8 @@ test('reconstruction repairs reordered math using protected source and refuses m
             '  requireValue(root.querySelectorAll("[data-restored-formula]").length>=2,type+" math absent");',
             '  const combined=root.querySelector("[data-hybrid-content]").textContent;',
             '  requireValue(combined.includes("這是")&&combined.includes("接著看"),type+" translated text absent");',
-            '  evidence[type]={math:root.dataset.mathCount,sentences:root.querySelectorAll(".math-hybrid-sentence").length,aligned:root.dataset.sentenceAligned};',
+            '  if(type==="svg"){const paths=[...root.querySelectorAll("svg path[id]")];requireValue(paths.length>=2,"SVG reference defs absent");const uses=[...root.querySelectorAll("svg use")];requireValue(uses.length>=2,"SVG glyph uses absent");requireValue(uses.every(u=>u.getAttribute("href")&&root.querySelector("[id="+u.getAttribute("href").slice(1)+"]")),"SVG internal #references broken");const ids=[...root.querySelectorAll("[id]")].map(e=>e.id);requireValue(new Set(ids).size===ids.length,"duplicated reconstructed SVG ids");}',
+'  evidence[type]={math:root.dataset.mathCount,sentences:root.querySelectorAll(".math-hybrid-sentence").length,aligned:root.dataset.sentenceAligned};',
             ' }',
             ' const mr=api.rebuildPair(document.getElementById("marker"),"markers");',
             ' requireValue(mr[0].status==="complete","valid placeholders were not restored");',
@@ -112,6 +114,7 @@ test('reconstruction repairs reordered math using protected source and refuses m
         assert.match(result,/"mathjax":/);
         assert.match(result,/"katex":/);
         assert.match(result,/"mathml":/);
+        assert.match(result,/"svg":/);
     } finally {
         fs.rmSync(tmp,{recursive:true,force:true});
     }
