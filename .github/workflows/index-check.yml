@@ -44,6 +44,12 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-root-scroll-browser.js
+      - name: Validate no-install math lab and reconstruction syntax
+        run: node --check tests/MathVisibilityLab/lab.js && node --check tests/MathVisibilityLab/reconstruct.js && node --test scripts/test-math-visibility-lab.js
+      - name: Browser-test formula reinsertion and safe fallbacks
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-math-reconstruction-browser.js
       - name: Test shared menu, safe translation and GM update tabs
         run: node --test scripts/test-floating-menu.js scripts/test-translate-preformatted-text.js scripts/test-bulk-update-gm.js
       - name: Test generic iframe translation reader and dragging

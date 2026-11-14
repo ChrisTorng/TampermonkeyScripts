@@ -173,3 +173,18 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; Medium detection and reload-once/session logic only)
 - https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950 [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (global-identity reload skip logic only)
   - Expect a single reload even if Medium rewrites the redirectUrl query parameters on subsequent visits.
+
+# Math Visibility Lab (no userscript installation)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (whole-paragraph translate=no control, shipped as initial HTML; remote Chromium rendering and native-Edge translation are different engines)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=image [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (atomic SVG formula images and translated-prose sibling reordering diagnostics; native Edge still requires live evidence)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=source [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (early source wrapper protection; not yet verified in native Edge)
+
+
+## Third-copy reconstruction on original lab (experimental; pending native Edge reports)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (D has translated paragraph, intact original, and third reconstructed/dual-language sentence view. Test native Edge translation; reconstruction must recover all 5 formulas and allow collapsing other copies.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=placeholder [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (F tests native translation of ⟦MATH_0⟧ placeholders, literal token recovery and safe incomplete fallback.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (G: MathJax 4, KaTeX, native MathML; independently rebuild rendered formula nodes, without promising TeX conversion across engines.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&mathjax=3 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (G alternate MathJax 3 renderer; native Edge translation and pixels still unverified.)
+
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&output=svg [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 4 SVG output clones with internal symbol references; native Android Edge translation unverified.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&mathjax=3&output=svg [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 3 SVG output clones; check after native Edge translation.)
