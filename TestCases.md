@@ -111,6 +111,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
+- https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (automated DOM tests cover majority natural-language detection, opt-out and original-node restoration; native Android Edge machine translation and style fidelity need device verification)
 - https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (runtime tests cover linked source URL, isolated per-tab sessionStorage, refresh and location.replace fallback; real Android Edge requires verification)
 - https://www.openssh.org/releasenotes.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover OpenSSH release-note translation, document-anchored floating menu and root scroll; native Android Edge was checked by the user)
 - tests/SharedFloatingMenuUpdates/index.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (runtime tests verify five allowlisted GM_openInTab requests, Chromium tests check the fallback; each Tampermonkey Update is confirmed separately)
@@ -136,6 +137,7 @@ Section note: simulated iframe fullscreen and cross-origin metadata messages are
 - https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge alternative fullscreen, centered one-second speed reveal, native fullscreen control suppression, playback and orientation restoration are covered by the DOM harness; real mobile compositor and touch layout require physical-device verification)
 
 # Force Mobile View
+- https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (document-start viewport and manual restoration/reload covered by DOM tests; actual Android Edge layout and control hit targets need device verification)
 Section note: 20 DOM-harness tests cover detection, viewport, rollback, HN listing exclusion, and manual toggle; Android Edge needs verification.
 - https://news.ycombinator.com/front?day=2024-11-08 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (Android translated-list simulation verifies no automatic enlargement; live Edge translation needs manual confirmation)
 - https://news.ycombinator.com/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (Android tiny-text simulation verifies unchanged homepage)
