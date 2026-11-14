@@ -47,9 +47,9 @@ export default {
         let entry;
         try { entry = JSON.parse(raw); } catch (_) { return reply({ error: 'invalid-json' }, 400); }
         if (entry.version !== 1 || !/^[a-f0-9-]{16,48}$/i.test(entry.session || '') ||
-            !/^(baseline|output|source|paragraph|image)$/.test(entry.method || '') ||
+            !/^(baseline|output|source|paragraph|image|placeholder|engines)$/.test(entry.method || '') ||
             !['dom', 'image'].includes(entry.kind) || !entry.report || typeof entry.report !== 'object') {
-            return reply({ error: 'invalid-schema' }, 400);
+            return reply({ error: 'invalid-schema', acceptedMethods: ['baseline','output','source','paragraph','image','placeholder','engines'], receivedMethod: typeof entry.method === 'string' ? entry.method.slice(0, 35) : null }, 400);
         }
         if (entry.kind === 'image' &&
             (!/^data:image\/png;base64,/.test(entry.report.png || '') || entry.report.png.length > 300000)) {
