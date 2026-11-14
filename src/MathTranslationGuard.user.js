@@ -255,7 +255,10 @@
                 const row = document.createElement('div');
                 row.className = 'tm-math-sentence';
                 addPieces(row, translatedGroups[i]);
-                if (aligned) {
+                // Sentence-level English references are useful only where
+                // the sentence contains mathematics. Normal prose does not
+                // need another bilingual UI or translation manipulation.
+                if (aligned && mathSequence(translatedGroups[i])) {
                     const toggle = document.createElement('details');
                     toggle.className = 'tm-math-original-sentence';
                     const summary = document.createElement('summary');
