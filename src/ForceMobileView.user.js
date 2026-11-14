@@ -882,8 +882,11 @@
         const rect = toggle.getBoundingClientRect();
         const scale = window.visualViewport?.scale || 1;
         if (!(rect.width > 0 && rect.width <= 70 && rect.width * scale < 28)) return false;
-        const pre = document.querySelector('body > pre')
-            || document.querySelector('body > [data-tm-translatable-pre-wrapper] > pre');
+        const topChildren = Array.from(document.body.children || []);
+        const directPre = topChildren.find((element) => element.tagName === 'PRE');
+        const wrappedPre = topChildren.find((element) =>
+            element.hasAttribute?.('data-tm-translatable-pre-wrapper'))?.querySelector('pre');
+        const pre = directPre || wrappedPre;
         if (!pre) return false;
         const contentRoot = pre.closest('[data-tm-translatable-pre-wrapper]') || pre;
         const topLevel = Array.from(document.body.children || [])
