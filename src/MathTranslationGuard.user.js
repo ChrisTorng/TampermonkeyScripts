@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-14_1.2.1
+// @version      2026-11-14_1.2.2
 // @description  Restore math inline by combining translated fragments with protected rendered formulas; preserve originals if incomplete.
 // @author       Chris Torng
 // @match        *://*/*
