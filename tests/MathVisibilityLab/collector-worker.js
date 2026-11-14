@@ -21,6 +21,78 @@ export default {
             status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
         });
         const path = new URL(request.url).pathname;
+        // Live, non-cached article proxy: preserve the COMPLETE current HTML, CSS,
+        // scripts, MathJax configuration and block positions rather than making
+        // synthetic first/second paragraph fixtures. Allowlist only known test
+        // articles; never permit arbitrary destination URLs or user-provided HTML.
+        const fullArticles = {
+            alexwang: 'https://alexwang.ai/posts/reasoning-as-pathfinding/',
+            plover: 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html'
+        };
+        if (request.method === 'GET' && path === '/full/telemetry.js') {
+            const upstream = await fetch(
+                'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/3ae189be2d23196698777618e9f623ecb0c0dc90/tests/MathVisibilityLab/full-article-telemetry.js'
+            );
+            if (!upstream.ok) return reply({error:'telemetry-not-found',status:upstream.status},502);
+            return new Response(await upstream.text(),{headers:{
+                'Content-Type':'application/javascript; charset=utf-8',
+                'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'
+            }});
+        }
+        if (request.method === 'GET' && path === '/full/guard.js') {
+            // Same production candidate except for test mirror hostname check.
+            const upstream = await fetch(
+                'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/fix/math-inline-order-separation-20261113/src/MathTranslationGuard.user.js',
+                {headers:{'Cache-Control':'no-cache'}}
+            );
+            if (!upstream.ok) return reply({error:'guard-not-found',status:upstream.status},502);
+            const original = await upstream.text();
+            const lookup = "if (location.hostname === 'alexwang.ai' || location.hostname.endsWith('.alexwang.ai')) {";
+            if (!original.includes(lookup)) return reply({error:'guard-domain-hook-missing'},500);
+            const adapted = original.replace(lookup,
+                "if (location.pathname === '/full/article/alexwang') {");
+            return new Response(adapted,{headers:{
+                'Content-Type':'application/javascript; charset=utf-8',
+                'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'
+            }});
+        }
+        const fullMatch = path.match(/^\/full\/article\/([a-z]+)$/);
+        if (request.method === 'GET' && fullMatch) {
+            const id=fullMatch[1], sourceUrl=fullArticles[id];
+            if (!sourceUrl) return reply({error:'article-not-allowlisted'},404);
+            const variant = new URL(request.url).searchParams.get('guard') === '1' ? 'guard' : 'baseline';
+            let original;
+            try {
+                original=await fetch(sourceUrl,{headers:{
+                    'Accept':'text/html,application/xhtml+xml',
+                    'Cache-Control':'no-cache'
+                }});
+            } catch(e) { return reply({error:'article-source-fetch-failed',message:String(e).slice(0,130)},502); }
+            if (!original.ok) return reply({error:'article-source-status',status:original.status},502);
+            const type=original.headers.get('content-type')||'';
+            if (!type.includes('text/html')) return reply({error:'unexpected-article-content-type',type},502);
+            const html=await original.text();
+            const config = JSON.stringify({
+                article:sourceUrl,variant,reportUrl:'https://tm-math-translation-lab.christorng.workers.dev/report'
+            }).replace(/</g,'\u005c\u0075\u0030\u0030\u0033\u0063');
+            const meta='<meta name="robots" content="noindex,nofollow,noarchive">';
+            const scripts='<script>window.__tmFullMathLab='+config+';<\/script>'+
+                '<script src="/full/telemetry.js"><\/script>'+
+                (variant==='guard'&&id==='alexwang' ? '<script src="/full/guard.js"><\/script>':'');
+            const injection='<base href="'+sourceUrl.replace(/"/g,'&quot;')+'">'+meta+scripts;
+            const content=/<head(?:\s[^>]*)?>/i.test(html)
+                ?html.replace(/<head(?:\s[^>]*)?>/i,m=>m+injection)
+                :html.replace(/<html(?:\s[^>]*)?>/i,m=>m+'<head>'+injection+'</head>');
+            return new Response(content,{headers:{
+                'Content-Type':'text/html; charset=utf-8',
+                'Cache-Control':'no-store, max-age=0',
+                'X-Robots-Tag':'noindex, nofollow, noarchive',
+                'Referrer-Policy':'strict-origin-when-cross-origin',
+                'X-Content-Type-Options':'nosniff',
+                'X-TM-Full-Math-Variant':variant,
+                'X-TM-Original-Article':sourceUrl
+            }});
+        }
         // Public self-contained test page. Source remains versioned in GitHub.
         if (request.method === 'GET' && (path === '/' || path === '/index.html' || path === '/lab.js' || path === '/reconstruct.js')) {
             const name = path === '/lab.js' ? 'lab.js' : path === '/reconstruct.js' ? 'reconstruct.js' : 'index.html';
@@ -47,9 +119,9 @@ export default {
         let entry;
         try { entry = JSON.parse(raw); } catch (_) { return reply({ error: 'invalid-json' }, 400); }
         if (entry.version !== 1 || !/^[a-f0-9-]{16,48}$/i.test(entry.session || '') ||
-            !/^(baseline|output|source|paragraph|image|placeholder|engines)$/.test(entry.method || '') ||
+            !/^(baseline|output|source|paragraph|image|placeholder|engines|full-article)$/.test(entry.method || '') ||
             !['dom', 'image'].includes(entry.kind) || !entry.report || typeof entry.report !== 'object') {
-            return reply({ error: 'invalid-schema', acceptedMethods: ['baseline','output','source','paragraph','image','placeholder','engines'], receivedMethod: typeof entry.method === 'string' ? entry.method.slice(0, 35) : null }, 400);
+            return reply({ error: 'invalid-schema', acceptedMethods: ['baseline','output','source','paragraph','image','placeholder','engines','full-article'], receivedMethod: typeof entry.method === 'string' ? entry.method.slice(0, 35) : null }, 400);
         }
         if (entry.kind === 'image' &&
             (!/^data:image\/png;base64,/.test(entry.report.png || '') || entry.report.png.length > 300000)) {
@@ -62,7 +134,9 @@ export default {
             method: entry.method, session: entry.session, kind: entry.kind,
             report: entry.report
         };
-        await env.LAB_RESULTS.put(key, JSON.stringify(payload), { expirationTtl: 172800 });
-        return reply({ saved: true, key, retentionHours: 48 });
+        await env.LAB_RESULTS.put(key, JSON.stringify(payload), {
+            expirationTtl: entry.method === 'full-article' ? 604800 : 172800
+        });
+        return reply({ saved: true, key, retentionHours: entry.method === 'full-article' ? 168 : 48 });
     }
 };
