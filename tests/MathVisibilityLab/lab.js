@@ -11,6 +11,8 @@
     const session = settings.session || crypto.randomUUID();
     let consent = settings.consent === true;
     const history = [];
+    let initialSnapshot = null;
+    let firstTranslatedSnapshot = null;
     let hash = '';
     let timer;
     let mutations = 0;
@@ -85,8 +87,8 @@
     // the first state, first observed translation, and the most recent state.
     // Sending ten copies of rendered MathJax HTML made G reports unnecessarily large.
     function uploadData() {
-        const first = history[0];
-        const firstTranslated = history.find(e => e.controlTranslated);
+        const first = initialSnapshot;
+        const firstTranslated = firstTranslatedSnapshot;
         const latest = history[history.length - 1];
         const events = [...new Set([first, firstTranslated, latest].filter(Boolean))];
         const minimized = events.map(event => ({
@@ -130,6 +132,8 @@
     }
     function record(reason) {
         const value = snapshot(reason);
+        if (!initialSnapshot) initialSnapshot = value;
+        if (!firstTranslatedSnapshot && value.controlTranslated) firstTranslatedSnapshot = value;
         const next = JSON.stringify(value.samples) + JSON.stringify(value.reconstructed) + value.controlText + (value.viewport.scrollY > 300 ? 'scrolled' : 'top');
         if (next === hash && reason === 'change') return;
         hash = next;
