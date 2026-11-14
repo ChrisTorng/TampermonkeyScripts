@@ -185,3 +185,9 @@ Section note: new runtime tests use synthetic MathJax, MathML, code, and the sou
 ## Alex Wang dual original and translation fallback (Draft)
 - https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 4 page: verify each math-containing paragraph has normal translatable prose and an adjacent protected full-English/math reference; no per-formula splitting. Chrome DOM checks pass after-load injection, native Android Edge pending.)
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (Existing D case now displays both normal translatable paragraph and protected original, in both near/late zones. Real Edge native translation pending.)
+
+
+## Math translation hybrid reconstruction (Draft v2026-11-14_1.2.2)
+- https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (on-site mixed-text/math paragraphs: protected source and translated fragments recombined when each slot remains known; no-math paragraphs unchanged; math-only paragraphs have translate=no and no duplicate; Chromium real-site injection verified, native Android Edge still pending)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (actual Android Edge: MathJax Chinese third copy retained 2 formulas; KaTeX text aligned incompletely, MathML did not translate prose)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (bilingual third-copy construction and sentence alignment reference; native Edge D previous two-copy result confirmed)
