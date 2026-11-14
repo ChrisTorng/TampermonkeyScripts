@@ -176,7 +176,7 @@
             new Blob([JSON.stringify(data(), null, 2)], { type: 'application/json' }));
         get('send-now').onclick = async () => {
             record('manual');
-            try { await send('dom', data()); status('已上傳本次結果 ' + session.slice(0, 8)); }
+            try { await send('dom', uploadData()); status('已上傳本次結果 ' + session.slice(0, 8)); }
             catch (error) { status('傳送失敗：' + error.message); }
         };
         get('capture-image').onclick = async () => {
