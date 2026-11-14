@@ -63,7 +63,7 @@ test('diagnostic upload is opt-in, scoped and short-lived; screenshot remains ma
     assert.match(js, /record\('initial'\)/);
     assert.match(js, /get\('download-json'\)/);
     const worker = fs.readFileSync(path.join(root, 'collector-worker.js'), 'utf8');
-    assert.match(worker, /expirationTtl: 172800/);
+    assert.match(worker, /entry.method === 'full-article' \? 604800 : 172800/);
     assert.match(worker, /No cookies, IP or headers stored/);
     assert.ok(worker.includes('paragraph|image|placeholder|engines'));
     assert.ok(js.includes('function uploadData()'));
