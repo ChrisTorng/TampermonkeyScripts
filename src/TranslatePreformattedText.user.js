@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.20
-// @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
+// @version      2026-11-14_1.5.21
+// @description  Auto-expose prose-heavy preformatted pages to browser translation with reversible original styling; retain iframe reader and site fixes.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1063,6 +1063,12 @@
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
     const originalBlocks = new WeakMap();
+    const originalTranslateAttributes = new WeakMap();
+    const autoTranslateStorageKey = 'tm-pre-auto-off:' + location.pathname + location.search;
+    let autoTranslateTimer = null;
+    let autoTranslationDecided = false;
+    let manualTranslationChoice = false;
+    let autoTranslationReady = document.readyState !== 'loading';
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
     const isOpenSSHReleaseNotes = /(^|\.)openssh\.org$/i.test(location.hostname)
         && location.pathname === '/releasenotes.html';
@@ -1119,10 +1125,9 @@
             display: none !important;
         }
         [${convertedAttribute}] {
-            box-sizing: border-box;
-            font-family: monospace;
-            overflow: auto;
+            /* Inline computed values from the source take precedence. */
             white-space: pre-wrap;
+            overflow-wrap: break-word;
         }
         [${inlineCodeAttribute}] {
             display: inline;
@@ -1252,6 +1257,31 @@
         setButtonState(allButton, allConverted, 'all');
     }
 
+    // A browser-translatable DIV does not inherit the UA defaults of PRE.
+    // Snapshot only layout/typography properties, leaving the original node
+    // detached and untouched while Edge/Chrome rewrites the translated copy.
+    const formattedStyleProperties = [
+        'display', 'font-family', 'font-size', 'font-style', 'font-weight',
+        'line-height', 'letter-spacing', 'tab-size', 'text-indent', 'text-align',
+        'white-space', 'word-break', 'word-wrap', 'overflow-wrap',
+        'overflow-x', 'overflow-y', 'color', 'background-color',
+        'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+        'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+        'border-top', 'border-right', 'border-bottom', 'border-left',
+        'width', 'max-width', 'min-width', 'box-sizing'
+    ];
+
+    function preserveFormattedStyle(source, target) {
+        if (typeof window.getComputedStyle !== 'function') return;
+        const css = window.getComputedStyle(source);
+        if (!css) return;
+        for (const name of formattedStyleProperties) {
+            const camel = name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+            const value = css.getPropertyValue?.(name) || css[camel];
+            if (typeof value === 'string' && value) target.style.setProperty(name, value);
+        }
+    }
+
     function getBlockText(node) {
         if (node.nodeType === 1 && node.classList.contains('react-code-lines')) {
             return Array.from(node.querySelectorAll('[data-testid="code-cell"]'))
@@ -1271,7 +1301,10 @@
         return children.map((child) => getBlockText(child)).join('');
     }
 
-    // Preserve hyperlinks while turning preformatted text into translatable text.
+    // Keep inline formatting, links, padding and typography. Replace only the
+    // tags which browsers normally skip for translation (such as nested CODE).
+    const inlineTags = new Set(['A', 'SPAN', 'EM', 'STRONG', 'B', 'I', 'U',
+        'SMALL', 'SUB', 'SUP', 'MARK', 'ABBR', 'TIME', 'CITE', 'Q']);
     function copyTranslatableNodes(source, target) {
         const children = Array.from(source.childNodes || source.children || []);
         if (!children.length) {
@@ -1282,16 +1315,21 @@
             if (child.nodeType === 3) {
                 target.appendChild(document.createTextNode(child.nodeValue || ''));
             } else if (child.nodeType === 1 && child.tagName === 'BR') {
-                target.appendChild(document.createTextNode('\n'));
-            } else if (child.nodeType === 1 && child.tagName === 'A') {
-                const link = document.createElement('a');
-                for (const name of ['href', 'title', 'target', 'rel']) {
-                    if (child.hasAttribute(name)) link.setAttribute(name, child.getAttribute(name));
-                }
-                copyTranslatableNodes(child, link);
-                target.appendChild(link);
+                target.appendChild(document.createElement('br'));
             } else if (child.nodeType === 1) {
-                copyTranslatableNodes(child, target);
+                if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(child.tagName)) continue;
+                const isCode = ['CODE', 'KBD', 'SAMP', 'TT', 'PRE'].includes(child.tagName);
+                if (!isCode && !inlineTags.has(child.tagName)) {
+                    copyTranslatableNodes(child, target);
+                    continue;
+                }
+                const element = document.createElement(isCode ? 'span' : child.tagName.toLowerCase());
+                copyAttributes(child, element);
+                element.removeAttribute('translate');
+                element.classList.remove('notranslate');
+                preserveFormattedStyle(child, element);
+                copyTranslatableNodes(child, element);
+                target.appendChild(element);
             }
         }
     }
@@ -1315,13 +1353,19 @@
             replacement.classList.remove('react-code-lines');
             replacement.removeAttribute('data-type');
             replacement.setAttribute(convertedAttribute, 'true');
-            if (current.querySelector('a') && !current.classList.contains('react-code-lines')) {
+            replacement.setAttribute('translate', 'yes');
+            preserveFormattedStyle(current, replacement);
+            if (!current.classList.contains('react-code-lines')
+                && !current.querySelector('[data-testid="code-cell"]')) {
                 copyTranslatableNodes(current, replacement);
             } else {
                 replacement.textContent = getBlockText(current);
             }
         } else {
             replacement.removeAttribute(convertedAttribute);
+            const saved = originalTranslateAttributes.get(wrapper);
+            if (saved === null) replacement.removeAttribute('translate');
+            else if (saved !== undefined) replacement.setAttribute('translate', saved);
         }
         wrapper.insertBefore(replacement, current);
         wrapper.removeChild(current);
@@ -1340,6 +1384,7 @@
         const parent = block.parentNode;
         parent.insertBefore(wrapper, block);
         parent.removeChild(block);
+        originalTranslateAttributes.set(wrapper, block.hasAttribute('translate') ? block.getAttribute('translate') : null);
         block.setAttribute('translate', 'no');
         wrapper.appendChild(block);
         originalBlocks.set(wrapper, block);
@@ -1353,7 +1398,9 @@
         wrapper.appendChild(button);
         makeTransientControlDraggable(button, wrapper, { bottom: true });
         button.addEventListener('click', () => {
-            setConverted(wrapper, !wrapper.querySelector(`[${convertedAttribute}]`));
+            const enabling = !wrapper.querySelector(`[${convertedAttribute}]`);
+            rememberManualTranslationChoice(enabling);
+            setConverted(wrapper, enabling);
         });
     }
 
@@ -1376,6 +1423,59 @@
                 element = next;
             }
         }
+    }
+
+    function rememberManualTranslationChoice(enabled) {
+        manualTranslationChoice = true;
+        try {
+            if (enabled) sessionStorage.removeItem(autoTranslateStorageKey);
+            else sessionStorage.setItem(autoTranslateStorageKey, 'off');
+        } catch (_) { /* The current document still respects the manual choice. */ }
+    }
+
+    function naturalProse(text) {
+        if (!text || text.length < 240) return false;
+        const words = text.match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+        if (words.length < 45) return false;
+        const commonWords = words.filter((word) =>
+            /^(the|and|that|this|with|from|have|was|were|are|for|but|not|when|which|what|there|they|you|your|we|our|can|would|will|about|into|than|their|been|more|one|like|just|then|because|after|before|these|those|its|it's|has|had|all|some|who|why|how|of|to|in|on|as|is|it|at)$/i.test(word)).length;
+        if (commonWords < Math.max(9, words.length * 0.12)) return false;
+        const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 160);
+        const codeLines = lines.filter((line) =>
+            /^(?:import |export |const |let |var |function |class |def |#include|using |public |private |SELECT |INSERT |UPDATE |<\/?[\w!]|\{|\}|\[|\]|\/\/|\*\/|\+[-+]{3,})/i.test(line)
+            || /[{};]/.test(line) && /[=<>]|\b(?:return|throw|await|function)\b/.test(line)).length;
+        return !lines.length || codeLines / lines.length < 0.32;
+    }
+
+    function automaticTranslationDisabled() {
+        try { return sessionStorage.getItem(autoTranslateStorageKey) === 'off'; }
+        catch (_) { return false; }
+    }
+
+    function tryAutomaticTranslation() {
+        if (autoTranslationDecided || manualTranslationChoice || automaticTranslationDisabled() || !document.body) return;
+        const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        const candidates = wrappers.filter((wrapper) =>
+            !wrapper.querySelector(`[${convertedAttribute}]`)
+            && naturalProse(getBlockText(originalBlocks.get(wrapper))));
+        if (!candidates.length) return;
+        const bodyText = document.body.innerText || document.body.textContent || '';
+        const pageSize = bodyText.replace(/\s/g, '').length;
+        const untranslatedSize = candidates.reduce((sum, wrapper) =>
+            sum + getBlockText(originalBlocks.get(wrapper)).replace(/\s/g, '').length, 0);
+        if (pageSize < 240 || untranslatedSize <= pageSize / 2) return;
+        autoTranslationDecided = true;
+        candidates.forEach((wrapper) => setConverted(wrapper, true));
+    }
+
+    function scheduleAutomaticTranslation() {
+        if (!autoTranslationReady || autoTranslateTimer !== null || autoTranslationDecided
+            || manualTranslationChoice || automaticTranslationDisabled()) return;
+        if (!document.querySelector(`[${wrapperAttribute}]`)) return;
+        autoTranslateTimer = setTimeout(() => {
+            autoTranslateTimer = null;
+            tryAutomaticTranslation();
+        }, 180);
     }
 
     function scan(root = document) {
@@ -1415,6 +1515,7 @@
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
         updateAllButton();
+        scheduleAutomaticTranslation();
     }
 
     function enableAstroFullPageNavigation(root) {
@@ -1502,6 +1603,7 @@
         event.preventDefault();
         const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
         const shouldConvert = !wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
+        rememberManualTranslationChoice(shouldConvert);
         wrappers.forEach((wrapper) => setConverted(wrapper, shouldConvert));
     });
     function mountAllButton() {
@@ -1514,6 +1616,11 @@
         document.addEventListener('DOMContentLoaded', mountAllButton, { once: true });
     }
     scan();
+    document.addEventListener('DOMContentLoaded', () => {
+        autoTranslationReady = true;
+        scheduleAutomaticTranslation();
+    }, { once: true });
+    window.addEventListener('load', scheduleAutomaticTranslation, { once: true });
 
     new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
