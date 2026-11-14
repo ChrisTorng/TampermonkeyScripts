@@ -2,7 +2,7 @@
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
 // @version      2026-11-14_2.1.12
-// @description  Improve tiny mobile text and raw .txt pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
+// @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
