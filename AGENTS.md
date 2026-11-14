@@ -49,3 +49,10 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Use public pages that demonstrate the change, or a small local fixture where needed. Link local fixtures relatively in the repository and directly from the PR, so they work on deployed previews.
 - `CurrentUpdates.html`, `TestCases.html`, and `index.html` remain generated and untracked. Build normally with `npm run generate:index`; never commit them.
 - Never invent a preview URL. If a verified deployment URL exists, include it briefly; otherwise use direct source/test URLs without adding placeholder preview links.
+
+
+### Math translation regression workflow (2026-11-14)
+- Test **the entire original article** (source HTML loaded afresh with original MathJax initialization), not just two fragments placed below test controls. Use the no-UI `/full/article/*` mirror, compare its main article structure with the origin, then use actual Android Edge translation.
+- Compare **baseline** vs **pinned Guard-injected** mirror while installed Tampermonkey is disabled, so other global scripts cannot contaminate results. The injected Guard must run from inline HTML before original page scripts, not from a blocking network script.
+- Collect automatic, bounded DOM/timing reports over initial load, scrolling, returning to earlier content, repeated translation and reload. Prioritize **currently visible raw TeX** and separate formula counts/order, real Chinese translation, renderer completion, and hidden visual geometry.
+- Never infer native Edge success from Chromium-only tests. **Do not keep patching production math handling until the latest full-article Edge reports identify a reproducible cause.** Keep all experimental PRs Draft until verified on target article.
