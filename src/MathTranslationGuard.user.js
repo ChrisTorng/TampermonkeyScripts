@@ -241,6 +241,11 @@
             // A rendered formula is not enough: the translation must actually
             // have produced Chinese text, otherwise the "third" view is redundant.
             if (!textChanged || !totalMath) return;
+            const signature = translatedPieces.map(piece => piece.type === 'text' ?
+                'T:' + piece.value : 'M:' + piece.id).join('\u2063') + '|' +
+                source.map(part => part.getAttribute(partAttribute)).join(',') + '|' +
+                totalMath;
+            if (pair.signature === signature) return;
             const translatedGroups = splitSentences(translatedPieces);
             const originalGroups = splitSentences(originalPieces);
             const aligned = translatedGroups.length === originalGroups.length &&
@@ -264,6 +269,7 @@
                 content.appendChild(row);
             }
             merged.replaceChildren(content);
+            pair.signature = signature;
             merged.setAttribute('data-tm-math-merged', 'complete');
             merged.setAttribute('data-tm-math-aligned', String(aligned));
             merged.setAttribute('data-tm-math-formulas', String(totalMath));
@@ -393,16 +399,22 @@
             const observer = new MutationObserver(records => {
                 if (mutateLock) return;
                 mutateLock = true;
+                let needsRebuild = false;
                 try {
                     for (const record of records) {
-                        if (record.type === 'characterData') {
-                            scan(record.target);
-                        } else {
-                            for (const node of record.addedNodes) scan(node);
-                        }
+                        const target = record.target.nodeType === 3 ?
+                            record.target.parentElement : record.target;
+                        const reference = target?.closest?.('[' + referenceAttribute + ']');
+                        // The merged bilingual view is our own output. Observing
+                        // its replacement again would cause a rebuild feedback loop.
+                        if (reference && !target.closest('.tm-math-backup-copy')) continue;
+                        needsRebuild = true;
+                        if (reference) continue; // MathJax may still render backup copy.
+                        if (record.type === 'characterData') scan(record.target);
+                        else for (const node of record.addedNodes) scan(node);
                     }
-                    requestRebuild();
                 } finally { mutateLock = false; }
+                if (needsRebuild) requestRebuild();
             });
             observer.observe(document.documentElement,{childList:true,subtree:true,characterData:true});
             requestRebuild();
