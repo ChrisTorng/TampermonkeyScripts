@@ -4,7 +4,7 @@ Updated: 2026-11-13
 
 ## Math translation hybrid — 2026-11-14 (Draft PR #148)
 
-- [MathTranslationGuard.user.js v2026-11-14_1.2.2](src/MathTranslationGuard.user.js) — on [Alex Wang](https://alexwang.ai/posts/reasoning-as-pathfinding/), leave nonmath text alone, protect math-only blocks, and reconstruct inline formulas from an untranslated original when translated text segments remain identifiable. Otherwise retain a complete readable original.
+- [MathTranslationGuard.user.js v2026-11-14_1.2.3](src/MathTranslationGuard.user.js) — on [Alex Wang](https://alexwang.ai/posts/reasoning-as-pathfinding/), leave nonmath text alone, protect both math-only blocks and standalone MathJax display formulas, and reconstruct inline formulas from an untranslated original when translated text segments remain identifiable. Otherwise retain a complete readable original.
 - [InlineTranslationOrderGuard.user.js v2026-11-14_1.0.2](src/InlineTranslationOrderGuard.user.js) — independent code/order experiment for other sites; deliberately excluded from Alex Wang to avoid conflicting DOM repositioning.
 
 **Native Edge evidence:** [Math Visibility Lab D](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph), [G](https://tm-math-translation-lab.christorng.workers.dev/?mode=engines). Real Edge G: MathJax Chinese reconstruction and math order succeeded; KaTeX sentence alignment differed; MathML text remained English. The production-site hybrid remains unconfirmed in native Android Edge. Headless Chromium verified the live article and complex math-only/SVG/div/dynamic cases.
