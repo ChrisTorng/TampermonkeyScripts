@@ -88,7 +88,7 @@ test('Complex browser DOM: native-like translation, formula loss, svg IDs, math-
     const root=path.join(__dirname,'..'),tmp=fs.mkdtempSync(path.join(os.tmpdir(),'tm-math-hybrid-'));
     try{
         const raw=fs.readFileSync(path.join(root,'src/MathTranslationGuard.user.js'),'utf8');
-        assert.match(raw,/@version\s+2026-11-14_1\.2\.2/);
+        assert.match(raw,/@version\s+2026-11-14_1\.2\.3/);
         const script=raw.replace(
             "if (location.hostname === 'alexwang.ai' || location.hostname.endsWith('.alexwang.ai')) {",
             'if (true) {'
