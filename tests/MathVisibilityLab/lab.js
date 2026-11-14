@@ -80,6 +80,30 @@
     function data() {
         return { lab: 'math-visibility-20261114', session, method: mode, events: history.slice(-10) };
     }
+    // Full raw DOM history remains available via "下載 JSON" for investigations.
+    // Automatic/manual submissions use a compact sample that preserves:
+    // the first state, first observed translation, and the most recent state.
+    // Sending ten copies of rendered MathJax HTML made G reports unnecessarily large.
+    function uploadData() {
+        const first = history[0];
+        const firstTranslated = history.find(e => e.controlTranslated);
+        const latest = history[history.length - 1];
+        const events = [...new Set([first, firstTranslated, latest].filter(Boolean))];
+        const minimized = events.map(event => ({
+            ...event,
+            samples: event.samples.map(sample => ({
+                ...sample,
+                html: trim(sample.html, 700),
+                text: trim(sample.text, 750),
+                items: sample.items.map(item => ({
+                    ...item,
+                    text: trim(item.text, 120)
+                }))
+            }))
+        }));
+        return { lab: 'math-visibility-20261114', format: 'compact-v2',
+            session, method: mode, capturedEvents: history.length, events: minimized };
+    }
     function status(message) { get('report-status').textContent = message; }
     async function send(kind, report) {
         const response = await fetch(url, {
@@ -87,14 +111,19 @@
             credentials: 'omit', mode: 'cors', referrerPolicy: 'no-referrer',
             body: JSON.stringify({ version: 1, session, method: mode, kind, report })
         });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        return response.json();
+        let result = null;
+        try { result = await response.json(); } catch (_) {}
+        if (!response.ok || !result?.saved) {
+            const detail = result?.error ? ' (' + result.error + ')' : '';
+            throw new Error('HTTP ' + response.status + detail);
+        }
+        return result;
     }
     async function autoSend() {
         if (!consent || uploadPending || Date.now() - lastUpload < 3000) return;
         uploadPending = true; lastUpload = Date.now();
         try {
-            await send('dom', data());
+            await send('dom', uploadData());
             status('診斷已傳送；實驗代碼 ' + session.slice(0, 8) + '，48 小時後刪除');
         } catch (error) { status('傳送失敗：' + error.message + '；仍可下載 JSON'); }
         uploadPending = false;
@@ -106,7 +135,7 @@
         hash = next;
         history.push(value);
         if (history.length > 10) history.shift();
-        get('log').textContent = JSON.stringify(data(), null, 2);
+        get('log').textContent = JSON.stringify(uploadData(), null, 2);
         const inView = value.samples.find((s) => s.viewportVisible) || value.samples[0];
         const formulas = inView.items.filter((item) => item.part.startsWith('M'));
         const visible = formulas.filter((item) => item.rect.w > 0 && item.rect.h > 0
@@ -167,7 +196,7 @@
         };
         get('copy-json').onclick = async () => {
             try {
-                await navigator.clipboard.writeText(JSON.stringify(data(), null, 2));
+                await navigator.clipboard.writeText(JSON.stringify(uploadData(), null, 2));
                 status('已複製診斷');
             } catch (_) { status('剪貼簿無法使用，請下載 JSON'); }
         };
