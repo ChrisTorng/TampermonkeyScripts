@@ -376,7 +376,7 @@ describe('Translate Preformatted Text', () => {
 
         button.click();
         const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
-        assert.equal(converted.getAttribute('translate'), null);
+        assert.equal(converted.getAttribute('translate'), 'yes');
         assert.match(converted.textContent, /Input --> Memory/);
     });
 
