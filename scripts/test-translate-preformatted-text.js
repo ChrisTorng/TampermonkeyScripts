@@ -341,7 +341,7 @@ describe('Translate Preformatted Text', () => {
 
         button.click();
         const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
-        assert.equal(converted.getAttribute('translate'), null);
+        assert.equal(converted.getAttribute('translate'), 'yes');
         assert.equal(
             converted.textContent,
             '# OKF Agent Memory\nA standardized memory layer.'
@@ -528,4 +528,58 @@ describe('Translate Preformatted Text', () => {
         assert.equal(app.classList.contains('app-holder'), true);
         assert.equal(app.getAttribute('translate'), 'yes');
     });
+    test('long natural-language plain text automatically becomes translatable', () => {
+        const original = 'Emacs In the Age Of Magic\n'
+            + 'The digital age is changing how we work and what we create. '
+                .repeat(18);
+        let pre;
+        const harness = execute((h) => {
+            pre = addPre(h, original, 'plain-article');
+            pre.setAttribute('style', 'white-space: pre-wrap; padding: 12px; margin: 7px;');
+        }, 'https://commandlinesystems.com/magic.txt');
+        harness.runAllTimeouts();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted, 'Prose covering most of a plain-text page should auto-convert.');
+        assert.equal(converted.tagName, 'DIV');
+        assert.equal(converted.getAttribute('translate'), 'yes');
+        assert.equal(converted.className, 'plain-article');
+        assert.equal(converted.getAttribute('style'), pre.getAttribute('style'));
+        assert.equal(converted.style.getPropertyValue('font-size'), '16px');
+        assert.equal(harness.document.querySelector('pre'), null);
+        const all = harness.document.getElementById('tm-translate-all-pre');
+        assert.equal(all.getAttribute('aria-pressed'), 'true');
+
+        // Simulate browser translation without modifying the detached original.
+        converted.textContent = '魔法時代的 Emacs';
+        all.click();
+        assert.equal(harness.document.querySelector('pre.plain-article'), pre);
+        assert.equal(pre.textContent, original);
+        assert.equal(pre.getAttribute('style'), 'white-space: pre-wrap; padding: 12px; margin: 7px;');
+        assert.equal(pre.hasAttribute('translate'), false);
+        assert.equal(harness.sessionStorage.getItem('tm-pre-auto-off:/magic.txt'), 'off');
+        harness.triggerMutation([pre]);
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+    });
+
+    test('code-only preformatted documents remain original even when they dominate the page', () => {
+        const code = 'const getValue = (x) => { return x + 2; };\n'.repeat(35);
+        const harness = execute((h) => addPre(h, code), 'https://example.net/source.txt');
+        harness.runAllTimeouts();
+        assert(harness.document.querySelector('pre'));
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+        assert.equal(harness.document.getElementById('tm-translate-all-pre').getAttribute('aria-pressed'), 'false');
+    });
+
+    test('short code blocks do not auto-convert beside a large normal article', () => {
+        const harness = execute((h) => {
+            const article = h.document.createElement('article');
+            article.textContent = 'The page itself is an article that should remain readable. '.repeat(18);
+            h.appendToBody(article);
+            addPre(h, 'The program does not compile because the input is invalid. '.repeat(6));
+        }, 'https://example.net/an-article');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+    });
+
 });
