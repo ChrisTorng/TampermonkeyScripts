@@ -32,7 +32,7 @@ export default {
         };
         if (request.method === 'GET' && path === '/full/telemetry.js') {
             const upstream = await fetch(
-                'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/3ae189be2d23196698777618e9f623ecb0c0dc90/tests/MathVisibilityLab/full-article-telemetry.js'
+                'https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/1876f6d3a2bc46aba1a1bc8f7e85899785b1374c/tests/MathVisibilityLab/full-article-telemetry.js'
             );
             if (!upstream.ok) return reply({error:'telemetry-not-found',status:upstream.status},502);
             return new Response(await upstream.text(),{headers:{
@@ -76,7 +76,7 @@ export default {
             // Inline the observer and optional Guard before the original
             // scripts: a network-blocking <script src> would itself change
             // MathJax/Edge timing and invalidate the experiment.
-            const telemetrySourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/3ae189be2d23196698777618e9f623ecb0c0dc90/tests/MathVisibilityLab/full-article-telemetry.js';
+            const telemetrySourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/1876f6d3a2bc46aba1a1bc8f7e85899785b1374c/tests/MathVisibilityLab/full-article-telemetry.js';
             const guardRef='513c59dbadb66cfabe9e32be4694e68b09c4f455';
             const guardSourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/'+guardRef+'/src/MathTranslationGuard.user.js';
             const [diagResponse,guardResponse]=await Promise.all([
