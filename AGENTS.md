@@ -49,3 +49,29 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Use public pages that demonstrate the change, or a small local fixture where needed. Link local fixtures relatively in the repository and directly from the PR, so they work on deployed previews.
 - `CurrentUpdates.html`, `TestCases.html`, and `index.html` remain generated and untracked. Build normally with `npm run generate:index`; never commit them.
 - Never invent a preview URL. If a verified deployment URL exists, include it briefly; otherwise use direct source/test URLs without adding placeholder preview links.
+
+
+## 8. Math and inline translation ownership
+- `TranslatePreformattedText.user.js` owns inline-code conversion and code-text restoration, but **not** position repair. Keep existing preformatted-block and reader behavior independent.
+- `MathTranslationGuard.user.js` owns formula-source/rendered-output protection. Do not move formulas to the end of paragraphs, generate alternate MathJax previews, or reorder translated prose.
+- `InlineTranslationOrderGuard.user.js` alone anchors and repairs positions for both protected inline code and math. Never run competing position observers from the math guard.
+- Avoid guaranteed-fix claims based only on synthetic DOM or headless Chromium tests. Native Edge translation must be checked on an actual page, including scroll and Show original/re-translation.
+
+### MathJax dual-original fallback (2026-11-14)
+- The native Android Edge A/B/C/D/E diagnostics recorded a real failure for individually protected inline TeX: C moved all formulas to the paragraph tail. Do not revive this C approach for alexwang.ai.
+- On alexwang.ai, use a normal translatable original `<p>` and one separate complete `translate="no"` reference paragraph. The reference should remain immediately after the original and be created at most once, including for dynamic paragraphs. Do not reorder formulas or edit the translated text.
+- Initial support is intentionally limited to the reported MathJax 4 site. Keep the older Plover experiments distinct; do not promote them as proven fixes.
+- A real Chromium DOM/syntax test can prove that two independent copies exist, but cannot establish native Android Edge translation survival. Keep the experimental PR unmerged until the real-page behavior is observed.
+
+
+### Math hybrid acceptance rules (2026-11-14)
+- On alexwang.ai, **never wrap/duplicate nonmath blocks**. An only-math block is protected whole without a bilingual duplicate. For mixed math/text, preserve a full untranslated reference and leave the browser's translated DOM untouched.
+- A merged paragraph can be shown only when formula DOM is rendered, the source and translated text part IDs match, and actual Chinese translated text exists. Copy formulas **from the original reference** in its canonical order, never from Edge-modified math. If uncertain, retain the original and avoid claiming success.
+- Show per-sentence English details only for sentences containing math. For different sentence segmentation, skip sentence alignment and keep a full original reference.
+- MathJax's SVG `id`/`use` references must be remapped together. Do not delete all IDs blindly, nor run the separate InlineTranslationOrderGuard on alexwang.ai. Throttle reconstruction to avoid starvation from continuous MathJax mutations; ignore mutations to the reconstructed view to prevent observer loops.
+- Scope production first to sites with real native Edge evidence. Use the direct [Alex Wang article](https://alexwang.ai/posts/reasoning-as-pathfinding/) and [D/G lab](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph), plus `scripts/test-math-hybrid-browser.js` and `scripts/test-math-dual-browser.js`. No blanket guarantee for all MathJax/KaTeX/MathML sites.
+
+### Standalone MathJax display formulas (2026-11-14)
+- alexwang.ai includes `mjx-container[display="true"]` rendered directly beneath `.c-article__content`, outside any paragraph. A paragraph-only Math Guard missed these: native Edge could reveal literal `$$\\Scal_x...$$` even while inline math worked. The site uses MathJax 4.1.3 for both modes, **not** two different math libraries.
+- On this site only, wrap the **already rendered** standalone MathJax display node in an unobtrusive `translate=no` wrapper, and mark the display itself `translate=no`. Do not create bilingual duplicates for pure display math and do not alter its formula typography. Preserve a clone and restore if the protected wrapper's rendered output disappears or is replaced with raw TeX, without reparsing custom macro syntax.
+- Test real HTML behavior and run `scripts/test-math-display-browser.js` with Chromium. Native Android Edge final acceptance remains necessary; don't claim it has been verified after translation before actual results.

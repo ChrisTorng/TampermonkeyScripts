@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.20
+// @version      2026-11-14_1.5.21
 // @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
 // @author       Chris Torng
 // @match        *://*/*
@@ -13,6 +13,7 @@
 // @grant        GM_openInTab
 // @sandbox      raw
 // @run-at       document-start
+// @exclude      https://tm-math-translation-lab.christorng.workers.dev/*
 // ==/UserScript==
 
 (function () {
