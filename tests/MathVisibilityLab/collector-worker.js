@@ -77,8 +77,8 @@ export default {
             }).replace(/</g,'\u005c\u0075\u0030\u0030\u0033\u0063');
             const meta='<meta name="robots" content="noindex,nofollow,noarchive">';
             const scripts='<script>window.__tmFullMathLab='+config+';<\/script>'+
-                '<script src="/full/telemetry.js"><\/script>'+
-                (variant==='guard'&&id==='alexwang' ? '<script src="/full/guard.js"><\/script>':'');
+                '<script src="https://tm-math-translation-lab.christorng.workers.dev/full/telemetry.js"><\/script>'+
+                (variant==='guard'&&id==='alexwang' ? '<script src="https://tm-math-translation-lab.christorng.workers.dev/full/guard.js"><\/script>':'');
             const injection='<base href="'+sourceUrl.replace(/"/g,'&quot;')+'">'+meta+scripts;
             const content=/<head(?:\s[^>]*)?>/i.test(html)
                 ?html.replace(/<head(?:\s[^>]*)?>/i,m=>m+injection)
