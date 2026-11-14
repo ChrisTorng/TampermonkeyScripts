@@ -611,7 +611,7 @@ describe('Translate Preformatted Text', () => {
         assert.match(okfPlainFixture, /class="react-line-numbers"/);
         assert.match(okfPlainFixture, /class="react-code-lines"/);
         const sourceLines = [...okfPlainFixture.matchAll(
-            /<div id="LC(\\d+)" class="react-file-line[^"]*" data-testid="code-cell" data-line-number="\\d+"[^>]*>([\\s\\S]*?)<\\/div>/g
+            /<div id="LC(\d+)" class="react-file-line[^"]*" data-testid="code-cell" data-line-number="\d+"[^>]*>([\s\S]*?)<\/div>/g
         )].map((match) => ({
             number: Number(match[1]),
             text: match[2].replace(/<[^>]+>/g, '')
@@ -679,7 +679,7 @@ describe('Translate Preformatted Text', () => {
             assert.equal(cell.style.getPropertyValue('overflow-wrap'), 'normal');
         }
 
-        const codeLineIndex = sourceLines.findIndex((line) => /^\\s*```/.test(line.text));
+        const codeLineIndex = sourceLines.findIndex((line) => /^\s*```/.test(line.text));
         assert(codeLineIndex >= 0);
         assert.equal(translated.querySelectorAll('[data-testid="code-cell"]')[codeLineIndex]
             .getAttribute('translate'), 'no', 'Fenced code delimiters must stay original.');
