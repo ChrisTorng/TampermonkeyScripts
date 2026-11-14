@@ -325,9 +325,14 @@ describe('Translate Preformatted Text', () => {
             source.className = 'react-code-lines';
             ['# OKF Agent Memory', 'A standardized memory layer.'].forEach((text, index) => {
                 const line = currentHarness.document.createElement('div');
-                line.setAttribute('data-testid', 'code-cell');
-                line.setAttribute('data-line-number', String(index + 1));
-                line.textContent = text;
+                line.className = 'react-code-line-contents';
+                const inner = currentHarness.document.createElement('div');
+                const cell = currentHarness.document.createElement('div');
+                cell.setAttribute('data-testid', 'code-cell');
+                cell.setAttribute('data-line-number', String(index + 1));
+                cell.textContent = text;
+                inner.appendChild(cell);
+                line.appendChild(inner);
                 source.appendChild(line);
             });
             currentHarness.appendToBody(source);
