@@ -100,3 +100,16 @@ The third view changes DOM only **outside** the already translated paragraph and
 - SVG local `id`/glyph references are namespaced and their `href`, `xlink:href` and `url(#id)` references rewritten in reconstructed copies to prevent clone-induced missing glyphs.
 - Historical MathJax 2/legacy HTML-CSS, SVG external symbols, unusual TeX plugins, custom canvas renderers, contenteditable regions, and sites that re-render math on each translation remain **outside verified coverage**.
 - A successful Chromium render proves DOM compatibility only; all on-device native Edge Translate outcomes must be checked separately.
+
+
+## G/F HTTP 400 receiver regression fixed — 2026-11-14
+
+User's native Android Edge screenshot and exported JSON showed the G renderer test returning **HTTP 400**. Root cause: `collector-worker.js` validated `method` against only `baseline|output|source|paragraph|image`; the frontend had added `placeholder` (F) and `engines` (G), but the API schema was not updated. Therefore valid reports from F/G were rejected with `invalid-schema`. The initial event in the user's exported G JSON had MathJax not yet loaded (`mathJaxReady:false`, `mathJaxCount:0`), and was **not** evidence of a renderer failure.
+
+Fix:
+- Accept `placeholder` and `engines`, with an explicit `acceptedMethods` field in future invalid-schema responses.
+- Preserve the initial DOM snapshot and first translation snapshot independently of the scrolling history ring buffer, plus the latest snapshot.
+- Send at most these three compact snapshots; each sample still retains translated text, formula part IDs/order, bounding boxes, renderer counts, MathJax and reconstruction diagnostics, while avoiding full repeated 10-event MathJax HTML. Full local JSON remains available through **下載 JSON**.
+- Display the server's actual error code in upload status; mobile navigation compresses A–G into two rows.
+
+**Direct server verification:** remotely opened the public G page in Chromium, activated upload, and retrieved the stored report from Workers KV: `method=engines`, `format=compact-v2`, approximately 31 KB; three renderer reconstruction outcomes complete. Repeated with F: `method=placeholder` received, approximately 14 KB. These smoke tests are nontranslated Chromium and do **not** replace native Android Edge translation results. The screenshot's rejected G request was not stored; only prior *image-mode* reports from that user's session were present before this fix.
