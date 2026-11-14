@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-14_1.5.21
+// @version      2026-11-14_1.5.22
 // @description  Auto-expose prose-heavy preformatted pages to browser translation with reversible original styling; retain iframe reader and site fixes.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1129,6 +1129,23 @@
             white-space: pre-wrap;
             overflow-wrap: break-word;
         }
+        /* GitHub renders line numbers in a separate sibling column. An actual
+           wrapper would break its flex layout; display: contents preserves it. */
+        [${wrapperAttribute}][data-tm-github-line-wrapper] {
+            display: contents !important;
+        }
+        [${convertedAttribute}][data-tm-github-code-lines],
+        [${convertedAttribute}][data-tm-github-code-lines] .react-code-line-contents,
+        [${convertedAttribute}][data-tm-github-code-lines] [data-testid="code-cell"] {
+            white-space: pre !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+            hyphens: none !important;
+        }
+        [${convertedAttribute}][data-tm-github-code-lines] [data-testid="code-cell"] {
+            display: block !important;
+            text-wrap: nowrap !important;
+        }
         [${inlineCodeAttribute}] {
             display: inline;
             font-family: monospace;
@@ -1334,6 +1351,116 @@
         }
     }
 
+    function isGithubMarkdownSource() {
+        if (location.hostname !== 'github.com') return false;
+        try {
+            return /^\\/[^/]+\\/[^/]+\\/blob\\/.+\\.(?:md|markdown|mdown)$/i.test(
+                decodeURIComponent(location.pathname));
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // The line-number gutter and the text column are siblings in GitHub's
+    // source viewer. Preserve every row and its data-line-number/LC anchor.
+    // Only turn the syntax-colored text within each code cell into a
+    // translatable text node, keeping source line numbers in their own column.
+    function copyGithubRowNode(source, codeRow = false) {
+        if (source.nodeType === 3) {
+            return document.createTextNode(source.nodeValue || source.textContent || '');
+        }
+        if (source.nodeType !== 1) return null;
+        const clone = document.createElement(source.tagName.toLowerCase());
+        copyAttributes(source, clone);
+        if (codeRow || source.getAttribute('data-testid') === 'code-cell') {
+            clone.textContent = source.textContent || ' ';
+            clone.setAttribute('translate', 'yes');
+            preserveFormattedStyle(source, clone);
+            clone.style.setProperty('white-space', 'pre', 'important');
+            clone.style.setProperty('overflow-wrap', 'normal', 'important');
+            clone.style.setProperty('word-break', 'normal', 'important');
+            return clone;
+        }
+        for (const child of Array.from(source.childNodes || source.children || [])) {
+            const copied = copyGithubRowNode(child);
+            if (copied) clone.appendChild(copied);
+        }
+        if (!(source.childNodes || source.children || []).length) {
+            clone.textContent = source.textContent || '';
+        }
+        return clone;
+    }
+
+    function copyGithubCodeLines(source, target) {
+        target.setAttribute('data-tm-github-code-lines', 'true');
+        // Keep the same CSS class so GitHub's code column retains its flex
+        // width, tab size, font, and alignment with the numbered gutter.
+        target.classList.add('react-code-lines');
+        for (const row of Array.from(source.children || [])) {
+            const copy = copyGithubRowNode(row);
+            const cell = copy?.querySelector('[data-testid="code-cell"]');
+            if (!copy || !cell) continue;
+            const originalCell = row.querySelector('[data-testid="code-cell"]');
+            // A Markdown source may contain executable snippets or URLs.
+            // Translate narrative text, not fenced code, command lines or links.
+            if (originalCell) {
+                const text = originalCell.textContent || '';
+                if (githubLineIsCode(text)) cell.setAttribute('translate', 'no');
+            }
+            const height = row.getBoundingClientRect?.().height || 0;
+            if (height >= 10 && height <= 75) {
+                copy.style.setProperty('height', `${height}px`, 'important');
+                copy.style.setProperty('min-height', `${height}px`, 'important');
+                copy.style.setProperty('max-height', `${height}px`, 'important');
+            }
+            target.appendChild(copy);
+        }
+    }
+
+    function githubLineIsCode(text) {
+        const trimmed = text.trim();
+        return !trimmed
+            || /^(?:```|~~~|\$ |>>> |#include\b|(?:import|export|const|let|var|function|class|def|SELECT|INSERT|UPDATE)\b)/i.test(trimmed)
+            || /^(?:\{|\}|\[\s*\{|\]|<\/?[A-Za-z])/i.test(trimmed)
+            || /https?:\/\//i.test(trimmed)
+            || /^\s{2,}(?:[\w.-]+[:=]|[{}\[\]])/.test(text);
+    }
+
+    // Markdown mixes prose with badges, trees, fences and snippets. Judge its
+    // prose excluding fenced code and URLs; never use this for .js/.cs files.
+    function githubMarkdownProse(text) {
+        if (!isGithubMarkdownSource() || !text) return false;
+        const lines = text.split(/\r?\n/);
+        if (lines.length < 12) return false;
+        let fenced = false, proseChars = 0, otherChars = 0, proseLines = 0;
+        for (const line of lines.slice(0, 1200)) {
+            const trimmed = line.trim();
+            if (/^(?:```|~~~)/.test(trimmed)) {
+                fenced = !fenced;
+                continue;
+            }
+            if (fenced || githubLineIsCode(line) || /^\s{4,}\S/.test(line)) {
+                otherChars += trimmed.length;
+                continue;
+            }
+            const cleaned = trimmed
+                .replace(/!?\[([^\]]*)\]\((?:https?:\/\/|\.{0,2}\/)[^)]+\)/g, '$1')
+                .replace(/https?:\/\/\S+/g, '')
+                .replace(/`[^`]*`/g, '');
+            const words = cleaned.match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+            const common = words.filter((word) =>
+                /^(the|and|that|this|with|from|have|was|were|are|for|but|not|when|which|what|there|they|you|your|we|our|can|would|will|about|into|than|their|been|more|one|like|just|then|because|after|before|these|those|its|has|had|all|some|who|why|how|of|to|in|on|as|is|it|at)$/i.test(word)).length;
+            if (words.length >= 6 && common >= 2) {
+                proseChars += cleaned.length;
+                proseLines++;
+            } else {
+                otherChars += cleaned.length;
+            }
+        }
+        return proseLines >= 5 && proseChars >= 500
+            && proseChars / Math.max(1, proseChars + otherChars) >= 0.24;
+    }
+
     function setConverted(wrapper, shouldConvert) {
         if (!wrapper) {
             return;
@@ -1355,9 +1482,10 @@
             replacement.setAttribute(convertedAttribute, 'true');
             replacement.setAttribute('translate', 'yes');
             preserveFormattedStyle(current, replacement);
-            if (!current.classList.contains('react-code-lines')
-                && !current.querySelector('[data-testid="code-cell"]')
-                && (typeof current.childNodes !== 'undefined' || current.querySelector('a'))) {
+            if (current.classList.contains('react-code-lines')
+                && current.querySelector('[data-testid="code-cell"]')) {
+                copyGithubCodeLines(current, replacement);
+            } else if (typeof current.childNodes !== 'undefined' || current.querySelector('a')) {
                 copyTranslatableNodes(current, replacement);
             } else {
                 replacement.textContent = getBlockText(current);
@@ -1382,6 +1510,9 @@
 
         const wrapper = document.createElement('div');
         wrapper.setAttribute(wrapperAttribute, 'true');
+        const githubSource = block.classList?.contains('react-code-lines')
+            && Boolean(block.querySelector('[data-testid="code-cell"]'));
+        if (githubSource) wrapper.setAttribute('data-tm-github-line-wrapper', 'true');
         const parent = block.parentNode;
         parent.insertBefore(wrapper, block);
         parent.removeChild(block);
@@ -1397,7 +1528,16 @@
         button.setAttribute('aria-label', 'Translate this preformatted block');
         setButtonState(button, false, 'this');
         wrapper.appendChild(button);
-        makeTransientControlDraggable(button, wrapper, { bottom: true });
+        // display:contents makes the code column behave as a direct flex child.
+        // The overlay instead uses the enclosing code viewer's coordinates.
+        const controlContainer = githubSource ? parent : wrapper;
+        if (githubSource && parent.style) {
+            const css = window.getComputedStyle(parent);
+            if (!css || css.position === 'static') {
+                parent.style.setProperty('position', 'relative', 'important');
+            }
+        }
+        makeTransientControlDraggable(button, controlContainer, { bottom: true });
         button.addEventListener('click', () => {
             const enabling = !wrapper.querySelector(`[${convertedAttribute}]`);
             rememberManualTranslationChoice(enabling);
@@ -1458,7 +1598,8 @@
         const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
         const candidates = wrappers.filter((wrapper) =>
             !wrapper.querySelector(`[${convertedAttribute}]`)
-            && naturalProse(getBlockText(originalBlocks.get(wrapper))));
+            && (naturalProse(getBlockText(originalBlocks.get(wrapper)))
+                || githubMarkdownProse(getBlockText(originalBlocks.get(wrapper)))));
         // Only leaf, text-oriented opt-out elements may be replaced. Do not
         // disturb a translated application's container or a code editor.
         const protectedLeaves = Array.from(document.querySelectorAll('[translate="no"], .notranslate'))
@@ -1480,7 +1621,8 @@
         autoTranslationDecided = true;
         protectedLeaves.forEach(enhance);
         const eligible = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`))
-            .filter((wrapper) => naturalProse(getBlockText(originalBlocks.get(wrapper))));
+            .filter((wrapper) => naturalProse(getBlockText(originalBlocks.get(wrapper)))
+                || githubMarkdownProse(getBlockText(originalBlocks.get(wrapper))));
         eligible.forEach((wrapper) => setConverted(wrapper, true));
     }
 
