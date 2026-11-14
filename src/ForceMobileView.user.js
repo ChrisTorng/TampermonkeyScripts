@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-14_2.1.11
+// @version      2026-11-14_2.1.12
 // @description  Improve tiny mobile text and raw .txt pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -587,6 +587,11 @@
     // Raw .txt documents commonly arrive without a viewport and shrink every
     // 38px floating control to roughly 14 visible pixels on Android.
     const isPlainTextUrl = /\.txt$/i.test(location.pathname);
+    const SIMPLE_PRE_STORAGE = 'tm-force-mobile-simple-pre:' + location.pathname + location.search;
+    function simplePreReloadRequested() {
+        try { return sessionStorage.getItem(SIMPLE_PRE_STORAGE) === 'yes'; }
+        catch (_) { return false; }
+    }
     let earlyReflow = false;
 
     // Hacker News listing/profile pages should keep their own compact layout.
@@ -606,7 +611,7 @@
         try {
             if (localStorage.getItem(AUTO_STORAGE) === 'off'
                 || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
-            return isDataExplorer || isPlainTextUrl;
+            return isDataExplorer || isPlainTextUrl || simplePreReloadRequested();
         } catch (_) {
             return isDataExplorer || isPlainTextUrl;
         }
@@ -614,7 +619,7 @@
 
     function installEarlyReflow() {
         if (!document.head) return false;
-        if (isPlainTextUrl && !isDataExplorer) {
+        if ((isPlainTextUrl || simplePreReloadRequested()) && !isDataExplorer) {
             // Set the viewport before the browser's first text-inflation pass.
             // Do not rewrite the PRE or body: the translation userscript owns
             // only temporary, reversible text-node substitution.
@@ -865,7 +870,41 @@
         }
     }
 
+    // A hidden desktop viewport can shrink a 38px menu handle to ~14 CSS
+    // display pixels. Do not retroactively replace the viewport on a live
+    // document: request one early-render reload only for single-PRE prose.
+    function requestSimpleProseReflow() {
+        if (!isAndroidBrowser() || isPlainTextUrl || simplePreReloadRequested()
+            || isEnabled || autoDisabledByUser() || !document.body
+            || isHackerNewsNonDiscussion()) return false;
+        const toggle = document.querySelector('#tm-shared-floating-menu [data-floating-toggle]');
+        if (!toggle || typeof toggle.getBoundingClientRect !== 'function') return false;
+        const rect = toggle.getBoundingClientRect();
+        const scale = window.visualViewport?.scale || 1;
+        if (!(rect.width > 0 && rect.width <= 70 && rect.width * scale < 28)) return false;
+        const pre = document.querySelector('body > pre')
+            || document.querySelector('body > [data-tm-translatable-pre-wrapper] > pre');
+        if (!pre) return false;
+        const contentRoot = pre.closest('[data-tm-translatable-pre-wrapper]') || pre;
+        const topLevel = Array.from(document.body.children || [])
+            .filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE'
+                && element.id !== FLOATING_MENU_ID
+                && !element.id?.startsWith('tm-'));
+        if (topLevel.length !== 1 || topLevel[0] !== contentRoot) return false;
+        const prose = pre.textContent || '';
+        const words = prose.match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+        if (words.length < 60) return false;
+        const common = words.filter((word) =>
+            /^(the|and|that|this|with|from|have|was|were|are|for|but|not|when|which|what|there|they|you|your|we|our|can|would|will|about|into|than|their|been|more|one|like|just|then|because|after|before|these|those|its|has|had|all|some|who|why|how|of|to|in|on|as|is|it|at)$/i.test(word)).length;
+        if (common / words.length < 0.12) return false;
+        try { sessionStorage.setItem(SIMPLE_PRE_STORAGE, 'yes'); }
+        catch (_) { return false; }
+        window.location.reload();
+        return true;
+    }
+
     function scheduleAutomaticDetection() {
+        if (requestSimpleProseReflow()) return;
         if (isEnabled || autoMode || !mobileAutoEligible() || autoDisabledByUser() || autoRestoreError) return;
         if (autoTimer) clearTimeout(autoTimer);
         autoTimer = setTimeout(() => {
@@ -1023,7 +1062,7 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
-        } else if ((isDataExplorer || isPlainTextUrl) && isAndroidBrowser()) {
+         } else if ((isDataExplorer || isPlainTextUrl || simplePreReloadRequested()) && isAndroidBrowser()) {
             // Restore the early mobile viewport instead of running the destructive legacy CSS.
             setAutomaticPreference(false);
             try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
