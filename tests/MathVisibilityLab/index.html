@@ -11,6 +11,12 @@ p{line-height:1.65} #plain-control{font:16px/1.35 Georgia,serif;margin:4px 0;pad
 .links{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
 .links a,.buttons button{background:#344f69;color:#fff;padding:9px 10px;border-radius:6px;text-decoration:none;border:1px solid #5b7087;font-size:14px}
 .links a[aria-current=page]{background:#08734b;border-color:#29bf84}
+@media(max-width:520px){
+  .links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .links a{padding:7px 1px;text-align:center;font-size:12px;white-space:nowrap}
+  .tools{padding:6px 10px}
+  .tools .buttons button{padding:6px 9px}
+}
 .buttons{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
 .buttons button{cursor:pointer}
 small, .muted {color:#b9c7d7} .tools details{margin:4px 0} .tools .buttons{margin:4px 0} .tools .buttons button{padding:7px 9px} #report-status{min-height:1.7em;display:block}
