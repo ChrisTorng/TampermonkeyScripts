@@ -23,6 +23,7 @@ function executeForceMobileView(url, options = {}) {
         url,
         readyState: 'loading',
         localStorageSeed: options.localStorageSeed || {},
+        sessionStorageSeed: options.sessionStorageSeed || {},
         gmInfo: {
             script: {
                 matches: ['https://news.ycombinator.com/item?*', 'https://archive.is/*', 'https://paulbourke.net/*', 'https://www.paulbourke.net/*', '*://*/*']
@@ -70,7 +71,7 @@ function executeForceMobileView(url, options = {}) {
 
     const textElement = harness.document.createElement('span');
     textElement.textContent = 'small text';
-    harness.appendToBody(textElement);
+    if (!options.omitSampleText) harness.appendToBody(textElement);
 
     if (options.userAgent) harness.context.navigator = { userAgent: options.userAgent };
     harness.context.globalThis = harness.context;
@@ -566,6 +567,66 @@ describe('Force Mobile View automatic readability pilot', () => {
         button.click();
         assert.equal(harness.location.reloadCallCount, 1);
         assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:commandlinesystems.com'), null);
+    });
+
+    test('a physically tiny menu on a single non-.txt prose PRE requests one safe early reload', () => {
+        const url = 'https://example.org/article';
+        const prose = 'The story is about the history of programming and how we use our computers every day. '.repeat(18);
+        const options = {
+            omitSampleText: true,
+            userAgent: 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 EdgA/158',
+            setupBody(h) {
+                h.window.visualViewport.scale = 0.36;
+                const pre = h.document.createElement('pre');
+                pre.textContent = prose;
+                h.appendToBody(pre);
+            }
+        };
+        const { harness } = executeForceMobileView(url, options);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const toggle = harness.document.querySelector('[data-floating-toggle]');
+        toggle.getBoundingClientRect = () => ({ width: 38, height: 32, left: 0, right: 38, top: 70, bottom: 102 });
+        harness.dispatchWindowEvent('load');
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.sessionStorage.getItem('tm-force-mobile-simple-pre:/article'), 'yes');
+
+        const next = executeForceMobileView(url, {
+            ...options,
+            sessionStorageSeed: { 'tm-force-mobile-simple-pre:/article': 'yes' }
+        }).harness;
+        assert(next.document.querySelector('meta[name="viewport"]'));
+        assert(next.document.getElementById('tm-force-mobile-auto-style'));
+        next.dispatchDocumentEvent('DOMContentLoaded');
+        next.dispatchWindowEvent('load');
+        assert.equal(next.location.reloadCallCount, 0);
+    });
+
+    test('menu-size fallback never reloads a multi-section prose page or a code-only PRE', () => {
+        const doTest = (text, addSecond) => {
+            const { harness } = executeForceMobileView('https://example.org/legacy', {
+                omitSampleText: true,
+                userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+                setupBody(h) {
+                    h.window.visualViewport.scale = 0.36;
+                    const pre = h.document.createElement('pre');
+                    pre.textContent = text;
+                    h.appendToBody(pre);
+                    if (addSecond) {
+                        const p = h.document.createElement('p');
+                        p.textContent = 'Other section';
+                        h.appendToBody(p);
+                    }
+                }
+            });
+            harness.dispatchDocumentEvent('DOMContentLoaded');
+            const toggle = harness.document.querySelector('[data-floating-toggle]');
+            toggle.getBoundingClientRect = () => ({ width: 38, height: 32 });
+            harness.dispatchWindowEvent('load');
+            assert.equal(harness.location.reloadCallCount, 0);
+            assert.equal(harness.sessionStorage.getItem('tm-force-mobile-simple-pre:/legacy'), null);
+        };
+        doTest('const x = () => { return 42; };\n'.repeat(80), false);
+        doTest('The history of computing and the tools that we use every day. '.repeat(22), true);
     });
 
 });
