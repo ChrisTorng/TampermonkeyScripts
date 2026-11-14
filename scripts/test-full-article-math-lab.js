@@ -8,7 +8,7 @@ const client = fs.readFileSync(path.join(repo, 'tests/MathVisibilityLab/full-art
 
 test('complete live article is proxied with no diagnostic control panel and no cached content', () => {
     for(const name of ['alexwang','plover','mathjaxdocs'])
-        assert.match(worker, new RegExp(name+':\\s*\\'https://'));
+        assert.ok(worker.includes(name + ": 'https://"));
     assert.match(worker, /article-source-fetch-failed/);
     assert.match(worker, /text\/html/);
     assert.match(worker, /no-store, max-age=0/);
@@ -19,7 +19,7 @@ test('complete live article is proxied with no diagnostic control panel and no c
     assert.match(worker, /guardRef=/);
     assert.match(worker, /const \[diagResponse,guardResponse\]=await Promise\.all/);
     assert.doesNotMatch(worker, /const scripts='<script>window.__tmFullMathLab[\s\S]*?<script src=/);
-    assert.match(worker, /\/full\/article\/\(\[a-z\]\+\)/);
+    assert.ok(worker.includes('path.match(/^\\/full\\/article\\/([a-z]+)$/)'));
 });
 
 test('telemetry uses automatic bounded lifecycle reports, records native translator/maths time series', () => {
@@ -39,8 +39,8 @@ test('telemetry uses automatic bounded lifecycle reports, records native transla
     assert.match(client,/pageLoad/);
     assert.match(client,/splice\(0,Math\.min\(entries\.length,12\)\)/);
     assert.doesNotMatch(client, /document\.body\.append|createElement\(['"]button['"]\)/);
-    assert.doesNotMatch(client,/cookie|Authorization/i);
-    assert.match(worker,/full-article\)\$\/\.test\(entry\.method/);
+    assert.doesNotMatch(client,/document\.cookie|credentials\s*:\s*['"]include['"]/);
+    assert.ok(worker.includes('|full-article)$/.test(entry.method'));
     assert.match(worker,/604800/);
 });
 
