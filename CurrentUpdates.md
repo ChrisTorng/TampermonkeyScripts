@@ -1,6 +1,13 @@
 # Current updates
 
-Updated: 2026-11-13
+Updated: 2026-11-14
+
+## Plain-text translation and mobile reading — 2026-11-14
+
+- [Install ForceMobileView.user.js — 2026-11-14_2.1.11](src/ForceMobileView.user.js) — give raw .txt pages a mobile viewport before layout; remove menu-size overrides that can collide with the independent fullscreen control. ↔ OFF restores the original viewport on reload.
+- [Install TranslatePreformattedText.user.js — 2026-11-14_1.5.21](src/TranslatePreformattedText.user.js) — automatically expose majority-prose PRE content for browser translation, preserve computed formatting, and restore untouched original text/styles when toggled off. Native Edge translation still requires browser support.
+
+**Tests:** [Emacs in the Age of Magic (.txt)](https://commandlinesystems.com/magic.txt) — readable text and controls, automatic translation eligibility, manual original restoration; [GitHub source](https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1) — code remains opt-in; [HN historical list](https://news.ycombinator.com/front?day=2024-11-08) — no automatic enlargement. Reload after both updates.
 
 ## Fullscreen button docking — 2026-11-13
 
