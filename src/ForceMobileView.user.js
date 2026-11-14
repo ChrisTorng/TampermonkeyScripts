@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-12_2.1.10
+// @version      2026-11-14_2.1.11
 // @description  Improve tiny mobile text, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -584,6 +584,9 @@
 
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
+    // Raw .txt documents commonly arrive without a viewport and shrink every
+    // 38px floating control to roughly 14 visible pixels on Android.
+    const isPlainTextUrl = /\.txt$/i.test(location.pathname);
     let earlyReflow = false;
 
     // Hacker News listing/profile pages should keep their own compact layout.
@@ -603,14 +606,44 @@
         try {
             if (localStorage.getItem(AUTO_STORAGE) === 'off'
                 || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
-            return isDataExplorer;
+            return isDataExplorer || isPlainTextUrl;
         } catch (_) {
-            return isDataExplorer;
+            return isDataExplorer || isPlainTextUrl;
         }
     }
 
     function installEarlyReflow() {
         if (!document.head) return false;
+        if (isPlainTextUrl && !isDataExplorer) {
+            // Set the viewport before the browser's first text-inflation pass.
+            // Do not rewrite the PRE or body: the translation userscript owns
+            // only temporary, reversible text-node substitution.
+            const authored = document.querySelector('meta[name="viewport"]');
+            if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return false;
+            if (!authored) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('name', 'viewport');
+                meta.setAttribute('content', 'width=device-width, initial-scale=1');
+                meta.setAttribute('data-tm-force-mobile-auto', 'true');
+                document.head.appendChild(meta);
+            }
+            if (!document.getElementById(AUTO_STYLE_ID)) {
+                const style = document.createElement('style');
+                style.id = AUTO_STYLE_ID;
+                style.textContent = `
+                    html, body { -webkit-text-size-adjust: 100% !important;
+                        text-size-adjust: 100% !important; }
+                    body > pre { max-width: 100% !important;
+                        white-space: pre-wrap !important; overflow-wrap: anywhere !important;
+                        font-size: 15px !important; line-height: 1.45 !important; }
+                `;
+                document.head.appendChild(style);
+            }
+            earlyReflow = true;
+            autoMode = true;
+            isEnabled = true;
+            return true;
+        }
         // If Data Explorer adopts a genuine mobile layout later, leave that authored viewport alone.
         const authored = document.querySelector('meta[name="viewport"]');
         if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return true;
@@ -872,7 +905,7 @@
             `        padding-right: min(0.6vw, 2px) !important;\n` +
             `    }\n` +
             `}\n` +
-            `body * {\n` +
+            `body *:not(#tm-shared-floating-menu):not(#tm-shared-floating-menu *):not(.tm-fullscreen-game-view-button) {\n` +
             `    max-width: 100% !important;\n` +
             `    min-width: 0 !important;\n` +
             `    word-break: break-word !important;\n` +
@@ -990,7 +1023,7 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
-        } else if (isDataExplorer && isAndroidBrowser()) {
+        } else if ((isDataExplorer || isPlainTextUrl) && isAndroidBrowser()) {
             // Restore the early mobile viewport instead of running the destructive legacy CSS.
             setAutomaticPreference(false);
             try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
