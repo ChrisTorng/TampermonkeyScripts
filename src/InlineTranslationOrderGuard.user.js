@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Inline Translation Order Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-13_1.0.1
+// @version      2026-11-14_1.0.2
 // @description  Keep translated inline code and math slots beside their original DOM anchors.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://christorng.idv.tw/*
 // @exclude      *://*.christorng.idv.tw/*
+// @exclude      https://alexwang.ai/*
+// @exclude      https://*.alexwang.ai/*
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
