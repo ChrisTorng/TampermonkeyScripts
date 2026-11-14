@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Crash Guard
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-26_1.0.0
+// @version      2026-11-14_1.0.1
 // @description  Prevent machine-translation DOM rewrites from crashing dynamic web applications.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -12,6 +12,7 @@
 // @match        https://*/*
 // @run-at       document-start
 // @grant        none
+// @exclude      https://tm-math-translation-lab.christorng.workers.dev/*
 // ==/UserScript==
 
 (function() {
