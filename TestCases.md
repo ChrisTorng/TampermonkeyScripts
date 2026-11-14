@@ -173,3 +173,25 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 - https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; Medium detection and reload-once/session logic only)
 - https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950 [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (global-identity reload skip logic only)
   - Expect a single reload even if Medium rewrites the redirectUrl query parameters on subsequent visits.
+
+
+# Math Translation Guard / Inline Translation Order Guard
+Section note: new runtime tests use synthetic MathJax, MathML, code, and the source delimiters below. They assert DOM preservation and repair of nodes moved within the same parent; these tests cannot reproduce Edge's native translation engine or prove that all site rendering succeeds.
+- https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (runtime tests cover the reported inline `$...$` and display `$$...$$` patterns; native Edge translated math, scrolling, and retranslation still need live confirmation)
+- https://blog.plover.com/math/ordinals/02-wellfoundedness.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (custom `!!...!!` sources and MathJax output are preserved in synthetic DOM; real native Edge ordering remains unverified)
+- https://github.com/anthropics/fermats-last-theorem [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (the order guard anchors the inline-code spans produced by the existing Translate Preformatted Text script; DOM reorder simulation is automated)
+
+
+## Alex Wang dual original and translation fallback (Draft)
+- https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 4 page: verify each math-containing paragraph has normal translatable prose and an adjacent protected full-English/math reference; no per-formula splitting. Chrome DOM checks pass after-load injection, native Android Edge pending.)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (Existing D case now displays both normal translatable paragraph and protected original, in both near/late zones. Real Edge native translation pending.)
+
+
+## Math translation hybrid reconstruction (Draft v2026-11-14_1.2.2)
+- https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (on-site mixed-text/math paragraphs: protected source and translated fragments recombined when each slot remains known; no-math paragraphs unchanged; math-only paragraphs have translate=no and no duplicate; Chromium real-site injection verified, native Android Edge still pending)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=engines [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (actual Android Edge: MathJax Chinese third copy retained 2 formulas; KaTeX text aligned incompletely, MathML did not translate prose)
+- https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (bilingual third-copy construction and sentence alignment reference; native Edge D previous two-copy result confirmed)
+
+## Standalone display MathJax, outside paragraphs (Draft 2026-11-14_1.2.3)
+- https://alexwang.ai/posts/reasoning-as-pathfinding/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (seven direct `mjx-container[display=true]` blocks confirmed in real site, all translate=no under their own invisible wrapper; user screenshot showed raw `$$\\Scal_x...$$` after translation; native Edge recheck with v1.2.3 still pending)
+- `scripts/test-math-display-browser.js`: simulate Edge replacing both CHTML and SVG standalone math with raw TeX; verify rendered DOM restored with SVG glyph references and dynamic display formulas protected; no nonmath paragraph affected.

@@ -44,6 +44,20 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-root-scroll-browser.js
+      - name: Test math source preservation and inline order guard
+        run: node --test scripts/test-math-inline-order.js
+      - name: Browser test MathJax original-and-translation fallback
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-math-dual-browser.js
+      - name: Browser test complex math-only and bilingual reconstruction
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-math-hybrid-browser.js
+      - name: Browser test standalone MathJax display restoration
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --test scripts/test-math-display-browser.js
       - name: Test shared menu, safe translation and GM update tabs
         run: node --test scripts/test-floating-menu.js scripts/test-translate-preformatted-text.js scripts/test-bulk-update-gm.js
       - name: Test generic iframe translation reader and dragging
