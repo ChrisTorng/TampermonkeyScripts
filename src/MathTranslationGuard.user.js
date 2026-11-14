@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Math Translation Guard
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-14_1.2.2
+// @version      2026-11-14_1.2.3
 // @description  Restore math inline by combining translated fragments with protected rendered formulas; preserve originals if incomplete.
 // @author       Chris Torng
 // @match        *://*/*
@@ -37,6 +37,12 @@
         let updateTimer = null;
         let mutateLock = false;
         const paragraphLike = 'p, div';
+        // MathJax 4 renders display equations as direct children of the
+        // article container, *outside* <p>. They were missed by paragraph-only
+        // protection, and native Edge could expose their raw $...$ source.
+        const standaloneSelector = 'mjx-container[display="true"]';
+        const standaloneAttribute = 'data-tm-math-display-guard';
+        const standaloneGuards = new Set();
 
         function mathExpressionText(text) {
             const match = String(text || '').match(sourcePattern);
@@ -56,7 +62,7 @@
         function eligibleBlock(block) {
             if (!block || block.nodeType !== 1 || !block.isConnected ||
                 !block.matches(paragraphLike) ||
-                block.closest('[' + referenceAttribute + '], script, style, noscript, textarea, pre, code, [contenteditable="true"]')) return false;
+                block.closest('[' + referenceAttribute + '], [' + standaloneAttribute + '], script, style, noscript, textarea, pre, code, [contenteditable="true"]')) return false;
             if (block.tagName === 'DIV') {
                 // Only leaf-like divs with direct formula output are eligible.
                 // Never duplicate container divs, whole articles or nested paragraphs.
@@ -115,6 +121,45 @@
                 let css = style.textContent || '';
                 for (const [from, to] of mapping) css = css.split('url(#' + from + ')').join('url(#' + to + ')');
                 if (css !== style.textContent) style.textContent = css;
+            }
+        }
+
+        function protectStandaloneDisplay(element) {
+            if (!element || !element.isConnected ||
+                !element.matches?.(standaloneSelector) ||
+                !element.querySelector('mjx-math, svg') ||
+                element.closest('p, pre, code, [' + referenceAttribute + '], [' + standaloneAttribute + ']')) return;
+            // Only genuinely standalone display equations. A display expression
+            // inside a paragraph or leaf div belongs to the existing block logic.
+            if (!element.parentElement?.matches('.c-article__content')) return;
+            const wrapper = document.createElement('div');
+            wrapper.setAttribute(standaloneAttribute, 'true');
+            wrapper.setAttribute('translate', 'no');
+            wrapper.className = 'tm-math-display-guard notranslate';
+            element.setAttribute('translate', 'no');
+            element.classList.add('notranslate');
+            // Retain original site MathJax layout/margins. No additional
+            // typography, background or visible bilingual reference is added.
+            element.parentNode.insertBefore(wrapper, element);
+            wrapper.appendChild(element);
+            const snapshot = element.cloneNode(true);
+            standaloneGuards.add({ wrapper, snapshot });
+        }
+
+        function restoreStandaloneDisplays() {
+            for (const entry of standaloneGuards) {
+                if (!entry.wrapper.isConnected) {
+                    standaloneGuards.delete(entry);
+                    continue;
+                }
+                // Native translation occasionally replaces a rendered display
+                // equation with the original $\\TeX$ text. Restore the
+                // previously typeset DOM rather than running a second TeX
+                // interpreter (which may not know the site's custom macros).
+                if (entry.wrapper.querySelector('mjx-container[display="true"] mjx-math, mjx-container[display="true"] svg')) continue;
+                const formula = entry.snapshot.cloneNode(true);
+                namespaceIds(formula);
+                entry.wrapper.replaceChildren(formula);
             }
         }
 
@@ -361,6 +406,8 @@
             if (root.nodeType !== 1 && root.nodeType !== 9) return;
             if (root.nodeType === 1 &&
                 root.closest('['+referenceAttribute+']')) return;
+            if (root.nodeType === 1 && root.matches(standaloneSelector)) protectStandaloneDisplay(root);
+            root.querySelectorAll?.(standaloneSelector).forEach(protectStandaloneDisplay);
             const targets = new Set();
             if (root.nodeType === 1 && root.matches(paragraphLike)) targets.add(root);
             if (root.nodeType === 1) {
@@ -379,6 +426,7 @@
             updateTimer = setTimeout(() => {
                 updateTimer = null;
                 for (const pair of activePairs) rebuild(pair);
+                restoreStandaloneDisplays();
             },160);
         }
 
