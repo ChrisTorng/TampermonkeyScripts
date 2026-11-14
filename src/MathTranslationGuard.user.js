@@ -372,7 +372,10 @@
         }
 
         function requestRebuild() {
-            if (updateTimer !== null) clearTimeout(updateTimer);
+            // Throttle, do not debounce: MathJax and native Edge can mutate
+            // the document continuously. Resetting the timer on every mutation
+            // starves the reconciliation pass on long math-heavy articles.
+            if (updateTimer !== null) return;
             updateTimer = setTimeout(() => {
                 updateTimer = null;
                 for (const pair of activePairs) rebuild(pair);
