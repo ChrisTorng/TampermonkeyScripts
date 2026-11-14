@@ -2,12 +2,12 @@
 
 Updated: 2026-11-13
 
-## Math source and inline order — 2026-11-13
+## Math translation hybrid — 2026-11-14 (Draft PR #148)
 
-- [Install MathTranslationGuard.user.js — 2026-11-14_1.1.1](src/MathTranslationGuard.user.js) — preserve TeX source and rendered formulas without reordering prose.
-- [Install InlineTranslationOrderGuard.user.js — 2026-11-13_1.0.1](src/InlineTranslationOrderGuard.user.js) — anchor inline code and math consistently. Install both and reload.
+- [MathTranslationGuard.user.js v2026-11-14_1.2.2](src/MathTranslationGuard.user.js) — on [Alex Wang](https://alexwang.ai/posts/reasoning-as-pathfinding/), leave nonmath text alone, protect math-only blocks, and reconstruct inline formulas from an untranslated original when translated text segments remain identifiable. Otherwise retain a complete readable original.
+- [InlineTranslationOrderGuard.user.js v2026-11-14_1.0.2](src/InlineTranslationOrderGuard.user.js) — independent code/order experiment for other sites; deliberately excluded from Alex Wang to avoid conflicting DOM repositioning.
 
-**New MathJax 4 fallback:** On alexwang.ai, each math-containing paragraph has a second intact English reference beneath the translatable paragraph. This replaces per-formula source protection on that domain. [Live D dual-copy lab](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph) records the same arrangement; no new lab page is needed. Native Android Edge acceptance on the real article remains pending.\n\n**Tests:** [Alex Wang MathJax article](https://alexwang.ai/posts/reasoning-as-pathfinding/) — formulas must stay in sentences; [Plover math article](https://blog.plover.com/math/ordinals/02-wellfoundedness.html) — custom formula source and scrolling. Real Android Edge verification is pending; older #94/#97 strategies remain experimental.
+**Native Edge evidence:** [Math Visibility Lab D](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph), [G](https://tm-math-translation-lab.christorng.workers.dev/?mode=engines). Real Edge G: MathJax Chinese reconstruction and math order succeeded; KaTeX sentence alignment differed; MathML text remained English. The production-site hybrid remains unconfirmed in native Android Edge. Headless Chromium verified the live article and complex math-only/SVG/div/dynamic cases.
 
 ## Fullscreen button docking — 2026-11-13
 
