@@ -48,30 +48,37 @@
   function rawNodes(root){
     if(!root)return [];
     const sample=[],walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-    let n,c=0;
+    let n,c=0,total=0;
     // TreeWalker only inspects the actual page, not hidden style/script sources.
     while((n=walk.nextNode())&&c++<7000){
       const p=n.parentElement;if(!p)continue;
       if(p.closest('script,style,noscript,code,pre,textarea,svg,mjx-container,.katex,math,[data-tm-math-dual-reference]'))continue;
       const v=n.nodeValue||'';
       if(!/(?:\$\$|\\Scal|\\frac|\\sqrt|\\begin\{|\\\(|\\\[|\$[A-Za-z0-9\\])/.test(v))continue;
+      total++;
       const r=p.getBoundingClientRect(),cs=getComputedStyle(p);
       sample.push({text:chunkText(v,230),path:path(p),
         visible:cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>0&&r.height>0,
         top:Math.round(r.top),parent:p.tagName});
-      if(sample.length>=25)break;
+      if(sample.length>=300)break;
     }
-    return sample;
+    // The first 25 formulas in source order may be near the top; prioritise
+    // currently visible/surrounding failures when the user scrolls deep.
+    sample.sort((a,b)=>
+      Math.abs(a.top-innerHeight/2)-Math.abs(b.top-innerHeight/2));
+    return {samples:sample.slice(0,25),count:total};
+  
   }
   function sample(reason){
     const root=site();if(!root)return;
     const math=[...root.querySelectorAll(formulaSelector)].filter(el=>
       !el.parentElement?.closest(formulaSelector));
     const outputs=math.map(formulaStatus);
-    const raw=rawNodes(root);
-    const text=chunkText(root.innerText,900);
-    const cjk=(text.match(/[\u3400-\u9fff]/g)||[]).length;
-    const latin=(text.match(/[A-Za-z]/g)||[]).length;
+    const {samples:raw,count:rawTotal}=rawNodes(root);
+    const wholeText=root.innerText||'';
+    const text=chunkText(wholeText,900);
+    const cjk=(wholeText.match(/[\u3400-\u9fff]/g)||[]).length;
+    const latin=(wholeText.match(/[A-Za-z]/g)||[]).length;
     const visible=outputs.filter(x=>!x.hidden).length;
     if(baselineMath===null&&outputs.length>0)baselineMath=outputs.length;
     if(cjk>=15)observedTranslation=true;
@@ -88,7 +95,7 @@
         representative:outputs.filter(o=>o.inViewport).slice(0,12),
         // Fixed selection from whole document, including missing late formulas.
         anchors:outputs.filter(o=>o.display==='true').slice(0,12)},
-      rawCount:raw.length,raw,
+      rawCount:rawTotal,raw,
       language:{cjk,latin,observedTranslation,textSample:chunkText(text,180)},
       scriptHints:{mathGuard:!!root.querySelector('[data-tm-math-dual-reference]'),
         crashGuard:!!Node.prototype[Symbol.for('translation-crash-guard-patched')],
