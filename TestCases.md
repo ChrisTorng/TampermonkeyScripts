@@ -188,3 +188,10 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&output=svg [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 4 SVG output clones with internal symbol references; native Android Edge translation unverified.)
 - https://tm-math-translation-lab.christorng.workers.dev/?mode=engines&mathjax=3&output=svg [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (MathJax 3 SVG output clones; check after native Edge translation.)
+
+
+## Complete-article translation timing diagnostics (automatic reports; no test UI)
+- https://tm-math-translation-lab.christorng.workers.dev/full/article/alexwang [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (live full original HTML, baseline without injected Guard, scroll and retranslate; no installed userscripts for clean native Edge check)
+- https://tm-math-translation-lab.christorng.workers.dev/full/article/alexwang?guard=1 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (same full article, pinned v2026-11-14_1.2.3 Guard at document start, automatically capture formula output and raw TeX regressions across scroll/reload)
+- https://tm-math-translation-lab.christorng.workers.dev/full/article/plover [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (live full previous ordinal-math case, DOM timing and browser translation)
+- https://tm-math-translation-lab.christorng.workers.dev/full/article/mathjaxdocs [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (live MathJax documentation, multi-library baseline)
