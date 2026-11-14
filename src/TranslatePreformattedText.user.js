@@ -1354,7 +1354,7 @@
     function isGithubMarkdownSource() {
         if (location.hostname !== 'github.com') return false;
         try {
-            return /^\\/[^/]+\\/[^/]+\\/blob\\/.+\\.(?:md|markdown|mdown)$/i.test(
+            return /^\/[^/]+\/[^/]+\/blob\/.+\.(?:md|markdown|mdown)$/i.test(
                 decodeURIComponent(location.pathname));
         } catch (_) {
             return false;
