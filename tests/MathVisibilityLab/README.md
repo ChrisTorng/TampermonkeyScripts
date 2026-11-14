@@ -113,3 +113,19 @@ Fix:
 - Display the server's actual error code in upload status; mobile navigation compresses A–G into two rows.
 
 **Direct server verification:** remotely opened the public G page in Chromium, activated upload, and retrieved the stored report from Workers KV: `method=engines`, `format=compact-v2`, approximately 31 KB; three renderer reconstruction outcomes complete. Repeated with F: `method=placeholder` received, approximately 14 KB. These smoke tests are nontranslated Chromium and do **not** replace native Android Edge translation results. The screenshot's rejected G request was not stored; only prior *image-mode* reports from that user's session were present before this fix.
+
+
+## Complete-article timing diagnostics — 2026-11-14
+
+**Not another fabricated two-paragraph fixture.** The Worker now fetches the **complete current origin HTML** on each visit, inserts only invisible event tracing at the beginning of the document, and leaves its entire original content, math initialization, body markup and original CSS references in place. **No test buttons or top banners** are inserted; users can read, scroll and refresh normally.
+
+- [Alex Wang full article — native Edge baseline, automatic report](https://tm-math-translation-lab.christorng.workers.dev/full/article/alexwang)
+- [Alex Wang full article — controlled Math Translation Guard v2026-11-14_1.2.3 injected at document start, automatic report](https://tm-math-translation-lab.christorng.workers.dev/full/article/alexwang?guard=1)
+- [Plover well-foundedness full article — baseline](https://tm-math-translation-lab.christorng.workers.dev/full/article/plover)
+- [MathJax line-break documentation full page — baseline](https://tm-math-translation-lab.christorng.workers.dev/full/article/mathjaxdocs)
+
+**Isolation:** Disable the installed Tampermonkey extension while comparing baseline vs injected-Guard mirror: the guarded URL embeds a pinned, adapted copy of the candidate itself and **does not depend on Tampermonkey being enabled**. The source Math Guard has an existing exclude for this domain. Other installed scripts (Preformatted, Crash Guard, Inline Order Guard) need updated @exclude metadata, committed in separate Draft PR #148, before this domain is reliably skipped. Never infer that old installed metadata has updated automatically.
+
+**Telemetry:** Stores an anonymous per-tab session ID and per-load ID. Automatically reports at document start, DOM ready/load, interval/heartbeat, DOM mutations, scrolling, hidden/pagehide, including elapsed time, visible rendered math counts (inline and direct display), before/after Chinese text evidence, raw TeX resurfacing, bounding boxes and style, and suspicious DOM samples. Up to 12 bounded events per batch; 7-day TTL for these public-article-only reports. No original-site cookies, IP, login headers, private conversation or full article are stored. Only selected public DOM snippets and diagnostics are saved.
+
+**Limitations:** This is an instrumented, real-time proxy of the original HTML, not identical browser-origin security context: link/CORS/host-dependent code can behave differently. A baseline comparison without installed userscripts and a separately pinned Guard version helps isolate those differences. Headless Chromium tests cannot establish native Android Edge translator behavior. Actual phone screenshots are not auto captured by ordinary page JS; the telemetry records DOM/geometry that can be compared with user-submitted screenshots. Keep Draft until empirical evidence is reviewed.
