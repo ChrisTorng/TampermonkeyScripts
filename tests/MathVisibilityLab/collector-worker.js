@@ -72,13 +72,36 @@ export default {
             const type=original.headers.get('content-type')||'';
             if (!type.includes('text/html')) return reply({error:'unexpected-article-content-type',type},502);
             const html=await original.text();
+            // Inline the observer and optional Guard before the original
+            // scripts: a network-blocking <script src> would itself change
+            // MathJax/Edge timing and invalidate the experiment.
+            const telemetrySourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/3ae189be2d23196698777618e9f623ecb0c0dc90/tests/MathVisibilityLab/full-article-telemetry.js';
+            const guardRef='513c59dbadb66cfabe9e32be4694e68b09c4f455';
+            const guardSourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/'+guardRef+'/src/MathTranslationGuard.user.js';
+            const [diagResponse,guardResponse]=await Promise.all([
+                fetch(telemetrySourceUrl),
+                variant==='guard'&&id==='alexwang' ? fetch(guardSourceUrl):Promise.resolve(null)
+            ]);
+            if (!diagResponse.ok || (guardResponse && !guardResponse.ok))
+                return reply({error:'lab-instrumentation-source-unavailable'},502);
+            const diagScript=(await diagResponse.text()).replace(/<\/script/gi,'<\\/script');
+            let guardScript='';
+            if (guardResponse) {
+                const raw=await guardResponse.text();
+                const lookup="if (location.hostname === 'alexwang.ai' || location.hostname.endsWith('.alexwang.ai')) {";
+                if (!raw.includes(lookup)) return reply({error:'guard-domain-hook-missing'},500);
+                guardScript=raw.replace(lookup,"if (location.pathname === '/full/article/alexwang') {")
+                    .replace(/<\/script/gi,'<\\/script');
+            }
             const config = JSON.stringify({
-                article:sourceUrl,variant,reportUrl:'https://tm-math-translation-lab.christorng.workers.dev/report'
-            }).replace(/</g,'\u005c\u0075\u0030\u0030\u0033\u0063');
+                article:sourceUrl,variant,
+                guardRef:variant==='guard'?guardRef:null,
+                reportUrl:'https://tm-math-translation-lab.christorng.workers.dev/report'
+            }).replace(/</g,'\\u003c');
             const meta='<meta name="robots" content="noindex,nofollow,noarchive">';
             const scripts='<script>window.__tmFullMathLab='+config+';<\/script>'+
-                '<script src="https://tm-math-translation-lab.christorng.workers.dev/full/telemetry.js"><\/script>'+
-                (variant==='guard'&&id==='alexwang' ? '<script src="https://tm-math-translation-lab.christorng.workers.dev/full/guard.js"><\/script>':'');
+                '<script>'+diagScript+'<\/script>'+
+                (guardScript ? '<script>'+guardScript+'<\/script>':'');
             const injection='<base href="'+sourceUrl.replace(/"/g,'&quot;')+'">'+meta+scripts;
             const content=/<head(?:\s[^>]*)?>/i.test(html)
                 ?html.replace(/<head(?:\s[^>]*)?>/i,m=>m+injection)
