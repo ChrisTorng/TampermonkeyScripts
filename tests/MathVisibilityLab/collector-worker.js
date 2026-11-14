@@ -27,7 +27,8 @@ export default {
         // articles; never permit arbitrary destination URLs or user-provided HTML.
         const fullArticles = {
             alexwang: 'https://alexwang.ai/posts/reasoning-as-pathfinding/',
-            plover: 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html'
+            plover: 'https://blog.plover.com/math/ordinals/02-wellfoundedness.html',
+            mathjaxdocs: 'https://docs.mathjax.org/en/stable/output/linebreaks.html'
         };
         if (request.method === 'GET' && path === '/full/telemetry.js') {
             const upstream = await fetch(
