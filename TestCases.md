@@ -137,7 +137,7 @@ Section note: simulated iframe fullscreen and cross-origin metadata messages are
 - https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge alternative fullscreen, centered one-second speed reveal, native fullscreen control suppression, playback and orientation restoration are covered by the DOM harness; real mobile compositor and touch layout require physical-device verification)
 
 # Force Mobile View
-- https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (document-start viewport and manual restoration/reload covered by DOM tests; actual Android Edge layout and control hit targets need device verification)
+- https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (document-start viewport and manual restoration/reload covered by DOM tests; generic one-PRE pages also detect tiny ≡ handles for one safe reload; actual Android Edge layout and hit targets need device verification)
 Section note: 20 DOM-harness tests cover detection, viewport, rollback, HN listing exclusion, and manual toggle; Android Edge needs verification.
 - https://news.ycombinator.com/front?day=2024-11-08 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (Android translated-list simulation verifies no automatic enlargement; live Edge translation needs manual confirmation)
 - https://news.ycombinator.com/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (Android tiny-text simulation verifies unchanged homepage)
