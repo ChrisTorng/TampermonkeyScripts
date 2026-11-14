@@ -1459,20 +1459,36 @@
         const candidates = wrappers.filter((wrapper) =>
             !wrapper.querySelector(`[${convertedAttribute}]`)
             && naturalProse(getBlockText(originalBlocks.get(wrapper))));
-        if (!candidates.length) return;
+        // Only leaf, text-oriented opt-out elements may be replaced. Do not
+        // disturb a translated application's container or a code editor.
+        const protectedLeaves = Array.from(document.querySelectorAll('[translate="no"], .notranslate'))
+            .filter((element) => ['DIV', 'P', 'SPAN', 'BLOCKQUOTE', 'SECTION', 'ARTICLE'].includes(element.tagName)
+                && !element.closest(`[${wrapperAttribute}]`)
+                && !element.querySelector('pre, code, textarea, input, button, iframe, script')
+                && !Array.from(element.children || []).some((child) =>
+                    !inlineTags.has(child.tagName) && child.tagName !== 'BR')
+                && !element.closest('[contenteditable="true"]')
+                && naturalProse(getBlockText(element)));
+        if (!candidates.length && !protectedLeaves.length) return;
         const bodyText = document.body.innerText || getBlockText(document.body) || '';
         const pageSize = bodyText.replace(/\s/g, '').length;
         const untranslatedSize = candidates.reduce((sum, wrapper) =>
-            sum + getBlockText(originalBlocks.get(wrapper)).replace(/\s/g, '').length, 0);
+            sum + getBlockText(originalBlocks.get(wrapper)).replace(/\s/g, '').length, 0)
+            + protectedLeaves.reduce((sum, element) =>
+                sum + getBlockText(element).replace(/\s/g, '').length, 0);
         if (pageSize < 240 || untranslatedSize <= pageSize / 2) return;
         autoTranslationDecided = true;
-        candidates.forEach((wrapper) => setConverted(wrapper, true));
+        protectedLeaves.forEach(enhance);
+        const eligible = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`))
+            .filter((wrapper) => naturalProse(getBlockText(originalBlocks.get(wrapper))));
+        eligible.forEach((wrapper) => setConverted(wrapper, true));
     }
 
     function scheduleAutomaticTranslation() {
         if (!autoTranslationReady || autoTranslateTimer !== null || autoTranslationDecided
             || manualTranslationChoice || automaticTranslationDisabled()) return;
-        if (!document.querySelector(`[${wrapperAttribute}]`)) return;
+        if (!document.querySelector(`[${wrapperAttribute}]`)
+            && !document.querySelector('[translate="no"], .notranslate')) return;
         autoTranslateTimer = setTimeout(() => {
             autoTranslateTimer = null;
             tryAutomaticTranslation();
