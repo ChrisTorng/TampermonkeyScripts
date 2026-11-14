@@ -1268,7 +1268,7 @@
         'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
         'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
         'border-top', 'border-right', 'border-bottom', 'border-left',
-        'width', 'max-width', 'min-width', 'box-sizing'
+        'box-sizing'
     ];
 
     function preserveFormattedStyle(source, target) {
@@ -1356,7 +1356,8 @@
             replacement.setAttribute('translate', 'yes');
             preserveFormattedStyle(current, replacement);
             if (!current.classList.contains('react-code-lines')
-                && !current.querySelector('[data-testid="code-cell"]')) {
+                && !current.querySelector('[data-testid="code-cell"]')
+                && (typeof current.childNodes !== 'undefined' || current.querySelector('a'))) {
                 copyTranslatableNodes(current, replacement);
             } else {
                 replacement.textContent = getBlockText(current);
