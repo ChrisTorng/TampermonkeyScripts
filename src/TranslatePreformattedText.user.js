@@ -1460,7 +1460,7 @@
             !wrapper.querySelector(`[${convertedAttribute}]`)
             && naturalProse(getBlockText(originalBlocks.get(wrapper))));
         if (!candidates.length) return;
-        const bodyText = document.body.innerText || document.body.textContent || '';
+        const bodyText = document.body.innerText || getBlockText(document.body) || '';
         const pageSize = bodyText.replace(/\s/g, '').length;
         const untranslatedSize = candidates.reduce((sum, wrapper) =>
             sum + getBlockText(originalBlocks.get(wrapper)).replace(/\s/g, '').length, 0);
