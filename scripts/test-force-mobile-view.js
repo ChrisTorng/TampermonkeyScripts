@@ -520,4 +520,52 @@ describe('Force Mobile View automatic readability pilot', () => {
         assert(harness.document.getElementById('tm-force-width-style'));
         assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v1:example.org'), null);
     });
+    test('raw plain-text documents receive a viewport before translation and menu layout', () => {
+        const { harness } = executeForceMobileView('https://commandlinesystems.com/magic.txt', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 EdgA/158',
+            setupBody(h) {
+                h.window.screen = { width: 360 };
+                h.window.innerWidth = 980;
+                h.window.visualViewport.width = 980;
+                h.window.visualViewport.scale = 0.36;
+                h.document.documentElement.clientWidth = 980;
+                const pre = h.document.createElement('pre');
+                pre.textContent = 'The digital age is changing our approach to computing. '.repeat(20);
+                h.appendToBody(pre);
+            }
+        });
+        const viewport = harness.document.querySelector('meta[name="viewport"]');
+        const style = harness.document.getElementById('tm-force-mobile-auto-style');
+        assert(viewport, 'The viewport must be inserted at document-start.');
+        assert.equal(viewport.getAttribute('content'), 'width=device-width, initial-scale=1');
+        assert.match(style.textContent, /body > pre/);
+        assert.match(style.textContent, /overflow-wrap: anywhere/);
+        assert.doesNotMatch(style.textContent, /tm-shared-floating-menu/);
+        harness.window.innerWidth = 360;
+        harness.document.documentElement.clientWidth = 360;
+        harness.window.visualViewport.width = 360;
+        harness.window.visualViewport.scale = 1;
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        harness.runAllTimeouts();
+        assert.equal(harness.location.reloadCallCount, 0);
+        const toggle = harness.document.querySelector('[data-floating-tool="mobile"]');
+        assert.equal(toggle.getAttribute('aria-pressed'), 'true');
+        toggle.click();
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:commandlinesystems.com'), 'off');
+        assert.equal(harness.location.reloadCallCount, 1);
+    });
+
+    test('an opted-out raw .txt document can re-enable mobile viewport by clicking the menu', () => {
+        const { harness } = executeForceMobileView('https://commandlinesystems.com/magic.txt', {
+            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+            localStorageSeed: { 'tm-force-mobile-auto-v2:commandlinesystems.com': 'off' }
+        });
+        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        button.click();
+        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:commandlinesystems.com'), null);
+    });
+
 });
