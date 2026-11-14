@@ -68,7 +68,8 @@ test('diagnostic upload is opt-in, scoped and short-lived; screenshot remains ma
     assert.ok(worker.includes('paragraph|image|placeholder|engines'));
     assert.ok(js.includes('function uploadData()'));
     assert.ok(js.includes("format: 'compact-v2'"));
-    assert.ok(js.includes('history.find(e => e.controlTranslated)'));
+    assert.ok(js.includes('firstTranslatedSnapshot = value'));
     assert.ok(js.includes("await send('dom', uploadData())"));
     assert.ok(js.includes('result?.error'));
+    assert.ok(html.includes('grid-template-columns:repeat(4,minmax(0,1fr))'));
 });
