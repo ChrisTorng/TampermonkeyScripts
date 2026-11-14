@@ -2,7 +2,7 @@
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
 // @version      2026-11-14_1.5.22
-// @description  Auto-expose prose-heavy preformatted pages to browser translation with reversible original styling; retain iframe reader and site fixes.
+// @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
