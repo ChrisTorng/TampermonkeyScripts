@@ -1365,24 +1365,38 @@
     // source viewer. Preserve every row and its data-line-number/LC anchor.
     // Only turn the syntax-colored text within each code cell into a
     // translatable text node, keeping source line numbers in their own column.
-    function copyGithubRowNode(source, codeRow = false) {
+    function copyGithubRowNode(source, translateText) {
         if (source.nodeType === 3) {
             return document.createTextNode(source.nodeValue || source.textContent || '');
         }
         if (source.nodeType !== 1) return null;
         const clone = document.createElement(source.tagName.toLowerCase());
         copyAttributes(source, clone);
-        if (codeRow || source.getAttribute('data-testid') === 'code-cell') {
-            clone.textContent = source.textContent || ' ';
-            clone.setAttribute('translate', 'yes');
-            preserveFormattedStyle(source, clone);
+        const isCell = source.getAttribute('data-testid') === 'code-cell';
+        if (isCell) {
+            clone.setAttribute('translate', translateText ? 'yes' : 'no');
+            if (translateText) {
+                // A single text node lets the translator see a complete
+                // sentence without fragmenting it across syntax spans.
+                clone.textContent = source.textContent || ' ';
+                preserveFormattedStyle(source, clone);
+            } else {
+                // Retain syntax highlighting in code and fenced regions.
+                for (const child of Array.from(source.childNodes || source.children || [])) {
+                    const copied = copyGithubRowNode(child, false);
+                    if (copied) clone.appendChild(copied);
+                }
+                if (!(source.childNodes || source.children || []).length) {
+                    clone.textContent = source.textContent || ' ';
+                }
+            }
             clone.style.setProperty('white-space', 'pre', 'important');
             clone.style.setProperty('overflow-wrap', 'normal', 'important');
             clone.style.setProperty('word-break', 'normal', 'important');
             return clone;
         }
         for (const child of Array.from(source.childNodes || source.children || [])) {
-            const copied = copyGithubRowNode(child);
+            const copied = copyGithubRowNode(child, translateText);
             if (copied) clone.appendChild(copied);
         }
         if (!(source.childNodes || source.children || []).length) {
@@ -1396,17 +1410,16 @@
         // Keep the same CSS class so GitHub's code column retains its flex
         // width, tab size, font, and alignment with the numbered gutter.
         target.classList.add('react-code-lines');
+        let fenced = false;
         for (const row of Array.from(source.children || [])) {
-            const copy = copyGithubRowNode(row);
-            const cell = copy?.querySelector('[data-testid="code-cell"]');
-            if (!copy || !cell) continue;
             const originalCell = row.querySelector('[data-testid="code-cell"]');
-            // A Markdown source may contain executable snippets or URLs.
-            // Translate narrative text, not fenced code, command lines or links.
-            if (originalCell) {
-                const text = originalCell.textContent || '';
-                if (githubLineIsCode(text)) cell.setAttribute('translate', 'no');
-            }
+            if (!originalCell) continue;
+            const text = originalCell.textContent || '';
+            const fenceMarker = /^\s*(?:```|~~~)/.test(text);
+            const translateText = !fenced && !fenceMarker && !githubLineIsCode(text);
+            if (fenceMarker) fenced = !fenced;
+            const copy = copyGithubRowNode(row, translateText);
+            if (!copy?.querySelector('[data-testid="code-cell"]')) continue;
             const height = row.getBoundingClientRect?.().height || 0;
             if (height >= 10 && height <= 75) {
                 copy.style.setProperty('height', `${height}px`, 'important');
