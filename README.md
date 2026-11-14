@@ -41,11 +41,11 @@ Update each script below separately as needed.
 
 ### [Math Translation Guard User Script](src/MathTranslationGuard.user.js)
 
-Preserve full English math-containing paragraphs beside their normal translated versions on alexwang.ai (MathJax 4); retain MathJax/KaTeX/MathML handling elsewhere. The dual-copy fallback avoids splitting inline formulas into protected spans on the affected site.
+On alexwang.ai, touch only blocks containing math: no-math prose remains unchanged, math-only blocks are protected without duplication, and mixed math/prose is rebuilt only when translated fragments can be matched to a preserved full original. Formula-bearing sentences offer expandable English; a full original remains available if reconstruction is uncertain. Draft v2026-11-14_1.2.2; native Edge acceptance of the live site still pending.
 
 ### [Inline Translation Order Guard User Script](src/InlineTranslationOrderGuard.user.js)
 
-Keep inline code and formulas next to their original DOM positions during browser translation. Install alongside Math Translation Guard for formula placement.
+A separate inline-code/other-site positioning experiment. It is excluded from alexwang.ai so it cannot compete with Math Translation Guard's non-reordering reconstruction.
 
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
