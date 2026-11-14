@@ -62,3 +62,11 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - On alexwang.ai, use a normal translatable original `<p>` and one separate complete `translate="no"` reference paragraph. The reference should remain immediately after the original and be created at most once, including for dynamic paragraphs. Do not reorder formulas or edit the translated text.
 - Initial support is intentionally limited to the reported MathJax 4 site. Keep the older Plover experiments distinct; do not promote them as proven fixes.
 - A real Chromium DOM/syntax test can prove that two independent copies exist, but cannot establish native Android Edge translation survival. Keep the experimental PR unmerged until the real-page behavior is observed.
+
+
+### Math hybrid acceptance rules (2026-11-14)
+- On alexwang.ai, **never wrap/duplicate nonmath blocks**. An only-math block is protected whole without a bilingual duplicate. For mixed math/text, preserve a full untranslated reference and leave the browser's translated DOM untouched.
+- A merged paragraph can be shown only when formula DOM is rendered, the source and translated text part IDs match, and actual Chinese translated text exists. Copy formulas **from the original reference** in its canonical order, never from Edge-modified math. If uncertain, retain the original and avoid claiming success.
+- Show per-sentence English details only for sentences containing math. For different sentence segmentation, skip sentence alignment and keep a full original reference.
+- MathJax's SVG `id`/`use` references must be remapped together. Do not delete all IDs blindly, nor run the separate InlineTranslationOrderGuard on alexwang.ai. Throttle reconstruction to avoid starvation from continuous MathJax mutations; ignore mutations to the reconstructed view to prevent observer loops.
+- Scope production first to sites with real native Edge evidence. Use the direct [Alex Wang article](https://alexwang.ai/posts/reasoning-as-pathfinding/) and [D/G lab](https://tm-math-translation-lab.christorng.workers.dev/?mode=paragraph), plus `scripts/test-math-hybrid-browser.js` and `scripts/test-math-dual-browser.js`. No blanket guarantee for all MathJax/KaTeX/MathML sites.
