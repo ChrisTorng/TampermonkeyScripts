@@ -23,7 +23,7 @@ Send most paywall articles to [Internet Archive](https://web.archive.org) for ar
 
 ### [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Improve tiny mobile text, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
+Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 
 ### [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 
@@ -31,7 +31,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Translate formatted text and provide a translucent, draggable 譯↗ to view readable iframes separately without changing browser translation.
+Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
 
 ---
 

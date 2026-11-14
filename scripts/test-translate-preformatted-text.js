@@ -325,9 +325,14 @@ describe('Translate Preformatted Text', () => {
             source.className = 'react-code-lines';
             ['# OKF Agent Memory', 'A standardized memory layer.'].forEach((text, index) => {
                 const line = currentHarness.document.createElement('div');
-                line.setAttribute('data-testid', 'code-cell');
-                line.setAttribute('data-line-number', String(index + 1));
-                line.textContent = text;
+                line.className = 'react-code-line-contents';
+                const inner = currentHarness.document.createElement('div');
+                const cell = currentHarness.document.createElement('div');
+                cell.setAttribute('data-testid', 'code-cell');
+                cell.setAttribute('data-line-number', String(index + 1));
+                cell.textContent = text;
+                inner.appendChild(cell);
+                line.appendChild(inner);
                 source.appendChild(line);
             });
             currentHarness.appendToBody(source);
@@ -341,11 +346,16 @@ describe('Translate Preformatted Text', () => {
 
         button.click();
         const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
-        assert.equal(converted.getAttribute('translate'), null);
-        assert.equal(
-            converted.textContent,
-            '# OKF Agent Memory\nA standardized memory layer.'
-        );
+        assert.equal(converted.getAttribute('translate'), 'yes');
+        assert.equal(converted.getAttribute('data-tm-github-code-lines'), 'true');
+        assert(converted.classList.contains('react-code-lines'));
+        assert.equal(converted.querySelectorAll('[data-testid="code-cell"]').length, 2);
+        assert.equal(converted.querySelectorAll('[data-testid="code-cell"]')[0].textContent, '# OKF Agent Memory');
+        assert.equal(converted.querySelectorAll('[data-testid="code-cell"]')[1].textContent, 'A standardized memory layer.');
+        assert.equal(converted.querySelectorAll('[data-testid="code-cell"]')[0].getAttribute('data-line-number'), '1');
+        const wrapper = converted.closest('[data-tm-translatable-pre-wrapper]');
+        assert.equal(wrapper.getAttribute('data-tm-github-line-wrapper'), 'true');
+        assert.match(harness.document.querySelector('style').textContent, /display: contents !important/);
     });
 
     test('rendered GitHub Mermaid diagrams receive a visible block control', () => {
@@ -376,7 +386,7 @@ describe('Translate Preformatted Text', () => {
 
         button.click();
         const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
-        assert.equal(converted.getAttribute('translate'), null);
+        assert.equal(converted.getAttribute('translate'), 'yes');
         assert.match(converted.textContent, /Input --> Memory/);
     });
 
@@ -528,4 +538,193 @@ describe('Translate Preformatted Text', () => {
         assert.equal(app.classList.contains('app-holder'), true);
         assert.equal(app.getAttribute('translate'), 'yes');
     });
+    test('long natural-language plain text automatically becomes translatable', () => {
+        const original = 'Emacs In the Age Of Magic\n'
+            + 'The digital age is changing how we work and what we create. '
+                .repeat(18);
+        let pre;
+        const harness = execute((h) => {
+            pre = addPre(h, original, 'plain-article');
+            pre.setAttribute('style', 'white-space: pre-wrap; padding: 12px; margin: 7px;');
+        }, 'https://commandlinesystems.com/magic.txt');
+        harness.runAllTimeouts();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted, 'Prose covering most of a plain-text page should auto-convert.');
+        assert.equal(converted.tagName, 'DIV');
+        assert.equal(converted.getAttribute('translate'), 'yes');
+        assert.equal(converted.className, 'plain-article');
+        assert.equal(converted.getAttribute('style'), pre.getAttribute('style'));
+        assert.equal(converted.style.getPropertyValue('font-size'), '16px');
+        assert.equal(harness.document.querySelector('pre'), null);
+        const all = harness.document.getElementById('tm-translate-all-pre');
+        assert.equal(all.getAttribute('aria-pressed'), 'true');
+
+        // Simulate browser translation without modifying the detached original.
+        converted.textContent = '魔法時代的 Emacs';
+        all.click();
+        assert.equal(harness.document.querySelector('pre.plain-article'), pre);
+        assert.equal(pre.textContent, original);
+        assert.equal(pre.getAttribute('style'), 'white-space: pre-wrap; padding: 12px; margin: 7px;');
+        assert.equal(pre.hasAttribute('translate'), false);
+        assert.equal(harness.sessionStorage.getItem('tm-pre-auto-off:/magic.txt'), 'off');
+        harness.triggerMutation([pre]);
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+    });
+
+    test('code-only preformatted documents remain original even when they dominate the page', () => {
+        const code = 'const getValue = (x) => { return x + 2; };\n'.repeat(35);
+        const harness = execute((h) => addPre(h, code), 'https://example.net/source.txt');
+        harness.runAllTimeouts();
+        assert(harness.document.querySelector('pre'));
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+        assert.equal(harness.document.getElementById('tm-translate-all-pre').getAttribute('aria-pressed'), 'false');
+    });
+
+    test('short code blocks do not auto-convert beside a large normal article', () => {
+        const harness = execute((h) => {
+            const article = h.document.createElement('article');
+            article.textContent = 'The page itself is an article that should remain readable. '.repeat(18);
+            h.appendToBody(article);
+            addPre(h, 'The program does not compile because the input is invalid. '.repeat(6));
+        }, 'https://example.net/an-article');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
+    });
+
+    test('majority prose in a no-translate leaf can be restored without changing its original class', () => {
+        let protectedBlock;
+        const harness = execute((h) => {
+            protectedBlock = h.document.createElement('div');
+            protectedBlock.className = 'notranslate original-typography';
+            protectedBlock.textContent = 'The history of programming is shaped by the tools we use and the way we think. '.repeat(12);
+            h.appendToBody(protectedBlock);
+        }, 'https://example.net/essay');
+        harness.runAllTimeouts();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted);
+        assert.equal(converted.classList.contains('notranslate'), false);
+        assert.equal(converted.classList.contains('original-typography'), true);
+        harness.document.getElementById('tm-translate-all-pre').click();
+        assert.equal(harness.document.querySelector('.notranslate.original-typography'), protectedBlock);
+        assert.equal(protectedBlock.hasAttribute('translate'), false);
+    });
+
+    test('the captured GitHub Markdown view keeps every line paired with its original gutter', () => {
+        // The fixture comes from the actual GitHub code-view HTML, including
+        // sibling react-line-numbers and react-code-lines columns.
+        assert.match(okfPlainFixture, /class="react-line-numbers"/);
+        assert.match(okfPlainFixture, /class="react-code-lines"/);
+        const sourceLines = [...okfPlainFixture.matchAll(
+            /<div id="LC(\d+)" class="react-file-line[^"]*" data-testid="code-cell" data-line-number="\d+"[^>]*>([\s\S]*?)<\/div>/g
+        )].map((match) => ({
+            number: Number(match[1]),
+            text: match[2].replace(/<[^>]+>/g, '')
+                .replace(/&amp;/g, '&').replace(/&gt;/g, '>')
+                .replace(/&lt;/g, '<').replace(/&#039;/g, "'"),
+        }));
+        assert(sourceLines.length >= 200, 'Expected most of the captured Markdown source lines.');
+
+        let source, gutter, viewer;
+        const harness = execute((h) => {
+            viewer = h.document.createElement('div');
+            viewer.className = 'react-code-file-contents';
+            gutter = h.document.createElement('div');
+            gutter.className = 'react-line-numbers';
+            source = h.document.createElement('div');
+            source.className = 'react-code-lines';
+            for (const line of sourceLines) {
+                const number = h.document.createElement('div');
+                number.className = 'react-line-number react-code-text';
+                number.setAttribute('data-line-number', String(line.number));
+                number.textContent = String(line.number);
+                gutter.appendChild(number);
+
+                const row = h.document.createElement('div');
+                row.className = 'react-code-text react-code-line-contents';
+                row._rect = { top: line.number * 22, bottom: (line.number + 1) * 22,
+                    left: 55, right: 600, width: 545, height: 22 };
+                const inner = h.document.createElement('div');
+                const cell = h.document.createElement('div');
+                cell.id = 'LC' + line.number;
+                cell.className = 'react-file-line html-div';
+                cell.setAttribute('data-testid', 'code-cell');
+                cell.setAttribute('data-line-number', String(line.number));
+                // GitHub highlights Markdown with nested syntax spans.
+                const colored = h.document.createElement('span');
+                colored.className = line.text.includes('https://') ? 'pl-corl' : 'pl-en';
+                colored.textContent = line.text || ' ';
+                cell.appendChild(colored);
+                cell.textContent = line.text || ' ';
+                inner.appendChild(cell);
+                row.appendChild(inner);
+                source.appendChild(row);
+            }
+            viewer.append(gutter, source);
+            h.appendToBody(viewer);
+        }, 'https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1');
+
+        harness.runAllTimeouts();
+        const translated = harness.document.querySelector('[data-tm-github-code-lines]');
+        assert(translated, 'Prose-heavy Markdown must be auto-enabled for browser translation.');
+        assert.equal(translated.getAttribute('translate'), 'yes');
+        assert.equal(translated.querySelectorAll('[data-testid="code-cell"]').length, sourceLines.length);
+        assert.equal(gutter.querySelectorAll('.react-line-number').length, sourceLines.length);
+        assert.equal(translated.parentElement.getAttribute('data-tm-github-line-wrapper'), 'true');
+        assert.equal(translated.parentElement.parentElement, viewer);
+        assert.equal(viewer.children[0], gutter, 'Line numbers must remain the first flex column.');
+        assert.equal(translated.querySelectorAll('.react-code-line-contents').length, sourceLines.length);
+        const translatedRows = translated.querySelectorAll('.react-code-line-contents');
+        for (const [index, row] of translatedRows.entries()) {
+            assert.equal(row.style.getPropertyValue('height'), '22px');
+            const cell = row.querySelector('[data-testid="code-cell"]');
+            assert.equal(cell.id, 'LC' + (index + 1));
+            assert.equal(cell.getAttribute('data-line-number'), String(index + 1));
+            assert.equal(cell.style.getPropertyValue('white-space'), 'pre');
+            assert.equal(cell.style.getPropertyValue('overflow-wrap'), 'normal');
+        }
+
+        const codeLineIndex = sourceLines.findIndex((line) => /^\s*```/.test(line.text));
+        assert(codeLineIndex >= 0);
+        assert.equal(translated.querySelectorAll('[data-testid="code-cell"]')[codeLineIndex]
+            .getAttribute('translate'), 'no', 'Fenced code delimiters must stay original.');
+        const proseLineIndex = sourceLines.findIndex((line) =>
+            /Conversations with AI agents reset when context windows close/.test(line.text));
+        assert(proseLineIndex >= 0);
+        const translatedCells = translated.querySelectorAll('[data-testid="code-cell"]');
+        assert.equal(translatedCells[proseLineIndex].getAttribute('translate'), 'yes');
+        translatedCells[proseLineIndex].textContent = '代理程式的對話會在內容視窗關閉時重設。';
+
+        harness.document.getElementById('tm-translate-all-pre').click();
+        assert.equal(viewer.querySelector('.react-code-lines'), source,
+            'Restoring must use the original GitHub source element, not a rewritten copy.');
+        assert.equal(viewer.querySelectorAll('.react-line-number').length, sourceLines.length);
+        assert.equal(source.querySelectorAll('[data-testid="code-cell"]')[proseLineIndex].textContent,
+            sourceLines[proseLineIndex].text);
+        assert.equal(harness.sessionStorage.getItem(
+            'tm-pre-auto-off:/okf-memory/okf-agent-memory/blob/main/README.md?plain=1'), 'off');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('[data-tm-github-code-lines]'), null);
+    });
+
+    test('GitHub source code outside Markdown stays manually controlled', () => {
+        const harness = execute((h) => {
+            const source = h.document.createElement('div');
+            source.className = 'react-code-lines';
+            for (let i = 0; i < 90; i++) {
+                const row = h.document.createElement('div');
+                const cell = h.document.createElement('div');
+                cell.setAttribute('data-testid', 'code-cell');
+                cell.setAttribute('data-line-number', String(i + 1));
+                cell.textContent = 'const connection = () => { return configureStorage(); };';
+                row.appendChild(cell);
+                source.appendChild(row);
+            }
+            h.appendToBody(source);
+        }, 'https://github.com/example/project/blob/main/client.ts');
+        harness.runAllTimeouts();
+        assert.equal(harness.document.querySelector('[data-tm-github-code-lines]'), null);
+        assert(harness.document.querySelector('.react-code-lines'));
+    });
+
 });

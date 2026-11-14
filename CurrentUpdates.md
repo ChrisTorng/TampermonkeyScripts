@@ -1,6 +1,13 @@
 # Current updates
 
-Updated: 2026-11-13
+Updated: 2026-11-14
+
+## Plain-text translation and mobile reading — 2026-11-14
+
+- [Install ForceMobileView.user.js — 2026-11-14_2.1.12](src/ForceMobileView.user.js) — give raw .txt pages a mobile viewport before layout; recognize other single-PRE prose pages when the ≡ handle is physically tiny and reload safely once; keep shared-menu/fullscreen sizes consistent. ↔ OFF restores the original viewport on reload.
+- [Install TranslatePreformattedText.user.js — 2026-11-14_1.5.22](src/TranslatePreformattedText.user.js) — auto-enable prose-heavy Markdown source translation, preserve GitHub's independent line numbers and per-line height, keep fenced code unchanged, and restore originals when turned off. Native Edge translation still requires browser support.
+
+**Tests:** [Emacs in the Age of Magic (.txt)](https://commandlinesystems.com/magic.txt) — readable text and controls, automatic translation eligibility, manual original restoration; [GitHub Markdown source](https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1) — prose auto-enables without merging rows; line numbers remain aligned, fenced code stays unchanged; [HN historical list](https://news.ycombinator.com/front?day=2024-11-08) — no automatic enlargement. Reload after both updates.
 
 ## Fullscreen button docking — 2026-11-13
 
