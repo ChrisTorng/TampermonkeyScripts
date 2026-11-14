@@ -582,4 +582,22 @@ describe('Translate Preformatted Text', () => {
         assert.equal(harness.document.querySelector('[data-tm-translatable-pre-converted]'), null);
     });
 
+    test('majority prose in a no-translate leaf can be restored without changing its original class', () => {
+        let protectedBlock;
+        const harness = execute((h) => {
+            protectedBlock = h.document.createElement('div');
+            protectedBlock.className = 'notranslate original-typography';
+            protectedBlock.textContent = 'The history of programming is shaped by the tools we use and the way we think. '.repeat(12);
+            h.appendToBody(protectedBlock);
+        }, 'https://example.net/essay');
+        harness.runAllTimeouts();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted);
+        assert.equal(converted.classList.contains('notranslate'), false);
+        assert.equal(converted.classList.contains('original-typography'), true);
+        harness.document.getElementById('tm-translate-all-pre').click();
+        assert.equal(harness.document.querySelector('.notranslate.original-typography'), protectedBlock);
+        assert.equal(protectedBlock.hasAttribute('translate'), false);
+    });
+
 });
