@@ -41,7 +41,7 @@ Update each script below separately as needed.
 
 ### [Math Translation Guard User Script](src/MathTranslationGuard.user.js)
 
-On alexwang.ai, touch only blocks containing math: no-math prose remains unchanged, math-only blocks are protected without duplication, and mixed math/prose is rebuilt only when translated fragments can be matched to a preserved full original. Formula-bearing sentences offer expandable English; a full original remains available if reconstruction is uncertain. Draft v2026-11-14_1.2.2; native Edge acceptance of the live site still pending.
+On alexwang.ai, touch only blocks containing math: no-math prose remains unchanged, math-only blocks are protected without duplication, and mixed math/prose is rebuilt only when translated fragments can be matched to a preserved full original. Formula-bearing sentences offer expandable English; a full original remains available if reconstruction is uncertain. Draft v2026-11-14_1.2.3 additionally protects standalone display MathJax equations outside paragraphs; native Edge acceptance of the live site still pending.
 
 ### [Inline Translation Order Guard User Script](src/InlineTranslationOrderGuard.user.js)
 
