@@ -633,7 +633,10 @@
                 style.textContent = `
                     html, body { -webkit-text-size-adjust: 100% !important;
                         text-size-adjust: 100% !important; }
-                    body > pre { max-width: 100% !important;
+                    body > pre,
+                    body > [data-tm-translatable-pre-wrapper] > pre,
+                    body > [data-tm-translatable-pre-wrapper] > [data-tm-translatable-pre-converted] {
+                        max-width: 100% !important;
                         white-space: pre-wrap !important; overflow-wrap: anywhere !important;
                         font-size: 15px !important; line-height: 1.45 !important; }
                 `;
