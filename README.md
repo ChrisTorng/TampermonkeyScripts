@@ -31,7 +31,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
+Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; unblock native translation on readable articles with document-wide opt-outs; offer a draggable 譯↗ iframe reader.
 
 ---
 

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-15_1.5.25
-// @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
+// @version      2026-11-15_1.5.26
+// @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; enable readable articles blocked by document-level translate=no.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1143,6 +1143,48 @@
         && location.pathname === '/releasenotes.html';
     let astroNavigationEnabled = false;
 
+    // Shared opt-out handling for code replacements, Mastodon and article roots.
+    // Explicit "yes" is needed inside apps that may inherit an ancestor's "no".
+    function makeContentTranslatable(element, overrideAncestor = false) {
+        if (overrideAncestor) element.setAttribute('translate', 'yes');
+        else element.removeAttribute('translate');
+        element.classList.remove('notranslate');
+    }
+
+    // The HTML translate attribute is inherited. A single translate="no"
+    // on <html> suppresses translation of an entire readable article, even
+    // when the article itself contains no opt-out markers. Only clear this
+    // document-wide opt-out after a meaningful article is actually present;
+    // interactive applications and short pages retain their own settings.
+    function allowTranslationForReadableArticle() {
+        if (window !== window.top) return;
+        const html = document.documentElement;
+        if (!html || ((html.getAttribute('translate') || '').toLowerCase() !== 'no'
+            && !html.classList.contains('notranslate'))) return;
+
+        const candidates = document.querySelectorAll('article, main');
+        for (const candidate of candidates) {
+            const heading = candidate.querySelector('h1, h2');
+            if (!heading || (heading.textContent || '').trim().length < 8) continue;
+
+            let paragraphCount = 0;
+            let substantialLength = 0;
+            for (const paragraph of candidate.querySelectorAll('p')) {
+                const length = (paragraph.textContent || '').trim().length;
+                if (length < 70) continue;
+                paragraphCount += 1;
+                substantialLength += length;
+                if (paragraphCount >= 2 && substantialLength >= 300) break;
+            }
+            if (paragraphCount < 2 || substantialLength < 300) continue;
+
+            // Restore native browser translation without moving or rewriting
+            // the article nodes. Child-level translation exclusions remain.
+            makeContentTranslatable(html);
+            break;
+        }
+    }
+
     const style = document.createElement('style');
     style.textContent = `
         [${wrapperAttribute}] {
@@ -1575,7 +1617,7 @@
                 copyGithubCodeLines(current, replacement);
             }
             replacement.setAttribute(convertedAttribute, 'true');
-            replacement.setAttribute('translate', 'yes');
+            makeContentTranslatable(replacement, true);
         } else {
             replacement.removeAttribute(convertedAttribute);
             const saved = originalTranslateAttributes.get(wrapper);
@@ -1728,6 +1770,7 @@
     }
 
     function scan(root = document) {
+        allowTranslationForReadableArticle();
         if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
         enableMastodonTranslation(root);
@@ -1803,8 +1846,7 @@
             candidates.push(...root.querySelectorAll('#mastodon.app-holder'));
         }
         candidates.forEach((app) => {
-            app.classList.remove('notranslate');
-            app.setAttribute('translate', 'yes');
+            makeContentTranslatable(app, true);
         });
     }
 
@@ -1871,6 +1913,9 @@
             }
             if (mutation.type === 'attributes') {
                 revealWikipediaSections(mutation.target);
+                if (mutation.target === document.documentElement && mutation.attributeName === 'translate') {
+                    allowTranslationForReadableArticle();
+                }
                 return;
             }
             mutation.addedNodes.forEach((node) => {
@@ -1879,8 +1924,8 @@
             });
         });
     }).observe(document.documentElement, {
-        attributes: isWikipedia,
-        attributeFilter: isWikipedia ? ['hidden'] : undefined,
+        attributes: true,
+        attributeFilter: isWikipedia ? ['hidden', 'translate'] : ['translate'],
         characterData: true,
         childList: true,
         subtree: true,

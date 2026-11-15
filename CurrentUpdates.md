@@ -2,6 +2,10 @@
 
 Updated: 2026-11-15
 
+## Readable article translation opt-out — 2026-11-15
+
+[Translate Preformatted Text 1.5.26](src/TranslatePreformattedText.user.js): allow native browser translation of substantial articles blocked by document-level `translate="no"`, keeping child exclusions and interactive apps unchanged. Test: [Perplexity article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work).
+
 ## Shared menu recovery and position reset — 2026-11-15
 
 Restore detached floating controls after page re-rendering; reset position without reloading, and keep the settings panel within the visible viewport. Update all five shared-menu scripts together.

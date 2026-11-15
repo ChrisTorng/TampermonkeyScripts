@@ -112,6 +112,7 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
+- https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (document-level translate=no and article structure verified in original HTTP HTML; DOM harness covers removal, native Android Edge translation requires device verification)
 - https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover automatic eligibility, opt-out and restoration; Chromium checks the plain-text PRE structure, whitespace and indentation in a reproduction; native Android Edge needs verification)
 - https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (runtime tests cover linked source URL, isolated per-tab sessionStorage, refresh and location.replace fallback; real Android Edge requires verification)
 - https://www.openssh.org/releasenotes.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover release-note conversion and menu anchoring; Chromium checks the reproduced release-note PRE layout, links and indentation; current native Android Edge behavior needs verification)
