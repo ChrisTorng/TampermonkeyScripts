@@ -1,6 +1,12 @@
 # Current updates
 
-Updated: 2026-11-13
+Updated: 2026-11-15
+
+## BetaCat Latest update times — 2026-11-15_1.9.0
+
+- [Install AutoOpenNewArticles.user.js — 2026-11-15_1.9.0](src/AutoOpenNewArticles.user.js) — show the previous observed published update under the left archive link and the current published update under Latest, using local time. Today shows HH:mm; older dates show M/D HH:mm. The first observation has no previous time. Reload after updating.
+
+**Tests:** [Latest](https://hackernews.betacat.io/) — both timestamps stay in a compact second row after two distinct site updates; [Dated archive](https://hackernews.betacat.io/daily/2026-11-14) — date navigation is unchanged.
 
 ## Fullscreen button docking — 2026-11-13
 
