@@ -2,6 +2,10 @@
 
 Updated: 2026-11-15
 
+## Shared menu recovery and position reset — 2026-11-15
+
+Restore detached floating controls after page re-rendering; reset position without reloading, and keep the settings panel within the visible viewport. Update all five shared-menu scripts together.
+
 ## Fullscreen ad-iframe layout guard — 2026-11-15
 
 - [Install FullscreenGameView.user.js — 2026-11-15_1.2.4](src/FullscreenGameView.user.js) — ignore ordinary advertisement/widget iframes; preserve existing absolute, sticky, or fixed positioning on actual video containers. Reload after updating.

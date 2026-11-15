@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-15_1.5.24
+// @version      2026-11-15_1.5.25
 // @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
 // @author       Chris Torng
 // @match        *://*/*
@@ -506,6 +506,24 @@
         floatingMenuRender(root);
     }
 
+    function floatingMenuPositionDialog(root) {
+        const dialog = root.querySelector('[data-floating-dialog]');
+        if (!dialog || dialog.hidden) return;
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport ? viewport.offsetLeft : 0;
+        const viewportWidth = viewport ? viewport.width : window.innerWidth;
+        const width = Math.max(1, Math.min(290, viewportWidth - 24));
+        const rect = root.getBoundingClientRect();
+        const proposedLeft = rect.right - width;
+        const left = Math.max(viewportLeft + 12,
+            Math.min(proposedLeft, viewportLeft + viewportWidth - width - 12));
+        // Use a horizontal offset relative to the handle, rather than
+        // assuming that the handle is always on the viewport's right edge.
+        dialog.style.setProperty('width', `${width}px`, 'important');
+        dialog.style.setProperty('left', `${left - rect.left}px`, 'important');
+        dialog.style.setProperty('right', 'auto', 'important');
+    }
+
     function floatingMenuRender(root) {
         const toggle = root.querySelector('[data-floating-toggle]');
         const close = root.querySelector('[data-floating-close]');
@@ -526,6 +544,7 @@
         buttons.forEach((button) => {
             button.hidden = !expanded || !dialog.hidden || button.getAttribute('data-floating-available') !== 'true';
         });
+        floatingMenuPositionDialog(root);
     }
 
     function floatingMenuRoot() {
@@ -686,6 +705,7 @@
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
+            floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
         const position = () => {
@@ -845,7 +865,14 @@
                 delete next.x;
                 delete next.y;
                 floatingMenuSave(next);
-                window.location.reload();
+                anchorX = null;
+                anchorY = 70;
+                documentY = anchorY;
+                previousScrollY = scrollY();
+                // Reset just the floating position. Reloading would restart
+                // browser translation and can disturb the article's layout.
+                floatingMenuCollapse(root);
+                position();
                 return;
             }
             const next = floatingMenuSettings();
@@ -855,6 +882,47 @@
             floatingMenuSave(next);
             window.location.reload();
         });
+        // Translation and client-side navigation can remove an injected menu
+        // after early userscripts register their buttons. Keep those actions alive.
+        let observedHtml = document.documentElement;
+        const menuObserver = new MutationObserver((records) => {
+            const html = document.documentElement;
+            if (!html) return;
+            if (html !== observedHtml) {
+                observedHtml = html;
+                menuObserver.observe(html, { childList: true });
+            }
+            if (!style.isConnected) (document.head || html).appendChild(style);
+            if (!root.isConnected) {
+                const replacement = document.getElementById(FLOATING_MENU_ID);
+                if (replacement && replacement !== root) {
+                    Array.from(replacement.querySelectorAll('[data-floating-tool]')).forEach((button) => {
+                        const key = button.getAttribute('data-floating-tool');
+                        if (!root.querySelector(`[data-floating-tool="${key}"]`)) root.appendChild(button);
+                    });
+                    replacement.remove();
+                }
+                html.appendChild(root);
+                floatingMenuRender(root);
+            }
+            let changed = false;
+            for (const record of records) {
+                if (record.target !== root) continue;
+                for (const button of record.removedNodes) {
+                    if (button.nodeType !== 1 || !button.hasAttribute('data-floating-tool')
+                        || button.isConnected) continue;
+                    const key = button.getAttribute('data-floating-tool');
+                    if (root.querySelector(`[data-floating-tool="${key}"]`)) continue;
+                    root.appendChild(button);
+                    changed = true;
+                }
+            }
+            if (changed) floatingMenuRender(root);
+        });
+        // Observe only structural changes, not all content mutations.
+        menuObserver.observe(document, { childList: true });
+        menuObserver.observe(observedHtml, { childList: true });
+        menuObserver.observe(root, { childList: true });
         return root;
     }
 
@@ -863,7 +931,8 @@
         const root = floatingMenuRoot();
         button.setAttribute('data-floating-tool', key);
         button.setAttribute('data-floating-available', String(available));
-        button.addEventListener('click', () => floatingMenuCollapse(root));
+        button.addEventListener('click', () => floatingMenuCollapse(
+            button.parentNode && button.parentNode.id === FLOATING_MENU_ID ? button.parentNode : root));
         root.appendChild(button);
         floatingMenuRender(root);
     }
