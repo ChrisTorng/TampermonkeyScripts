@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-07_1.8.2
-// @description  Keep Hacker News Summary collapse buttons in article title rows without narrowing summaries; preserve read states and dated archive navigation.
+// @version      2026-11-15_1.9.0
+// @description  Keep Hacker News Summary collapse buttons beside titles; preserve read states, dated archives, and previous/current Latest update times.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -32,6 +32,8 @@
     const ITEM_TOGGLE_CLASS = 'auto-open-new-articles-item-toggle';
     const ALL_TOGGLE_ID = 'auto-open-new-articles-all-toggle';
     const DATE_NAV_CLASS = 'auto-open-new-articles-date-nav';
+    const UPDATE_TIME_CLASS = 'auto-open-new-articles-update-time';
+    const UPDATE_HISTORY_KEY = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
     const STYLE_ID = 'auto-open-new-articles-style';
 
     function ensureStyles() {
@@ -108,7 +110,29 @@
                 white-space: nowrap !important;
             }
             .${DATE_NAV_CLASS} > :first-child { justify-self: start !important; }
-            .${DATE_NAV_CLASS} > :last-child { justify-self: end !important; }
+            .${DATE_NAV_CLASS} > :nth-child(3) { justify-self: end !important; }
+            .${DATE_NAV_CLASS} > .${UPDATE_TIME_CLASS} {
+                grid-row: 2 !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                padding: 0 2px !important;
+                margin: 0 !important;
+                font-size: 11px !important;
+                font-weight: 400 !important;
+                font-variant-numeric: tabular-nums !important;
+                line-height: 1.2 !important;
+                white-space: nowrap !important;
+                opacity: 0.75 !important;
+                pointer-events: none !important;
+            }
+            .${DATE_NAV_CLASS} > .${UPDATE_TIME_CLASS}.previous {
+                grid-column: 1 !important;
+                justify-self: start !important;
+            }
+            .${DATE_NAV_CLASS} > .${UPDATE_TIME_CLASS}.current {
+                grid-column: 2 !important;
+                justify-self: center !important;
+            }
             .${DATE_NAV_CLASS} .disabled {
                 opacity: 0.35 !important;
                 cursor: default !important;
@@ -458,7 +482,66 @@
         return control;
     }
 
-    function createDateNavigation(displayedDate, availableDates) {
+    function readLatestUpdateHistory() {
+        // The site publishes this UTC timestamp in its footer; the browser's load time is not a content update.
+        const footerUpdate = document.querySelector('footer .last-updated[data-submitted]');
+        const submitted = footerUpdate && footerUpdate.getAttribute('data-submitted');
+        if (!submitted || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(submitted)) {
+            return null;
+        }
+
+        const currentDate = new Date(submitted);
+        if (!Number.isFinite(currentDate.getTime())) {
+            return null;
+        }
+        const current = currentDate.toISOString();
+        const stored = GM_getValue(UPDATE_HISTORY_KEY, {});
+        const saved = stored && typeof stored === 'object' ? stored : {};
+        const validTimestamp = (timestamp) => typeof timestamp === 'string'
+            && Number.isFinite(Date.parse(timestamp));
+        const recordedCurrent = validTimestamp(saved.current) ? new Date(saved.current).toISOString() : null;
+        let previous = validTimestamp(saved.previous) ? new Date(saved.previous).toISOString() : null;
+
+        if (!recordedCurrent) {
+            previous = null;
+            GM_setValue(UPDATE_HISTORY_KEY, { current, previous });
+        } else if (current > recordedCurrent) {
+            // Only advance on a newer published version, not when the same page is reopened.
+            previous = recordedCurrent;
+            GM_setValue(UPDATE_HISTORY_KEY, { current, previous });
+        } else if (current < recordedCurrent) {
+            // A cached older page must not roll back the saved history.
+            previous = null;
+        }
+
+        return { current, previous };
+    }
+
+    function formatUpdateTime(timestamp) {
+        if (!timestamp) {
+            return '—';
+        }
+        const date = new Date(timestamp);
+        const today = new Date();
+        const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const isToday = date.getFullYear() === today.getFullYear()
+            && date.getMonth() === today.getMonth()
+            && date.getDate() === today.getDate();
+        return isToday ? time : `${date.getMonth() + 1}/${date.getDate()} ${time}`;
+    }
+
+    function addUpdateTime(navigation, kind, timestamp) {
+        const label = document.createElement('time');
+        label.className = `${UPDATE_TIME_CLASS} ${kind}`;
+        label.textContent = formatUpdateTime(timestamp);
+        label.title = kind === 'previous' ? 'Previous observed site update' : 'Current site update';
+        if (timestamp) {
+            label.setAttribute('datetime', timestamp);
+        }
+        navigation.appendChild(label);
+    }
+
+    function createDateNavigation(displayedDate, availableDates, updateHistory) {
         // The home page is a live Latest view, not the newest dated archive.
         const isLatest = displayedDate === null;
         const currentIndex = isLatest ? availableDates.length : availableDates.indexOf(displayedDate);
@@ -481,6 +564,10 @@
                 ? createLatestControl()
                 : createDateControl(availableDates[currentIndex + 1], 'next');
         navigation.append(previous, current, next);
+        if (isLatest && updateHistory) {
+            addUpdateTime(navigation, 'previous', updateHistory.previous);
+            addUpdateTime(navigation, 'current', updateHistory.current);
+        }
         return navigation;
     }
 
@@ -488,8 +575,9 @@
         const availableDates = getAvailableDates();
         const first = articles[0].link;
         const last = articles[articles.length - 1].link;
-        const topNavigation = createDateNavigation(displayedDate, availableDates);
-        const bottomNavigation = createDateNavigation(displayedDate, availableDates);
+        const updateHistory = displayedDate === null ? readLatestUpdateHistory() : null;
+        const topNavigation = createDateNavigation(displayedDate, availableDates, updateHistory);
+        const bottomNavigation = createDateNavigation(displayedDate, availableDates, updateHistory);
         if (!topNavigation || !bottomNavigation || !first.parentNode || !last.parentNode) {
             return;
         }
