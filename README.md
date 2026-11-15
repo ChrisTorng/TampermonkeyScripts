@@ -23,7 +23,7 @@ Send most paywall articles to [Internet Archive](https://web.archive.org) for ar
 
 ### [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
+Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 
 ### [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 
@@ -31,7 +31,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Make formatted text and readable articles translatable, including document-level translation opt-outs, and view embedded content separately.
+Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; unblock native translation on readable articles with document-wide opt-outs; offer a draggable 譯↗ iframe reader.
 
 ---
 
@@ -98,7 +98,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ### [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Keep item collapse controls beside Hacker News Summary titles without shifting images or summaries; retain read states, page collapse, and dated archive navigation.
+Keep Hacker News Summary collapse controls beside titles, preserving read states, dated archive navigation, and previous/current Latest update times.
 
 ### [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
@@ -106,7 +106,7 @@ Stretch Git diffs edge-to-edge and slim line numbers on [ChatGPT Codex tasks](ht
 
 ### [Responsive Scroll Position Indicator User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js)
 
-Keep persistent solid-gray scroll markers for pages and truly visible nested content.
+Keep solid-gray scroll markers only for long, truly visible page and nested content.
 
 ### [Translation Crash Guard User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationCrashGuard.user.js)
 
@@ -118,7 +118,7 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
-Show responsive YouTube playback-speed controls with highlighted active presets and Android Edge alternative fullscreen.
+Control YouTube playback speed and Android Edge fullscreen; rotate landscape embedded videos automatically.
 
 ### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
 
@@ -126,7 +126,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Fit embedded games to mobile screens with a translucent, pinch-zoom-stable fullscreen button; restore page position on exit.
+Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 

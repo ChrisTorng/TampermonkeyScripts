@@ -470,6 +470,76 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         assert.equal(markers[1].style.display, '');
     });
 
+    test('extra markers are shown only when less than half of a scroll range is visible', () => {
+        let panel;
+        const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE', (currentHarness) => {
+            panel = createScrollablePanel(currentHarness, {
+                top: 80, left: 900, right: 1220, bottom: 380, width: 320, height: 300
+            });
+        });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const nested = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert.equal(root.style.display, '');
+        assert.equal(nested.style.display, '');
+
+        harness.document.documentElement.scrollHeight = 1440;
+        harness.document.body.scrollHeight = 1440;
+        panel.scrollHeight = 600;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(root.style.display, 'none', 'A 50% page viewport uses only the native scrollbar.');
+        assert.equal(nested.style.display, 'none', 'A 50% nested viewport uses only the native scrollbar.');
+
+        harness.document.documentElement.scrollHeight = 1441;
+        harness.document.body.scrollHeight = 1441;
+        panel.scrollHeight = 601;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(root.style.display, '', 'Just below 50% must show the page marker.');
+        assert.equal(nested.style.display, '', 'Just below 50% must show the nested marker.');
+
+        harness.document.documentElement.scrollHeight = 1000;
+        harness.document.body.scrollHeight = 1000;
+        panel.scrollHeight = 450;
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(root.style.display, 'none');
+        assert.equal(nested.style.display, 'none');
+    });
+
+    test('a horizontally off-canvas menu hides its marker until the drawer opens', () => {
+        let menu;
+        const harness = executeResponsiveScrollIndicator('https://www.cbsnews.com/chicago/news/field-museum-karl-patterson-schmidt-deadly-snakebite-diary/', (h) => {
+            menu = h.document.createElement('nav');
+            menu.dataset.overflowY = 'auto';
+            menu.clientHeight = 450;
+            menu.scrollHeight = 1800;
+            menu.clientWidth = 560;
+            menu._rect = { left: -495, top: 145, right: 65, bottom: 595, width: 560, height: 450 };
+            const link = h.document.createElement('a');
+            link.textContent = 'Latest news';
+            menu.appendChild(link);
+            h.appendToBody(menu);
+            h.document.elementFromPoint = () => link;
+        });
+        const root = harness.document.getElementById('tm-scroll-indicator-root');
+        const marker = harness.document.querySelectorAll('[data-tm-scroll-indicator]')
+            .find((element) => element !== root);
+        assert(marker);
+        assert.equal(marker.style.display, 'none', 'A sliver of a closed drawer must not show its scrollbar.');
+
+        menu._rect = { left: 0, top: 145, right: 560, bottom: 595, width: 560, height: 450 };
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, '', 'Opening a genuinely visible, long menu restores its marker.');
+
+        menu._rect = { left: -495, top: 145, right: 65, bottom: 595, width: 560, height: 450 };
+        harness.runAllIntervals();
+        harness.flushAnimationFrames();
+        assert.equal(marker.style.display, 'none', 'Closing again immediately hides its marker.');
+    });
+
     test('mutation observer discovers scrollable elements added later', () => {
         const harness = executeResponsiveScrollIndicator('https://indieweb.org/POSSE');
         const beforeCount = harness.document.querySelectorAll('[data-tm-scroll-indicator]').length;

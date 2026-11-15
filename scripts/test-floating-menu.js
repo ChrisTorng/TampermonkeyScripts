@@ -62,6 +62,32 @@ describe('shared floating menu', () => {
         assert(menuTools(harness).every((button) => !button.hidden));
     });
 
+    test('recovers previously registered controls after a site removes the menu or a button', () => {
+        const page = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
+        const harness = run(['mobile', 'dark', 'archive'], { url: page });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        const style = harness.document.getElementById('tm-shared-floating-menu-style');
+        assert.deepEqual(menuTools(harness).map((button) => button.getAttribute('data-floating-tool')),
+            ['archive', 'mobile', 'dark']);
+
+        menu.parentNode.removeChild(menu);
+        style.parentNode.removeChild(style);
+        harness.triggerMutation([], { target: harness.document.documentElement, removedNodes: [menu] });
+        assert.equal(menu.isConnected, true);
+        assert.equal(style.isConnected, true);
+        assert.equal(harness.document.querySelectorAll('#tm-shared-floating-menu').length, 1);
+
+        menu.querySelector('[data-floating-toggle]').click();
+        const dark = menu.querySelector('[data-floating-tool="dark"]');
+        assert.equal(dark.hidden, false);
+        menu.removeChild(dark);
+        harness.triggerMutation([], { target: menu, removedNodes: [dark] });
+        assert.equal(menu.querySelector('[data-floating-tool="dark"]'), dark);
+        dark.click();
+        assert.equal(dark.getAttribute('aria-pressed'), 'true');
+        assert.equal(menu.getAttribute('data-floating-expanded'), 'false');
+    });
+
     test('unavailable translation control and empty menu stay hidden', () => {
         const onlyTranslation = run(['translate']);
         assert.equal(onlyTranslation.document.getElementById('tm-shared-floating-menu').hidden, true);
@@ -108,7 +134,7 @@ describe('shared floating menu', () => {
         assert.equal(menu.style.left, '362px');
     });
 
-    test('reset position removes only saved coordinates and reloads', () => {
+    test('reset position removes only saved coordinates without reloading', () => {
         const saved = JSON.stringify({ x: 550, y: 95, disabledPaths: ['/unrelated/'] });
         const harness = run(['archive'], { localStorageSeed: { [key]: saved } });
         assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.left, '550px');
@@ -119,7 +145,10 @@ describe('shared floating menu', () => {
             target: harness.document.querySelector('[data-floating-hide-scope="reset"]'),
         });
         assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { disabledPaths: ['/unrelated/'] });
-        assert.equal(harness.location.reloadCallCount, 1);
+        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(harness.document.querySelector('[data-floating-toggle]').getAttribute('aria-expanded'), 'false');
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.left, '1242px');
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.top, '70px');
     });
 
     test('drag position is saved by hostname and restored on the next page', () => {
@@ -403,6 +432,50 @@ describe('shared floating menu', () => {
             assert.equal(button.style.getPropertyValue('color'), '');
             button.click();
         }
+    });
+
+    test('reset on Nieman Lab preserves the article DOM and scroll without reloading', () => {
+        const url = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
+        const storageKey = 'tm-floating-menu-v1:www.niemanlab.org';
+        const harness = run(['archive', 'mobile', 'dark'], {
+            url, localStorageSeed: { [storageKey]: JSON.stringify({ x: 100, y: 120 }) }
+        });
+        const article = harness.document.createElement('article');
+        const title = harness.document.createElement('h1');
+        title.textContent = 'AI is becoming an information gateway';
+        article.appendChild(title);
+        harness.appendToBody(article);
+        harness.window.scrollY = 400;
+        harness.dispatchWindowEvent('scroll');
+        harness.document.querySelector('[data-floating-toggle]').click();
+        harness.document.querySelector('[data-floating-close]').click();
+        harness.document.querySelector('[data-floating-dialog]').dispatchEvent({
+            type: 'click',
+            target: harness.document.querySelector('[data-floating-hide-scope="reset"]'),
+        });
+        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(harness.window.scrollY, 400);
+        assert.equal(article.isConnected, true);
+        assert.equal(article.querySelector('h1').textContent, 'AI is becoming an information gateway');
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        assert.equal(menu.style.left, '1242px');
+        assert.equal(menu.style.top, '0px');
+        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(storageKey)), {});
+    });
+
+    test('dialog stays inside a narrow viewport when the handle is dragged left', () => {
+        const harness = run(['archive'], {
+            url: 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/'
+        });
+        const root = harness.document.getElementById('tm-shared-floating-menu');
+        harness.window.visualViewport.width = 360;
+        root._rect = { left: 35, right: 73, width: 38, top: 70, bottom: 102, height: 32 };
+        harness.document.querySelector('[data-floating-toggle]').click();
+        harness.document.querySelector('[data-floating-close]').click();
+        const dialog = root.querySelector('[data-floating-dialog]');
+        assert.equal(dialog.style.getPropertyValue('width'), '290px');
+        assert.equal(dialog.style.getPropertyValue('left'), '-23px');
+        assert.equal(dialog.style.getPropertyValue('right'), 'auto');
     });
 
     test('close asks for a scope and cancel keeps the menu available', () => {

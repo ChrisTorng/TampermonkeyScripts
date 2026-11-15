@@ -6,7 +6,7 @@ const shared = fs.readFileSync(path.join(root, 'src', 'TransientControl.js'), 'u
 const start = '    // BEGIN SHARED TRANSIENT CONTROL';
 const end = '    // END SHARED TRANSIENT CONTROL';
 const block = `${start}\n${shared}\n${end}`;
-for (const name of ['TranslatePreformattedText.user.js', 'FullscreenGameView.user.js']) {
+for (const name of ['TranslatePreformattedText.user.js']) {
     const file = path.join(root, 'src', name);
     const original = fs.readFileSync(file, 'utf8');
     const newline = original.includes('\r\n') ? '\r\n' : '\n';
@@ -17,9 +17,7 @@ for (const name of ['TranslatePreformattedText.user.js', 'FullscreenGameView.use
         if (last < 0) throw new Error(`Missing end marker in ${name}`);
         updated = original.slice(0, first) + block + original.slice(last + end.length);
     } else {
-        const anchor = name === 'TranslatePreformattedText.user.js'
-            ? '    if (floatingMenuForbiddenHost()) return;'
-            : "    'use strict';";
+        const anchor = '    if (floatingMenuForbiddenHost()) return;';
         const index = original.indexOf(anchor);
         if (index < 0) throw new Error(`Missing insertion point in ${name}`);
         updated = original.slice(0, index + anchor.length) + '\n\n' + block + original.slice(index + anchor.length);

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-07_1.3.16
-// @description  Keep persistent solid-gray scroll markers for pages and truly visible nested content.
+// @version      2026-11-12_1.4.0
+// @description  Keep solid-gray scroll markers only for long, truly visible page and nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ResponsiveScrollIndicator.user.js
@@ -29,7 +29,8 @@
     const PAINT_SAMPLE_X_FRACTIONS = [0.75, 0.5, 0.25];
     const UPDATE_INTERVAL_MS = 100;
     const SCAN_INTERVAL_MS = 1000;
-    const VISIBILITY_RATIO_THRESHOLD = 0.95;
+    const VISIBILITY_RATIO_THRESHOLD = 0.5;
+    const MIN_EXPOSED_WIDTH_RATIO = 0.5;
     const SCROLLABLE_OVERFLOW_VALUES = new Set(['auto', 'scroll', 'overlay']);
     const CLIPPING_OVERFLOW_VALUES = new Set(['auto', 'scroll', 'overlay', 'hidden', 'clip']);
 
@@ -387,6 +388,17 @@
             if (right <= left || bottom <= top) {
                 return null;
             }
+        }
+
+        // A closed off-canvas drawer may leave a thin, hit-testable slice
+        // in the viewport even while its long menu keeps scrolling enabled.
+        // Do not show a marker for that slice. On pinch zoom, relax this
+        // proportion so an otherwise visible scrollport is not suppressed.
+        const viewportRight = viewportLeft + viewportWidth;
+        const outsideViewport = rect.left < viewportLeft - 2 || rect.right > viewportRight + 2;
+        const exposedRatio = (right - left) / Math.max(1, rect.width);
+        if (outsideViewport && exposedRatio < MIN_EXPOSED_WIDTH_RATIO / Math.max(1, viewportScale)) {
+            return null;
         }
 
         return bottom - top >= MIN_VISIBLE_TRACK_PX && right - left >= BAR_WIDTH

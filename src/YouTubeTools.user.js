@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         YouTube Tools
 // @namespace    http://tampermonkey.net/
-// @version      2026-10-30_1.8.0
-// @description  Show responsive YouTube playback-speed controls with highlighted active presets and Android Edge alternative fullscreen.
+// @version      2026-11-10_1.8.3
+// @description  Control YouTube playback speed and Android Edge fullscreen; rotate landscape embedded videos automatically.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js
@@ -10,6 +10,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // @match        https://www.youtube.com/*
 // @match        https://m.youtube.com/*
+// @match        https://www.youtube-nocookie.com/*
 // @grant        none
 // ==/UserScript==
 
@@ -1384,6 +1385,139 @@ html.tm-yt-edge-alt-fullscreen ytm-player button[title*="full screen" i] {
         }
     }
 
+    function initializeEmbeddedOrientation() {
+        if (!/^\/embed\//.test(window.location.pathname)) return;
+        const android = /Android/i.test(window.navigator?.userAgent || '');
+        const rotationClass = 'tm-yt-embedded-landscape-rotated';
+        let observedVideo = null;
+        let nativeSession = null;
+
+        // Embedded YouTube is cross-origin to the article. Only this frame can
+        // read HTMLVideoElement.videoWidth/videoHeight. Send dimensions, not
+        // assumptions based on the player's 16:9 frame.
+        function reportVideoSize() {
+            const video = observedVideo || document.querySelector('video');
+            if (!(video?.videoWidth > 0 && video?.videoHeight > 0) ||
+                !window.parent || window.parent === window) return;
+            try {
+                window.parent.postMessage({
+                    tmYoutubeVideoOrientation: 1,
+                    width: video.videoWidth,
+                    height: video.videoHeight
+                }, '*');
+            } catch (_error) { /* The embedding page may have closed. */ }
+        }
+
+        function reportNativeFullscreen() {
+            if (!window.parent || window.parent === window) return;
+            try {
+                window.parent.postMessage({
+                    tmYoutubeNativeFullscreen: 1,
+                    active: Boolean(document.fullscreenElement)
+                }, '*');
+            } catch (_error) { /* The embedding page may have closed. */ }
+        }
+
+        function releaseNativeOrientation() {
+            const session = nativeSession;
+            nativeSession = null;
+            if (!session) return;
+            session.root.classList.remove(rotationClass);
+            if (session.locked) {
+                try { window.screen?.orientation?.unlock?.(); } catch (_error) { /* Already released. */ }
+            }
+        }
+
+        function syncNativeOrientation() {
+            const root = document.fullscreenElement;
+            const video = observedVideo || document.querySelector('video');
+            if (!android || !root || !isLandscapeVideo(video) ||
+                !(root === video || root.querySelector?.('video') === video || root.contains?.(video))) {
+                releaseNativeOrientation();
+                return;
+            }
+            if (!nativeSession || nativeSession.root !== root) {
+                releaseNativeOrientation();
+                nativeSession = { root, requested: false, locked: false };
+            }
+            const session = nativeSession;
+            root.classList.toggle(rotationClass, window.innerHeight > window.innerWidth);
+            if (session.requested) return;
+            const orientation = window.screen?.orientation;
+            if (typeof orientation?.lock !== 'function') return;
+            session.requested = true;
+            try {
+                Promise.resolve(orientation.lock('landscape')).then(() => {
+                    if (nativeSession !== session) {
+                        if (!nativeSession?.locked) orientation.unlock?.();
+                        return;
+                    }
+                    session.locked = true;
+                    syncNativeOrientation();
+                }).catch(() => {
+                    if (nativeSession === session) syncNativeOrientation();
+                });
+            } catch (_error) { /* Keep the visual rotation fallback. */ }
+        }
+
+        const style = document.createElement('style');
+        style.textContent = [
+            '.tm-yt-embedded-landscape-rotated:fullscreen {',
+            'position: fixed !important; inset: auto !important;',
+            'top: 0 !important; left: 100dvw !important;',
+            'width: 100dvh !important; height: 100dvw !important;',
+            'max-width: none !important; max-height: none !important;',
+            'margin: 0 !important; padding: 0 !important;',
+            'transform-origin: top left !important; transform: rotate(90deg) !important;',
+            'overflow: hidden !important; background: #000 !important;',
+            '}',
+            '.tm-yt-embedded-landscape-rotated:fullscreen video {',
+            'width: 100% !important; height: 100% !important;',
+            'object-fit: contain !important;',
+            '}'
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(style);
+
+        function onVideoMetadata() {
+            reportVideoSize();
+            syncNativeOrientation();
+        }
+
+        function observeVideo() {
+            const video = document.querySelector('video');
+            if (video === observedVideo) return;
+            if (observedVideo) {
+                observedVideo.removeEventListener('loadedmetadata', onVideoMetadata);
+                observedVideo.removeEventListener('resize', onVideoMetadata);
+            }
+            observedVideo = video;
+            if (video) {
+                video.addEventListener('loadedmetadata', onVideoMetadata);
+                video.addEventListener('resize', onVideoMetadata);
+                onVideoMetadata();
+            }
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.source !== window.parent ||
+                event.data?.tmYoutubeOrientationRequest !== 1) return;
+            observeVideo();
+            reportVideoSize();
+        });
+        document.addEventListener('fullscreenchange', () => {
+            reportNativeFullscreen();
+            syncNativeOrientation();
+        });
+        window.addEventListener('resize', syncNativeOrientation);
+        window.addEventListener('orientationchange', syncNativeOrientation);
+        window.screen?.orientation?.addEventListener?.('change', syncNativeOrientation);
+        new MutationObserver(observeVideo).observe(document.documentElement, {
+            childList: true, subtree: true
+        });
+        observeVideo();
+    }
+
+    initializeEmbeddedOrientation();
     window.addEventListener('yt-navigate-finish', handleRouteChange);
     window.addEventListener('fullscreenchange', handleAlternativeFullscreenEvent);
     document.addEventListener('fullscreenchange', handleAlternativeFullscreenEvent);

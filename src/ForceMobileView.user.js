@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-07_2.1.9
-// @description  Detect unreadably small mobile pages, apply reversible readability fixes, and retain manual / URL-based ↔ controls.
+// @version      2026-11-15_2.1.13
+// @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -175,6 +175,24 @@
         floatingMenuRender(root);
     }
 
+    function floatingMenuPositionDialog(root) {
+        const dialog = root.querySelector('[data-floating-dialog]');
+        if (!dialog || dialog.hidden) return;
+        const viewport = window.visualViewport;
+        const viewportLeft = viewport ? viewport.offsetLeft : 0;
+        const viewportWidth = viewport ? viewport.width : window.innerWidth;
+        const width = Math.max(1, Math.min(290, viewportWidth - 24));
+        const rect = root.getBoundingClientRect();
+        const proposedLeft = rect.right - width;
+        const left = Math.max(viewportLeft + 12,
+            Math.min(proposedLeft, viewportLeft + viewportWidth - width - 12));
+        // Use a horizontal offset relative to the handle, rather than
+        // assuming that the handle is always on the viewport's right edge.
+        dialog.style.setProperty('width', `${width}px`, 'important');
+        dialog.style.setProperty('left', `${left - rect.left}px`, 'important');
+        dialog.style.setProperty('right', 'auto', 'important');
+    }
+
     function floatingMenuRender(root) {
         const toggle = root.querySelector('[data-floating-toggle]');
         const close = root.querySelector('[data-floating-close]');
@@ -195,6 +213,7 @@
         buttons.forEach((button) => {
             button.hidden = !expanded || !dialog.hidden || button.getAttribute('data-floating-available') !== 'true';
         });
+        floatingMenuPositionDialog(root);
     }
 
     function floatingMenuRoot() {
@@ -355,6 +374,7 @@
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
+            floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
         const position = () => {
@@ -514,7 +534,14 @@
                 delete next.x;
                 delete next.y;
                 floatingMenuSave(next);
-                window.location.reload();
+                anchorX = null;
+                anchorY = 70;
+                documentY = anchorY;
+                previousScrollY = scrollY();
+                // Reset just the floating position. Reloading would restart
+                // browser translation and can disturb the article's layout.
+                floatingMenuCollapse(root);
+                position();
                 return;
             }
             const next = floatingMenuSettings();
@@ -524,6 +551,47 @@
             floatingMenuSave(next);
             window.location.reload();
         });
+        // Translation and client-side navigation can remove an injected menu
+        // after early userscripts register their buttons. Keep those actions alive.
+        let observedHtml = document.documentElement;
+        const menuObserver = new MutationObserver((records) => {
+            const html = document.documentElement;
+            if (!html) return;
+            if (html !== observedHtml) {
+                observedHtml = html;
+                menuObserver.observe(html, { childList: true });
+            }
+            if (!style.isConnected) (document.head || html).appendChild(style);
+            if (!root.isConnected) {
+                const replacement = document.getElementById(FLOATING_MENU_ID);
+                if (replacement && replacement !== root) {
+                    Array.from(replacement.querySelectorAll('[data-floating-tool]')).forEach((button) => {
+                        const key = button.getAttribute('data-floating-tool');
+                        if (!root.querySelector(`[data-floating-tool="${key}"]`)) root.appendChild(button);
+                    });
+                    replacement.remove();
+                }
+                html.appendChild(root);
+                floatingMenuRender(root);
+            }
+            let changed = false;
+            for (const record of records) {
+                if (record.target !== root) continue;
+                for (const button of record.removedNodes) {
+                    if (button.nodeType !== 1 || !button.hasAttribute('data-floating-tool')
+                        || button.isConnected) continue;
+                    const key = button.getAttribute('data-floating-tool');
+                    if (root.querySelector(`[data-floating-tool="${key}"]`)) continue;
+                    root.appendChild(button);
+                    changed = true;
+                }
+            }
+            if (changed) floatingMenuRender(root);
+        });
+        // Observe only structural changes, not all content mutations.
+        menuObserver.observe(document, { childList: true });
+        menuObserver.observe(observedHtml, { childList: true });
+        menuObserver.observe(root, { childList: true });
         return root;
     }
 
@@ -532,7 +600,8 @@
         const root = floatingMenuRoot();
         button.setAttribute('data-floating-tool', key);
         button.setAttribute('data-floating-available', String(available));
-        button.addEventListener('click', () => floatingMenuCollapse(root));
+        button.addEventListener('click', () => floatingMenuCollapse(
+            button.parentNode && button.parentNode.id === FLOATING_MENU_ID ? button.parentNode : root));
         root.appendChild(button);
         floatingMenuRender(root);
     }
@@ -584,7 +653,23 @@
 
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
+    // Raw .txt documents commonly arrive without a viewport and shrink every
+    // 38px floating control to roughly 14 visible pixels on Android.
+    const isPlainTextUrl = /\.txt$/i.test(location.pathname);
+    const SIMPLE_PRE_STORAGE = 'tm-force-mobile-simple-pre:' + location.pathname + location.search;
+    function simplePreReloadRequested() {
+        try { return sessionStorage.getItem(SIMPLE_PRE_STORAGE) === 'yes'; }
+        catch (_) { return false; }
+    }
     let earlyReflow = false;
+
+    // Hacker News listing/profile pages should keep their own compact layout.
+    // The explicit auto-enable rule is reserved for numeric story comment IDs.
+    function isHackerNewsNonDiscussion() {
+        return location.hostname.toLowerCase() === 'news.ycombinator.com'
+            && (location.pathname !== '/item'
+                || !/^\d+$/.test(new URLSearchParams(location.search).get('id') || ''));
+    }
 
     function isAndroidBrowser() {
         return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
@@ -595,14 +680,47 @@
         try {
             if (localStorage.getItem(AUTO_STORAGE) === 'off'
                 || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
-            return isDataExplorer;
+            return isDataExplorer || isPlainTextUrl || simplePreReloadRequested();
         } catch (_) {
-            return isDataExplorer;
+            return isDataExplorer || isPlainTextUrl;
         }
     }
 
     function installEarlyReflow() {
         if (!document.head) return false;
+        if ((isPlainTextUrl || simplePreReloadRequested()) && !isDataExplorer) {
+            // Set the viewport before the browser's first text-inflation pass.
+            // Do not rewrite the PRE or body: the translation userscript owns
+            // only temporary, reversible text-node substitution.
+            const authored = document.querySelector('meta[name="viewport"]');
+            if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return false;
+            if (!authored) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('name', 'viewport');
+                meta.setAttribute('content', 'width=device-width, initial-scale=1');
+                meta.setAttribute('data-tm-force-mobile-auto', 'true');
+                document.head.appendChild(meta);
+            }
+            if (!document.getElementById(AUTO_STYLE_ID)) {
+                const style = document.createElement('style');
+                style.id = AUTO_STYLE_ID;
+                style.textContent = `
+                    html, body { -webkit-text-size-adjust: 100% !important;
+                        text-size-adjust: 100% !important; }
+                    body > pre,
+                    body > [data-tm-translatable-pre-wrapper] > pre,
+                    body > [data-tm-translatable-pre-wrapper] > [data-tm-translatable-pre-converted] {
+                        max-width: 100% !important;
+                        white-space: pre-wrap !important; overflow-wrap: anywhere !important;
+                        font-size: 15px !important; line-height: 1.45 !important; }
+                `;
+                document.head.appendChild(style);
+            }
+            earlyReflow = true;
+            autoMode = true;
+            isEnabled = true;
+            return true;
+        }
         // If Data Explorer adopts a genuine mobile layout later, leave that authored viewport alone.
         const authored = document.querySelector('meta[name="viewport"]');
         if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return true;
@@ -615,7 +733,7 @@
         }
         const style = document.createElement('style');
         style.id = AUTO_STYLE_ID;
-        style.textContent = "\nhtml, body { max-width: 100% !important; min-width: 0 !important;\n  -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }\nbody { font-size: 15px !important; line-height: 1.45 !important; }\nbody p, body li, body blockquote, body article, body section,\nbody h1, body h2, body h3, body h4, body h5, body h6 {\n  line-height: 1.45 !important; height: auto !important; max-height: none !important;\n  overflow-wrap: break-word !important; }\nbody img, body video { max-width: 100% !important; height: auto !important; }\nbody .page, body #topbar .page, body .footerwrap,\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #query, body #queryText, body #queryText #queryInfo,\nbody #query #aboutSite, body #queryText #aboutSite,\nbody #query-results, body #query-results .subheader .group, body #execution-stats,\nbody #resultsetStats, body #footer-menu, body #metadata .info, body #graph {\n  box-sizing: border-box !important; width: 100% !important;\n  min-width: 0 !important; max-width: 100% !important;\n  margin-left: 0 !important; margin-right: 0 !important; }\nbody .page { padding-left: 6px !important; padding-right: 6px !important; }\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #queryText #queryInfo, body #query #aboutSite, body #queryText #aboutSite {\n  float: none !important; clear: both !important; }\nbody #header, body #queryText, body #queryText .title,\nbody #query-results .subheader {\n  display: flow-root !important; height: auto !important; min-height: 0 !important; }\nbody #header #logo { max-width: 100% !important; }\nbody #header #menu, body #header .menu,\nbody #header .navigation-links, body #topbar .topbar-links {\n  max-width: 100% !important; height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; }\nbody #queryText .title h2, body #queryText .title p {\n  float: none !important; clear: both !important; max-width: 100% !important;\n  height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; overflow-wrap: anywhere !important; }\nbody #query-results .panel, body #query-results .slick-viewport,\nbody .CodeMirror, body .CodeMirror-wrapping, body #sql {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody pre, body .CodeMirror-scroll, body .slick-viewport {\n  max-width: 100% !important; overflow-x: auto !important; }\nbody .CodeMirror { font-size: 14px !important; line-height: 1.4 !important; }\nbody #graph { overflow-x: auto !important; }\nbody #topbar .page, body #topbar .topbar-links,\nbody #topbar .search-form, body #header #search { max-width: 100% !important; }\nbody #header #search, body #topbar .search-form { float: none !important; clear: both !important; }\nbody #topbar input[type=\"text\"], body #topbar input {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody #footer, body .footerwrap { overflow-wrap: anywhere !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu {\n  width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu > button {\n  width: 44px !important; min-width: 44px !important; max-width: 44px !important;\n  height: 44px !important; min-height: 44px !important;\n  font: 600 20px/44px system-ui,sans-serif !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }\n#tm-shared-floating-menu#tm-shared-floating-menu [data-floating-dialog] button {\n  min-height: 44px !important; height: auto !important; line-height: 1.4 !important; }\n\n/* Header CSS has an independent 710px-wide, floated navigation bar. */\nbody #header #logo {\n  float: none !important; clear: both !important;\n  width: min(230px, 100%) !important; max-width: 100% !important;\n  margin-top: 4px !important; margin-bottom: 4px !important;\n}\nbody nav.primary {\n  box-sizing: border-box !important; float: none !important; clear: both !important;\n  display: block !important; width: 100% !important; min-width: 0 !important;\n  max-width: 100% !important; padding: 0 !important; margin: 0 !important;\n}\nbody nav.primary .nav {\n  float: none !important; width: 100% !important; max-width: 100% !important;\n  font-size: 100% !important;\n}\nbody nav.primary .nav ul {\n  display: flex !important; flex-wrap: wrap !important; gap: 4px !important;\n  margin: 0 !important; padding: 0 !important; width: 100% !important;\n  line-height: normal !important;\n}\nbody nav.primary .nav li {\n  float: none !important; display: inline-block !important;\n  margin: 0 !important; line-height: 1.45 !important;\n  width: auto !important; max-width: 100% !important;\n}\nbody nav.primary .nav a {\n  display: block !important; height: auto !important; min-height: 0 !important;\n  font-size: 15px !important; line-height: 1.45 !important;\n  padding: 5px 8px !important; white-space: normal !important;\n}\nbody .subheader, body .subheader h2 {\n  height: auto !important; min-height: 0 !important; line-height: 1.45 !important;\n}\nbody .subheader h2, body #tabs, body .miniTabs { float: none !important; clear: both !important; }\nbody #tabs a, body .miniTabs a {\n  display: inline-block !important; float: none !important;\n  width: auto !important; height: auto !important; min-height: 0 !important;\n  line-height: 1.4 !important; margin: 3px !important; padding: 4px 6px !important;\n}\n/* Keep very long result table cells inside their own scrolling region. */\nbody #query-results .panel { max-width: 100% !important; overflow-x: auto !important; }\n\nbody #topbar .page { display: flow-root !important; }\n";
+        style.textContent = "\nhtml, body { max-width: 100% !important; min-width: 0 !important;\n  -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }\nbody { font-size: 15px !important; line-height: 1.45 !important; }\nbody p, body li, body blockquote, body article, body section,\nbody h1, body h2, body h3, body h4, body h5, body h6 {\n  line-height: 1.45 !important; height: auto !important; max-height: none !important;\n  overflow-wrap: break-word !important; }\nbody img, body video { max-width: 100% !important; height: auto !important; }\nbody .page, body #topbar .page, body .footerwrap,\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #query, body #queryText, body #queryText #queryInfo,\nbody #query #aboutSite, body #queryText #aboutSite,\nbody #query-results, body #query-results .subheader .group, body #execution-stats,\nbody #resultsetStats, body #footer-menu, body #metadata .info, body #graph {\n  box-sizing: border-box !important; width: 100% !important;\n  min-width: 0 !important; max-width: 100% !important;\n  margin-left: 0 !important; margin-right: 0 !important; }\nbody .page { padding-left: 6px !important; padding-right: 6px !important; }\nbody #mainbar, body #mainbar-full, body #sidebar,\nbody #queryText #queryInfo, body #query #aboutSite, body #queryText #aboutSite {\n  float: none !important; clear: both !important; }\nbody #header, body #queryText, body #queryText .title,\nbody #query-results .subheader {\n  display: flow-root !important; height: auto !important; min-height: 0 !important; }\nbody #header #logo { max-width: 100% !important; }\nbody #header #menu, body #header .menu,\nbody #header .navigation-links, body #topbar .topbar-links {\n  max-width: 100% !important; height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; }\nbody #queryText .title h2, body #queryText .title p {\n  float: none !important; clear: both !important; max-width: 100% !important;\n  height: auto !important; line-height: 1.45 !important;\n  white-space: normal !important; overflow-wrap: anywhere !important; }\nbody #query-results .panel, body #query-results .slick-viewport,\nbody .CodeMirror, body .CodeMirror-wrapping, body #sql {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody pre, body .CodeMirror-scroll, body .slick-viewport {\n  max-width: 100% !important; overflow-x: auto !important; }\nbody .CodeMirror { font-size: 14px !important; line-height: 1.4 !important; }\nbody #graph { overflow-x: auto !important; }\nbody #topbar .page, body #topbar .topbar-links,\nbody #topbar .search-form, body #header #search { max-width: 100% !important; }\nbody #header #search, body #topbar .search-form { float: none !important; clear: both !important; }\nbody #topbar input[type=\"text\"], body #topbar input {\n  box-sizing: border-box !important; max-width: 100% !important; }\nbody #footer, body .footerwrap { overflow-wrap: anywhere !important; }\n/* Header CSS has an independent 710px-wide, floated navigation bar. */\nbody #header #logo {\n  float: none !important; clear: both !important;\n  width: min(230px, 100%) !important; max-width: 100% !important;\n  margin-top: 4px !important; margin-bottom: 4px !important;\n}\nbody nav.primary {\n  box-sizing: border-box !important; float: none !important; clear: both !important;\n  display: block !important; width: 100% !important; min-width: 0 !important;\n  max-width: 100% !important; padding: 0 !important; margin: 0 !important;\n}\nbody nav.primary .nav {\n  float: none !important; width: 100% !important; max-width: 100% !important;\n  font-size: 100% !important;\n}\nbody nav.primary .nav ul {\n  display: flex !important; flex-wrap: wrap !important; gap: 4px !important;\n  margin: 0 !important; padding: 0 !important; width: 100% !important;\n  line-height: normal !important;\n}\nbody nav.primary .nav li {\n  float: none !important; display: inline-block !important;\n  margin: 0 !important; line-height: 1.45 !important;\n  width: auto !important; max-width: 100% !important;\n}\nbody nav.primary .nav a {\n  display: block !important; height: auto !important; min-height: 0 !important;\n  font-size: 15px !important; line-height: 1.45 !important;\n  padding: 5px 8px !important; white-space: normal !important;\n}\nbody .subheader, body .subheader h2 {\n  height: auto !important; min-height: 0 !important; line-height: 1.45 !important;\n}\nbody .subheader h2, body #tabs, body .miniTabs { float: none !important; clear: both !important; }\nbody #tabs a, body .miniTabs a {\n  display: inline-block !important; float: none !important;\n  width: auto !important; height: auto !important; min-height: 0 !important;\n  line-height: 1.4 !important; margin: 3px !important; padding: 4px 6px !important;\n}\n/* Keep very long result table cells inside their own scrolling region. */\nbody #query-results .panel { max-width: 100% !important; overflow-x: auto !important; }\n\nbody #topbar .page { display: flow-root !important; }\n";
         document.head.appendChild(style);
         earlyReflow = true;
         autoMode = true;
@@ -636,6 +754,7 @@
     // The automatic path deliberately avoids the legacy body * layout overrides.
     // A reversible viewport adjustment is only attempted for a scaled-down desktop layout.
     function mobileAutoEligible() {
+        if (isHackerNewsNonDiscussion()) return false;
         if (!shouldEnforceMinFontSize() || !document.body || document.hidden) return false;
         const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
         return /Android/i.test(agent) || (!agent && window.innerWidth <= 1100);
@@ -766,9 +885,6 @@
             'body h1, body h2, body h3, body h4, body h5, body h6 {',
             'line-height: 1.45 !important; height: auto !important; max-height: none !important;',
             'overflow-wrap: break-word !important; }',
-            '#tm-shared-floating-menu#tm-shared-floating-menu { width: 44px !important; gap: 6px !important; transform: translateX(-6px) !important; }',
-            '#tm-shared-floating-menu#tm-shared-floating-menu > button { width: 44px !important; min-width: 44px !important; max-width: 44px !important; height: 44px !important; min-height: 44px !important; font: 600 20px/44px system-ui,sans-serif !important; }',
-            '#tm-shared-floating-menu#tm-shared-floating-menu > [data-floating-close] { top: -50px !important; }'
         ].join(String.fromCharCode(10));
         (document.head || document.documentElement).appendChild(style);
         applyAutoTextSize(document.body);
@@ -823,7 +939,44 @@
         }
     }
 
+    // A hidden desktop viewport can shrink a 38px menu handle to ~14 CSS
+    // display pixels. Do not retroactively replace the viewport on a live
+    // document: request one early-render reload only for single-PRE prose.
+    function requestSimpleProseReflow() {
+        if (!isAndroidBrowser() || isPlainTextUrl || simplePreReloadRequested()
+            || isEnabled || autoDisabledByUser() || !document.body
+            || isHackerNewsNonDiscussion()) return false;
+        const toggle = document.querySelector('#tm-shared-floating-menu [data-floating-toggle]');
+        if (!toggle || typeof toggle.getBoundingClientRect !== 'function') return false;
+        const rect = toggle.getBoundingClientRect();
+        const scale = window.visualViewport?.scale || 1;
+        if (!(rect.width > 0 && rect.width <= 70 && rect.width * scale < 28)) return false;
+        const topChildren = Array.from(document.body.children || []);
+        const directPre = topChildren.find((element) => element.tagName === 'PRE');
+        const wrappedPre = topChildren.find((element) =>
+            element.hasAttribute?.('data-tm-translatable-pre-wrapper'))?.querySelector('pre');
+        const pre = directPre || wrappedPre;
+        if (!pre) return false;
+        const contentRoot = pre.closest('[data-tm-translatable-pre-wrapper]') || pre;
+        const topLevel = Array.from(document.body.children || [])
+            .filter((element) => element.tagName !== 'SCRIPT' && element.tagName !== 'STYLE'
+                && element.id !== FLOATING_MENU_ID
+                && !element.id?.startsWith('tm-'));
+        if (topLevel.length !== 1 || topLevel[0] !== contentRoot) return false;
+        const prose = pre.textContent || '';
+        const words = prose.match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+        if (words.length < 60) return false;
+        const common = words.filter((word) =>
+            /^(the|and|that|this|with|from|have|was|were|are|for|but|not|when|which|what|there|they|you|your|we|our|can|would|will|about|into|than|their|been|more|one|like|just|then|because|after|before|these|those|its|has|had|all|some|who|why|how|of|to|in|on|as|is|it|at)$/i.test(word)).length;
+        if (common / words.length < 0.12) return false;
+        try { sessionStorage.setItem(SIMPLE_PRE_STORAGE, 'yes'); }
+        catch (_) { return false; }
+        window.location.reload();
+        return true;
+    }
+
     function scheduleAutomaticDetection() {
+        if (requestSimpleProseReflow()) return;
         if (isEnabled || autoMode || !mobileAutoEligible() || autoDisabledByUser() || autoRestoreError) return;
         if (autoTimer) clearTimeout(autoTimer);
         autoTimer = setTimeout(() => {
@@ -863,7 +1016,7 @@
             `        padding-right: min(0.6vw, 2px) !important;\n` +
             `    }\n` +
             `}\n` +
-            `body * {\n` +
+            `body *:not(#tm-shared-floating-menu):not(#tm-shared-floating-menu *):not(.tm-fullscreen-game-view-button) {\n` +
             `    max-width: 100% !important;\n` +
             `    min-width: 0 !important;\n` +
             `    word-break: break-word !important;\n` +
@@ -981,7 +1134,7 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
-        } else if (isDataExplorer && isAndroidBrowser()) {
+         } else if ((isDataExplorer || isPlainTextUrl || simplePreReloadRequested()) && isAndroidBrowser()) {
             // Restore the early mobile viewport instead of running the destructive legacy CSS.
             setAutomaticPreference(false);
             try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
@@ -1157,6 +1310,7 @@
     }
 
     function shouldAutoEnableForUrl() {
+        if (isHackerNewsNonDiscussion()) return false;
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
             return false;
