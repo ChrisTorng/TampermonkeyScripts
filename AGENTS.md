@@ -56,3 +56,9 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - Compare **baseline** vs **pinned Guard-injected** mirror while installed Tampermonkey is disabled, so other global scripts cannot contaminate results. The injected Guard must run from inline HTML before original page scripts, not from a blocking network script.
 - Collect automatic, bounded DOM/timing reports over initial load, scrolling, returning to earlier content, repeated translation and reload. Prioritize **currently visible raw TeX** and separate formula counts/order, real Chinese translation, renderer completion, and hidden visual geometry.
 - Never infer native Edge success from Chromium-only tests. **Do not keep patching production math handling until the latest full-article Edge reports identify a reproducible cause.** Keep all experimental PRs Draft until verified on target article.
+
+
+### Test prerequisites must appear **before** any test URLs (2026-11-16)
+- For any user-visible test instructions, put the essential prerequisites **in the first paragraph, before links, buttons, result explanations or steps**. In particular, when comparing Math Visibility Lab full-article A/B, **disable the entire installed Tampermonkey extension first**; B already injects a pinned Guard and needs no installed script. Never bury this warning after the links.
+- Explicitly identify which variant requires which enabled/disabled scripts and what earlier reports can be disregarded. Interpret recent reported tests first; do **not** request repeats of tests already successfully received.
+- Distinguish initial formula rendering from stable success under Edge native translation, scrolling and delayed DOM rewrites. If the translator is destructive, prefer a single decisive controlled experiment over recurring site-specific partial fixes. Keep the production PR Draft until native Edge acceptance is demonstrated.
