@@ -87,7 +87,7 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.
-- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (item collapse controls sit inside title rows without indenting images or summaries; the floating page collapse, read states, scroll-to-top marking, reload persistence, and archive navigation are validated with a local DOM harness; bookmark star CSS compatibility is checked)
+- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (item collapse controls stay in title rows; floating page collapse, read states, archive navigation, and published Latest update times with remembered prior versions are DOM-harness tested; mobile timestamps stay on one compact row; bookmark star CSS compatibility is checked)
 - https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (responsive top and bottom navigation uses available archive dates, keeps Latest separate after the newest date, and disables only the true endpoints)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
