@@ -270,8 +270,8 @@ describe('Translate Preformatted Text', () => {
         button.click();
         const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
         assert(converted);
-        assert.equal(converted.tagName, 'DIV');
-        assert.match(converted.textContent, /song lyrics/);
+        assert.equal(converted.tagName, 'BLOCKQUOTE');
+        assert.match(converted.querySelector('p').querySelector('span').textContent, /song lyrics/);
 
         button.click();
         assert.equal(harness.document.querySelector('blockquote'), quote);

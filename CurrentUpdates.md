@@ -1,6 +1,11 @@
 # Current updates
 
-Updated: 2026-11-14
+Updated: 2026-11-15
+
+## Substack translation layout — 2026-11-15
+
+- [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.23](src/TranslatePreformattedText.user.js) — preserve nested quotations, paragraph spacing, hard line breaks and the source monospace styling. Reload after installing.
+- [Test the Substack article](https://simonw.substack.com/p/locating-the-source-of-a-mysterious) — with browser translation off, toggle **譯** and compare the nested quote rule, indents and whitespace. Enable browser translation to check the same layout with translated text.
 
 ## Plain-text translation and mobile reading — 2026-11-14
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-14_1.5.22
+// @version      2026-11-15_1.5.23
 // @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1124,11 +1124,6 @@
         .tm-translate-pre-one[hidden] {
             display: none !important;
         }
-        [${convertedAttribute}] {
-            /* Inline computed values from the source take precedence. */
-            white-space: pre-wrap;
-            overflow-wrap: break-word;
-        }
         /* GitHub renders line numbers in a separate sibling column. An actual
            wrapper would break its flex layout; display: contents preserves it. */
         [${wrapperAttribute}][data-tm-github-line-wrapper] {
@@ -1274,23 +1269,24 @@
         setButtonState(allButton, allConverted, 'all');
     }
 
-    // A browser-translatable DIV does not inherit the UA defaults of PRE.
-    // Snapshot only layout/typography properties, leaving the original node
-    // detached and untouched while Edge/Chrome rewrites the translated copy.
+    // Tags skipped by the browser translator need neutral elements. Copy the
+    // styles that would otherwise be lost to tag and ancestor selectors.
     const formattedStyleProperties = [
         'display', 'font-family', 'font-size', 'font-style', 'font-weight',
-        'line-height', 'letter-spacing', 'tab-size', 'text-indent', 'text-align',
+        'font-stretch', 'font-kerning', 'font-feature-settings', 'font-variation-settings',
+        'font-variant', 'font-size-adjust', 'font-optical-sizing',
+        'line-height', 'letter-spacing', 'word-spacing', 'tab-size', 'text-indent', 'text-align',
+        'text-transform', 'text-decoration', 'vertical-align', 'direction', 'writing-mode',
         'white-space', 'word-break', 'word-wrap', 'overflow-wrap',
-        'overflow-x', 'overflow-y', 'color', 'background-color',
+        'overflow-x', 'overflow-y', 'color', 'background', 'border-radius', 'box-shadow',
+        'box-decoration-break', '-webkit-box-decoration-break', 'outline', 'outline-offset',
         'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
         'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
         'border-top', 'border-right', 'border-bottom', 'border-left',
-        'box-sizing'
+        'box-sizing', 'min-width', 'max-width', 'min-height', 'max-height'
     ];
 
-    function preserveFormattedStyle(source, target) {
-        if (typeof window.getComputedStyle !== 'function') return;
-        const css = window.getComputedStyle(source);
+    function preserveFormattedStyle(source, target, css = window.getComputedStyle?.(source)) {
         if (!css) return;
         for (const name of formattedStyleProperties) {
             const camel = name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -1318,37 +1314,37 @@
         return children.map((child) => getBlockText(child)).join('');
     }
 
-    // Keep inline formatting, links, padding and typography. Replace only the
-    // tags which browsers normally skip for translation (such as nested CODE).
-    const inlineTags = new Set(['A', 'SPAN', 'EM', 'STRONG', 'B', 'I', 'U',
-        'SMALL', 'SUB', 'SUP', 'MARK', 'ABBR', 'TIME', 'CITE', 'Q']);
-    function copyTranslatableNodes(source, target) {
+    const skippedCopyTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
+    const skippedTranslationTags = new Set(['PRE', 'CODE', 'KBD', 'SAMP', 'TT']);
+    function copyTranslatableBlock(source, replacedAncestor = false, ignoreTranslateAttribute = false) {
+        const changeTag = skippedTranslationTags.has(source.tagName);
+        const tag = changeTag ? (source.tagName === 'PRE' ? 'div' : 'span') : source.tagName.toLowerCase();
+        const copy = document.createElement(tag);
+        copyAttributes(source, copy);
+        copy.removeAttribute('translate');
+        copy.classList.remove('notranslate');
+        const preserveStyle = changeTag || replacedAncestor || (!ignoreTranslateAttribute && source.hasAttribute('translate'))
+            || source.classList.contains('notranslate');
+        const css = window.getComputedStyle?.(source);
+        if (preserveStyle) preserveFormattedStyle(source, copy, css);
+
         const children = Array.from(source.childNodes || source.children || []);
-        if (!children.length) {
-            target.textContent = source.textContent || '';
-            return;
-        }
+        if (!children.length) copy.textContent = source.textContent || '';
+        // Keep each authored line independent when the translator replaces text nodes.
+        const preserveBreaks = ['pre', 'pre-wrap', 'pre-line', 'break-spaces'].includes(css?.whiteSpace)
+            || ['preserve', 'preserve-breaks', 'break-spaces'].includes(css?.whiteSpaceCollapse);
         for (const child of children) {
             if (child.nodeType === 3) {
-                target.appendChild(document.createTextNode(child.nodeValue || ''));
-            } else if (child.nodeType === 1 && child.tagName === 'BR') {
-                target.appendChild(document.createElement('br'));
-            } else if (child.nodeType === 1) {
-                if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(child.tagName)) continue;
-                const isCode = ['CODE', 'KBD', 'SAMP', 'TT', 'PRE'].includes(child.tagName);
-                if (!isCode && !inlineTags.has(child.tagName)) {
-                    copyTranslatableNodes(child, target);
-                    continue;
-                }
-                const element = document.createElement(isCode ? 'span' : child.tagName.toLowerCase());
-                copyAttributes(child, element);
-                element.removeAttribute('translate');
-                element.classList.remove('notranslate');
-                preserveFormattedStyle(child, element);
-                copyTranslatableNodes(child, element);
-                target.appendChild(element);
+                const lines = preserveBreaks ? child.nodeValue.split(/\r\n?|\n/) : [child.nodeValue];
+                lines.forEach((line, index) => {
+                    if (index) copy.appendChild(document.createElement('br'));
+                    if (line) copy.appendChild(document.createTextNode(line));
+                });
+            } else if (child.nodeType === 1 && !skippedCopyTags.has(child.tagName)) {
+                copy.appendChild(copyTranslatableBlock(child, preserveStyle));
             }
         }
+        return copy;
     }
 
     function isGithubMarkdownSource() {
@@ -1482,27 +1478,26 @@
         if (!current) {
             return;
         }
-        const replacement = shouldConvert ? document.createElement('div') : originalBlocks.get(wrapper);
+        const githubLines = shouldConvert && current.classList.contains('react-code-lines')
+            && current.querySelector('[data-testid="code-cell"]');
+        // The rendered Mermaid diagram exposes its separate, hidden source.
+        const mermaidSource = shouldConvert && getMermaidSource(current);
+        const replacement = shouldConvert
+            ? (githubLines ? document.createElement('div')
+                : copyTranslatableBlock(mermaidSource || current, false, originalTranslateAttributes.get(wrapper) === null))
+            : originalBlocks.get(wrapper);
         if (!replacement) {
             return;
         }
         if (shouldConvert) {
-            copyAttributes(current, replacement);
-            replacement.removeAttribute('translate');
-            replacement.classList.remove('notranslate');
-            replacement.classList.remove('react-code-lines');
-            replacement.removeAttribute('data-type');
+            if (githubLines) {
+                copyAttributes(current, replacement);
+                replacement.classList.remove('notranslate');
+                preserveFormattedStyle(current, replacement);
+                copyGithubCodeLines(current, replacement);
+            }
             replacement.setAttribute(convertedAttribute, 'true');
             replacement.setAttribute('translate', 'yes');
-            preserveFormattedStyle(current, replacement);
-            if (current.classList.contains('react-code-lines')
-                && current.querySelector('[data-testid="code-cell"]')) {
-                copyGithubCodeLines(current, replacement);
-            } else if (typeof current.childNodes !== 'undefined' || current.querySelector('a')) {
-                copyTranslatableNodes(current, replacement);
-            } else {
-                replacement.textContent = getBlockText(current);
-            }
         } else {
             replacement.removeAttribute(convertedAttribute);
             const saved = originalTranslateAttributes.get(wrapper);
@@ -1741,6 +1736,12 @@
         return codeText.length >= 80;
     }
 
+    function getMermaidSource(element) {
+        if (element.getAttribute('data-type') !== 'mermaid') return null;
+        return Array.from(element.querySelectorAll('pre'))
+            .find((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
+    }
+
     function isSpecialBlock(element) {
         if (!element) {
             return false;
@@ -1748,9 +1749,7 @@
         if (element.classList.contains('react-code-lines')) {
             return Boolean(element.querySelector('[data-testid="code-cell"]'));
         }
-        return element.getAttribute('data-type') === 'mermaid'
-            && Array.from(element.querySelectorAll('pre'))
-                .some((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
+        return Boolean(getMermaidSource(element));
     }
 
     function revealWikipediaSections(root) {
