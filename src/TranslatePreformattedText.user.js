@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-07_1.5.20
-// @description  Translate formatted text and offer a draggable, standalone reader for accessible embedded articles; improve Astro and Wikipedia.
+// @version      2026-11-15_1.5.24
+// @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1063,6 +1063,12 @@
     const inlineCodeAttribute = 'data-tm-translatable-inline-code';
     const inlineCodeOriginalAttribute = 'data-tm-translatable-inline-code-original';
     const originalBlocks = new WeakMap();
+    const originalTranslateAttributes = new WeakMap();
+    const autoTranslateStorageKey = 'tm-pre-auto-off:' + location.pathname + location.search;
+    let autoTranslateTimer = null;
+    let autoTranslationDecided = false;
+    let manualTranslationChoice = false;
+    let autoTranslationReady = document.readyState !== 'loading';
     const isWikipedia = /(^|\.)wikipedia\.org$/i.test(location.hostname);
     const isOpenSSHReleaseNotes = /(^|\.)openssh\.org$/i.test(location.hostname)
         && location.pathname === '/releasenotes.html';
@@ -1118,11 +1124,25 @@
         .tm-translate-pre-one[hidden] {
             display: none !important;
         }
-        [${convertedAttribute}] {
-            box-sizing: border-box;
-            font-family: monospace;
-            overflow: auto;
-            white-space: pre-wrap;
+        [data-tm-pre-indent] {
+            all: unset !important;
+        }
+        /* GitHub renders line numbers in a separate sibling column. An actual
+           wrapper would break its flex layout; display: contents preserves it. */
+        [${wrapperAttribute}][data-tm-github-line-wrapper] {
+            display: contents !important;
+        }
+        [${convertedAttribute}][data-tm-github-code-lines],
+        [${convertedAttribute}][data-tm-github-code-lines] .react-code-line-contents,
+        [${convertedAttribute}][data-tm-github-code-lines] [data-testid="code-cell"] {
+            white-space: pre !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+            hyphens: none !important;
+        }
+        [${convertedAttribute}][data-tm-github-code-lines] [data-testid="code-cell"] {
+            display: block !important;
+            text-wrap: nowrap !important;
         }
         [${inlineCodeAttribute}] {
             display: inline;
@@ -1149,8 +1169,10 @@
                 target.setAttribute(attribute.name, attribute.value);
             }
         });
-        target.className = source.className;
-        target.id = source.id;
+        if (typeof source.className === 'string' && source.className && !target.className) {
+            target.className = source.className;
+        }
+        if (source.id && !target.id) target.id = source.id;
     }
 
     const inlineCodeStyleProperties = [
@@ -1252,6 +1274,32 @@
         setButtonState(allButton, allConverted, 'all');
     }
 
+    // Tags skipped by the browser translator need neutral elements. Copy the
+    // styles that would otherwise be lost to tag and ancestor selectors.
+    const formattedStyleProperties = [
+        'display', 'font-family', 'font-size', 'font-style', 'font-weight',
+        'font-stretch', 'font-kerning', 'font-feature-settings', 'font-variation-settings',
+        'font-variant', 'font-size-adjust', 'font-optical-sizing',
+        'line-height', 'letter-spacing', 'word-spacing', 'tab-size', 'text-indent', 'text-align',
+        'text-transform', 'text-decoration', 'vertical-align', 'direction', 'writing-mode',
+        'white-space', 'word-break', 'word-wrap', 'overflow-wrap',
+        'overflow-x', 'overflow-y', 'color', 'background', 'border-radius', 'box-shadow',
+        'box-decoration-break', '-webkit-box-decoration-break', 'outline', 'outline-offset',
+        'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+        'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+        'border-top', 'border-right', 'border-bottom', 'border-left',
+        'box-sizing', 'min-width', 'max-width', 'min-height', 'max-height'
+    ];
+
+    function preserveFormattedStyle(source, target, css = window.getComputedStyle?.(source)) {
+        if (!css) return;
+        for (const name of formattedStyleProperties) {
+            const camel = name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+            const value = css.getPropertyValue?.(name) || css[camel];
+            if (typeof value === 'string' && value) target.style.setProperty(name, value);
+        }
+    }
+
     function getBlockText(node) {
         if (node.nodeType === 1 && node.classList.contains('react-code-lines')) {
             return Array.from(node.querySelectorAll('[data-testid="code-cell"]'))
@@ -1271,29 +1319,166 @@
         return children.map((child) => getBlockText(child)).join('');
     }
 
-    // Preserve hyperlinks while turning preformatted text into translatable text.
-    function copyTranslatableNodes(source, target) {
+    const skippedCopyTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
+    const skippedTranslationTags = new Set(['PRE', 'CODE', 'KBD', 'SAMP', 'TT']);
+    function copyTranslatableBlock(source, replacedAncestor = false, ignoreTranslateAttribute = false) {
+        const changeTag = skippedTranslationTags.has(source.tagName);
+        const tag = changeTag ? (source.tagName === 'PRE' ? 'div' : 'span') : source.tagName.toLowerCase();
+        const copy = document.createElement(tag);
+        copyAttributes(source, copy);
+        copy.removeAttribute('translate');
+        copy.classList.remove('notranslate');
+        const preserveStyle = changeTag || replacedAncestor || (!ignoreTranslateAttribute && source.hasAttribute('translate'))
+            || source.classList.contains('notranslate');
+        const css = window.getComputedStyle?.(source);
+        if (preserveStyle) preserveFormattedStyle(source, copy, css);
+
         const children = Array.from(source.childNodes || source.children || []);
-        if (!children.length) {
-            target.textContent = source.textContent || '';
-            return;
-        }
+        if (!children.length) copy.textContent = source.textContent || '';
+        // Keep each authored line independent when the translator replaces text nodes.
+        const preserveBreaks = ['pre', 'pre-wrap', 'pre-line', 'break-spaces'].includes(css?.whiteSpace)
+            || ['preserve', 'preserve-breaks', 'break-spaces'].includes(css?.whiteSpaceCollapse);
+        const preserveIndent = preserveBreaks && css.whiteSpace !== 'pre-line'
+            && css.whiteSpaceCollapse !== 'preserve-breaks';
+        let atLineStart = true;
         for (const child of children) {
             if (child.nodeType === 3) {
-                target.appendChild(document.createTextNode(child.nodeValue || ''));
-            } else if (child.nodeType === 1 && child.tagName === 'BR') {
-                target.appendChild(document.createTextNode('\n'));
-            } else if (child.nodeType === 1 && child.tagName === 'A') {
-                const link = document.createElement('a');
-                for (const name of ['href', 'title', 'target', 'rel']) {
-                    if (child.hasAttribute(name)) link.setAttribute(name, child.getAttribute(name));
-                }
-                copyTranslatableNodes(child, link);
-                target.appendChild(link);
-            } else if (child.nodeType === 1) {
-                copyTranslatableNodes(child, target);
+                const lines = preserveBreaks ? child.nodeValue.split(/\r\n?|\n/) : [child.nodeValue];
+                lines.forEach((line, index) => {
+                    if (index) {
+                        copy.appendChild(document.createElement('br'));
+                        atLineStart = true;
+                    }
+                    const indent = preserveIndent && atLineStart ? line.match(/^[ \t]+/)?.[0] : '';
+                    if (indent) {
+                        const padding = document.createElement('span');
+                        padding.setAttribute('data-tm-pre-indent', '');
+                        padding.setAttribute('translate', 'no');
+                        padding.textContent = indent;
+                        copy.appendChild(padding);
+                        line = line.slice(indent.length);
+                    }
+                    if (line) {
+                        copy.appendChild(document.createTextNode(line));
+                        atLineStart = false;
+                    }
+                });
+            } else if (child.nodeType === 1 && !skippedCopyTags.has(child.tagName)) {
+                copy.appendChild(copyTranslatableBlock(child, preserveStyle));
+                atLineStart = child.tagName === 'BR';
             }
         }
+        return copy;
+    }
+
+    function isGithubMarkdownSource() {
+        if (location.hostname !== 'github.com') return false;
+        try {
+            return /^\/[^/]+\/[^/]+\/blob\/.+\.(?:md|markdown|mdown)$/i.test(
+                decodeURIComponent(location.pathname));
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // The line-number gutter and the text column are siblings in GitHub's
+    // source viewer. Preserve every row, its anchors, and its syntax markup.
+    function copyGithubRowNode(source, translateText) {
+        if (source.nodeType === 3) {
+            return document.createTextNode(source.nodeValue || source.textContent || '');
+        }
+        if (source.nodeType !== 1) return null;
+        const clone = document.createElement(source.tagName.toLowerCase());
+        copyAttributes(source, clone);
+        if (translateText) {
+            clone.removeAttribute('translate');
+            clone.classList.remove('notranslate');
+        }
+        const isCell = source.getAttribute('data-testid') === 'code-cell';
+        if (isCell) {
+            clone.setAttribute('translate', translateText ? 'yes' : 'no');
+            clone.style.setProperty('white-space', 'pre', 'important');
+            clone.style.setProperty('overflow-wrap', 'normal', 'important');
+            clone.style.setProperty('word-break', 'normal', 'important');
+        }
+        const children = Array.from(source.childNodes || source.children || []);
+        for (const child of children) {
+            const copied = copyGithubRowNode(child, translateText);
+            if (copied) clone.appendChild(copied);
+        }
+        if (!children.length) {
+            clone.textContent = source.textContent || (isCell ? ' ' : '');
+        }
+        return clone;
+    }
+
+    function copyGithubCodeLines(source, target) {
+        target.setAttribute('data-tm-github-code-lines', 'true');
+        // Keep the same CSS class so GitHub's code column retains its flex
+        // width, tab size, font, and alignment with the numbered gutter.
+        target.classList.add('react-code-lines');
+        let fenced = false;
+        for (const row of Array.from(source.children || [])) {
+            const originalCell = row.querySelector('[data-testid="code-cell"]');
+            if (!originalCell) continue;
+            const text = originalCell.textContent || '';
+            const fenceMarker = /^\s*(?:```|~~~)/.test(text);
+            const translateText = !fenced && !fenceMarker && !githubLineIsCode(text);
+            if (fenceMarker) fenced = !fenced;
+            const copy = copyGithubRowNode(row, translateText);
+            if (!copy?.querySelector('[data-testid="code-cell"]')) continue;
+            const height = row.getBoundingClientRect?.().height || 0;
+            if (height >= 10 && height <= 75) {
+                copy.style.setProperty('height', `${height}px`, 'important');
+                copy.style.setProperty('min-height', `${height}px`, 'important');
+                copy.style.setProperty('max-height', `${height}px`, 'important');
+            }
+            target.appendChild(copy);
+        }
+    }
+
+    function githubLineIsCode(text) {
+        const trimmed = text.trim();
+        return !trimmed
+            || /^(?:```|~~~|\$ |>>> |#include\b|(?:import|export|const|let|var|function|class|def|SELECT|INSERT|UPDATE)\b)/i.test(trimmed)
+            || /^(?:\{|\}|\[\s*\{|\]|<\/?[A-Za-z])/i.test(trimmed)
+            || /https?:\/\//i.test(trimmed)
+            || /^\s{2,}(?:[\w.-]+[:=]|[{}\[\]])/.test(text);
+    }
+
+    // Markdown mixes prose with badges, trees, fences and snippets. Judge its
+    // prose excluding fenced code and URLs; never use this for .js/.cs files.
+    function githubMarkdownProse(text) {
+        if (!isGithubMarkdownSource() || !text) return false;
+        const lines = text.split(/\r?\n/);
+        if (lines.length < 12) return false;
+        let fenced = false, proseChars = 0, otherChars = 0, proseLines = 0;
+        for (const line of lines.slice(0, 1200)) {
+            const trimmed = line.trim();
+            if (/^(?:```|~~~)/.test(trimmed)) {
+                fenced = !fenced;
+                continue;
+            }
+            if (fenced || githubLineIsCode(line) || /^\s{4,}\S/.test(line)) {
+                otherChars += trimmed.length;
+                continue;
+            }
+            const cleaned = trimmed
+                .replace(/!?\[([^\]]*)\]\((?:https?:\/\/|\.{0,2}\/)[^)]+\)/g, '$1')
+                .replace(/https?:\/\/\S+/g, '')
+                .replace(/`[^`]*`/g, '');
+            const words = cleaned.match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+            const common = words.filter((word) =>
+                /^(the|and|that|this|with|from|have|was|were|are|for|but|not|when|which|what|there|they|you|your|we|our|can|would|will|about|into|than|their|been|more|one|like|just|then|because|after|before|these|those|its|has|had|all|some|who|why|how|of|to|in|on|as|is|it|at)$/i.test(word)).length;
+            if (words.length >= 6 && common >= 2) {
+                proseChars += cleaned.length;
+                proseLines++;
+            } else {
+                otherChars += cleaned.length;
+            }
+        }
+        return proseLines >= 5 && proseChars >= 500
+            && proseChars / Math.max(1, proseChars + otherChars) >= 0.24;
     }
 
     function setConverted(wrapper, shouldConvert) {
@@ -1304,24 +1489,29 @@
         if (!current) {
             return;
         }
-        const replacement = shouldConvert ? document.createElement('div') : originalBlocks.get(wrapper);
+        const githubLines = shouldConvert && current.classList.contains('react-code-lines')
+            && current.querySelector('[data-testid="code-cell"]');
+        const replacement = shouldConvert
+            ? (githubLines ? document.createElement('div')
+                : copyTranslatableBlock(current, false, originalTranslateAttributes.get(wrapper) === null))
+            : originalBlocks.get(wrapper);
         if (!replacement) {
             return;
         }
         if (shouldConvert) {
-            copyAttributes(current, replacement);
-            replacement.removeAttribute('translate');
-            replacement.classList.remove('notranslate');
-            replacement.classList.remove('react-code-lines');
-            replacement.removeAttribute('data-type');
-            replacement.setAttribute(convertedAttribute, 'true');
-            if (current.querySelector('a') && !current.classList.contains('react-code-lines')) {
-                copyTranslatableNodes(current, replacement);
-            } else {
-                replacement.textContent = getBlockText(current);
+            if (githubLines) {
+                copyAttributes(current, replacement);
+                replacement.classList.remove('notranslate');
+                preserveFormattedStyle(current, replacement);
+                copyGithubCodeLines(current, replacement);
             }
+            replacement.setAttribute(convertedAttribute, 'true');
+            replacement.setAttribute('translate', 'yes');
         } else {
             replacement.removeAttribute(convertedAttribute);
+            const saved = originalTranslateAttributes.get(wrapper);
+            if (saved === null) replacement.removeAttribute('translate');
+            else if (saved !== undefined) replacement.setAttribute('translate', saved);
         }
         wrapper.insertBefore(replacement, current);
         wrapper.removeChild(current);
@@ -1334,12 +1524,20 @@
         if (!block || !block.parentNode || block.closest(`[${wrapperAttribute}]`)) {
             return;
         }
+        // GitHub draws the diagram in a separate frame. Its hidden PRE is not
+        // the visible content and must not replace the drawing.
+        if (block.tagName === 'PRE' && block.getAttribute('aria-label') === 'Raw mermaid code'
+            && block.closest('[data-type="mermaid"]')) return;
 
         const wrapper = document.createElement('div');
         wrapper.setAttribute(wrapperAttribute, 'true');
+        const githubSource = block.classList?.contains('react-code-lines')
+            && Boolean(block.querySelector('[data-testid="code-cell"]'));
+        if (githubSource) wrapper.setAttribute('data-tm-github-line-wrapper', 'true');
         const parent = block.parentNode;
         parent.insertBefore(wrapper, block);
         parent.removeChild(block);
+        originalTranslateAttributes.set(wrapper, block.hasAttribute('translate') ? block.getAttribute('translate') : null);
         block.setAttribute('translate', 'no');
         wrapper.appendChild(block);
         originalBlocks.set(wrapper, block);
@@ -1351,9 +1549,20 @@
         button.setAttribute('aria-label', 'Translate this preformatted block');
         setButtonState(button, false, 'this');
         wrapper.appendChild(button);
-        makeTransientControlDraggable(button, wrapper, { bottom: true });
+        // display:contents makes the code column behave as a direct flex child.
+        // The overlay instead uses the enclosing code viewer's coordinates.
+        const controlContainer = githubSource ? parent : wrapper;
+        if (githubSource && parent.style) {
+            const css = window.getComputedStyle(parent);
+            if (!css || css.position === 'static') {
+                parent.style.setProperty('position', 'relative', 'important');
+            }
+        }
+        makeTransientControlDraggable(button, controlContainer, { bottom: true });
         button.addEventListener('click', () => {
-            setConverted(wrapper, !wrapper.querySelector(`[${convertedAttribute}]`));
+            const enabling = !wrapper.querySelector(`[${convertedAttribute}]`);
+            rememberManualTranslationChoice(enabling);
+            setConverted(wrapper, enabling);
         });
     }
 
@@ -1378,6 +1587,77 @@
         }
     }
 
+    function rememberManualTranslationChoice(enabled) {
+        manualTranslationChoice = true;
+        try {
+            if (enabled) sessionStorage.removeItem(autoTranslateStorageKey);
+            else sessionStorage.setItem(autoTranslateStorageKey, 'off');
+        } catch (_) { /* The current document still respects the manual choice. */ }
+    }
+
+    function naturalProse(text) {
+        if (!text || text.length < 240) return false;
+        const words = text.match(/[A-Za-z][A-Za-z'-]{2,}/g) || [];
+        if (words.length < 45) return false;
+        const commonWords = words.filter((word) =>
+            /^(the|and|that|this|with|from|have|was|were|are|for|but|not|when|which|what|there|they|you|your|we|our|can|would|will|about|into|than|their|been|more|one|like|just|then|because|after|before|these|those|its|it's|has|had|all|some|who|why|how|of|to|in|on|as|is|it|at)$/i.test(word)).length;
+        if (commonWords < Math.max(9, words.length * 0.12)) return false;
+        const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 160);
+        const codeLines = lines.filter((line) =>
+            /^(?:import |export |const |let |var |function |class |def |#include|using |public |private |SELECT |INSERT |UPDATE |<\/?[\w!]|\{|\}|\[|\]|\/\/|\*\/|\+[-+]{3,})/i.test(line)
+            || /[{};]/.test(line) && /[=<>]|\b(?:return|throw|await|function)\b/.test(line)).length;
+        return !lines.length || codeLines / lines.length < 0.32;
+    }
+
+    function automaticTranslationDisabled() {
+        try { return sessionStorage.getItem(autoTranslateStorageKey) === 'off'; }
+        catch (_) { return false; }
+    }
+
+    function tryAutomaticTranslation() {
+        if (autoTranslationDecided || manualTranslationChoice || automaticTranslationDisabled() || !document.body) return;
+        const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
+        const candidates = wrappers.filter((wrapper) =>
+            !wrapper.querySelector(`[${convertedAttribute}]`)
+            && (naturalProse(getBlockText(originalBlocks.get(wrapper)))
+                || githubMarkdownProse(getBlockText(originalBlocks.get(wrapper)))));
+        // Only leaf, text-oriented opt-out elements may be replaced. Do not
+        // disturb a translated application's container or a code editor.
+        const protectedLeaves = Array.from(document.querySelectorAll('[translate="no"], .notranslate'))
+            .filter((element) => ['DIV', 'P', 'SPAN', 'BLOCKQUOTE', 'SECTION', 'ARTICLE'].includes(element.tagName)
+                && !element.closest(`[${wrapperAttribute}]`)
+                && !element.querySelector('pre, code, textarea, input, button, iframe, script')
+                && !Array.from(element.children || []).some((child) =>
+                    !inlineTags.has(child.tagName) && child.tagName !== 'BR')
+                && !element.closest('[contenteditable="true"]')
+                && naturalProse(getBlockText(element)));
+        if (!candidates.length && !protectedLeaves.length) return;
+        const bodyText = document.body.innerText || getBlockText(document.body) || '';
+        const pageSize = bodyText.replace(/\s/g, '').length;
+        const untranslatedSize = candidates.reduce((sum, wrapper) =>
+            sum + getBlockText(originalBlocks.get(wrapper)).replace(/\s/g, '').length, 0)
+            + protectedLeaves.reduce((sum, element) =>
+                sum + getBlockText(element).replace(/\s/g, '').length, 0);
+        if (pageSize < 240 || untranslatedSize <= pageSize / 2) return;
+        autoTranslationDecided = true;
+        protectedLeaves.forEach(enhance);
+        const eligible = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`))
+            .filter((wrapper) => naturalProse(getBlockText(originalBlocks.get(wrapper)))
+                || githubMarkdownProse(getBlockText(originalBlocks.get(wrapper))));
+        eligible.forEach((wrapper) => setConverted(wrapper, true));
+    }
+
+    function scheduleAutomaticTranslation() {
+        if (!autoTranslationReady || autoTranslateTimer !== null || autoTranslationDecided
+            || manualTranslationChoice || automaticTranslationDisabled()) return;
+        if (!document.querySelector(`[${wrapperAttribute}]`)
+            && !document.querySelector('[translate="no"], .notranslate')) return;
+        autoTranslateTimer = setTimeout(() => {
+            autoTranslateTimer = null;
+            tryAutomaticTranslation();
+        }, 180);
+    }
+
     function scan(root = document) {
         if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
@@ -1387,7 +1667,7 @@
             enhance(root);
         }
         if (root.querySelectorAll) {
-            root.querySelectorAll('.react-code-lines, [data-type="mermaid"]').forEach((block) => {
+            root.querySelectorAll('.react-code-lines').forEach((block) => {
                 if (isSpecialBlock(block)) {
                     enhance(block);
                 }
@@ -1415,6 +1695,7 @@
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
         updateAllButton();
+        scheduleAutomaticTranslation();
     }
 
     function enableAstroFullPageNavigation(root) {
@@ -1469,15 +1750,8 @@
     }
 
     function isSpecialBlock(element) {
-        if (!element) {
-            return false;
-        }
-        if (element.classList.contains('react-code-lines')) {
-            return Boolean(element.querySelector('[data-testid="code-cell"]'));
-        }
-        return element.getAttribute('data-type') === 'mermaid'
-            && Array.from(element.querySelectorAll('pre'))
-                .some((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
+        return element?.classList.contains('react-code-lines')
+            && Boolean(element.querySelector('[data-testid="code-cell"]'));
     }
 
     function revealWikipediaSections(root) {
@@ -1502,6 +1776,7 @@
         event.preventDefault();
         const wrappers = Array.from(document.querySelectorAll(`[${wrapperAttribute}]`));
         const shouldConvert = !wrappers.every((wrapper) => wrapper.querySelector(`[${convertedAttribute}]`));
+        rememberManualTranslationChoice(shouldConvert);
         wrappers.forEach((wrapper) => setConverted(wrapper, shouldConvert));
     });
     function mountAllButton() {
@@ -1514,6 +1789,11 @@
         document.addEventListener('DOMContentLoaded', mountAllButton, { once: true });
     }
     scan();
+    document.addEventListener('DOMContentLoaded', () => {
+        autoTranslationReady = true;
+        scheduleAutomaticTranslation();
+    }, { once: true });
+    window.addEventListener('load', scheduleAutomaticTranslation, { once: true });
 
     new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
