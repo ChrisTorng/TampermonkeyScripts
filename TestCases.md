@@ -7,6 +7,7 @@
 Section note: local DOM-harness tests validate fixed viewport docking, menu-default separation without later collision avoidance, drag/pinch behavior, and per-player mounting. Native mobile compositor behavior requires Android Edge verification.
 - https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (local DOM-harness validates game control geometry, docking, fullscreen fallback, and restoration; live mobile scroll needs device testing)
 - https://www.anthropic.com/claude-fable-and-mythos-5-2 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (lazy YouTube iframe mounting and rotation tested with a simulated DOM; live embedded players require device testing)
+- https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mocked advertising iframe is excluded from generic fullscreen discovery and may not change its parent layout; real ad and browser reload behavior require live verification)
 
 # Hacker News Comments
 Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.

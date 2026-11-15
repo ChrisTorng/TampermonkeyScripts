@@ -2,6 +2,11 @@
 
 Updated: 2026-11-15
 
+## Fullscreen ad-iframe layout guard — 2026-11-15
+
+- [Install FullscreenGameView.user.js — 2026-11-15_1.2.4](src/FullscreenGameView.user.js) — ignore ordinary advertisement/widget iframes; preserve existing absolute, sticky, or fixed positioning on actual video containers. Reload after updating.
+- **Tests:** [Nieman Lab article](https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/) — no blank top caused by a false fullscreen target or accidental ad iframe selection; [ARC Prize game](https://arcprize.org/tasks/ls20) — existing fullscreen control remains; [Anthropic embedded videos](https://www.anthropic.com/claude-fable-and-mythos-5-2) — YouTube controls still appear.
+
 ## Preformatted translation appearance — 2026-11-15
 
 - [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.24](src/TranslatePreformattedText.user.js) — preserve nested quote styling, preformatted spacing, and GitHub syntax highlighting. Keep rendered Mermaid diagrams in place. Reload after installing.

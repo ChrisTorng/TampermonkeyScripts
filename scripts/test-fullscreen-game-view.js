@@ -34,6 +34,51 @@ function executeOnArcTask() {
     return { ...harness, game, dPad };
 }
 
+describe('Fullscreen control must not modify unrelated article widgets', () => {
+    test('Nieman Lab advertising iframe is not treated as a playable media surface', () => {
+        const url = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
+        const harness = createHarness({ url });
+        const adWrapper = harness.document.createElement('section');
+        adWrapper.id = 'advertisement-slot';
+        adWrapper.style.setProperty('position', 'absolute');
+        const adFrame = harness.document.createElement('iframe');
+        adFrame.src = 'https://ads.example.org/banner.html';
+        adFrame._rect = { left: 0, top: 0, right: 1200, bottom: 450, width: 1200, height: 450 };
+        adWrapper.appendChild(adFrame);
+        harness.document.body.appendChild(adWrapper);
+        harness.context.globalThis = harness.context;
+
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+
+        assert.equal(harness.document.querySelector('.tm-fullscreen-game-view-button'), null);
+        assert.equal(adWrapper.classList.contains('tm-fullscreen-game-view-target'), false);
+        assert.equal(adWrapper.style.getPropertyValue('position'), 'absolute',
+            'An advertisement must retain its original layout positioning.');
+    });
+
+    test('recognizes an embedded Vimeo player without overriding a sticky wrapper', () => {
+        const harness = createHarness({ url: 'https://example.com/article' });
+        const media = harness.document.createElement('section');
+        const frame = harness.document.createElement('iframe');
+        frame.src = 'https://player.vimeo.com/video/1234';
+        media.appendChild(frame);
+        harness.document.body.appendChild(media);
+        harness.window.getComputedStyle = (element) => ({
+            position: element === media ? 'sticky' : 'static'
+        });
+        harness.context.globalThis = harness.context;
+
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+
+        const button = harness.document.querySelector('.tm-fullscreen-game-view-button');
+        assert(button, 'A known embedded video must keep its fullscreen entry.');
+        assert.equal(button.parentElement, media);
+        assert.equal(media.classList.contains('tm-fullscreen-game-view-target'), true);
+        assert.equal(media.classList.contains('tm-fullscreen-game-view-local-position'), false,
+            'Do not replace an existing fixed, sticky, or absolute positioning context.');
+    });
+});
+
 describe('Fullscreen Game View on ARC Prize tasks', () => {
     test('repairs narrow-screen sizing and mounts an accessible button', () => {
         const { document, game } = executeOnArcTask();

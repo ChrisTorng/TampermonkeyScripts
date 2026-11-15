@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-13_1.2.3
+// @version      2026-11-15_1.2.4
 // @description  Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -185,6 +185,7 @@
     const BUTTON_ID = 'tm-fullscreen-game-view-button';
     const BUTTON_CLASS = 'tm-fullscreen-game-view-button';
     const TARGET_CLASS = 'tm-fullscreen-game-view-target';
+    const TARGET_POSITION_CLASS = 'tm-fullscreen-game-view-local-position';
     const FALLBACK_CLASS = 'tm-fullscreen-game-view-fallback';
     const STYLE_ID = 'tm-fullscreen-game-view-style';
     const GENERIC_MEDIA_SELECTOR = 'canvas, iframe, video, [role="application"]';
@@ -197,7 +198,7 @@ html.tm-fullscreen-game-view-active body {
     overflow: hidden !important;
 }
 
-.${TARGET_CLASS} {
+.${TARGET_CLASS}.${TARGET_POSITION_CLASS} {
     position: relative !important;
 }
 
@@ -328,13 +329,27 @@ body:has(#task-detail-root) {
 `;
     (document.head || document.documentElement).appendChild(style);
 
+    // Plain article pages often contain advertising, analytics, and widget iframes.
+    // Treat only identifiable media-player frames as fullscreen candidates.
+    function isEmbeddedPlayer(frame) {
+        if (!frame?.src) return false;
+        if (youtubeFrame(frame)) return true;
+        try {
+            const host = new URL(frame.src, window.location.href).hostname.toLowerCase();
+            return /^(?:player\.vimeo\.com|(?:www\.|geo\.)?dailymotion\.com|fast\.wistia\.(?:net|com)|(?:player\.)?twitch\.tv|players\.brightcove\.net|(?:www\.)?loom\.com|iframe\.mediadelivery\.net)$/.test(host);
+        } catch (_error) {
+            return false;
+        }
+    }
+
     function getTarget() {
         const arcGame = document.querySelector('#playground .game-page-inner');
         if (arcGame) {
             return arcGame;
         }
 
-        const candidates = Array.from(document.querySelectorAll(GENERIC_MEDIA_SELECTOR));
+        const candidates = Array.from(document.querySelectorAll(GENERIC_MEDIA_SELECTOR))
+            .filter((element) => element.tagName !== 'IFRAME' || isEmbeddedPlayer(element));
         if (!candidates.length) {
             return null;
         }
@@ -565,7 +580,15 @@ body:has(#task-detail-root) {
 
     function mountButtonOnTarget(target, alignWithMenuDefault = false) {
         if (!target?.isConnected || mountedButtons.has(target)) return;
+        // Never turn a site's absolute/fixed/sticky media wrapper into a
+        // relative-flow box: that can insert a large blank region above articles.
+        const existingPosition = window.getComputedStyle?.(target)?.position
+            || target.style?.getPropertyValue?.('position') || 'static';
         target.classList.add(TARGET_CLASS);
+        if (existingPosition === 'static' && target !== document.body
+            && target !== document.documentElement) {
+            target.classList.add(TARGET_POSITION_CLASS);
+        }
         const button = document.createElement('button');
         button.id = document.getElementById(BUTTON_ID)
             ? `${BUTTON_ID}-${++additionalButtonNumber}` : BUTTON_ID;
@@ -616,7 +639,7 @@ body:has(#task-detail-root) {
             if (targets.has(target) && target.isConnected && button.isConnected) continue;
             mountedButtons.delete(target);
             button.remove();
-            target.classList.remove(TARGET_CLASS);
+            target.classList.remove(TARGET_CLASS, TARGET_POSITION_CLASS);
         }
         for (const target of targets) mountButtonOnTarget(target, target === primary);
         updateFrameRequests();
