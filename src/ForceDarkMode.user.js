@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-13_2.0.12
+// @version      2026-11-15_2.0.12
 // @description  Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/

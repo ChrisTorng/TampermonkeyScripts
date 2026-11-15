@@ -1,19 +1,39 @@
 # Current updates
 
-Updated: 2026-11-13
+Updated: 2026-11-15
 
-## Shared floating menu restore and reset — 2026-11-13
+## Shared menu recovery and position reset — 2026-11-15
 
-Update all five menu scripts together, then reload:
-- [AllGoInternetArchive.user.js — 2026-11-13_1.3.12](src/AllGoInternetArchive.user.js)
-- [InternetArchive.user.js — 2026-11-13_1.5.12](src/InternetArchive.user.js)
-- [ForceMobileView.user.js — 2026-11-13_2.1.12](src/ForceMobileView.user.js)
-- [ForceDarkMode.user.js — 2026-11-13_2.0.12](src/ForceDarkMode.user.js)
-- [TranslatePreformattedText.user.js — 2026-11-13_1.5.22](src/TranslatePreformattedText.user.js)
+Restore detached floating controls after page re-rendering; reset position without reloading, and keep the settings panel within the visible viewport. Update all five shared-menu scripts together.
 
-Restore registered actions after DOM replacement; reset the floating position without reloading the article, and keep the × panel on-screen. If a userscript never starts, it still needs investigation in Tampermonkey.
+## Fullscreen ad-iframe layout guard — 2026-11-15
 
-**Test:** [Nieman Lab article](https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/) — expanded ≡ should include →, ↔, and ☽ when those scripts run.
+- [Install FullscreenGameView.user.js — 2026-11-15_1.2.4](src/FullscreenGameView.user.js) — ignore ordinary advertisement/widget iframes; preserve existing absolute, sticky, or fixed positioning on actual video containers. Reload after updating.
+- **Tests:** [Nieman Lab article](https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/) — no blank top caused by a false fullscreen target or accidental ad iframe selection; [ARC Prize game](https://arcprize.org/tasks/ls20) — existing fullscreen control remains; [Anthropic embedded videos](https://www.anthropic.com/claude-fable-and-mythos-5-2) — YouTube controls still appear.
+
+## Preformatted translation appearance — 2026-11-15
+
+- [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.24](src/TranslatePreformattedText.user.js) — preserve nested quote styling, preformatted spacing, and GitHub syntax highlighting. Keep rendered Mermaid diagrams in place. Reload after installing.
+- Toggle **譯** with browser translation off, then enable it to compare [Substack quote rules](https://simonw.substack.com/p/locating-the-source-of-a-mysterious), [GitHub syntax colors](https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1), [OpenSSH links and indents](https://www.openssh.org/releasenotes.html), and [plain-text spacing](https://commandlinesystems.com/magic.txt).
+
+## BetaCat Latest update times — 2026-11-15_1.9.0
+
+- [Install AutoOpenNewArticles.user.js — 2026-11-15_1.9.0](src/AutoOpenNewArticles.user.js) — show the previous observed published update under the left archive link and the current published update under Latest, using local time. Today shows HH:mm; older dates show M/D HH:mm. The first observation has no previous time. Reload after updating.
+
+**Tests:** [Latest](https://hackernews.betacat.io/) — both timestamps stay in a compact second row after two distinct site updates; [Dated archive](https://hackernews.betacat.io/daily/2026-11-14) — date navigation is unchanged.
+
+## Plain-text translation and mobile reading — 2026-11-14
+
+- [Install ForceMobileView.user.js — 2026-11-14_2.1.12](src/ForceMobileView.user.js) — give raw .txt pages a mobile viewport before layout; recognize other single-PRE prose pages when the ≡ handle is physically tiny and reload safely once; keep shared-menu/fullscreen sizes consistent. ↔ OFF restores the original viewport on reload.
+- [Install TranslatePreformattedText.user.js — 2026-11-14_1.5.22](src/TranslatePreformattedText.user.js) — auto-enable prose-heavy Markdown source translation, preserve GitHub's independent line numbers and per-line height, keep fenced code unchanged, and restore originals when turned off. Native Edge translation still requires browser support.
+
+**Tests:** [Emacs in the Age of Magic (.txt)](https://commandlinesystems.com/magic.txt) — readable text and controls, automatic translation eligibility, manual original restoration; [GitHub Markdown source](https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1) — prose auto-enables without merging rows; line numbers remain aligned, fenced code stays unchanged; [HN historical list](https://news.ycombinator.com/front?day=2024-11-08) — no automatic enlargement. Reload after both updates.
+
+## Fullscreen button docking — 2026-11-13
+
+- [Install FullscreenGameView.user.js — 2026-11-13_1.2.3](src/FullscreenGameView.user.js) — match ≡ styling and top docking; default just left of ≡, without automatic avoidance. Dragging may overlap; scroll stays fixed. Reload after updating.
+
+**Tests:** [ARC Prize game](https://arcprize.org/tasks/ls20) — default placement, drag overlap and scroll docking; [Anthropic embedded YouTube](https://www.anthropic.com/claude-fable-and-mythos-5-2) — per-player buttons remain available.
 
 ## Hacker News comment-only automatic enlargement — 2026-11-12
 

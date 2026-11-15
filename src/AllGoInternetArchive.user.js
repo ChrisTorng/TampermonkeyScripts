@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-13_1.3.12
+// @version      2026-11-15_1.3.12
 // @description  Add a quick Internet Archive action in the shared floating menu and mark Archive Today links.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/

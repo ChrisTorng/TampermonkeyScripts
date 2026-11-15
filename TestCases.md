@@ -3,6 +3,12 @@
 - `LIMITED`: automated coverage is intentionally limited to URL/rule/detection logic because the sample is anti-bot, auth-only, or otherwise unsuitable for full content-driven validation.
 - `N/A`: reference sample with no matching userscript behavior expected.
 
+# Fullscreen Game View
+Section note: local DOM-harness tests validate fixed viewport docking, menu-default separation without later collision avoidance, drag/pinch behavior, and per-player mounting. Native mobile compositor behavior requires Android Edge verification.
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (local DOM-harness validates game control geometry, docking, fullscreen fallback, and restoration; live mobile scroll needs device testing)
+- https://www.anthropic.com/claude-fable-and-mythos-5-2 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (lazy YouTube iframe mounting and rotation tested with a simulated DOM; live embedded players require device testing)
+- https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mocked advertising iframe is excluded from generic fullscreen discovery and may not change its parent layout; real ad and browser reload behavior require live verification)
+
 # Hacker News Comments
 Section note: automated tests inject the userscript into a local article DOM and mock the Hacker News Algolia API, per-tab navigation history, search-engine referrers, and query-specific app URLs.
 - https://blog.exe.dev/engineering-with-ai [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
@@ -82,7 +88,7 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.
-- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (item collapse controls sit inside title rows without indenting images or summaries; the floating page collapse, read states, scroll-to-top marking, reload persistence, and archive navigation are validated with a local DOM harness; bookmark star CSS compatibility is checked)
+- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (item collapse controls stay in title rows; floating page collapse, read states, archive navigation, and published Latest update times with remembered prior versions are DOM-harness tested; mobile timestamps stay on one compact row; bookmark star CSS compatibility is checked)
 - https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (responsive top and bottom navigation uses available archive dates, keeps Latest separate after the newest date, and disables only the true endpoints)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
@@ -106,8 +112,9 @@ Section note: automated tests cover the DOM operation guard with a local harness
 - https://twitterwebviewer.com/?tweet=1860756706357022812 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (target Twitter Viewer page used for the Android Edge auto-translation crash report)
 
 # Translate Preformatted Text
+- https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover automatic eligibility, opt-out and restoration; Chromium checks the plain-text PRE structure, whitespace and indentation in a reproduction; native Android Edge needs verification)
 - https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (runtime tests cover linked source URL, isolated per-tab sessionStorage, refresh and location.replace fallback; real Android Edge requires verification)
-- https://www.openssh.org/releasenotes.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover OpenSSH release-note translation, document-anchored floating menu and root scroll; native Android Edge was checked by the user)
+- https://www.openssh.org/releasenotes.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (DOM tests cover release-note conversion and menu anchoring; Chromium checks the reproduced release-note PRE layout, links and indentation; current native Android Edge behavior needs verification)
 - tests/SharedFloatingMenuUpdates/index.html [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (runtime tests verify five allowlisted GM_openInTab requests, Chromium tests check the fallback; each Tampermonkey Update is confirmed separately)
 - https://claude.ai/artifact/L8qsMc3SorytGW3LA81nYf [CONTENT_CLASS: VALID_AUTH_REQUIRED] [TEST_STATUS: LIMITED] (earlier isolated script confirmed capture/translation via Clipboard Viewer; integrated iframe reader, source title link, and session refresh require Android Edge validation)
 Section note: automated tests use representative inline code, preformatted blocks, Mastodon app markers, mobile Wikipedia sections, and the shared floating menu in the local DOM harness; live browser translation still requires manual validation.
@@ -119,8 +126,9 @@ Section note: automated tests use representative inline code, preformatted block
 - [Local translation and fullscreen controls](tests/ControlButtons/index.html) [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (headless Chromium checks visible and clickable translation controls at left, middle, and right scroll positions, conversion/restoration, and dim fullscreen styling; the frame scheduler and scroll-event delivery are explicit test substitutions)
 - https://codex-tool-reference.simonw.chatgpt.site/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (conditional visibility, per-block and page-wide toggling, active styling, and dynamically added blocks are automated; visible-bottom placement, mouse/touch dragging without activation or persistence, scrolling, and resizing use explicit mock rectangles in the DOM harness)
 - https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured code-only quotations receive per-block translation controls and can be toggled without treating their code as inline content)
-- https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured GitHub source view receives an opt-in translation control and preserves line breaks when toggled)
-- https://github.com/okf-memory/okf-agent-memory/blob/main/README.md [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured rendered Mermaid container receives a visible opt-in translation control)
+- https://simonw.substack.com/p/locating-the-source-of-a-mysterious [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (Chromium checks the article's reproduced nested quote and preformatted structures for identical layout and glyph positions before translation, hard breaks after simulated translation, and original-node restoration; native Edge translation needs device verification)
+- https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (Chromium checks the captured 214-line syntax markup, styling and row alignment before and after simulated translation; DOM tests cover automatic eligibility, fenced code exclusions and restoration; native Android Edge needs verification)
+- https://github.com/okf-memory/okf-agent-memory/blob/main/README.md [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (the captured Mermaid container and a simulated renderer frame verify that the diagram and hidden source stay in place when page-wide conversion is used)
 - https://en.wikipedia.org/wiki/Parque_Arqueol%C3%B3gico_do_Solst%C3%ADcio [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (initial and dynamically collapsed mobile sections are kept visible; machine-translation output requires manual validation)
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
 
@@ -131,6 +139,7 @@ Section note: simulated iframe fullscreen and cross-origin metadata messages are
 - https://m.youtube.com/watch?v=zeWBx3AePow [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (Android Edge alternative fullscreen, centered one-second speed reveal, native fullscreen control suppression, playback and orientation restoration are covered by the DOM harness; real mobile compositor and touch layout require physical-device verification)
 
 # Force Mobile View
+- https://commandlinesystems.com/magic.txt [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (document-start viewport and manual restoration/reload covered by DOM tests; generic one-PRE pages also detect tiny ≡ handles for one safe reload; actual Android Edge layout and hit targets need device verification)
 Section note: 20 DOM-harness tests cover detection, viewport, rollback, HN listing exclusion, and manual toggle; Android Edge needs verification.
 - https://news.ycombinator.com/front?day=2024-11-08 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (Android translated-list simulation verifies no automatic enlargement; live Edge translation needs manual confirmation)
 - https://news.ycombinator.com/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: AUTOMATED] (Android tiny-text simulation verifies unchanged homepage)

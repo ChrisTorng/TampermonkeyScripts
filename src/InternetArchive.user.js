@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-13_1.5.12
+// @version      2026-11-15_1.5.12
 // @description  Send most paywall articles to Internet Archive for archiving, hide fixed titles, and offer an Archive Today fallback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
