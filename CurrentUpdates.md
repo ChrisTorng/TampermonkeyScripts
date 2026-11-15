@@ -7,6 +7,12 @@ Updated: 2026-11-15
 - [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.23](src/TranslatePreformattedText.user.js) — preserve nested quotations, paragraph spacing, hard line breaks and the source monospace styling. Reload after installing.
 - [Test the Substack article](https://simonw.substack.com/p/locating-the-source-of-a-mysterious) — with browser translation off, toggle **譯** and compare the nested quote rule, indents and whitespace. Enable browser translation to check the same layout with translated text.
 
+## BetaCat Latest update times — 2026-11-15_1.9.0
+
+- [Install AutoOpenNewArticles.user.js — 2026-11-15_1.9.0](src/AutoOpenNewArticles.user.js) — show the previous observed published update under the left archive link and the current published update under Latest, using local time. Today shows HH:mm; older dates show M/D HH:mm. The first observation has no previous time. Reload after updating.
+
+**Tests:** [Latest](https://hackernews.betacat.io/) — both timestamps stay in a compact second row after two distinct site updates; [Dated archive](https://hackernews.betacat.io/daily/2026-11-14) — date navigation is unchanged.
+
 ## Plain-text translation and mobile reading — 2026-11-14
 
 - [Install ForceMobileView.user.js — 2026-11-14_2.1.12](src/ForceMobileView.user.js) — give raw .txt pages a mobile viewport before layout; recognize other single-PRE prose pages when the ≡ handle is physically tiny and reload safely once; keep shared-menu/fullscreen sizes consistent. ↔ OFF restores the original viewport on reload.
