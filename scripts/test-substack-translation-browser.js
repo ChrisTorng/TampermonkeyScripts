@@ -106,7 +106,10 @@ try {
         'Following line must stay in its row');
     check(getComputedStyle(translated).fontFamily === getComputedStyle(lines).fontFamily,
         'Translation must inherit the monospace face');
-    check(glyph(translated.firstChild, 3)[2] === beforeGlyphs[0][2], 'Translated Latin advance changed');
+    const translatedAdvance = glyph(translated.firstChild, 3)[2];
+    // Range edges are rounded to layout units, and the mixed CJK run has a different start position.
+    check(Math.abs(translatedAdvance - beforeGlyphs[4][2]) <= 0.05,
+        'Translated Latin advance changed from ' + beforeGlyphs[4][2] + ' to ' + translatedAdvance);
     check(getComputedStyle(get('nested')).borderLeftWidth === '4px', 'Nested quote lost its rule');
     check(bounds(get('nested'))[0] > bounds(get('quote'))[0], 'Nested quote lost its indent');
 
