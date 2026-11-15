@@ -2,10 +2,10 @@
 
 Updated: 2026-11-15
 
-## Substack translation layout — 2026-11-15
+## Preformatted translation appearance — 2026-11-15
 
-- [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.23](src/TranslatePreformattedText.user.js) — preserve nested quotations, paragraph spacing, hard line breaks and the source monospace styling. Reload after installing.
-- [Test the Substack article](https://simonw.substack.com/p/locating-the-source-of-a-mysterious) — with browser translation off, toggle **譯** and compare the nested quote rule, indents and whitespace. Enable browser translation to check the same layout with translated text.
+- [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.24](src/TranslatePreformattedText.user.js) — preserve nested quote styling, preformatted spacing, and GitHub syntax highlighting. Keep rendered Mermaid diagrams in place. Reload after installing.
+- Toggle **譯** with browser translation off, then enable it to compare [Substack quote rules](https://simonw.substack.com/p/locating-the-source-of-a-mysterious), [GitHub syntax colors](https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1), [OpenSSH links and indents](https://www.openssh.org/releasenotes.html), and [plain-text spacing](https://commandlinesystems.com/magic.txt).
 
 ## BetaCat Latest update times — 2026-11-15_1.9.0
 

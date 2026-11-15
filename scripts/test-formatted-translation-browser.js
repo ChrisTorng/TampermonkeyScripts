@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
-test('Chromium preserves Substack quote styling and preformatted lines when exposing them to translation', {
+test('Chromium preserves Substack, OpenSSH and plain-text appearance when exposing content to translation', {
     skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to a Chromium executable',
 }, () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-substack-'));
@@ -40,6 +40,18 @@ WW88
   End
 </code></pre>
 </div></main>
+<article>
+    <h3>OpenSSH release notes sample</h3>
+    <pre id="openssh">Release details are available at <a id="mirror" href="https://www.openssh.com/">the project website</a>.
+
+  * Keep the indented release note.
+</pre>
+    <pre id="textfile" style="word-wrap: break-word; white-space: pre-wrap;">Plain text heading
+
+    An indented line
+    A second line
+</pre>
+</article>
 <output id="result" data-status="pending"></output>
 <script>${userscript}</script>
 <script>
@@ -54,7 +66,8 @@ try {
         'border-left', 'background-color', 'border-radius', 'outline', 'outline-offset',
         'font-family', 'font-size', 'font-weight', 'line-height', 'white-space', 'tab-size',
         'box-decoration-break'];
-    const ids = ['quote', 'intro', 'lead', 'nested', 'prompt', 'after', 'sample', 'lines'];
+    const ids = ['quote', 'intro', 'lead', 'nested', 'prompt', 'after', 'sample', 'lines',
+        'openssh', 'mirror', 'textfile'];
     const snapshot = () => ids.map(id => {
         const element = get(id);
         const css = getComputedStyle(element);
@@ -71,10 +84,9 @@ try {
     const sourceText = get('lines').firstChild;
     const beforeGlyphs = [0, 1, 5, 6, 11, 12, 13, 18].map(index => glyph(sourceText, index));
     check(beforeGlyphs[0][2] === beforeGlyphs[2][2], 'Source Latin characters must be monospaced');
-    const quoteButton = get('quote').parentElement.querySelector('.tm-translate-pre-one');
-    const preButton = get('sample').parentElement.querySelector('.tm-translate-pre-one');
-    quoteButton.click();
-    preButton.click();
+    const buttons = ['quote', 'sample', 'openssh', 'textfile']
+        .map(id => get(id).parentElement.querySelector('.tm-translate-pre-one'));
+    buttons.forEach(button => button.click());
     check(get('quote').matches('blockquote') && get('nested').matches('blockquote > blockquote'),
         'Both quotation levels must keep their original structure');
     check(get('prompt').translate && !get('prompt').classList.contains('notranslate'),
@@ -87,10 +99,21 @@ try {
     const lines = get('lines');
     const text = Array.from(lines.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
     check(lines.querySelectorAll('br').length === 5, 'Hard and blank lines need independent breaks');
-    const afterGlyphs = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 1], [2, 2], [2, 3], [3, 2]]
+    const afterGlyphs = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1], [2, 2], [3, 0]]
         .map(([line, index]) => glyph(text[line], index));
     check(JSON.stringify(beforeGlyphs) === JSON.stringify(afterGlyphs),
         'Glyph positions changed: ' + JSON.stringify([beforeGlyphs, afterGlyphs]));
+    check(get('mirror').href === original[9].href, 'Release-note link must remain navigable');
+    for (const id of ['openssh', 'textfile']) {
+        const block = get(id);
+        check(block.querySelectorAll('br').length >= 3, id + ' lost its hard and blank lines');
+        const indent = block.querySelector('[data-tm-pre-indent]');
+        check(indent?.textContent.startsWith('  ') && !indent.translate, id + ' lost its protected indentation');
+        const line = indent.nextSibling;
+        const left = glyph(line, 0)[0];
+        line.nodeValue = '縮排後的譯文';
+        check(glyph(line, 0)[0] === left, id + ' translated line lost its indentation');
+    }
 
     // Simulate browser-created wrappers and translated text while keeping the breaks.
     const translated = document.createElement('font');
@@ -102,7 +125,7 @@ try {
     const firstRowY = glyph(text[0], 0)[1];
     check(glyph(translated.firstChild, 3)[1] - firstRowY === beforeGlyphs[2][1] - beforeGlyphs[0][1],
         'Translated line must stay in its row');
-    check(glyph(text[2], 1)[1] - firstRowY === beforeGlyphs[4][1] - beforeGlyphs[0][1],
+    check(glyph(text[2], 0)[1] - firstRowY === beforeGlyphs[4][1] - beforeGlyphs[0][1],
         'Following line must stay in its row');
     check(getComputedStyle(translated).fontFamily === getComputedStyle(lines).fontFamily,
         'Translation must inherit the monospace face');
@@ -113,8 +136,7 @@ try {
     check(getComputedStyle(get('nested')).borderLeftWidth === '4px', 'Nested quote lost its rule');
     check(bounds(get('nested'))[0] > bounds(get('quote'))[0], 'Nested quote lost its indent');
 
-    quoteButton.click();
-    preButton.click();
+    buttons.forEach(button => button.click());
     check(ids.every((id, i) => get(id) === original[i]), 'Original DOM nodes must be restored');
     check(JSON.stringify(snapshot()) === JSON.stringify(before), 'Restored appearance changed');
     get('result').dataset.status = 'passed';

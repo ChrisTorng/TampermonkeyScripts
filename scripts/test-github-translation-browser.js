@@ -17,21 +17,19 @@ test('Chromium keeps GitHub code-view line numbers aligned before, during, and a
             'github.com_okf-memory_okf-agent-memory_blob_main_README.md_plain_1.html'), 'utf8');
         const lines = [...fixture.matchAll(
             /<div id="LC(\d+)" class="react-file-line[^"]*" data-testid="code-cell" data-line-number="\d+"[^>]*>([\s\S]*?)<\/div>/g
-        )].map((match) => ({ number: Number(match[1]),
-            text: match[2].replace(/<[^>]*>/g, '')
-                .replace(/&amp;/g, '&').replace(/&gt;/g, '>')
-                .replace(/&lt;/g, '<').replace(/&#039;/g, "'") }));
+        )].map((match) => ({ number: Number(match[1]), markup: match[2] }));
         assert(lines.length >= 200, 'Expected captured GitHub lines');
-        const safe = (value) => String(value).replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        for (const { markup } of lines) {
+            assert(!markup.replace(/<span class="[\w -]+">|<\/span>/g, '').includes('<'),
+                'Expected only literal text and GitHub syntax classes');
+        }
         const numbers = lines.map(({ number }) =>
             '<div class="react-line-number react-code-text" data-line-number="' + number + '">' + number + '</div>').join('');
-        const source = lines.map(({ number, text }) =>
+        const source = lines.map(({ number, markup }) =>
             '<div class="react-code-text react-code-line-contents"><div>' +
             '<div class="react-file-line html-div" id="LC' + number +
             '" data-testid="code-cell" data-line-number="' + number +
-            '"><span class="pl-en">' + safe(text || ' ') +
-            '</span></div></div></div>').join('');
+            '">' + (markup || ' ') + '</div></div></div>').join('');
         const userScript = fs.readFileSync(path.join(root, 'src', 'TranslatePreformattedText.user.js'), 'utf8')
             .replace(/<\/script/gi, '<\\/script');
         const check = `
@@ -57,6 +55,13 @@ test('Chromium keeps GitHub code-view line numbers aligned before, during, and a
         await pause();
         const original = document.querySelector('.react-code-lines');
         verifyRows('original');
+        const before = [...original.querySelectorAll('[data-testid="code-cell"]')].map(cell => cell.innerHTML);
+        const syntax = original.querySelector('#LC1 .pl-en');
+        const style = node => {
+            const css = getComputedStyle(node);
+            return [css.color, css.fontWeight, css.fontFamily, css.fontSize, css.lineHeight].join('/');
+        };
+        const originalStyle = style(syntax);
         const button = document.getElementById('tm-translate-all-pre');
         check(button && button.getAttribute('data-floating-available') === 'true', 'translate action missing');
         button.click();
@@ -67,11 +72,14 @@ test('Chromium keeps GitHub code-view line numbers aligned before, during, and a
             'replacement wrapper must not introduce a flex item');
         check(getComputedStyle(translated.querySelector('[data-testid="code-cell"]')).whiteSpace === 'pre',
             'translation must not wrap one source line into many');
+        check([...translated.querySelectorAll('[data-testid="code-cell"]')].every((cell, i) => cell.innerHTML === before[i]),
+            'syntax markup and text must look the same before native translation');
+        const paragraph = translated.querySelector('#LC1 .pl-en');
+        check(style(paragraph) === originalStyle && paragraph.translate, 'prose syntax styling must remain translatable');
         verifyRows('converted');
-        const paragraph = translated.querySelector('#LC14') ||
-            translated.querySelector('[data-testid="code-cell"]');
         paragraph.textContent = '一段特別長的繁體中文翻譯文字'.repeat(50);
         await pause();
+        check(style(paragraph) === originalStyle, 'translated text lost the source styling');
         verifyRows('translated long line');
         button.click();
         await pause();
@@ -92,6 +100,7 @@ test('Chromium keeps GitHub code-view line numbers aligned before, during, and a
             '.react-code-lines { flex:1 1 auto; min-width:0; white-space:pre; }' +
             '.react-line-number,.react-code-line-contents { height:22px; line-height:22px; box-sizing:border-box; }' +
             '.react-code-line-contents,.react-file-line { white-space:pre; }' +
+            '.pl-mh { color:#8250df; } .pl-en { color:#0550ae; font-weight:bold; }' +
             '</style></head><body><div class="react-code-file-contents">' +
             '<div class="react-line-numbers">' + numbers + '</div>' +
             '<div class="react-code-lines">' + source + '</div></div>' +

@@ -358,36 +358,32 @@ describe('Translate Preformatted Text', () => {
         assert.match(harness.document.querySelector('style').textContent, /display: contents !important/);
     });
 
-    test('rendered GitHub Mermaid diagrams receive a visible block control', () => {
+    test('rendered GitHub Mermaid diagrams keep their frame and hidden source', () => {
         assert.match(okfRenderedFixture, /data-type="mermaid" aria-label="mermaid rendered output container"/);
-        let mermaid;
+        let mermaid, diagram, pre;
         const harness = execute((currentHarness) => {
             mermaid = currentHarness.document.createElement('div');
             mermaid.setAttribute('data-type', 'mermaid');
             const hiddenSource = currentHarness.document.createElement('div');
             hiddenSource.className = 'render-plaintext-hidden';
             hiddenSource.hidden = true;
-            const pre = currentHarness.document.createElement('pre');
+            pre = currentHarness.document.createElement('pre');
             pre.setAttribute('aria-label', 'Raw mermaid code');
             pre.textContent = 'flowchart TD\n    Input --> Memory';
             hiddenSource.appendChild(pre);
             mermaid.appendChild(hiddenSource);
+            diagram = currentHarness.document.createElement('iframe');
+            mermaid.appendChild(diagram);
+            addPre(currentHarness, 'An ordinary preformatted block');
             currentHarness.appendToBody(mermaid);
         }, 'https://github.com/okf-memory/okf-agent-memory/blob/main/README.md');
 
-        const wrapper = harness.document.querySelector('[data-tm-translatable-pre-wrapper]');
-        const button = wrapper.querySelector('.tm-translate-pre-one');
-        assert(button);
-        assert.equal(button.textContent, '譯');
-        assert.equal(button.hidden, false);
         assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 1);
-        assert.equal(mermaid.closest('[data-tm-translatable-pre-wrapper]'), wrapper);
-        assert.equal(mermaid.getAttribute('translate'), 'no');
-
-        button.click();
-        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
-        assert.equal(converted.getAttribute('translate'), 'yes');
-        assert.match(converted.textContent, /Input --> Memory/);
+        harness.document.getElementById('tm-translate-all-pre').click();
+        assert.equal(mermaid.querySelector('iframe'), diagram);
+        assert.equal(mermaid.querySelector('pre'), pre);
+        assert.equal(mermaid.getAttribute('translate'), null);
+        assert.equal(mermaid.querySelector('[data-tm-translatable-pre-wrapper]'), null);
     });
 
     test('the page-wide button stays hidden when there are no PRE blocks', () => {
@@ -693,7 +689,8 @@ describe('Translate Preformatted Text', () => {
         assert(proseLineIndex >= 0);
         const translatedCells = translated.querySelectorAll('[data-testid="code-cell"]');
         assert.equal(translatedCells[proseLineIndex].getAttribute('translate'), 'yes');
-        translatedCells[proseLineIndex].textContent = '代理程式的對話會在內容視窗關閉時重設。';
+        assert.equal(translatedCells[proseLineIndex].querySelector('.pl-en').textContent, sourceLines[proseLineIndex].text);
+        translatedCells[proseLineIndex].querySelector('.pl-en').textContent = '代理程式的對話會在內容視窗關閉時重設。';
 
         harness.document.getElementById('tm-translate-all-pre').click();
         assert.equal(viewer.querySelector('.react-code-lines'), source,

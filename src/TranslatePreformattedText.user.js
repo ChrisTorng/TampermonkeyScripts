@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-15_1.5.23
+// @version      2026-11-15_1.5.24
 // @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; offer a draggable 譯↗ iframe reader.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1124,6 +1124,9 @@
         .tm-translate-pre-one[hidden] {
             display: none !important;
         }
+        [data-tm-pre-indent] {
+            all: unset !important;
+        }
         /* GitHub renders line numbers in a separate sibling column. An actual
            wrapper would break its flex layout; display: contents preserves it. */
         [${wrapperAttribute}][data-tm-github-line-wrapper] {
@@ -1166,8 +1169,10 @@
                 target.setAttribute(attribute.name, attribute.value);
             }
         });
-        target.className = source.className;
-        target.id = source.id;
+        if (typeof source.className === 'string' && source.className && !target.className) {
+            target.className = source.className;
+        }
+        if (source.id && !target.id) target.id = source.id;
     }
 
     const inlineCodeStyleProperties = [
@@ -1333,15 +1338,34 @@
         // Keep each authored line independent when the translator replaces text nodes.
         const preserveBreaks = ['pre', 'pre-wrap', 'pre-line', 'break-spaces'].includes(css?.whiteSpace)
             || ['preserve', 'preserve-breaks', 'break-spaces'].includes(css?.whiteSpaceCollapse);
+        const preserveIndent = preserveBreaks && css.whiteSpace !== 'pre-line'
+            && css.whiteSpaceCollapse !== 'preserve-breaks';
+        let atLineStart = true;
         for (const child of children) {
             if (child.nodeType === 3) {
                 const lines = preserveBreaks ? child.nodeValue.split(/\r\n?|\n/) : [child.nodeValue];
                 lines.forEach((line, index) => {
-                    if (index) copy.appendChild(document.createElement('br'));
-                    if (line) copy.appendChild(document.createTextNode(line));
+                    if (index) {
+                        copy.appendChild(document.createElement('br'));
+                        atLineStart = true;
+                    }
+                    const indent = preserveIndent && atLineStart ? line.match(/^[ \t]+/)?.[0] : '';
+                    if (indent) {
+                        const padding = document.createElement('span');
+                        padding.setAttribute('data-tm-pre-indent', '');
+                        padding.setAttribute('translate', 'no');
+                        padding.textContent = indent;
+                        copy.appendChild(padding);
+                        line = line.slice(indent.length);
+                    }
+                    if (line) {
+                        copy.appendChild(document.createTextNode(line));
+                        atLineStart = false;
+                    }
                 });
             } else if (child.nodeType === 1 && !skippedCopyTags.has(child.tagName)) {
                 copy.appendChild(copyTranslatableBlock(child, preserveStyle));
+                atLineStart = child.tagName === 'BR';
             }
         }
         return copy;
@@ -1358,9 +1382,7 @@
     }
 
     // The line-number gutter and the text column are siblings in GitHub's
-    // source viewer. Preserve every row and its data-line-number/LC anchor.
-    // Only turn the syntax-colored text within each code cell into a
-    // translatable text node, keeping source line numbers in their own column.
+    // source viewer. Preserve every row, its anchors, and its syntax markup.
     function copyGithubRowNode(source, translateText) {
         if (source.nodeType === 3) {
             return document.createTextNode(source.nodeValue || source.textContent || '');
@@ -1368,35 +1390,24 @@
         if (source.nodeType !== 1) return null;
         const clone = document.createElement(source.tagName.toLowerCase());
         copyAttributes(source, clone);
+        if (translateText) {
+            clone.removeAttribute('translate');
+            clone.classList.remove('notranslate');
+        }
         const isCell = source.getAttribute('data-testid') === 'code-cell';
         if (isCell) {
             clone.setAttribute('translate', translateText ? 'yes' : 'no');
-            if (translateText) {
-                // A single text node lets the translator see a complete
-                // sentence without fragmenting it across syntax spans.
-                clone.textContent = source.textContent || ' ';
-                preserveFormattedStyle(source, clone);
-            } else {
-                // Retain syntax highlighting in code and fenced regions.
-                for (const child of Array.from(source.childNodes || source.children || [])) {
-                    const copied = copyGithubRowNode(child, false);
-                    if (copied) clone.appendChild(copied);
-                }
-                if (!(source.childNodes || source.children || []).length) {
-                    clone.textContent = source.textContent || ' ';
-                }
-            }
             clone.style.setProperty('white-space', 'pre', 'important');
             clone.style.setProperty('overflow-wrap', 'normal', 'important');
             clone.style.setProperty('word-break', 'normal', 'important');
-            return clone;
         }
-        for (const child of Array.from(source.childNodes || source.children || [])) {
+        const children = Array.from(source.childNodes || source.children || []);
+        for (const child of children) {
             const copied = copyGithubRowNode(child, translateText);
             if (copied) clone.appendChild(copied);
         }
-        if (!(source.childNodes || source.children || []).length) {
-            clone.textContent = source.textContent || '';
+        if (!children.length) {
+            clone.textContent = source.textContent || (isCell ? ' ' : '');
         }
         return clone;
     }
@@ -1480,11 +1491,9 @@
         }
         const githubLines = shouldConvert && current.classList.contains('react-code-lines')
             && current.querySelector('[data-testid="code-cell"]');
-        // The rendered Mermaid diagram exposes its separate, hidden source.
-        const mermaidSource = shouldConvert && getMermaidSource(current);
         const replacement = shouldConvert
             ? (githubLines ? document.createElement('div')
-                : copyTranslatableBlock(mermaidSource || current, false, originalTranslateAttributes.get(wrapper) === null))
+                : copyTranslatableBlock(current, false, originalTranslateAttributes.get(wrapper) === null))
             : originalBlocks.get(wrapper);
         if (!replacement) {
             return;
@@ -1515,6 +1524,10 @@
         if (!block || !block.parentNode || block.closest(`[${wrapperAttribute}]`)) {
             return;
         }
+        // GitHub draws the diagram in a separate frame. Its hidden PRE is not
+        // the visible content and must not replace the drawing.
+        if (block.tagName === 'PRE' && block.getAttribute('aria-label') === 'Raw mermaid code'
+            && block.closest('[data-type="mermaid"]')) return;
 
         const wrapper = document.createElement('div');
         wrapper.setAttribute(wrapperAttribute, 'true');
@@ -1654,7 +1667,7 @@
             enhance(root);
         }
         if (root.querySelectorAll) {
-            root.querySelectorAll('.react-code-lines, [data-type="mermaid"]').forEach((block) => {
+            root.querySelectorAll('.react-code-lines').forEach((block) => {
                 if (isSpecialBlock(block)) {
                     enhance(block);
                 }
@@ -1736,20 +1749,9 @@
         return codeText.length >= 80;
     }
 
-    function getMermaidSource(element) {
-        if (element.getAttribute('data-type') !== 'mermaid') return null;
-        return Array.from(element.querySelectorAll('pre'))
-            .find((pre) => pre.getAttribute('aria-label') === 'Raw mermaid code');
-    }
-
     function isSpecialBlock(element) {
-        if (!element) {
-            return false;
-        }
-        if (element.classList.contains('react-code-lines')) {
-            return Boolean(element.querySelector('[data-testid="code-cell"]'));
-        }
-        return Boolean(getMermaidSource(element));
+        return element?.classList.contains('react-code-lines')
+            && Boolean(element.querySelector('[data-testid="code-cell"]'));
     }
 
     function revealWikipediaSections(root) {
