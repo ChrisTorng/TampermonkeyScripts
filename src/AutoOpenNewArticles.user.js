@@ -486,7 +486,7 @@
         // The site publishes this UTC timestamp in its footer; the browser's load time is not a content update.
         const footerUpdate = document.querySelector('footer .last-updated[data-submitted]');
         const submitted = footerUpdate && footerUpdate.getAttribute('data-submitted');
-        if (!submitted || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(submitted)) {
+        if (!submitted || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(submitted)) {
             return null;
         }
 
