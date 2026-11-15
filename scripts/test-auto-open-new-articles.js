@@ -103,6 +103,26 @@ function buildHackerNewsDateMenu(harness, dates) {
     harness.appendToBody(menu);
 }
 
+function buildHackerNewsUpdateFooter(harness, isoTimestamp) {
+    const footer = harness.document.createElement('footer');
+    const updated = harness.document.createElement('li');
+    updated.className = 'last-updated';
+    updated.setAttribute('data-submitted', isoTimestamp);
+    footer.appendChild(updated);
+    harness.appendToBody(footer);
+}
+
+function localTimeLabel(isoTimestamp) {
+    const date = new Date(isoTimestamp);
+    const now = new Date();
+    const hhmm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    return date.getFullYear() === now.getFullYear()
+        && date.getMonth() === now.getMonth()
+        && date.getDate() === now.getDate()
+        ? hhmm
+        : `${date.getMonth() + 1}/${date.getDate()} ${hhmm}`;
+}
+
 function buildHackerNewsArticle(harness, id, title) {
     const article = harness.document.createElement('article');
     article.className = 'post-item';
@@ -284,6 +304,97 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
             assert.equal(navigation.children[2].getAttribute('aria-disabled'), 'true');
             assert.equal(navigation.children[2].getAttribute('href'), null);
         });
+    });
+
+    test('shows published Latest time on a compact second row, with no fabricated previous update', () => {
+        const key = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
+        const now = new Date();
+        const first = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 25).toISOString();
+        const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, []);
+        buildHackerNewsDateMenu(harness, ['2026-11-14', '2026-11-13']);
+        buildHackerNewsArticle(harness, '900', 'Fresh story');
+        buildHackerNewsUpdateFooter(harness, first);
+
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+
+        const navigations = harness.document.querySelectorAll('.auto-open-new-articles-date-nav');
+        assert.equal(navigations.length, 2);
+        navigations.forEach((nav) => {
+            assert.equal(nav.children.length, 5);
+            assert.equal(nav.children[0].textContent, '‹ 11-14');
+            assert.equal(nav.children[1].textContent, 'Latest');
+            assert.equal(nav.children[2].textContent, '›');
+            assert.equal(nav.children[3].tagName, 'TIME');
+            assert.equal(nav.children[3].textContent, '—');
+            assert.equal(nav.children[3].getAttribute('datetime'), null);
+            assert.equal(nav.children[4].textContent, localTimeLabel(first));
+            assert.equal(nav.children[4].getAttribute('datetime'), first);
+        });
+        assert.equal(gmStore.get(key).current, first);
+        assert.equal(gmStore.get(key).previous, null);
+
+        const styles = harness.document.getElementById('auto-open-new-articles-style').textContent;
+        assert.match(styles, /\.auto-open-new-articles-update-time\.previous\s*\{\s*grid-column: 1 !important;/);
+        assert.match(styles, /\.auto-open-new-articles-update-time\.current\s*\{\s*grid-column: 2 !important;/);
+        assert.match(styles, /white-space: nowrap !important;/);
+        assert.match(styles, /> :nth-child\(3\) \{ justify-self: end !important; \}/);
+    });
+
+    test('remembers the previous observed published time and does not advance on reload', () => {
+        const key = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
+        const now = new Date();
+        const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 15).toISOString();
+        const current = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 20).toISOString();
+        const seed = { [key]: { current: previous, previous: null } };
+        const render = (sourceTime, storage) => {
+            const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', storage, []);
+            buildHackerNewsDateMenu(harness, ['2026-11-14', '2026-11-13']);
+            buildHackerNewsArticle(harness, '901', 'Fresh story');
+            buildHackerNewsUpdateFooter(harness, sourceTime);
+            runAutoOpenScript(harness);
+            harness.dispatchDocumentEvent('DOMContentLoaded');
+            return { harness, gmStore };
+        };
+
+        const secondVersion = render(current, seed);
+        const nav = secondVersion.harness.document.querySelector('.auto-open-new-articles-date-nav');
+        assert.equal(nav.children[3].textContent, localTimeLabel(previous));
+        assert.equal(nav.children[3].getAttribute('datetime'), previous);
+        assert.equal(nav.children[4].textContent, localTimeLabel(current));
+        assert.equal(secondVersion.gmStore.get(key).previous, previous);
+        assert.equal(secondVersion.gmStore.get(key).current, current);
+
+        const sameVersion = render(current, Object.fromEntries(secondVersion.gmStore));
+        const sameNav = sameVersion.harness.document.querySelector('.auto-open-new-articles-date-nav');
+        assert.equal(sameNav.children[3].textContent, localTimeLabel(previous));
+        assert.equal(sameVersion.gmStore.get(key).previous, previous);
+
+        const cachedOldVersion = render(previous, Object.fromEntries(secondVersion.gmStore));
+        const oldNav = cachedOldVersion.harness.document.querySelector('.auto-open-new-articles-date-nav');
+        assert.equal(oldNav.children[3].textContent, '—');
+        assert.equal(oldNav.children[4].textContent, localTimeLabel(previous));
+        assert.equal(cachedOldVersion.gmStore.get(key).current, current);
+    });
+
+    test('does not invent timestamps if the site footer is missing or on daily archives', () => {
+        const key = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
+        const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, []);
+        buildHackerNewsDateMenu(harness, ['2026-11-14', '2026-11-13']);
+        buildHackerNewsArticle(harness, '902', 'No footer update');
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(harness.document.querySelector('.auto-open-new-articles-date-nav').children.length, 3);
+        assert.equal(gmStore.has(key), false);
+
+        const archive = createAutoOpenHarness('https://hackernews.betacat.io/daily/2026-11-14', {}, []);
+        buildHackerNewsDateMenu(archive.harness, ['2026-11-14', '2026-11-13']);
+        buildHackerNewsArticle(archive.harness, '903', 'Archived story');
+        buildHackerNewsUpdateFooter(archive.harness, '2026-11-14T01:02:03Z');
+        runAutoOpenScript(archive.harness);
+        archive.harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(archive.harness.document.querySelector('.auto-open-new-articles-date-nav').children.length, 3);
+        assert.equal(archive.gmStore.has(key), false);
     });
 
     test('links the newest dated archive forward to the separate Latest view', () => {
