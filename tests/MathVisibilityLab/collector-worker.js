@@ -61,7 +61,9 @@ export default {
         if (request.method === 'GET' && fullMatch) {
             const id=fullMatch[1], sourceUrl=fullArticles[id];
             if (!sourceUrl) return reply({error:'article-not-allowlisted'},404);
-            const variant = new URL(request.url).searchParams.get('guard') === '1' ? 'guard' : 'baseline';
+            const params=new URL(request.url).searchParams;
+            const variant = params.get('isolated') === '1' && id === 'alexwang' ? 'isolated' :
+                (params.get('guard') === '1' ? 'guard' : 'baseline');
             let original;
             try {
                 original=await fetch(sourceUrl,{headers:{
@@ -76,14 +78,18 @@ export default {
             // Inline the observer and optional Guard before the original
             // scripts: a network-blocking <script src> would itself change
             // MathJax/Edge timing and invalidate the experiment.
-            const telemetrySourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/1876f6d3a2bc46aba1a1bc8f7e85899785b1374c/tests/MathVisibilityLab/full-article-telemetry.js';
+            const telemetrySourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/fab1481133e715b24d0f7c708680b7c41418ef5a/tests/MathVisibilityLab/full-article-telemetry.js';
             const guardRef='513c59dbadb66cfabe9e32be4694e68b09c4f455';
             const guardSourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/'+guardRef+'/src/MathTranslationGuard.user.js';
-            const [diagResponse,guardResponse]=await Promise.all([
+            const isolateRef='5763e08e9ea754671a514474502a3e24e0b430e6';
+            const isolateSourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/'+isolateRef+'/tests/MathVisibilityLab/isolated-article.js';
+            const [diagResponse,guardResponse,isolateResponse]=await Promise.all([
                 fetch(telemetrySourceUrl),
-                variant==='guard'&&id==='alexwang' ? fetch(guardSourceUrl):Promise.resolve(null)
+                variant==='guard'&&id==='alexwang' ? fetch(guardSourceUrl):Promise.resolve(null),
+                variant==='isolated'&&id==='alexwang' ? fetch(isolateSourceUrl):Promise.resolve(null)
             ]);
-            if (!diagResponse.ok || (guardResponse && !guardResponse.ok))
+            if (!diagResponse.ok || (guardResponse && !guardResponse.ok) ||
+                (isolateResponse && !isolateResponse.ok))
                 return reply({error:'lab-instrumentation-source-unavailable'},502);
             const diagScript=(await diagResponse.text()).replace(/<\/script/gi,'<\\/script');
             let guardScript='';
@@ -94,15 +100,19 @@ export default {
                 guardScript=raw.replace(lookup,"if (location.pathname === '/full/article/alexwang') {")
                     .replace(/<\/script/gi,'<\\/script');
             }
+            const isolateScript=isolateResponse ?
+                (await isolateResponse.text()).replace(/<\/script/gi,'<\\/script'):'';
             const config = JSON.stringify({
                 article:sourceUrl,variant,
                 guardRef:variant==='guard'?guardRef:null,
+                isolateRef:variant==='isolated'?isolateRef:null,
                 reportUrl:'https://tm-math-translation-lab.christorng.workers.dev/report'
             }).replace(/</g,'\\u003c');
             const meta='<meta name="robots" content="noindex,nofollow,noarchive">';
             const scripts='<script>window.__tmFullMathLab='+config+';<\/script>'+
                 '<script>'+diagScript+'<\/script>'+
-                (guardScript ? '<script>'+guardScript+'<\/script>':'');
+                (guardScript ? '<script>'+guardScript+'<\/script>':'')+
+                (isolateScript ? '<script>'+isolateScript+'<\/script>':'');
             const injection='<base href="'+sourceUrl.replace(/"/g,'&quot;')+'">'+meta+scripts;
             const content=/<head(?:\s[^>]*)?>/i.test(html)
                 ?html.replace(/<head(?:\s[^>]*)?>/i,m=>m+injection)
