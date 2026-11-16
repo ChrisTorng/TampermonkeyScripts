@@ -93,7 +93,12 @@
      }
      for(const x of source.values()){
        try{
-         const node=mjx.tex2chtml(x.tex,{display:x.display});
+         // MathJax 4 can request lazy async resources for macros, fonts,
+         // and extensions. The synchronous API intermittently throws
+         // "MathJax retry -- an asynchronous action is required".
+         const node=typeof mjx.tex2chtmlPromise==='function'
+           ?await mjx.tex2chtmlPromise(x.tex,{display:x.display})
+           :mjx.tex2chtml(x.tex,{display:x.display});
          if(node.querySelector('mjx-merror'))throw Error('MathJax reported merror');
          x.markup=node.cloneNode(true);
          counts.rendered++;
