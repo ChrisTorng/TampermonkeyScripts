@@ -10,7 +10,8 @@
  let fullArticle=null, frozenArticle=null, sourceParent=null, sourceNext=null, fullFallbackActive=false;
  const counts={captured:0,rendered:0,renderErrors:0,restoreCount:0,fallbackCount:0,
    lostUnitCount:0,earlyRendererCount:0,restoredMathCount:0,
-   fullFallbackCount:0,mutationTicks:0};
+   fullFallbackCount:0,mutationTicks:0,
+   repairCauses:{noContainer:0,noMath:0,error:0,raw:0}};
  const failReasons=[];
  const isFormula=e=>!!e&&e.nodeType===1&&e.hasAttribute(attr);
  function ignored(node) {
@@ -193,7 +194,13 @@
          const rawSiblings=[...anchor.childNodes].some(n=>
            n.nodeType===3&&/(?:\$\$|\\Scal|\\frac|\\begin\{)/.test(n.nodeValue||''));
          const broken=!rendered||!currentMath||!!rendered.querySelector('mjx-merror')||rawSiblings;
-         if(broken){anchor.replaceChildren(item.markup.cloneNode(true));counts.restoreCount++;}
+         if(broken){
+           if(!rendered)counts.repairCauses.noContainer++;
+           else if(!currentMath)counts.repairCauses.noMath++;
+           else if(rendered.querySelector('mjx-merror'))counts.repairCauses.error++;
+           else if(rawSiblings)counts.repairCauses.raw++;
+           anchor.replaceChildren(item.markup.cloneNode(true));counts.restoreCount++;
+         }
        }
      }
    }finally{locked=false;}
