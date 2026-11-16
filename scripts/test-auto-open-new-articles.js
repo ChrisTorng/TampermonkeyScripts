@@ -63,12 +63,22 @@ function buildListingDocument(harness, articleUrls) {
     return contentRoot;
 }
 
-function createAutoOpenHarness(url, storageSeed, openCalls) {
+function createAutoOpenHarness(url, storageSeed, openCalls, browserNow = null) {
     const gmStore = new Map(Object.entries(storageSeed || {}));
     const harness = createHarness({ url, readyState: 'loading' });
     harness.context.GM_getValue = (key, fallbackValue) => gmStore.has(key) ? gmStore.get(key) : fallbackValue;
     harness.context.GM_setValue = (key, value) => gmStore.set(key, value);
     harness.context.GM_openInTab = (href, options) => openCalls.push({ href, options });
+    if (browserNow !== null) {
+        harness.context.Date = class BrowserDate extends Date {
+            constructor(...args) {
+                super(...(args.length > 0 ? args : [browserNow]));
+            }
+            static now() {
+                return browserNow;
+            }
+        };
+    }
     return { harness, gmStore };
 }
 
@@ -112,9 +122,9 @@ function buildHackerNewsUpdateFooter(harness, isoTimestamp) {
     harness.appendToBody(footer);
 }
 
-function localTimeLabel(isoTimestamp) {
+function localTimeLabel(isoTimestamp, referenceTime = new Date()) {
     const date = new Date(isoTimestamp);
-    const now = new Date();
+    const now = new Date(referenceTime);
     const hhmm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     return date.getFullYear() === now.getFullYear()
         && date.getMonth() === now.getMonth()
@@ -306,14 +316,16 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         });
     });
 
-    test('shows published Latest time on a compact second row, with no fabricated previous update', () => {
-        const key = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
-        const now = new Date();
-        const first = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 25).toISOString();
-        const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, []);
-        buildHackerNewsDateMenu(harness, ['2026-11-14', '2026-11-13']);
+    test('Latest records the browser load at 23:44 instead of the site footer at 23:22', () => {
+        const key = 'autoOpenNewArticles:hackerNewsSummary:latestLoads';
+        const oldKey = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
+        const browserNow = new Date(2026, 10, 17, 23, 44).getTime();
+        const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', {
+            [oldKey]: { current: '2026-11-17T15:22:00Z', previous: '2026-11-17T08:54:00Z' }
+        }, [], browserNow);
+        buildHackerNewsDateMenu(harness, ['2026-11-16', '2026-11-15']);
         buildHackerNewsArticle(harness, '900', 'Fresh story');
-        buildHackerNewsUpdateFooter(harness, first);
+        buildHackerNewsUpdateFooter(harness, '2026-11-17T15:22:00Z');
 
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
@@ -322,79 +334,82 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         assert.equal(navigations.length, 2);
         navigations.forEach((nav) => {
             assert.equal(nav.children.length, 5);
-            assert.equal(nav.children[0].textContent, '‹ 11-14');
+            assert.equal(nav.children[0].textContent, '‹ 11-16');
             assert.equal(nav.children[1].textContent, 'Latest');
             assert.equal(nav.children[2].textContent, '›');
             assert.equal(nav.children[3].tagName, 'TIME');
             assert.equal(nav.children[3].textContent, '—');
             assert.equal(nav.children[3].getAttribute('datetime'), null);
-            assert.equal(nav.children[4].textContent, localTimeLabel(first));
-            assert.equal(nav.children[4].getAttribute('datetime'), first);
+            assert.equal(nav.children[4].textContent, '23:44');
+            assert.equal(nav.children[4].getAttribute('datetime'), new Date(browserNow).toISOString());
         });
-        assert.equal(gmStore.get(key).current, first);
+        assert.equal(gmStore.get(key).current, new Date(browserNow).toISOString());
         assert.equal(gmStore.get(key).previous, null);
+        assert.equal(gmStore.get(oldKey).current, '2026-11-17T15:22:00Z');
 
         const styles = harness.document.getElementById('auto-open-new-articles-style').textContent;
-        assert.match(styles, /\.auto-open-new-articles-update-time\.previous\s*\{\s*grid-column: 1 !important;/);
-        assert.match(styles, /\.auto-open-new-articles-update-time\.current\s*\{\s*grid-column: 2 !important;/);
+        assert.match(styles, /\\.auto-open-new-articles-update-time\\.previous\\s*\\{\\s*grid-column: 1 !important;/);
+        assert.match(styles, /\\.auto-open-new-articles-update-time\\.current\\s*\\{\\s*grid-column: 2 !important;/);
         assert.match(styles, /white-space: nowrap !important;/);
-        assert.match(styles, /> :nth-child\(3\) \{ justify-self: end !important; \}/);
     });
 
-    test('remembers the previous observed published time and does not advance on reload', () => {
-        const key = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
-        const now = new Date();
-        const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 15).toISOString();
-        const current = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 20).toISOString();
-        const seed = { [key]: { current: previous, previous: null } };
-        const render = (sourceTime, storage) => {
-            const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', storage, []);
-            buildHackerNewsDateMenu(harness, ['2026-11-14', '2026-11-13']);
-            buildHackerNewsArticle(harness, '901', 'Fresh story');
-            buildHackerNewsUpdateFooter(harness, sourceTime);
+    test('repeated browser refreshes rotate the latest and previous load times even if website timestamp stays the same', () => {
+        const key = 'autoOpenNewArticles:hackerNewsSummary:latestLoads';
+        const footerTime = '2026-11-17T15:22:00Z';
+        const t1 = new Date(2026, 10, 17, 23, 44).getTime();
+        const t2 = new Date(2026, 10, 18, 0, 14).getTime();
+        const t3 = new Date(2026, 10, 18, 0, 30).getTime();
+        const render = (browserTime, storage) => {
+            const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', storage, [], browserTime);
+            buildHackerNewsDateMenu(harness, ['2026-11-16', '2026-11-15']);
+            buildHackerNewsArticle(harness, '901', 'Unchanged story');
+            buildHackerNewsUpdateFooter(harness, footerTime);
             runAutoOpenScript(harness);
             harness.dispatchDocumentEvent('DOMContentLoaded');
-            return { harness, gmStore };
+            return { nav: harness.document.querySelector('.auto-open-new-articles-date-nav'), gmStore };
         };
 
-        const secondVersion = render(current, seed);
-        const nav = secondVersion.harness.document.querySelector('.auto-open-new-articles-date-nav');
-        assert.equal(nav.children[3].textContent, localTimeLabel(previous));
-        assert.equal(nav.children[3].getAttribute('datetime'), previous);
-        assert.equal(nav.children[4].textContent, localTimeLabel(current));
-        assert.equal(secondVersion.gmStore.get(key).previous, previous);
-        assert.equal(secondVersion.gmStore.get(key).current, current);
+        const visit1 = render(t1, {});
+        assert.equal(visit1.nav.children[3].textContent, '—');
+        assert.equal(visit1.nav.children[4].textContent, '23:44');
 
-        const sameVersion = render(current, Object.fromEntries(secondVersion.gmStore));
-        const sameNav = sameVersion.harness.document.querySelector('.auto-open-new-articles-date-nav');
-        assert.equal(sameNav.children[3].textContent, localTimeLabel(previous));
-        assert.equal(sameVersion.gmStore.get(key).previous, previous);
+        const visit2 = render(t2, Object.fromEntries(visit1.gmStore));
+        assert.equal(visit2.nav.children[3].textContent, '11/17 23:44');
+        assert.equal(visit2.nav.children[4].textContent, '00:14');
+        assert.equal(visit2.gmStore.get(key).previous, new Date(t1).toISOString());
+        assert.equal(visit2.gmStore.get(key).current, new Date(t2).toISOString());
 
-        const cachedOldVersion = render(previous, Object.fromEntries(secondVersion.gmStore));
-        const oldNav = cachedOldVersion.harness.document.querySelector('.auto-open-new-articles-date-nav');
-        assert.equal(oldNav.children[3].textContent, '—');
-        assert.equal(oldNav.children[4].textContent, localTimeLabel(previous));
-        assert.equal(cachedOldVersion.gmStore.get(key).current, current);
+        const visit3 = render(t3, Object.fromEntries(visit2.gmStore));
+        assert.equal(visit3.nav.children[3].textContent, '00:14');
+        assert.equal(visit3.nav.children[4].textContent, '00:30');
+        assert.equal(visit3.gmStore.get(key).previous, new Date(t2).toISOString());
+        assert.equal(visit3.gmStore.get(key).current, new Date(t3).toISOString());
     });
 
-    test('does not invent timestamps if the site footer is missing or on daily archives', () => {
-        const key = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
-        const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, []);
-        buildHackerNewsDateMenu(harness, ['2026-11-14', '2026-11-13']);
-        buildHackerNewsArticle(harness, '902', 'No footer update');
+    test('Latest shows browser times with no footer; opening a dated archive never changes Latest load history', () => {
+        const key = 'autoOpenNewArticles:hackerNewsSummary:latestLoads';
+        const browserNow = new Date(2026, 10, 17, 23, 44).getTime();
+        const { harness, gmStore } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, [], browserNow);
+        buildHackerNewsDateMenu(harness, ['2026-11-16', '2026-11-15']);
+        buildHackerNewsArticle(harness, '902', 'No footer needed');
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
-        assert.equal(harness.document.querySelector('.auto-open-new-articles-date-nav').children.length, 3);
-        assert.equal(gmStore.has(key), false);
+        const latestNav = harness.document.querySelector('.auto-open-new-articles-date-nav');
+        assert.equal(latestNav.children.length, 5);
+        assert.equal(latestNav.children[4].textContent, '23:44');
+        assert.equal(gmStore.get(key).current, new Date(browserNow).toISOString());
 
-        const archive = createAutoOpenHarness('https://hackernews.betacat.io/daily/2026-11-14', {}, []);
-        buildHackerNewsDateMenu(archive.harness, ['2026-11-14', '2026-11-13']);
+        const archive = createAutoOpenHarness(
+            'https://hackernews.betacat.io/daily/2026-11-16',
+            Object.fromEntries(gmStore), [], browserNow + 60000
+        );
+        buildHackerNewsDateMenu(archive.harness, ['2026-11-16', '2026-11-15']);
         buildHackerNewsArticle(archive.harness, '903', 'Archived story');
-        buildHackerNewsUpdateFooter(archive.harness, '2026-11-14T01:02:03Z');
+        buildHackerNewsUpdateFooter(archive.harness, '2026-11-16T01:02:03Z');
         runAutoOpenScript(archive.harness);
         archive.harness.dispatchDocumentEvent('DOMContentLoaded');
         assert.equal(archive.harness.document.querySelector('.auto-open-new-articles-date-nav').children.length, 3);
-        assert.equal(archive.gmStore.has(key), false);
+        assert.equal(archive.gmStore.get(key).current, new Date(browserNow).toISOString());
     });
 
     test('links the newest dated archive forward to the separate Latest view', () => {
