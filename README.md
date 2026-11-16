@@ -98,7 +98,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ### [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Keep Hacker News Summary collapse controls beside titles, preserving read states, dated archive navigation, and previous/current Latest update times.
+Preserve Hacker News Summary reading controls and dated navigation; show previous/current browser loads under Latest.
 
 ### [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
