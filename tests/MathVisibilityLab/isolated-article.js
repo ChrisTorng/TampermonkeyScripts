@@ -186,12 +186,11 @@
          if(!anchor||!item?.markup)continue;
          const rendered=anchor.querySelector('mjx-container');
          const currentMath=rendered?.querySelector('mjx-math');
-         const latex=currentMath?.getAttribute('data-latex');
          const expectedText=item.markup.querySelector('mjx-math')?.textContent;
-         // tex2chtmlPromise output may omit data-latex entirely; treating null
-         // as a mismatch caused continuous replacement of valid math nodes.
+         // MathJax can normalize/alter the data-latex accessibility attribute,
+         // so it is not a reliable equality test against original TeX. Compare
+         // rendered math structure and visible glyph text, not its metadata.
          const broken=!rendered||!currentMath||!!rendered.querySelector('mjx-merror')||
-           (latex!=null&&latex!==item.tex)||
            (expectedText!=null&&currentMath.textContent!==expectedText);
          if(broken){anchor.replaceChildren(item.markup.cloneNode(true));counts.restoreCount++;}
        }
