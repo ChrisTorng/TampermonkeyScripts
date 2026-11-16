@@ -37,6 +37,12 @@ Expose prose-heavy formatted and Markdown source text for browser translation wh
 
 ## Independent scripts — update individually
 
+### [Translation Diagnostics User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js)
+
+Opt-in, privacy-limited native translation blocker reports for any article; adds UI only with `?tm_translation_diag=1`.
+
+
+
 Update each script below separately as needed.
 
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
