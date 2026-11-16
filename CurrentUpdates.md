@@ -1,6 +1,6 @@
 # Current updates
 
-Updated: 2026-11-15
+Updated: 2026-11-17
 
 ## Readable article translation opt-out — 2026-11-15
 
@@ -20,11 +20,11 @@ Restore detached floating controls after page re-rendering; reset position witho
 - [Install TranslatePreformattedText.user.js — 2026-11-15_1.5.24](src/TranslatePreformattedText.user.js) — preserve nested quote styling, preformatted spacing, and GitHub syntax highlighting. Keep rendered Mermaid diagrams in place. Reload after installing.
 - Toggle **譯** with browser translation off, then enable it to compare [Substack quote rules](https://simonw.substack.com/p/locating-the-source-of-a-mysterious), [GitHub syntax colors](https://github.com/okf-memory/okf-agent-memory/blob/main/README.md?plain=1), [OpenSSH links and indents](https://www.openssh.org/releasenotes.html), and [plain-text spacing](https://commandlinesystems.com/magic.txt).
 
-## BetaCat Latest update times — 2026-11-15_1.9.0
+## BetaCat browser refresh times — 2026-11-17_1.9.1
 
-- [Install AutoOpenNewArticles.user.js — 2026-11-15_1.9.0](src/AutoOpenNewArticles.user.js) — show the previous observed published update under the left archive link and the current published update under Latest, using local time. Today shows HH:mm; older dates show M/D HH:mm. The first observation has no previous time. Reload after updating.
+- [Install AutoOpenNewArticles.user.js — 2026-11-17_1.9.1](src/AutoOpenNewArticles.user.js) — Latest shows **previous and current browser page-load times**, not site update times. Today: HH:mm; earlier: M/D HH:mm; first use: —. Reload after updating.
 
-**Tests:** [Latest](https://hackernews.betacat.io/) — both timestamps stay in a compact second row after two distinct site updates; [Dated archive](https://hackernews.betacat.io/daily/2026-11-14) — date navigation is unchanged.
+**Tests:** [Latest](https://hackernews.betacat.io/) — refresh twice and compare current time with phone clock; [Dated archive](https://hackernews.betacat.io/daily/2026-11-14) — archive navigation stays unchanged.
 
 ## Plain-text translation and mobile reading — 2026-11-14
 

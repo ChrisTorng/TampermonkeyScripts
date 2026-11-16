@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-15_1.9.0
-// @description  Keep Hacker News Summary collapse buttons beside titles; preserve read states, dated archives, and previous/current Latest update times.
+// @version      2026-11-17_1.9.1
+// @description  Preserve Hacker News Summary reading controls and dated navigation; show previous/current browser loads under Latest.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -33,7 +33,8 @@
     const ALL_TOGGLE_ID = 'auto-open-new-articles-all-toggle';
     const DATE_NAV_CLASS = 'auto-open-new-articles-date-nav';
     const UPDATE_TIME_CLASS = 'auto-open-new-articles-update-time';
-    const UPDATE_HISTORY_KEY = 'autoOpenNewArticles:hackerNewsSummary:updateHistory';
+    const LATEST_LOAD_HISTORY_KEY = 'autoOpenNewArticles:hackerNewsSummary:latestLoads';
+    const PAGE_LOADED_AT = Date.now();
     const STYLE_ID = 'auto-open-new-articles-style';
 
     function ensureStyles() {
@@ -482,39 +483,16 @@
         return control;
     }
 
-    function readLatestUpdateHistory() {
-        // The site publishes this UTC timestamp in its footer; the browser's load time is not a content update.
-        const footerUpdate = document.querySelector('footer .last-updated[data-submitted]');
-        const submitted = footerUpdate && footerUpdate.getAttribute('data-submitted');
-        if (!submitted || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(submitted)) {
-            return null;
-        }
-
-        const currentDate = new Date(submitted);
-        if (!Number.isFinite(currentDate.getTime())) {
-            return null;
-        }
-        const current = currentDate.toISOString();
-        const stored = GM_getValue(UPDATE_HISTORY_KEY, {});
-        const saved = stored && typeof stored === 'object' ? stored : {};
-        const validTimestamp = (timestamp) => typeof timestamp === 'string'
-            && Number.isFinite(Date.parse(timestamp));
-        const recordedCurrent = validTimestamp(saved.current) ? new Date(saved.current).toISOString() : null;
-        let previous = validTimestamp(saved.previous) ? new Date(saved.previous).toISOString() : null;
-
-        if (!recordedCurrent) {
-            previous = null;
-            GM_setValue(UPDATE_HISTORY_KEY, { current, previous });
-        } else if (current > recordedCurrent) {
-            // Only advance on a newer published version, not when the same page is reopened.
-            previous = recordedCurrent;
-            GM_setValue(UPDATE_HISTORY_KEY, { current, previous });
-        } else if (current < recordedCurrent) {
-            // A cached older page must not roll back the saved history.
-            previous = null;
-        }
-
-        return { current, previous };
+    function recordLatestBrowserLoad() {
+        // Each real page load or browser refresh is a visit, even when the site content is unchanged.
+        // Store browser timestamps separately from the old server-update history.
+        const current = new Date(PAGE_LOADED_AT).toISOString();
+        const saved = GM_getValue(LATEST_LOAD_HISTORY_KEY, null);
+        const lastLoad = saved && typeof saved.current === 'string' && Number.isFinite(Date.parse(saved.current))
+            ? new Date(saved.current).toISOString()
+            : null;
+        GM_setValue(LATEST_LOAD_HISTORY_KEY, { current, previous: lastLoad });
+        return { current, previous: lastLoad };
     }
 
     function formatUpdateTime(timestamp) {
@@ -534,7 +512,7 @@
         const label = document.createElement('time');
         label.className = `${UPDATE_TIME_CLASS} ${kind}`;
         label.textContent = formatUpdateTime(timestamp);
-        label.title = kind === 'previous' ? 'Previous observed site update' : 'Current site update';
+        label.title = kind === 'previous' ? 'Previous browser load of Latest' : 'Current browser load of Latest';
         if (timestamp) {
             label.setAttribute('datetime', timestamp);
         }
@@ -575,7 +553,7 @@
         const availableDates = getAvailableDates();
         const first = articles[0].link;
         const last = articles[articles.length - 1].link;
-        const updateHistory = displayedDate === null ? readLatestUpdateHistory() : null;
+        const updateHistory = displayedDate === null ? recordLatestBrowserLoad() : null;
         const topNavigation = createDateNavigation(displayedDate, availableDates, updateHistory);
         const bottomNavigation = createDateNavigation(displayedDate, availableDates, updateHistory);
         if (!topNavigation || !bottomNavigation || !first.parentNode || !last.parentNode) {
