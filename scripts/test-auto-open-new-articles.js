@@ -348,8 +348,8 @@ describe('AutoOpenNewArticles on Hacker News Summary', () => {
         assert.equal(gmStore.get(oldKey).current, '2026-11-17T15:22:00Z');
 
         const styles = harness.document.getElementById('auto-open-new-articles-style').textContent;
-        assert.match(styles, /\\.auto-open-new-articles-update-time\\.previous\\s*\\{\\s*grid-column: 1 !important;/);
-        assert.match(styles, /\\.auto-open-new-articles-update-time\\.current\\s*\\{\\s*grid-column: 2 !important;/);
+        assert.match(styles, /\.auto-open-new-articles-update-time\.previous\s*\{\s*grid-column: 1 !important;/);
+        assert.match(styles, /\.auto-open-new-articles-update-time\.current\s*\{\s*grid-column: 2 !important;/);
         assert.match(styles, /white-space: nowrap !important;/);
     });
 
