@@ -81,7 +81,7 @@ export default {
             const telemetrySourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/fab1481133e715b24d0f7c708680b7c41418ef5a/tests/MathVisibilityLab/full-article-telemetry.js';
             const guardRef='513c59dbadb66cfabe9e32be4694e68b09c4f455';
             const guardSourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/'+guardRef+'/src/MathTranslationGuard.user.js';
-            const isolateRef='0a0f85e0ff0c78dce11b7d03a90843f84e0bee03';
+            const isolateRef='f4f3e2e470cfa01aff3060fbc2acea61abc2a27a';
             const isolateSourceUrl='https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/'+isolateRef+'/tests/MathVisibilityLab/isolated-article.js';
             const [diagResponse,guardResponse,isolateResponse]=await Promise.all([
                 fetch(telemetrySourceUrl),
