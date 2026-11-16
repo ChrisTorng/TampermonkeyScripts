@@ -2,6 +2,11 @@
 
 Updated: 2026-11-17
 
+## Translation blockers diagnosis — 2026-11-17
+
+- [Install TranslationDiagnostics.user.js — 2026-11-17_1.0.0](src/TranslationDiagnostics.user.js) — opt-in DOM-only report of page/ancestor translate exclusions; never changes translation. Tap 翻譯診斷 then Copy report. Disable the test script after diagnosis.
+- Tests: [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider?tm_translation_diag=1) and [Perplexity Teammates](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work?tm_translation_diag=1) — identify root/ancestor blockers; [Perplexity search](https://www.perplexity.ai/) — no diagnostic button without the URL flag.
+
 ## Readable article translation opt-out — 2026-11-15
 
 [Translate Preformatted Text 1.5.26](src/TranslatePreformattedText.user.js): allow native browser translation of substantial articles blocked by document-level `translate="no"`, keeping child exclusions and interactive apps unchanged. Test: [Perplexity article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work).
