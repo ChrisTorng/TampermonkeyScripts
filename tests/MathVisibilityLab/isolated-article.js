@@ -186,12 +186,13 @@
          if(!anchor||!item?.markup)continue;
          const rendered=anchor.querySelector('mjx-container');
          const currentMath=rendered?.querySelector('mjx-math');
-         const expectedText=item.markup.querySelector('mjx-math')?.textContent;
-         // MathJax can normalize/alter the data-latex accessibility attribute,
-         // so it is not a reliable equality test against original TeX. Compare
-         // rendered math structure and visible glyph text, not its metadata.
-         const broken=!rendered||!currentMath||!!rendered.querySelector('mjx-merror')||
-           (expectedText!=null&&currentMath.textContent!==expectedText);
+         // MathJax can asynchronously attach accessibility content to
+         // mjx-math, making textContent differ without any visible glyph
+         // changes. Structural corruption, deleted math or raw TeX is the
+         // only repair trigger here. Do not repeatedly replace valid output.
+         const rawSiblings=[...anchor.childNodes].some(n=>
+           n.nodeType===3&&/(?:\$\$|\\Scal|\\frac|\\begin\{)/.test(n.nodeValue||''));
+         const broken=!rendered||!currentMath||!!rendered.querySelector('mjx-merror')||rawSiblings;
          if(broken){anchor.replaceChildren(item.markup.cloneNode(true));counts.restoreCount++;}
        }
      }
