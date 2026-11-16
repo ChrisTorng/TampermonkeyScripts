@@ -48,6 +48,10 @@ jobs:
         run: node --check tests/MathVisibilityLab/lab.js && node --check tests/MathVisibilityLab/reconstruct.js && node --test scripts/test-math-visibility-lab.js
       - name: Validate full-article math mirror and telemetry
         run: node --check tests/MathVisibilityLab/full-article-telemetry.js && node --check tests/MathVisibilityLab/collector-worker.js && node --test scripts/test-full-article-math-lab.js
+      - name: Browser test isolated math registry and native-translation damage simulation
+        env:
+          CONTROL_BROWSER_BIN: google-chrome
+        run: node --check tests/MathVisibilityLab/isolated-article.js && node --test scripts/test-isolated-math-browser.js
       - name: Browser-test formula reinsertion and safe fallbacks
         env:
           CONTROL_BROWSER_BIN: google-chrome
