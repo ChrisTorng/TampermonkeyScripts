@@ -129,3 +129,22 @@ Fix:
 **Telemetry:** Stores an anonymous per-tab session ID and per-load ID. Automatically reports at document start, DOM ready/load, interval/heartbeat, DOM mutations, scrolling, hidden/pagehide, including elapsed time, visible rendered math counts (inline and direct display), before/after Chinese text evidence, raw TeX resurfacing, bounding boxes and style, and suspicious DOM samples. Up to 12 bounded events per batch; 7-day TTL for these public-article-only reports. No original-site cookies, IP, login headers, private conversation or full article are stored. Only selected public DOM snippets and diagnostics are saved.
 
 **Limitations:** This is an instrumented, real-time proxy of the original HTML, not identical browser-origin security context: link/CORS/host-dependent code can behave differently. A baseline comparison without installed userscripts and a separately pinned Guard version helps isolate those differences. Headless Chromium tests cannot establish native Android Edge translator behavior. Actual phone screenshots are not auto captured by ordinary page JS; the telemetry records DOM/geometry that can be compared with user-submitted screenshots. Keep Draft until empirical evidence is reviewed.
+
+
+## C — isolated math source, full article (2026-11-16)
+
+**Prerequisite BEFORE opening any test link:** **Disable the entire installed Tampermonkey extension in Android Edge**. All experimental code is injected into the mirror, and its results are invalid if other legacy translation scripts also run. Do not install any JavaScript. Do **not** repeat A/B; their native Edge failure is already recorded.
+
+- [Open C — isolated TeX + normal text translation](https://tm-math-translation-lab.christorng.workers.dev/full/article/alexwang?isolated=1)
+
+This mirror downloads the complete original HTML at each load and injects `isolated-article.js` at document start. On DOMContentLoaded, it extracts 81 original TeX expressions from the real article into an **immutable JS Map**, leaving math placeholders that contain **no raw TeX** for Edge to translate. It calls **MathJax 4 `tex2chtmlPromise`** to render formulas using the site's own loaded macros. Formula markup is stored separately from the translator-mutated DOM, so a deleted formula is restored from the saved source. If the original text/formula order becomes untrustworthy, the **affected text unit** reverts to a canonical source copy; if an ancestor paragraph is wholly replaced and loses the unit's parent, a **one-time complete article fallback** restores the original formula-bearing document. The final fallback is English, intentionally preferring intact mathematics over guessed translation.
+
+**What has been verified in remote Chromium, NOT native Edge Translate:**
+- On the complete article, 81/81 formulas captured and rendered, with zero TeX parsing errors or order violations.
+- Deleting an isolated formula and destroying another formula's rendered child recovers 81/81, maintaining canonical order. Replacing a whole paragraph can also trigger an intact full-source article fallback.
+- An intermittent MathJax 4 lazy-resource error (6 failed formulas using synchronous `tex2chtml`) was diagnosed and fixed using `tex2chtmlPromise`.
+- Important remaining caveat: the website's own asynchronous MathJax pass removes some experimentally rendered nodes during startup. The observer re-renders them; only native Edge repeated scroll/translation can establish whether this becomes perceptible flicker or remains stable. `restoreCount`, `repairCauses.noContainer`, visible math, `withChinese`, fallback count and raw TeX occurrences are recorded separately.
+
+**Single decisive Android Edge check:** With installed Tampermonkey already disabled, open C, use Edge's built-in Chinese translation, scroll from start to finish, reverse direction, and leave the same page open while returning over earlier formulas. The test logs automatically—no buttons, JSON copies, or screenshots are required unless there is a visual issue to correlate. Pass requires translated prose to survive, every source math formula to be displayed in canonical order, no raw LaTeX exposure, and no continuous jump/flicker during scroll; failing any condition means **do not merge**. A pristine original fallback is considered *safe data preservation*, not successful Chinese translation.
+
+The mirror hostname is different from the origin; embedded scripts and CORS may differ. Remains Draft pending native Android Edge evidence.
