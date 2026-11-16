@@ -7,8 +7,10 @@
  const prefix='tm-iso-', attr='data-tm-isolate-formula';
  const expression=/\$\$([\s\S]{1,6000}?)\$\$|\$([^\r\n$]{1,900}?)\$|\\\(([\s\S]{1,900}?)\\\)|\\\[([\s\S]{1,6000}?)\\\]/g;
  let next=0, started=false, rendering=false, locked=false, timer=null;
+ let fullArticle=null, frozenArticle=null, sourceParent=null, sourceNext=null, fullFallbackActive=false;
  const counts={captured:0,rendered:0,renderErrors:0,restoreCount:0,fallbackCount:0,
-   lostUnitCount:0,earlyRendererCount:0,restoredMathCount:0,mutationTicks:0};
+   lostUnitCount:0,earlyRendererCount:0,restoredMathCount:0,
+   fullFallbackCount:0,mutationTicks:0};
  const failReasons=[];
  const isFormula=e=>!!e&&e.nodeType===1&&e.hasAttribute(attr);
  function ignored(node) {
@@ -20,6 +22,7 @@
    const article=document.querySelector('.c-article__content');
    if(!article||started)return;
    started=true;
+   fullArticle=article;sourceParent=article.parentNode;sourceNext=article.nextSibling;
    counts.earlyRendererCount=article.querySelectorAll('mjx-container,.katex,math').length;
    const nodes=[];
    const walk=document.createTreeWalker(article,NodeFilter.SHOW_TEXT);
@@ -40,7 +43,8 @@
      // Each original text node is an independent unit. Using the entire article
      // as the fallback for standalone display formula nodes accidentally
      // nested all other units and led to repeated full-article replacements.
-     const unit={block:wrapper,parent:n.parentNode,next:n.nextSibling,ids:[],fallback:false};
+     const unit={id:String(units.length+1),block:wrapper,parent:n.parentNode,
+       next:n.nextSibling,ids:[],fallback:false};
      units.push(unit);
      while((match=expression.exec(text))){
        if(match.index>last)frag.append(document.createTextNode(text.slice(last,match.index)));
@@ -67,6 +71,10 @@
      }
    }
    for(const u of units)u.template=u.block.cloneNode(true);
+   // Keep a second canonical source tree in JS memory only; it is not
+   // visible or translated. This is the final safe fallback if Edge
+   // replaces ancestor paragraphs and makes individual anchors unusable.
+   frozenArticle=article.cloneNode(true);
    counts.captured=source.size;
    document.documentElement.dataset.tmIsolationSourceCount=String(source.size);
    void renderAll();
@@ -98,6 +106,7 @@
        populate(u.block);
        populate(u.template);
      }
+     if(frozenArticle)populate(frozenArticle);
    }finally{rendering=false;monitor();}
  }
  function populate(root){
@@ -117,7 +126,6 @@
    restored.setAttribute('translate','no');
    restored.classList.add('notranslate');
    restored.setAttribute('data-tm-math-isolated-fallback','true');
-   restored.removeAttribute('data-tm-math-isolated-unit');
    for(const id of u.ids){
      const node=restored.querySelector('['+attr+'="'+id+'"]');
      const math=source.get(id)?.markup;
@@ -125,13 +133,39 @@
    }
    return restored;
  }
+ function restoreFullArticle(){
+   if(fullFallbackActive||!frozenArticle)return false;
+   const replacement=frozenArticle.cloneNode(true);
+   replacement.setAttribute('translate','no');
+   replacement.classList.add('notranslate');
+   replacement.setAttribute('data-tm-math-isolated-full-fallback','true');
+   const current=fullArticle?.isConnected ? fullArticle :
+     document.querySelector('.c-article__content');
+   if(current?.isConnected)current.replaceWith(replacement);
+   else if(sourceParent?.isConnected)
+     sourceParent.insertBefore(replacement,sourceNext?.isConnected?sourceNext:null);
+   else {failReasons.push('Article container detached and cannot be recovered');return false;}
+   fullFallbackActive=true;counts.fullFallbackCount++;
+   fullArticle=replacement;
+   for(const unit of units){
+     const n=replacement.querySelector('[data-tm-math-isolated-unit="'+unit.id+'"]');
+     if(!n){counts.lostUnitCount++;continue;}
+     unit.block=n;unit.parent=n.parentNode;unit.next=n.nextSibling;unit.fallback=true;
+   }
+   return true;
+ }
  function monitor(){
    if(locked||!started)return;
    locked=true;counts.mutationTicks++;
    try{
      for(const u of units){
        const order=liveEquations(u);
-       if(!u.block.isConnected||order.join(',')!==u.ids.join(',')){
+       if(!u.block.isConnected&&!u.parent?.isConnected) {
+         // Native Edge may discard an entire paragraph, including the
+         // saved sibling anchor. Recover the whole source tree once.
+         if(!restoreFullArticle()) {counts.lostUnitCount++;continue;}
+       }
+       if(!u.block.isConnected||liveEquations(u).join(',')!==u.ids.join(',')){
          // Do not guess formula locations after native Edge reparenting:
          // show the immutable canonical source in the original block position.
          const restored=createFallback(u);
@@ -169,7 +203,7 @@
      if(!u.block.isConnected||liveEquations(u).join(',')!==u.ids.join(','))orderBroken++;
      if(/[\u3400-\u9fff]/.test(u.block.textContent||''))withChinese++;
    }
-   return {version:'experiment-1',...counts,live:alive,formulaTotal:source.size,
+   return {version:'experiment-2',...counts,live:alive,formulaTotal:source.size,
      units:units.length,orderBroken,withChinese,sourceErrors:errors,
      failures:failReasons.slice(0,6)};
  }
