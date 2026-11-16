@@ -100,10 +100,14 @@
       scriptHints:{mathGuard:!!root.querySelector('[data-tm-math-dual-reference]'),
         crashGuard:!!Node.prototype[Symbol.for('translation-crash-guard-patched')],
         inlineOrder:!!root.querySelector('[data-tm-translation-order-anchor]')},
-      mutationCount};
+      mutationCount,
+      isolation:typeof window.__tmIsolatedMathDiagnostics==='function'
+        ?window.__tmIsolatedMathDiagnostics():null};
     const signature=JSON.stringify([outputs.length,visible,snap.formulas.guards,snap.formulas.merged,
       raw.map(r=>r.path+'-'+r.text).join('|'),Math.floor(cjk/5),Math.floor(scrollY/130),
-      outputs.filter(o=>o.display==='true').map(o=>o.path+':'+o.hidden).join('|')]);
+      outputs.filter(o=>o.display==='true').map(o=>o.path+':'+o.hidden).join('|'),
+      snap.isolation?.live,snap.isolation?.orderBroken,snap.isolation?.fallbackCount,
+      snap.isolation?.withChinese]);
     if(signature===oldSignature&&reason==='mutation')return;
     oldSignature=signature;lastCaptured=Date.now();
     entries.push(snap);if(entries.length>maxQueue)entries.splice(0,entries.length-maxQueue);
