@@ -61,6 +61,15 @@ export default {
         if (request.method === 'GET' && fullMatch) {
             const id=fullMatch[1], sourceUrl=fullArticles[id];
             if (!sourceUrl) return reply({error:'article-not-allowlisted'},404);
+            // The C (isolated) experiment failed actual Android Edge visual
+            // acceptance on 2026-11-16. Retire it: prevent accidental retests
+            // while preserving previously collected diagnostic records.
+            if (id === 'alexwang' && new URL(request.url).searchParams.get('isolated') === '1') {
+                return new Response('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>數學式測試 C 已停止</title></head><body><main style="max-width:40rem;margin:4rem auto;padding:1rem;font:1rem/1.8 system-ui"><h1>測試 C 已停止</h1><p>實際 Android Edge 翻譯證實此版本會破壞文章排版，不需要再次測試，也不需要安裝腳本。</p><p><a href="https://alexwang.ai/posts/reasoning-as-pathfinding/">閱讀原始文章</a></p></main></body></html>', {
+                    status:410, headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',
+                    'X-Robots-Tag':'noindex,nofollow,noarchive'}
+                });
+            }
             const params=new URL(request.url).searchParams;
             const variant = params.get('isolated') === '1' && id === 'alexwang' ? 'isolated' :
                 (params.get('guard') === '1' ? 'guard' : 'baseline');
