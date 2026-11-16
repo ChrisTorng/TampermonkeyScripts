@@ -16,13 +16,6 @@
    return !p || !!p.closest('script,style,noscript,textarea,pre,code,svg,math,mjx-container,.katex,'+
      '[data-tm-math-isolated-fallback],['+attr+'],[contenteditable],.mathjax_ignore');
  }
- const hostBlock=(node,article)=>{
-   let p=node.parentElement;
-   while(p&&p!==article&&!p.matches('p,li,blockquote,div,h1,h2,h3,h4,h5,h6'))p=p.parentElement;
-   // For direct-text block math, the article itself is the unit.
-   if(!p||p===article)return article;
-   return p;
- };
  function capture() {
    const article=document.querySelector('.c-article__content');
    if(!article||started)return;
@@ -36,18 +29,19 @@
      expression.lastIndex=0;
      if(expression.test(node.nodeValue||''))nodes.push(node);
    }
-   const blockMap=new Map();
    for(const n of nodes){
      if(!n.isConnected)continue;
      const text=n.nodeValue||'';
      expression.lastIndex=0;
      let match,last=0,frag=document.createDocumentFragment(),seen=false;
-     const block=hostBlock(n,article);
-     let unit=blockMap.get(block);
-     if(!unit){
-       unit={block, parent:block.parentNode, next:block.nextSibling, ids:[],fallback:false};
-       blockMap.set(block,unit);units.push(unit);
-     }
+     const wrapper=document.createElement('span');
+     wrapper.className='tm-isolated-text-unit';
+     wrapper.setAttribute('data-tm-math-isolated-unit',String(units.length+1));
+     // Each original text node is an independent unit. Using the entire article
+     // as the fallback for standalone display formula nodes accidentally
+     // nested all other units and led to repeated full-article replacements.
+     const unit={block:wrapper,parent:n.parentNode,next:n.nextSibling,ids:[],fallback:false};
+     units.push(unit);
      while((match=expression.exec(text))){
        if(match.index>last)frag.append(document.createTextNode(text.slice(last,match.index)));
        const display=!!(match[1]||match[4]);
@@ -66,7 +60,10 @@
      }
      if(seen){
        if(last<text.length)frag.append(document.createTextNode(text.slice(last)));
-       n.parentNode.replaceChild(frag,n);
+       wrapper.append(frag);
+       if(unit.ids.some(id=>source.get(id)?.display) && !text.replace(expression,'').trim())
+         wrapper.style.display='block';
+       n.parentNode.replaceChild(wrapper,n);
      }
    }
    for(const u of units)u.template=u.block.cloneNode(true);
