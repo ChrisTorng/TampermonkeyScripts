@@ -7,6 +7,11 @@ Updated: 2026-11-17
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
 - **Live HTML test:** [Rendered fullscreen canvas](https://tm-fullscreen-test.christorng.workers.dev/) (not a GitHub source viewer). **Real pages:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) and [ARC game](https://arcprize.org/tasks/ls20).
 
+## Per-block fullscreen entry and explicit fallback exit — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.2.8](src/FullscreenGameView.user.js): each game, video, canvas, or known embedded player has its own ⛶ icon just **outside, above the top-right of that block**. The page menu remains separate. Native fullscreen is attempted first even when the permission hint says false; only an actual rejected/unavailable call opens the simulated fallback. Fallback always exposes a top-right × to restore the original page without Android Back.
+- **Direct live test page:** https://tm-fullscreen-test.christorng.workers.dev/ (rendered HTML, not a GitHub code listing). Also retest Nitter, ARC Prize, and embedded YouTube. A browser must grant the native Fullscreen API to actually hide its own navigation bars; a modal dialog alone cannot do that. Test on the real Android Edge device before merging.
+
 ## Nitter fullscreen and auto-orientation — 2026-11-18
 
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.6](src/FullscreenGameView.user.js) — use Nitter's real video fullscreen; if blocked, show only its video in a top-layer dialog. Rotate landscape videos automatically and restore the page on exit; portrait stays upright. Disable/uninstall the older **Full Screen** branch copy. Reload after updating.
