@@ -418,3 +418,137 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(window.scrollY, 500);
     });
 });
+
+
+describe('Nitter video fullscreen migration', () => {
+    function setupNitter(width, height, options = {}) {
+        const harness = createHarness({
+            url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214'
+        });
+        harness.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        harness.window.innerWidth = 390;
+        harness.window.innerHeight = 844;
+        const media = harness.document.createElement('div');
+        const video = harness.document.createElement('video');
+        video.videoWidth = width;
+        video.videoHeight = height;
+        video.controls = true;
+        media.appendChild(video);
+        harness.document.body.appendChild(media);
+        let locks = 0;
+        let unlocks = 0;
+        harness.window.screen = { orientation: {
+            lock(direction) {
+                assert.equal(direction, 'landscape');
+                locks += 1;
+                return options.rejectLock ? Promise.reject(new Error('NotSupportedError')) : Promise.resolve();
+            },
+            unlock() { unlocks += 1; }
+        } };
+        const create = harness.document.createElement.bind(harness.document);
+        harness.document.createElement = (tagName) => {
+            const node = create(tagName);
+            if (tagName.toLowerCase() === 'dialog') {
+                node.showModal = () => {
+                    node.open = true;
+                    node.setAttribute('open', '');
+                };
+                node.close = () => {
+                    node.open = false;
+                    node.removeAttribute('open');
+                };
+            }
+            return node;
+        };
+        harness.context.globalThis = harness.context;
+        vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
+        return {
+            ...harness, media, video,
+            getLocks: () => locks, getUnlocks: () => unlocks,
+            button: harness.document.getElementById('tm-fullscreen-game-view-button')
+        };
+    }
+
+    test('uses the Nitter video directly and locks landscape when native fullscreen succeeds', async () => {
+        const h = setupNitter(1920, 1080);
+        assert(h.button);
+        let calledWith;
+        h.video.requestFullscreen = (options) => {
+            calledWith = options;
+            h.document.fullscreenElement = h.video;
+            h.dispatchDocumentEvent('fullscreenchange');
+            return Promise.resolve();
+        };
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(calledWith.navigationUI, 'hide');
+        assert.equal(h.getLocks(), 1);
+        assert(h.video.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.match(h.document.getElementById('tm-fullscreen-game-view-style').textContent,
+            /video\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen\s*\{\s*width:\s*100dvh/i);
+        assert.equal(h.button.disabled, true);
+        assert.equal(h.document.querySelector('dialog'), null);
+        h.document.fullscreenElement = null;
+        h.dispatchDocumentEvent('fullscreenchange');
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.getUnlocks(), 1);
+        assert(!h.video.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(h.button.disabled, false);
+    });
+
+    test('rejected native fullscreen uses only the video in a top-layer dialog; Escape restores it', async () => {
+        const h = setupNitter(1920, 1080, { rejectLock: true });
+        h.video.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog);
+        assert.equal(h.video.parentNode, dialog);
+        assert.equal(dialog.open, true);
+        assert.equal(h.button.disabled, true);
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'),
+            'Fallback rotates visually on a portrait viewport when screen lock is rejected.');
+        assert.match(h.document.getElementById('tm-fullscreen-game-view-style').textContent,
+            /#tm-fullscreen-video-dialog\[open\]\.tm-fullscreen-game-view-landscape-rotated/);
+        assert.equal(h.getLocks(), 1);
+        h.triggerMutation([h.video]);
+        h.flushAnimationFrames();
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1,
+            'Moving a playing video into the dialog must not remount duplicate controls.');
+        h.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+        assert.equal(h.video.parentNode, h.media);
+        assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
+        assert.equal(h.button.disabled, false);
+        assert.equal(h.getUnlocks(), 0);
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+    });
+
+    test('portrait video remains upright, and Back closes the dialog under denied fullscreen policy', () => {
+        const h = setupNitter(720, 1280);
+        h.document.fullscreenEnabled = false;
+        let nativeCalls = 0;
+        h.video.requestFullscreen = () => { nativeCalls++; return Promise.resolve(); };
+        h.button.click();
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog);
+        assert.equal(nativeCalls, 0);
+        assert.equal(h.getLocks(), 0);
+        assert(!dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.video.parentNode, h.media);
+        assert.equal(h.button.disabled, false);
+    });
+
+    test('landscape dialog rotation is removed when the viewport turns landscape', () => {
+        const h = setupNitter(1920, 1080, { rejectLock: true });
+        h.document.fullscreenEnabled = false;
+        h.button.click();
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        h.window.innerWidth = 844;
+        h.window.innerHeight = 390;
+        h.dispatchWindowEvent('resize');
+        assert(!dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        h.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+    });
+});

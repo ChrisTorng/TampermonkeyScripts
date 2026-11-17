@@ -126,7 +126,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
+Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
