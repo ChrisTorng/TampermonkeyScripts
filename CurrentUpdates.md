@@ -4,7 +4,7 @@ Updated: 2026-11-17
 
 ## Nitter fullscreen and auto-orientation — 2026-11-18
 
-- [Install FullscreenGameView.user.js — 2026-11-18_1.2.5](src/FullscreenGameView.user.js) — use Nitter's real video fullscreen; if blocked, show only its video in a top-layer dialog. Rotate landscape videos automatically and restore the page on exit; portrait stays upright. Disable/uninstall the older **Full Screen** branch copy. Reload after updating.
+- [Install FullscreenGameView.user.js — 2026-11-18_1.2.6](src/FullscreenGameView.user.js) — use Nitter's real video fullscreen; if blocked, show only its video in a top-layer dialog. Rotate landscape videos automatically and restore the page on exit; portrait stays upright. Disable/uninstall the older **Full Screen** branch copy. Reload after updating.
 - **Tests:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — playable fullscreen, auto-landscape, Escape/Back restoration; [ARC Prize game](https://arcprize.org/tasks/ls20) — game fullscreen unaffected; [Anthropic videos](https://www.anthropic.com/claude-fable-and-mythos-5-2) — YouTube orientation unchanged; [Nieman Lab](https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/) — no ad-iframe layout shift.
 
 ## Readable article translation opt-out — 2026-11-15
