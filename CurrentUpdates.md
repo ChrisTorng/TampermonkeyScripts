@@ -2,6 +2,11 @@
 
 Updated: 2026-11-17
 
+## Fullscreen controls visible on Android — 2026-11-18
+
+- [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
+- **Live HTML test:** [Rendered fullscreen canvas](https://tm-fullscreen-test.christorng.workers.dev/) (not a GitHub source viewer). **Real pages:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) and [ARC game](https://arcprize.org/tasks/ls20).
+
 ## Nitter fullscreen and auto-orientation — 2026-11-18
 
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.6](src/FullscreenGameView.user.js) — use Nitter's real video fullscreen; if blocked, show only its video in a top-layer dialog. Rotate landscape videos automatically and restore the page on exit; portrait stays upright. Disable/uninstall the older **Full Screen** branch copy. Reload after updating.
