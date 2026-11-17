@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.2.7
-// @description  Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
+// @version      2026-11-18_1.2.8
+// @description  Native-first per-media fullscreen with external block controls, explicit fallback exit, and auto-orientation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -17,8 +17,8 @@
     'use strict';
 
 
-    // Keep the independent fullscreen entry as steady as the shared fixed-position menu.
-    // The menu's default is top:70/right:0, so the entry defaults 42px to its left.
+    // Fullscreen controls belong to individual media/game blocks, never to the page menu.
+    // Position them outside the upper-right corner of their own visible surface.
     const fullscreenControlLayouts = new Set();
     const FULLSCREEN_WIDTH = 38;
     const FULLSCREEN_HEIGHT = 32;
@@ -46,7 +46,7 @@
         window.visualViewport.addEventListener('resize', refreshFullscreenControls);
     }
 
-    function makeDockedFullscreenControl(button, target, alignWithMenuDefault) {
+    function makeDockedFullscreenControl(button, target) {
         let placement = null;
         let drag = null;
         let suppressClick = false;
@@ -69,10 +69,13 @@
                 left, right,
                 visible: Math.min(rect.right, right) - Math.max(rect.left, left) >= FULLSCREEN_WIDTH &&
                     Math.min(rect.bottom, bottom) - Math.max(rect.top, 0) >= FULLSCREEN_HEIGHT,
-                minX: alignWithMenuDefault ? left : Math.max(rect.left, left),
-                maxX: (alignWithMenuDefault ? right : Math.min(rect.right, right)) - FULLSCREEN_WIDTH,
-                minY: alignWithMenuDefault ? 0 : Math.max(rect.top, 0),
-                maxY: (alignWithMenuDefault ? bottom : Math.min(rect.bottom, bottom)) - FULLSCREEN_HEIGHT,
+                // Float ABOVE the media. Keep it accessible beside clipped players.
+                minX: left,
+                maxX: right - FULLSCREEN_WIDTH,
+                minY: 0,
+                maxY: bottom - FULLSCREEN_HEIGHT,
+                anchorX: Math.min(rect.right, right) - FULLSCREEN_WIDTH,
+                anchorY: rect.top - FULLSCREEN_HEIGHT - 4,
             };
         };
         const place = (x, y, fixed = true) => {
@@ -125,12 +128,9 @@
             const hidden = !area.visible || area.maxX < area.minX || area.maxY < area.minY;
             if (button.hidden !== hidden) button.hidden = hidden;
             if (hidden) return;
-            // Only the DEFAULT coordinates account for the menu's DEFAULT position.
-            // A moved menu or a manually dragged entry may overlap; never chase either.
-            const defaultX = area.right - FULLSCREEN_WIDTH * 2 - 4;
-            const defaultY = Math.max(70 - fullscreenScrollY(), 0);
-            place(clampFullscreen(placement ? placement.x : defaultX, area.minX, area.maxX),
-                clampFullscreen(placement ? placement.y : defaultY, area.minY, area.maxY));
+            // Track this block's outer upper-right corner (not the viewport menu).
+            place(clampFullscreen(placement ? placement.x : area.anchorX, area.minX, area.maxX),
+                clampFullscreen(placement ? placement.y : area.anchorY, area.minY, area.maxY));
         };
         const touchStart = (event) => {
             if (!pinchAnchored && event.touches?.length >= 2) {
@@ -197,6 +197,7 @@
     const TARGET_POSITION_CLASS = 'tm-fullscreen-game-view-local-position';
     const FALLBACK_CLASS = 'tm-fullscreen-game-view-fallback';
     const VIDEO_DIALOG_ID = 'tm-fullscreen-video-dialog';
+    const EXIT_BUTTON_ID = 'tm-fullscreen-game-view-exit-button';
     const VIDEO_PLACEHOLDER_CLASS = 'tm-fullscreen-video-placeholder';
     const STYLE_ID = 'tm-fullscreen-game-view-style';
     const GENERIC_MEDIA_SELECTOR = 'canvas, iframe, video, [role="application"]';
@@ -253,6 +254,37 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS}:focus-visible {
+    outline: 3px solid #4da3ff !important;
+    outline-offset: 2px !important;
+}
+
+/* Visible fallback exit, even when Android Back does not dispatch popstate. */
+#${EXIT_BUTTON_ID} {
+    appearance: none !important;
+    position: absolute !important;
+    top: max(8px, env(safe-area-inset-top)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    left: auto !important;
+    bottom: auto !important;
+    display: block !important;
+    background: rgba(0,0,0,.78) !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,.7) !important;
+    border-radius: 6px !important;
+    font: 600 24px/44px system-ui,sans-serif !important;
+    text-align: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    max-width: 44px !important;
+    z-index: 2147483647 !important;
+    cursor: pointer !important;
+    touch-action: manipulation !important;
+}
+#${EXIT_BUTTON_ID}:focus-visible {
     outline: 3px solid #4da3ff !important;
     outline-offset: 2px !important;
 }
@@ -448,16 +480,6 @@ body:has(#task-detail-root) {
         return target.matches?.('video') ? target : target.querySelector?.('video') || null;
     }
 
-    function fullscreenAllowed() {
-        if (document.fullscreenEnabled === false) return false;
-        const policy = document.permissionsPolicy || document.featurePolicy;
-        try {
-            return typeof policy?.allowsFeature !== 'function' || policy.allowsFeature('fullscreen');
-        } catch (_error) {
-            return true;
-        }
-    }
-
     let videoFallback = null;
 
     function isFullscreen(target) {
@@ -570,10 +592,35 @@ body:has(#task-detail-root) {
         } catch (_error) { /* CSS fallback remains active. */ }
     }
 
+    let fallbackExitButton = null;
+
+    function removeFallbackExit() {
+        fallbackExitButton?.remove();
+        fallbackExitButton = null;
+    }
+
+    function addFallbackExit(host) {
+        removeFallbackExit();
+        const close = document.createElement('button');
+        close.id = EXIT_BUTTON_ID;
+        close.type = 'button';
+        close.textContent = '×';
+        close.title = 'Exit simulated fullscreen';
+        close.setAttribute('aria-label', 'Exit simulated fullscreen');
+        close.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation?.();
+            exitFallback();
+        });
+        host.appendChild(close);
+        fallbackExitButton = close;
+    }
+
     function closeVideoFallback() {
         const session = videoFallback;
         if (!session) return;
         videoFallback = null;
+        removeFallbackExit();
         const { dialog, video, marker, target, button } = session;
         dialog.removeEventListener('close', closeVideoFallback);
         if (dialog.open) dialog.close();
@@ -612,6 +659,7 @@ body:has(#task-detail-root) {
         video.parentNode?.removeChild(video);
         dialog.appendChild(video);
         videoFallback = { dialog, video, marker, target, button };
+        addFallbackExit(dialog);
         dialog.addEventListener('close', closeVideoFallback);
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
@@ -707,18 +755,24 @@ body:has(#task-detail-root) {
         if (video) video.classList.add('tm-fullscreen-game-view-media');
         const surface = video || target;
         rememberPageState(target);
-        if (typeof surface.requestFullscreen === 'function' && (!video || fullscreenAllowed())) {
+        // Call native fullscreen on a real click even when a policy hint says no.
+        // The actual browser resolve/reject determines whether fallback is needed.
+        if (typeof surface.requestFullscreen === 'function') {
             try {
                 // Preserve the user-tested native Nitter video fullscreen route.
                 await surface.requestFullscreen({ navigationUI: 'hide' });
             } catch (_error) {
                 if (video) openVideoFallback(target, video, button);
-                else target.classList.add(FALLBACK_CLASS);
+                else {
+                    target.classList.add(FALLBACK_CLASS);
+                    addFallbackExit(target);
+                }
             }
         } else if (video) {
             openVideoFallback(target, video, button);
         } else {
             target.classList.add(FALLBACK_CLASS);
+            addFallbackExit(target);
         }
 
         if (!isFullscreen(target)) restorePageState(target);
@@ -734,29 +788,19 @@ body:has(#task-detail-root) {
     const watchedFrames = new WeakSet();
     let additionalButtonNumber = 0;
 
-    function mountButtonOnTarget(target, alignWithMenuDefault = false) {
+    function mountButtonOnTarget(target) {
         if (!target?.isConnected || mountedButtons.has(target)) return;
-        // Never turn a site's absolute/fixed/sticky media wrapper into a
-        // relative-flow box: that can insert a large blank region above articles.
-        const existingPosition = window.getComputedStyle?.(target)?.position
-            || target.style?.getPropertyValue?.('position') || 'static';
+        // Do not alter media wrapper positioning and shift the article's layout.
         target.classList.add(TARGET_CLASS);
-        if (existingPosition === 'static' && target !== document.body
-            && target !== document.documentElement) {
-            target.classList.add(TARGET_POSITION_CLASS);
-        }
         const button = document.createElement('button');
         button.id = document.getElementById(BUTTON_ID)
             ? `${BUTTON_ID}-${++additionalButtonNumber}` : BUTTON_ID;
         button.className = BUTTON_CLASS;
         button.type = 'button';
         updateButton(button, target);
-        // Video wrappers can clip fixed descendants on Android Edge. Keep Nitter
-        // controls in the document overlay layer, while anchoring their layout
-        // to each video. Other sites retain their existing button parent.
-        if (isNitter) (document.body || document.documentElement).appendChild(button);
-        else target.appendChild(button);
-        makeDockedFullscreenControl(button, target, alignWithMenuDefault);
+        // A body overlay can sit OUTSIDE even clipping/transforming media wrappers.
+        (document.body || document.documentElement).appendChild(button);
+        makeDockedFullscreenControl(button, target);
         requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
@@ -812,7 +856,7 @@ body:has(#task-detail-root) {
             button.remove();
             target.classList.remove(TARGET_CLASS, TARGET_POSITION_CLASS);
         }
-        for (const target of targets) mountButtonOnTarget(target, target === primary);
+        for (const target of targets) mountButtonOnTarget(target);
         updateFrameRequests();
         refreshFullscreenControls();
     }
@@ -821,6 +865,7 @@ body:has(#task-detail-root) {
         if (videoFallback) closeVideoFallback();
         for (const [target, button] of mountedButtons) {
             if (!target.classList.contains(FALLBACK_CLASS)) continue;
+            removeFallbackExit();
             target.classList.remove(FALLBACK_CLASS);
             syncMediaOrientation();
             document.documentElement.classList.remove('tm-fullscreen-game-view-active');
