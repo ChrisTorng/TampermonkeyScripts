@@ -115,6 +115,67 @@ describe('Translate Preformatted Text', () => {
         assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
     });
 
+    test('German navigation with an English research article is identified by article prose, not the site language', () => {
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'de-DE');
+            const nav = h.document.createElement('nav');
+            nav.textContent = 'Anwendungssicherheit Beratung Softwareentwicklung Über uns';
+            h.appendToBody(nav);
+            appendArticle(h, 'Lovable apps expose sensitive data', Array(8).fill(englishProse));
+        }, 'https://www.crissyfield.de/research/lovable-en/');
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
+        assert.match(harness.document.querySelector('nav').textContent, /Anwendungssicherheit/);
+        assert.equal(harness.document.querySelector('article p').textContent, englishProse);
+    });
+
+    test('other mislabeled European-language article roots also use the same correction', () => {
+        for (const declared of ['de', 'fr-FR', 'es-ES']) {
+            const harness = execute(h => {
+                h.document.documentElement.setAttribute('lang', declared);
+                appendArticle(h, 'How modern software agents collaborate', Array(8).fill(englishProse));
+            }, 'https://example.org/read/english');
+            assert.equal(harness.document.documentElement.getAttribute('lang'), 'en', declared);
+        }
+    });
+
+    test('true German and French long articles retain their native language', () => {
+        const german = 'Die Forschung untersucht, wie Unternehmen ihre Anwendungen sicher entwickeln und ihre Daten schützen. Die Untersuchung zeigt, dass verschiedene Plattformen ähnliche Probleme haben. '.repeat(4);
+        const french = 'Les entreprises utilisent de nouveaux outils pour développer leurs applications, mais leurs données doivent rester protégées. Cette étude examine les risques et les solutions disponibles. '.repeat(4);
+        for (const [declared, title, prose] of [
+            ['de', 'Sicherheit für moderne Anwendungen', german],
+            ['fr-FR', 'Sécurité des applications modernes', french],
+        ]) {
+            const harness = execute(h => {
+                h.document.documentElement.setAttribute('lang', declared);
+                appendArticle(h, title, Array(8).fill(prose));
+            }, 'https://example.org/research/security');
+            assert.equal(harness.document.documentElement.getAttribute('lang'), declared, declared);
+        }
+    });
+
+    test('language labels are not repeatedly overwritten during native Edge translation', () => {
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'de');
+            appendArticle(h, 'Understanding collaborative software systems', Array(8).fill(englishProse));
+        }, 'https://example.org/research/software');
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
+        const article = harness.document.querySelector('article');
+        // Edge can update root lang before some English paragraphs are translated.
+        harness.document.documentElement.setAttribute('lang', 'zh-TW');
+        harness.triggerMutation([article], { target: article });
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'zh-TW');
+    });
+
+    test('missing language and already-English root labels are not rewritten', () => {
+        for (const declared of ['', 'en-GB']) {
+            const harness = execute(h => {
+                if (declared) h.document.documentElement.setAttribute('lang', declared);
+                appendArticle(h, 'Understanding collaborative software systems', Array(8).fill(englishProse));
+            }, 'https://example.org/research/software');
+            assert.equal(harness.document.documentElement.getAttribute('lang'), declared || null);
+        }
+    });
+
     test('Teammates remains en-GB, and successful Edge translation can set zh-TW afterward', () => {
         let article;
         const harness = execute(h => {
