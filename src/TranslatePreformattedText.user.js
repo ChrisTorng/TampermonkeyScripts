@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-15_1.5.26
-// @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; enable readable articles blocked by document-level translate=no.
+// @version      2026-11-17_1.5.27
+// @description  Translate formatted prose without losing layout, unblock readable articles, and correct misleading Chinese language labels on English articles.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1151,6 +1151,56 @@
         element.classList.remove('notranslate');
     }
 
+    // Some English articles are served as <html lang="zh-TW"> without
+    // translated text. Native browser translation may then treat the whole
+    // page as already in the target language. Compare the actual article
+    // heading and multiple long paragraphs before correcting this label.
+    // Never rewrite the article text or override a translated Chinese title.
+    let lastArticleLanguageSignature = '';
+    function restoreReadableArticleLanguage() {
+        if (window !== window.top) return;
+        const html = document.documentElement;
+        if (!html || !/^zh(?:-|$)/i.test(html.getAttribute('lang') || '')) return;
+
+        for (const article of document.querySelectorAll('article, main')) {
+            if (article.querySelector('input[type="password"], [contenteditable="true"]')) continue;
+            const heading = article.querySelector('h1, h2');
+            const title = (heading && heading.textContent || '').trim();
+            if ((title.match(/[A-Za-z]/g) || []).length < 8
+                || /[\u3400-\u9fff]/.test(title)) continue;
+
+            const paragraphs = article.querySelectorAll('p');
+            const first = paragraphs[0]?.textContent || '';
+            const signature = title.slice(0, 100) + '|' + paragraphs.length + '|'
+                + first.slice(0, 90);
+            if (signature === lastArticleLanguageSignature) continue;
+            lastArticleLanguageSignature = signature;
+
+            let longParagraphs = 0;
+            let latin = 0, han = 0, commonEnglishWords = 0;
+            for (const paragraph of paragraphs) {
+                const prose = (paragraph.textContent || '').trim();
+                if (prose.length < 70) continue;
+                longParagraphs++;
+                // Work on at most eight paragraphs. These counters, rather
+                // than root lang alone, guard against ordinary Chinese pages.
+                const excerpt = prose.slice(0, 1800);
+                latin += (excerpt.match(/[A-Za-z]/g) || []).length;
+                han += (excerpt.match(/[\u3400-\u9fff]/g) || []).length;
+                commonEnglishWords += (excerpt.match(/\b(?:the|and|of|to|in|is|for|that|with|on|as|are|by|from|this|which|have|will|can|their|you|our)\b/gi) || []).length;
+                if (longParagraphs >= 8) break;
+            }
+            if (longParagraphs < 4 || latin < 700 || han * 20 >= latin
+                || commonEnglishWords < 35) continue;
+
+            // The title and readable prose are English; restore the source
+            // language before native translation detects the page. Edge may
+            // later set lang="zh-TW" itself after successful translation.
+            html.setAttribute('lang', 'en');
+            return;
+        }
+    }
+
     // The HTML translate attribute is inherited. A single translate="no"
     // on <html> suppresses translation of an entire readable article, even
     // when the article itself contains no opt-out markers. Only clear this
@@ -1770,6 +1820,7 @@
     }
 
     function scan(root = document) {
+        restoreReadableArticleLanguage();
         allowTranslationForReadableArticle();
         if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
