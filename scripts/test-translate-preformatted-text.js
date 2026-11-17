@@ -125,7 +125,7 @@ describe('Translate Preformatted Text', () => {
         }, 'https://www.crissyfield.de/research/lovable-en/');
         assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
         assert.match(harness.document.querySelector('nav').textContent, /Anwendungssicherheit/);
-        assert.equal(harness.document.querySelector('article p').textContent, englishProse);
+        assert.equal(harness.document.querySelector('article').querySelector('p').textContent, englishProse);
     });
 
     test('other mislabeled European-language article roots also use the same correction', () => {
