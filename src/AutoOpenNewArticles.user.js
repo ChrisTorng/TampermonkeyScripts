@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.9.2
+// @version      2026-11-18_1.9.3
 // @description  Preserve Hacker News Summary reading controls, navigation, and load times; highlight time-normalized points and comments.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -591,7 +591,7 @@
 
     function readPopularityNumber(metric, selector) {
         const value = metric?.querySelector(selector)?.textContent?.trim() || '';
-        return /^\\d[\\d,]*$/.test(value) ? Number(value.replace(/,/g, '')) : null;
+        return /^\d[\d,]*$/.test(value) ? Number(value.replace(/,/g, '')) : null;
     }
 
     function popularityHeat(rate, referenceRate) {
