@@ -480,8 +480,7 @@ describe('Nitter video fullscreen migration', () => {
             return Promise.resolve();
         };
         h.button.click();
-        await Promise.resolve();
-        await Promise.resolve();
+        await new Promise(resolve => setImmediate(resolve));
         assert.equal(calledWith.navigationUI, 'hide');
         assert.equal(h.getLocks(), 1);
         assert(h.video.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
@@ -489,6 +488,7 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.document.querySelector('dialog'), null);
         h.document.fullscreenElement = null;
         h.dispatchDocumentEvent('fullscreenchange');
+        await new Promise(resolve => setImmediate(resolve));
         assert.equal(h.getUnlocks(), 1);
         assert(!h.video.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         assert.equal(h.button.disabled, false);
@@ -498,8 +498,7 @@ describe('Nitter video fullscreen migration', () => {
         const h = setupNitter(1920, 1080, { rejectLock: true });
         h.video.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
         h.button.click();
-        await Promise.resolve();
-        await Promise.resolve();
+        await new Promise(resolve => setImmediate(resolve));
         const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
         assert(dialog);
         assert.equal(h.video.parentNode, dialog);
