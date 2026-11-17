@@ -2,10 +2,10 @@
 
 Updated: 2026-11-17
 
-## English article misidentified as Chinese — 2026-11-17
+## English article language mismatch — 2026-11-18
 
-- [Install TranslatePreformattedText.user.js — 2026-11-17_1.5.27](src/TranslatePreformattedText.user.js) — recognize English articles whose root is incorrectly `lang="zh-TW"`; correct the language label without touching article text, translated Chinese pages, or normal site opt-outs. Reload after updating.
-- **Tests:** [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — Android Edge should recognize the English article for translation; [Perplexity Teammates](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — existing English-to-Chinese translation still works. Native Edge outcome requires device confirmation.
+- [Install TranslatePreformattedText.user.js — 2026-11-18_1.5.28](src/TranslatePreformattedText.user.js) — detect substantial English articles even when the enclosing site is marked German or another language. Correct only the document language hint; do not rewrite article content or reset it during translation. Reload after updating.
+- **Tests:** [Crissy Field English report](https://www.crissyfield.de/research/lovable-en/) — check automatic translation; [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — keep previous correction; [German-language report](https://www.crissyfield.de/research/lovable/) — do not change genuine German text. Browser auto-translation still requires Android Edge verification.
 
 ## Readable article translation opt-out — 2026-11-15
 
