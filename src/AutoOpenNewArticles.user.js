@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-17_1.9.1
-// @description  Preserve Hacker News Summary reading controls and dated navigation; show previous/current browser loads under Latest.
+// @version      2026-11-18_1.9.2
+// @description  Preserve Hacker News Summary reading controls, navigation, and load times; highlight time-normalized points and comments.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -33,6 +33,8 @@
     const ALL_TOGGLE_ID = 'auto-open-new-articles-all-toggle';
     const DATE_NAV_CLASS = 'auto-open-new-articles-date-nav';
     const UPDATE_TIME_CLASS = 'auto-open-new-articles-update-time';
+    const POPULARITY_CLASS = 'auto-open-new-articles-popularity';
+    const POPULARITY_HOT_CLASS = 'auto-open-new-articles-popularity-hot';
     const LATEST_LOAD_HISTORY_KEY = 'autoOpenNewArticles:hackerNewsSummary:latestLoads';
     const PAGE_LOADED_AT = Date.now();
     const STYLE_ID = 'auto-open-new-articles-style';
@@ -53,6 +55,30 @@
             }
             .${SEEN_CLASS} {
                 opacity: 0.68 !important;
+            }
+            article.post-item .post-meta .${POPULARITY_CLASS} {
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 3px !important;
+                padding: 2px 5px !important;
+                border-radius: 5px !important;
+                background-color: #e8eaed !important;
+                color: #202124 !important;
+                font-weight: 800 !important;
+                font-variant-numeric: tabular-nums !important;
+                text-shadow: none !important;
+                opacity: 1 !important;
+            }
+            article.post-item .post-meta .${POPULARITY_CLASS} a,
+            article.post-item .post-meta .${POPULARITY_CLASS} i,
+            article.post-item .post-meta .${POPULARITY_CLASS} span {
+                color: inherit !important;
+                font-weight: inherit !important;
+                opacity: 1 !important;
+            }
+            article.post-item .post-meta .${POPULARITY_CLASS}.${POPULARITY_HOT_CLASS} {
+                background-color: var(--tm-popularity-color, #ffed98) !important;
+                color: #282006 !important;
             }
             .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}):not(.tm-blog-bookmarks-save) {
                 display: none !important;
@@ -563,7 +589,68 @@
         last.insertAdjacentElement('afterend', bottomNavigation);
     }
 
+    function readPopularityNumber(metric, selector) {
+        const value = metric?.querySelector(selector)?.textContent?.trim() || '';
+        return /^\\d[\\d,]*$/.test(value) ? Number(value.replace(/,/g, '')) : null;
+    }
+
+    function popularityHeat(rate, referenceRate) {
+        // Log scaling preserves differences among fast-growing stories without making outliers dominate.
+        const logScore = Math.log1p(rate) / Math.log1p(referenceRate);
+        return Math.min(1, Math.max(0, (logScore - 0.3) / 0.7));
+    }
+
+    function markPopularity(metric, count, ageHours, kind, isLatest) {
+        if (!metric || count === null || !Number.isFinite(count)) {
+            return;
+        }
+        metric.classList.add(POPULARITY_CLASS);
+
+        const label = kind === 'score' ? '推薦分數' : '留言';
+        if (!isLatest || ageHours === null) {
+            metric.title = `${label} ${count}；未提供可比較的即時發文時間，不計算熱度`;
+            return;
+        }
+
+        // A two-hour prior prevents very young posts from winning on a handful of interactions.
+        // HN score includes the submitter's initial point; subtract it for rate estimation.
+        const effectiveHours = ageHours + 2;
+        const rate = (kind === 'score' ? Math.max(0, count - 1) : count) / effectiveHours;
+        const referenceRate = kind === 'score' ? 35 : 12;
+        const heat = popularityHeat(rate, referenceRate);
+
+        metric.title = `${label} ${count}；發文約 ${ageHours.toFixed(1)} 小時；平滑平均 ${rate.toFixed(1)}/小時（含 2 小時平滑，非即時增量）`;
+        if (heat <= 0) {
+            return;
+        }
+
+        // Move continuously from pale yellow to saturated yellow as log-rate rises.
+        const hue = Math.round(51 - 4 * heat);
+        const lightness = Math.round(91 - 35 * heat);
+        metric.classList.add(POPULARITY_HOT_CLASS);
+        metric.style.setProperty('--tm-popularity-color', `hsl(${hue} 100% ${lightness}%)`);
+    }
+
+    function addHackerNewsPopularity(articles, displayedDate) {
+        const isLatest = displayedDate === null;
+        articles.forEach(({ link }) => {
+            if (link.classList.contains('ad')) {
+                return;
+            }
+            const timestamp = link.querySelector('.last-updated[data-submitted]')?.getAttribute('data-submitted');
+            const submittedAt = timestamp ? Date.parse(timestamp) : NaN;
+            const ageHours = Number.isFinite(submittedAt) && submittedAt <= PAGE_LOADED_AT
+                ? Math.max(0, (PAGE_LOADED_AT - submittedAt) / 3600000)
+                : null;
+            const score = link.querySelector('.post-meta .score');
+            const comments = link.querySelector('.post-meta .comment');
+            markPopularity(score, readPopularityNumber(score, 'span'), ageHours, 'score', isLatest);
+            markPopularity(comments, readPopularityNumber(comments, 'a span'), ageHours, 'comments', isLatest);
+        });
+    }
+
     function setupHackerNewsControls(articles, storageKey, storedIds, displayedDate) {
+        addHackerNewsPopularity(articles, displayedDate);
         let seenIds = new Set(storedIds);
         articles.forEach((article) => addArticleToggle(article.link, seenIds.has(article.id)));
 
