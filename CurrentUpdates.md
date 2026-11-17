@@ -2,10 +2,11 @@
 
 Updated: 2026-11-17
 
-## Translation blockers diagnosis — 2026-11-17
+## Universal web diagnostics — 2026-11-17
 
-- [Install TranslationDiagnostics.user.js — 2026-11-17_1.0.0](src/TranslationDiagnostics.user.js) — opt-in DOM-only report of page/ancestor translate exclusions; never changes translation. Tap 翻譯診斷 then Copy report. Disable the test script after diagnosis.
-- Tests: [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider?tm_translation_diag=1) and [Perplexity Teammates](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work?tm_translation_diag=1) — identify root/ancestor blockers; [Perplexity search](https://www.perplexity.ai/) — no diagnostic button without the URL flag.
+- [Install Translation Diagnostics 2026-11-17_1.1.0](src/TranslationDiagnostics.user.js) — every HTTP(S) page gets a `回報` control. Pair the device once, then send sanitized DOM, translation flags, and optionally newly recorded console/errors to private Cloudflare KV (seven-day expiry). No site text by default; optional explicit public-text mode. Reload after update.
+- Tests: [Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — English article marked `zh-TW`, capture language/DOM info; [Teammates](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — the report button must also appear after navigation; [Example](https://example.org/) — report control works without URL flags. Cloudflare [health](https://tm-web-diagnostics.christorng.workers.dev/health).
+- Initial setup: tap **回報 → 建立配對碼**, send the 10-character code once for approval, then **確認已配對**. Future reports upload without pasting JSON. The code is separate from the device secret and expires in 60 minutes. Do not install both this and a second legacy diagnostic copy.
 
 ## Readable article translation opt-out — 2026-11-15
 
