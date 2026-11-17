@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.2.6
+// @version      2026-11-18_1.2.7
 // @description  Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -22,6 +22,7 @@
     const fullscreenControlLayouts = new Set();
     const FULLSCREEN_WIDTH = 38;
     const FULLSCREEN_HEIGHT = 32;
+    const isNitter = window.location.hostname === 'nitter.tiekoetter.com';
     const clampFullscreen = (value, low, high) => Math.max(low, Math.min(value, high));
     const fullscreenScrollY = () => {
         const viewport = window.visualViewport;
@@ -60,7 +61,10 @@
             const left = viewport ? viewport.offsetLeft : 0;
             const right = left + (viewport ? viewport.width : width);
             const bottom = viewport ? viewport.height : window.innerHeight;
-            const rect = target.getBoundingClientRect();
+            // Nitter media wrappers may be larger, zero-sized, or off-screen while
+            // their video is actually visible. Dock to the real video rectangle.
+            const visibleMedia = isNitter && (target.matches?.('video') ? target : target.querySelector?.('video'));
+            const rect = (visibleMedia || target).getBoundingClientRect();
             return {
                 left, right,
                 visible: Math.min(rect.right, right) - Math.max(rect.left, left) >= FULLSCREEN_WIDTH &&
@@ -93,10 +97,15 @@
                 if (!pinchAnchored) {
                     // The shared menu freezes its document position during a real pinch.
                     const rect = target.getBoundingClientRect();
-                    const originX = rect.left + (target.clientLeft || 0) - (target.scrollLeft || 0);
-                    const originY = rect.top + (target.clientTop || 0) - (target.scrollTop || 0);
-                    // Absolute coordinates are relative to the media container;
-                    // subtract its viewport origin to preserve document position.
+                    const inMedia = button.parentElement === target;
+                    const originX = inMedia
+                        ? rect.left + (target.clientLeft || 0) - (target.scrollLeft || 0)
+                        : -(window.scrollX || 0);
+                    const originY = inMedia
+                        ? rect.top + (target.clientTop || 0) - (target.scrollTop || 0)
+                        : -(window.scrollY || 0);
+                    // For a body-level Nitter overlay, absolute coordinates are
+                    // document-relative rather than video-container-relative.
                     place((parseFloat(button.style.left) || 0) - originX,
                         (parseFloat(button.style.top) || 0) - originY, false);
                     pinchAnchored = true;
@@ -742,7 +751,11 @@ body:has(#task-detail-root) {
         button.className = BUTTON_CLASS;
         button.type = 'button';
         updateButton(button, target);
-        target.appendChild(button);
+        // Video wrappers can clip fixed descendants on Android Edge. Keep Nitter
+        // controls in the document overlay layer, while anchoring their layout
+        // to each video. Other sites retain their existing button parent.
+        if (isNitter) (document.body || document.documentElement).appendChild(button);
+        else target.appendChild(button);
         makeDockedFullscreenControl(button, target, alignWithMenuDefault);
         requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
@@ -775,8 +788,16 @@ body:has(#task-detail-root) {
         // remount or discard its button during this expected DOM reparenting.
         if (videoFallback) return;
         const targets = new Set();
-        const primary = getTarget();
+        // On a Nitter thread, the largest video may be far below the viewport.
+        // One selected fullscreen button then stays hidden even when another
+        // video is on screen. Give every individual video its own control.
+        const primary = isNitter ? null : getTarget();
         if (primary?.isConnected) targets.add(primary);
+        if (isNitter) {
+            for (const video of document.querySelectorAll('video')) {
+                if (video.isConnected) targets.add(video.parentElement || video);
+            }
+        }
 
         // Every YouTube iframe needs a control of its own, including players
         // created after clicking GIF/video posters or scrolling into view.
@@ -823,6 +844,9 @@ body:has(#task-detail-root) {
     });
 
     mountButtons();
+    // An ARC game can hydrate after document-idle, without inserting a canvas.
+    // Refresh when the page finishes loading as well as after relevant mutations.
+    window.addEventListener('load', () => mountButtons());
     // Do not repeatedly write to the document in our own mutation callback.
     // React to lazy iframe src updates and visibility changes as well as DOM swaps.
     let mediaRefreshPending = false;
@@ -835,9 +859,10 @@ body:has(#task-detail-root) {
         });
     }
     function isMediaNode(node) {
-        return Boolean(['iframe', 'video', 'canvas', '[role="application"]'].some(
+        return Boolean(['iframe', 'video', 'canvas', '[role="application"]',
+            '#playground', '.game-page-inner'].some(
             (selector) => node?.matches?.(selector)) ||
-            node?.querySelector?.(GENERIC_MEDIA_SELECTOR));
+            node?.querySelector?.(GENERIC_MEDIA_SELECTOR + ', #playground, .game-page-inner'));
     }
     new MutationObserver((changes) => {
         const relevant = changes.some((change) => {

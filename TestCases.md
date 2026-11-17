@@ -4,10 +4,11 @@
 - `N/A`: reference sample with no matching userscript behavior expected.
 
 # Fullscreen Game View
+- https://tm-fullscreen-test.christorng.workers.dev/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (public HTML canvas/scroll fixture served from GitHub source by a dedicated Worker; script injection checked with Cloudflare Browser Rendering, native Android Edge requires device testing)
 Section note: local DOM-harness tests validate fixed viewport docking, menu-default separation without later collision avoidance, drag/pinch behavior, and per-player mounting. Native mobile compositor behavior requires Android Edge verification.
-- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (local DOM-harness validates game control geometry, docking, fullscreen fallback, and restoration; live mobile scroll needs device testing)
+- https://arcprize.org/tasks/ls20 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (local DOM-harness validates game control geometry, late game-root hydration, docking, fullscreen fallback, and restoration; live mobile scroll needs device testing)
 - https://www.anthropic.com/claude-fable-and-mythos-5-2 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (lazy YouTube iframe mounting and rotation tested with a simulated DOM; live embedded players require device testing)
-- https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (native video fullscreen, top-layer dialog fallback, portrait/landscape detection, Escape/Back restoration and mutation safety are tested in a DOM harness; actual Android Edge orientation and playback require device verification)
+- https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214 [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING] [TEST_STATUS: LIMITED] (native video fullscreen, per-video visible control even with a larger off-screen video, top-layer dialog fallback, portrait/landscape, Escape/Back, dynamic insertion and removal tested in DOM harness; actual Android Edge requires device verification)
 - https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (mocked advertising iframe is excluded from generic fullscreen discovery and may not change its parent layout; real ad and browser reload behavior require live verification)
 
 # Hacker News Comments
