@@ -107,6 +107,9 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     assert(getComputedStyle(fullscreen).color === 'rgb(240, 240, 240)', 'Fullscreen icon must match the menu foreground');
                     assert(getComputedStyle(fullscreen).width === '38px', 'Fullscreen width must match the menu');
                     assert(getComputedStyle(fullscreen).height === '32px', 'Fullscreen height must match the menu');
+                    const blockRect = document.getElementById('test-game').getBoundingClientRect();
+                    assert(fullscreen.getBoundingClientRect().bottom <= blockRect.top + 1,
+                        'Fullscreen entry belongs above the canvas, not at the browser/menu corner');
                     // Script-generated clicks have no user activation. Explicitly reject the native
                     // API so the real-browser CSS check exercises the fallback deterministically.
                     document.getElementById('test-game').requestFullscreen = () => Promise.reject(new Error('Fallback test'));
@@ -118,15 +121,19 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     const originalScroll = { x: window.scrollX, y: window.scrollY, code: scroller.scrollLeft };
                     fullscreen.click();
                     await frame();
-                    assert(getComputedStyle(fullscreen).display === 'none', 'No entry or close button should appear while expanded');
+                    assert(getComputedStyle(fullscreen).display === 'none', 'Entry button should disappear during fallback');
+                    const exit = document.getElementById('tm-fullscreen-game-view-exit-button');
+                    assert(exit && getComputedStyle(exit).display !== 'none', 'Fallback requires a visible exit button');
                     window.dispatchEvent(new Event('resize'));
                     await frame();
-                    assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state button');
+                    assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state entry');
                     window.scrollTo({ top: 0, behavior: 'instant' });
-                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                    exit.click();
                     await frame();
-                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Escape should restore the entry button');
-                    assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Escape must restore the pre-entry page scroll position');
+                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Close icon should restore the entry button');
+                    assert(!document.getElementById('tm-fullscreen-game-view-exit-button'),
+                        'Fallback close icon must not remain after exit');
+                    assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Exit must restore the pre-entry page scroll position');
                     assert(scroller.scrollLeft === originalScroll.code, 'Other page scrollers must stay unchanged');
                     fullscreen.click();
                     await frame();
@@ -136,7 +143,7 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Back should restore the entry button');
                     assert(window.scrollY === originalScroll.y, 'Back must restore the pre-entry page scroll position');
                     result.setAttribute('data-test-status', 'passed');
-                    result.textContent = 'Clipping, translation, compact entry button, hidden expanded controls, Escape, and Back checks passed';
+                    result.textContent = 'Clipping, translation, outside media entry, visible fallback exit, and Back checks passed';
                 } catch (error) {
                     result.setAttribute('data-test-status', 'failed');
                     result.textContent = error.message;
