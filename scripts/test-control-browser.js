@@ -99,7 +99,9 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     }
                     document.body.style.minHeight = '';
                     document.body.style.minWidth = '';
-                    window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
+                    // A local media control intentionally hides when its canvas is off-screen.
+                    // Bring the game into view before assessing its block-specific position.
+                    document.getElementById('test-game').scrollIntoView({ block: 'center', behavior: 'instant' });
                     window.dispatchEvent(new Event('scroll'));
                     await frame();
                     const fullscreen = document.getElementById('tm-fullscreen-game-view-button');
