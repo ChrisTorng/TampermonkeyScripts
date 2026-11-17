@@ -2,6 +2,11 @@
 
 Updated: 2026-11-17
 
+## English article misidentified as Chinese — 2026-11-17
+
+- [Install TranslatePreformattedText.user.js — 2026-11-17_1.5.27](src/TranslatePreformattedText.user.js) — recognize English articles whose root is incorrectly `lang="zh-TW"`; correct the language label without touching article text, translated Chinese pages, or normal site opt-outs. Reload after updating.
+- **Tests:** [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — Android Edge should recognize the English article for translation; [Perplexity Teammates](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — existing English-to-Chinese translation still works. Native Edge outcome requires device confirmation.
+
 ## Readable article translation opt-out — 2026-11-15
 
 [Translate Preformatted Text 1.5.26](src/TranslatePreformattedText.user.js): allow native browser translation of substantial articles blocked by document-level `translate="no"`, keeping child exclusions and interactive apps unchanged. Test: [Perplexity article](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work).
