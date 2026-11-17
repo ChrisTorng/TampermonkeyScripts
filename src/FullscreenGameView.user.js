@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-15_1.2.4
-// @description  Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
+// @version      2026-11-18_1.2.5
+// @description  Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -187,6 +187,8 @@
     const TARGET_CLASS = 'tm-fullscreen-game-view-target';
     const TARGET_POSITION_CLASS = 'tm-fullscreen-game-view-local-position';
     const FALLBACK_CLASS = 'tm-fullscreen-game-view-fallback';
+    const VIDEO_DIALOG_ID = 'tm-fullscreen-video-dialog';
+    const VIDEO_PLACEHOLDER_CLASS = 'tm-fullscreen-video-placeholder';
     const STYLE_ID = 'tm-fullscreen-game-view-style';
     const GENERIC_MEDIA_SELECTOR = 'canvas, iframe, video, [role="application"]';
 
@@ -265,6 +267,61 @@ html.tm-fullscreen-game-view-active body {
     inset: 0 !important;
     position: fixed !important;
     z-index: 2147483646 !important;
+}
+
+/* Nitter can disable its native video control and reject the Fullscreen API.
+   A modal dialog keeps only the original video above site stacking contexts. */
+#${VIDEO_DIALOG_ID}[open] {
+    align-items: center !important;
+    background: #000 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    height: 100dvh !important;
+    inset: 0 !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: hidden !important;
+    padding: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left)) !important;
+    position: fixed !important;
+    width: 100dvw !important;
+    z-index: 2147483647 !important;
+}
+#${VIDEO_DIALOG_ID}::backdrop { background: #000 !important; }
+#${VIDEO_DIALOG_ID} > video {
+    background: #000 !important;
+    display: block !important;
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    object-fit: contain !important;
+    width: 100% !important;
+}
+.${VIDEO_PLACEHOLDER_CLASS} { display: none !important; }
+video.tm-fullscreen-game-view-media:fullscreen {
+    background: #000 !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    width: 100dvw !important;
+}
+/* On Android Edge, rotate a landscape video visually if orientation.lock fails.
+   Rotating the top-layer dialog, not its ancestor, preserves native controls. */
+#${VIDEO_DIALOG_ID}[open].tm-fullscreen-game-view-landscape-rotated {
+    inset: auto !important;
+    top: 0 !important;
+    left: 100dvw !important;
+    width: 100dvh !important;
+    height: 100dvw !important;
+    transform-origin: top left !important;
+    transform: rotate(90deg) !important;
 }
 
 /* Rotate a landscape video's fullscreen surface only when the browser refuses
@@ -368,8 +425,30 @@ body:has(#task-detail-root) {
         return candidate.parentElement || candidate;
     }
 
+    // The original Full Screen PR used the actual Nitter <video> rather than
+    // its tweet wrapper. This remains Nitter-specific to preserve other sites.
+    function nitterVideo(target) {
+        if (window.location.hostname !== 'nitter.tiekoetter.com' || !target) return null;
+        return target.matches?.('video') ? target : target.querySelector?.('video') || null;
+    }
+
+    function fullscreenAllowed() {
+        if (document.fullscreenEnabled === false) return false;
+        const policy = document.permissionsPolicy || document.featurePolicy;
+        try {
+            return typeof policy?.allowsFeature !== 'function' || policy.allowsFeature('fullscreen');
+        } catch (_error) {
+            return true;
+        }
+    }
+
+    let videoFallback = null;
+
     function isFullscreen(target) {
-        return document.fullscreenElement === target || target.classList.contains(FALLBACK_CLASS);
+        return document.fullscreenElement === target ||
+            Boolean(nitterVideo(target) && document.fullscreenElement === nitterVideo(target)) ||
+            Boolean(videoFallback?.target === target) ||
+            target.classList.contains(FALLBACK_CLASS);
     }
 
     // A cross-origin YouTube iframe reports intrinsic video dimensions from its
@@ -436,8 +515,9 @@ body:has(#task-detail-root) {
 
     function syncMediaOrientation() {
         const nativeTarget = document.fullscreenElement;
-        const fallbackTarget = savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
-            ? savedPageState.target : null;
+        const fallbackTarget = videoFallback?.dialog ||
+            (savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
+                ? savedPageState.target : null);
         const target = nativeTarget || fallbackTarget;
         // The child YouTube document already controls its own native player.
         // Rotating both the iframe and its fullscreen player would rotate twice.
@@ -455,7 +535,7 @@ body:has(#task-detail-root) {
         // CSS is a visual backup. The actual screen is rotated by the browser API
         // when permission is granted; resizing then removes this CSS rotation.
         target.classList.toggle(rotatedClass, window.innerHeight > window.innerWidth);
-        if (!nativeTarget || session.requested) return;
+        if ((!nativeTarget && !videoFallback) || session.requested) return;
         const orientation = window.screen?.orientation;
         if (typeof orientation?.lock !== 'function') return;
         session.requested = true;
@@ -472,6 +552,58 @@ body:has(#task-detail-root) {
                 if (orientationSession === session) syncMediaOrientation();
             });
         } catch (_error) { /* CSS fallback remains active. */ }
+    }
+
+    function closeVideoFallback() {
+        const session = videoFallback;
+        if (!session) return;
+        videoFallback = null;
+        const { dialog, video, marker, target, button } = session;
+        dialog.removeEventListener('close', closeVideoFallback);
+        if (dialog.open) dialog.close();
+        if (marker.parentNode) {
+            // Moving explicitly also keeps the lightweight DOM test harness faithful.
+            video.parentNode?.removeChild(video);
+            marker.parentNode.insertBefore(video, marker);
+            marker.remove();
+        }
+        dialog.remove();
+        syncMediaOrientation();
+        document.documentElement.classList.remove('tm-fullscreen-game-view-active');
+        updateButton(button, target);
+        restorePageState(target);
+        mountButtons();
+    }
+
+    function openVideoFallback(target, video, button) {
+        if (videoFallback || !video?.parentNode) return;
+        const parent = video.parentNode;
+        const dialog = document.createElement('dialog');
+        dialog.id = VIDEO_DIALOG_ID;
+        dialog.setAttribute('aria-label', 'Expanded video');
+        (document.body || document.documentElement).appendChild(dialog);
+        try {
+            if (typeof dialog.showModal === 'function') dialog.showModal();
+            else dialog.setAttribute('open', '');
+        } catch (_error) {
+            dialog.remove();
+            return;
+        }
+
+        const marker = document.createElement('span');
+        marker.className = VIDEO_PLACEHOLDER_CLASS;
+        parent.insertBefore(marker, video);
+        video.parentNode?.removeChild(video);
+        dialog.appendChild(video);
+        videoFallback = { dialog, video, marker, target, button };
+        dialog.addEventListener('close', closeVideoFallback);
+        dialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            closeVideoFallback();
+        });
+        document.documentElement.classList.add('tm-fullscreen-game-view-active');
+        updateButton(button, target);
+        syncMediaOrientation();
     }
 
     window.addEventListener('message', (event) => {
@@ -555,17 +687,25 @@ body:has(#task-detail-root) {
 
     async function enterFullscreen(target, button) {
         if (isFullscreen(target)) return;
+        const video = nitterVideo(target);
+        if (video) video.classList.add('tm-fullscreen-game-view-media');
+        const surface = video || target;
         rememberPageState(target);
-        if (typeof target.requestFullscreen === 'function') {
+        if (typeof surface.requestFullscreen === 'function' && (!video || fullscreenAllowed())) {
             try {
-                await target.requestFullscreen({ navigationUI: 'hide' });
+                // Preserve the user-tested native Nitter video fullscreen route.
+                await surface.requestFullscreen({ navigationUI: 'hide' });
             } catch (_error) {
-                target.classList.add(FALLBACK_CLASS);
+                if (video) openVideoFallback(target, video, button);
+                else target.classList.add(FALLBACK_CLASS);
             }
+        } else if (video) {
+            openVideoFallback(target, video, button);
         } else {
             target.classList.add(FALLBACK_CLASS);
         }
 
+        if (!isFullscreen(target)) restorePageState(target);
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
         syncMediaOrientation();
         updateButton(button, target);
@@ -624,6 +764,9 @@ body:has(#task-detail-root) {
     }
 
     function mountButtons() {
+        // The original video temporarily lives in a top-layer dialog; do not
+        // remount or discard its button during this expected DOM reparenting.
+        if (videoFallback) return;
         const targets = new Set();
         const primary = getTarget();
         if (primary?.isConnected) targets.add(primary);
@@ -647,6 +790,7 @@ body:has(#task-detail-root) {
     }
 
     function exitFallback() {
+        if (videoFallback) closeVideoFallback();
         for (const [target, button] of mountedButtons) {
             if (!target.classList.contains(FALLBACK_CLASS)) continue;
             target.classList.remove(FALLBACK_CLASS);
