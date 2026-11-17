@@ -158,11 +158,13 @@ describe('transient in-content controls', () => {
         viewport.height = 260;
         harness.dispatchVisualViewportEvent('resize');
         assert.equal(harness.button.style.position, 'absolute');
-        assert.equal(parseFloat(harness.button.style.left), left - 100);
-        assert.equal(parseFloat(harness.button.style.top), top - 100);
+        // Controls are now in the body overlay, so absolute coordinates are
+        // document-anchored; they no longer subtract a game-parent offset.
+        assert.equal(parseFloat(harness.button.style.left), left);
+        assert.equal(parseFloat(harness.button.style.top), top);
         assert.equal(harness.button.style.transform, 'scale(0.5)');
         harness.dispatchVisualViewportEvent('scroll');
-        assert.equal(parseFloat(harness.button.style.left), left - 100);
+        assert.equal(parseFloat(harness.button.style.left), left);
         viewport.scale = 1;
         viewport.offsetLeft = 0;
         viewport.offsetTop = 0;
