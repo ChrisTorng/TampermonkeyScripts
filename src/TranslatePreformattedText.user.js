@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-17_1.5.27
-// @description  Translate formatted prose without losing layout, unblock readable articles, and correct misleading Chinese language labels on English articles.
+// @version      2026-11-18_1.5.28
+// @description  Translate formatted prose without losing layout, unblock readable articles, and correct misleading language labels on English articles.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1151,51 +1151,51 @@
         element.classList.remove('notranslate');
     }
 
-    // Some English articles are served as <html lang="zh-TW"> without
-    // translated text. Native browser translation may then treat the whole
-    // page as already in the target language. Compare the actual article
-    // heading and multiple long paragraphs before correcting this label.
-    // Never rewrite the article text or override a translated Chinese title.
-    let lastArticleLanguageSignature = '';
+    // A translated-looking document language may hide a genuinely English
+    // article from native browser translation. Use strong evidence from the
+    // readable article, not the domain, navigation language or URL.
+    // Remember the corrected article so a browser's later translation to
+    // Chinese is not mistaken for a new language mismatch.
+    let lastArticleLanguageRepair = null;
     function restoreReadableArticleLanguage() {
         if (window !== window.top) return;
         const html = document.documentElement;
-        if (!html || !/^zh(?:-|$)/i.test(html.getAttribute('lang') || '')) return;
+        const declaredLanguage = (html?.getAttribute('lang') || '').trim();
+        // An absent language marker lets the browser perform its own detection.
+        // Keep English variants as-is; avoid changes to normal English pages.
+        if (!declaredLanguage || /^en(?:-|$)/i.test(declaredLanguage)) return;
 
+        const pageKey = location.pathname + location.search;
         for (const article of document.querySelectorAll('article, main')) {
+            if (lastArticleLanguageRepair?.article === article
+                && lastArticleLanguageRepair.pageKey === pageKey) continue;
             if (article.querySelector('input[type="password"], [contenteditable="true"]')) continue;
             const heading = article.querySelector('h1, h2');
-            const title = (heading && heading.textContent || '').trim();
+            const title = (heading?.textContent || '').trim();
             if ((title.match(/[A-Za-z]/g) || []).length < 8
                 || /[\u3400-\u9fff]/.test(title)) continue;
 
-            const paragraphs = article.querySelectorAll('p');
-            const first = paragraphs[0]?.textContent || '';
-            const signature = title.slice(0, 100) + '|' + paragraphs.length + '|'
-                + first.slice(0, 90);
-            if (signature === lastArticleLanguageSignature) continue;
-            lastArticleLanguageSignature = signature;
-
             let longParagraphs = 0;
-            let latin = 0, han = 0, commonEnglishWords = 0;
-            for (const paragraph of paragraphs) {
+            let latin = 0, han = 0, commonEnglishWords = 0, distinctiveEnglishWords = 0;
+            for (const paragraph of article.querySelectorAll('p')) {
                 const prose = (paragraph.textContent || '').trim();
                 if (prose.length < 70) continue;
                 longParagraphs++;
-                // Work on at most eight paragraphs. These counters, rather
-                // than root lang alone, guard against ordinary Chinese pages.
                 const excerpt = prose.slice(0, 1800);
                 latin += (excerpt.match(/[A-Za-z]/g) || []).length;
                 han += (excerpt.match(/[\u3400-\u9fff]/g) || []).length;
                 commonEnglishWords += (excerpt.match(/\b(?:the|and|of|to|in|is|for|that|with|on|as|are|by|from|this|which|have|will|can|their|you|our)\b/gi) || []).length;
+                // These function words help separate English prose from a
+                // German or other European-language article with Latin text.
+                distinctiveEnglishWords += (excerpt.match(/\b(?:the|and|of|that|which|with|from|their|this|these|they|would|could)\b/gi) || []).length;
                 if (longParagraphs >= 8) break;
             }
             if (longParagraphs < 4 || latin < 700 || han * 20 >= latin
-                || commonEnglishWords < 35) continue;
+                || commonEnglishWords < 35 || distinctiveEnglishWords < 14) continue;
 
-            // The title and readable prose are English; restore the source
-            // language before native translation detects the page. Edge may
-            // later set lang="zh-TW" itself after successful translation.
+            lastArticleLanguageRepair = { article, pageKey };
+            // This changes only the language hint; Edge remains responsible
+            // for deciding if/when to offer or start native translation.
             html.setAttribute('lang', 'en');
             return;
         }
