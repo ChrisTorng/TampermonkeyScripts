@@ -20,7 +20,7 @@ function execute(file) {
     }
     vm.runInNewContext(fs.readFileSync(path.join(root, 'src', file), 'utf8'), harness.context, { filename: file });
     const button = harness.document.querySelector(file === files[0] ? '.tm-translate-pre-one' : '#tm-fullscreen-game-view-button');
-    const container = button.parentElement;
+    const container = file === files[0] ? button.parentElement : harness.document.querySelector('main');
     container._rect = { left: 100, top: 100, right: 700, bottom: 1000, width: 600, height: 900 };
     const update = () => { harness.dispatchWindowEvent('scroll'); harness.flushAnimationFrames(); };
     update();
@@ -175,7 +175,7 @@ describe('transient in-content controls', () => {
         assert.equal(harness.button.style.transform || '', '');
     });
 
-    test('fullscreen uses only the default menu position and never follows its movement', () => {
+    test('fullscreen anchors outside its block and never reads the floating menu', () => {
         const harness = execute(files[1]);
         const menu = harness.document.createElement('div');
         menu.id = 'tm-shared-floating-menu';
@@ -183,19 +183,19 @@ describe('transient in-content controls', () => {
         menu.getBoundingClientRect = () => { throw new Error('Fullscreen must not inspect the menu'); };
         harness.document.documentElement.appendChild(menu);
         assert.equal(harness.button.style.position, 'fixed');
-        assert.equal(harness.button.style.left, '1200px');
-        assert.equal(harness.button.style.top, '70px');
+        assert.equal(harness.button.style.left, '662px');
+        assert.equal(harness.button.style.top, '64px');
         harness.triggerMutation([menu], { target: harness.document.documentElement });
         harness.update();
-        assert.equal(harness.button.style.left, '1200px');
+        assert.equal(harness.button.style.left, '662px');
         // A manual drag may overlap the menu, and later menu movement must not reposition it.
         harness.pointer('pointerdown', 670, 110);
         harness.pointer('pointermove', 635, 110);
         harness.pointer('pointerup', 635, 110);
-        assert.equal(harness.button.style.left, '1165px');
+        assert.equal(harness.button.style.left, '627px');
         menu._rect.left = 1165;
         harness.update();
-        assert.equal(harness.button.style.left, '1165px');
+        assert.equal(harness.button.style.left, '627px');
     });
 
     test('fullscreen stays fixed at the top after docking, without animation-frame lag', () => {
