@@ -35,6 +35,33 @@ function executeOnArcTask() {
 }
 
 describe('Fullscreen control must not modify unrelated article widgets', () => {
+    test('two separate canvases get distinct outside buttons and expand only their own block', () => {
+        const h = createHarness({ url: 'https://example.com/two-games' });
+        const make = (r) => {
+            const box = h.document.createElement('section');
+            const canvas = h.document.createElement('canvas');
+            box._rect = { ...r };
+            canvas._rect = { ...r };
+            box.appendChild(canvas);
+            h.document.body.appendChild(box);
+            return box;
+        };
+        const upper = make({left: 350, top: 100, right: 720, bottom: 350, width: 370, height: 250});
+        const lower = make({left: 20, top: 380, right: 280, bottom: 560, width: 260, height: 180});
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        const buttons = h.document.querySelectorAll('.tm-fullscreen-game-view-button');
+        assert.equal(buttons.length, 2, 'Each independent block owns its own control.');
+        assert(buttons.every(button => button.parentElement === h.document.body));
+        const tops = buttons.map(button => Number.parseFloat(button.style.top)).sort((a,b) => a-b);
+        assert.deepEqual(tops, [64, 344], 'Both icons must be above their respective block edges.');
+        buttons[1].click();
+        assert(lower.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(!upper.classList.contains('tm-fullscreen-game-view-fallback'));
+        h.document.getElementById('tm-fullscreen-game-view-exit-button').click();
+        assert(!lower.classList.contains('tm-fullscreen-game-view-fallback'));
+    });
+
     test('Nieman Lab advertising iframe is not treated as a playable media surface', () => {
         const url = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
         const harness = createHarness({ url });
