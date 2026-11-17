@@ -364,6 +364,13 @@ video.tm-fullscreen-game-view-media:fullscreen {
     transform-origin: top left !important;
     transform: rotate(90deg) !important;
 }
+/* After a clockwise dialog rotation, its local TOP-LEFT maps to the
+   physical screen TOP-RIGHT. Keep × in that actual visible corner. */
+#${VIDEO_DIALOG_ID}[open].tm-fullscreen-game-view-landscape-rotated > #${EXIT_BUTTON_ID} {
+    left: max(8px, env(safe-area-inset-top)) !important;
+    right: auto !important;
+    top: max(8px, env(safe-area-inset-right)) !important;
+}
 
 /* A fullscreen <video> needs swapped dimensions too: the unrotated video rule
    has higher CSS specificity than the generic landscape fallback rule. */
