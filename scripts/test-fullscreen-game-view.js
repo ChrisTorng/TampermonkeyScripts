@@ -568,7 +568,8 @@ describe('Nitter video fullscreen migration', () => {
         let nativeCalls = 0;
         h.video.requestFullscreen = () => { nativeCalls++; return Promise.reject(new Error('NotAllowedError')); };
         h.button.click();
-        await Promise.resolve();
+        // Allow the rejected fullscreen Promise to cross the VM realm microtask boundary.
+        await new Promise(resolve => setImmediate(resolve));
         const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
         assert(dialog);
         assert.equal(nativeCalls, 1);
