@@ -39,7 +39,7 @@ Expose prose-heavy formatted and Markdown source text for browser translation wh
 
 ### [Translation Diagnostics User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js)
 
-Opt-in, privacy-limited native translation blocker reports for any article; adds UI only with `?tm_translation_diag=1`.
+Universal opt-in web problem reporting with sanitized DOM, translation diagnostics, and new console/error logs; paired Cloudflare submission with seven-day retention.
 
 
 
