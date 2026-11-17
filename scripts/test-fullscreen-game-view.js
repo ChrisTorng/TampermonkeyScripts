@@ -552,3 +552,86 @@ describe('Nitter video fullscreen migration', () => {
         h.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
     });
 });
+
+
+describe('Android Nitter and ARC fullscreen visibility regressions', () => {
+    function addVideo(h, rectangle) {
+        const wrapper = h.document.createElement('section');
+        const video = h.document.createElement('video');
+        video.controls = true;
+        video._rect = { ...rectangle };
+        wrapper._rect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+        wrapper.appendChild(video);
+        h.document.body.appendChild(wrapper);
+        return { wrapper, video };
+    }
+
+    test('Nitter gives the visible video a control even when a larger video is off-screen', () => {
+        const h = createHarness({
+            url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214'
+        });
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        h.window.visualViewport.width = 390;
+        h.window.visualViewport.height = 844;
+        const distant = addVideo(h, { left: 12, top: 1420, right: 378, bottom: 1770, width: 366, height: 350 });
+        const visible = addVideo(h, { left: 20, top: 220, right: 370, bottom: 420, width: 350, height: 200 });
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+
+        const buttons = h.document.querySelectorAll('.tm-fullscreen-game-view-button');
+        assert.equal(buttons.length, 2);
+        assert.equal(buttons.filter((b) => !b.hidden).length, 1,
+            'Do not leave the sole fullscreen control on an off-screen video.');
+        const visibleControl = buttons.find((b) => !b.hidden);
+        assert(visibleControl);
+        assert.equal(visibleControl.parentElement, h.document.body,
+            'A top-level fixed overlay must not be clipped by the video wrapper.');
+        assert.equal(distant.wrapper.querySelector('button'), null);
+        assert.equal(visible.wrapper.querySelector('button'), null);
+        assert(Number.parseFloat(visibleControl.style.left) >= 20);
+        assert(Number.parseFloat(visibleControl.style.top) >= 220);
+        assert(Number.parseFloat(visibleControl.style.top) <= 388);
+    });
+
+    test('Nitter video inserted after initial page render receives an independent control', () => {
+        const h = createHarness({ url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214' });
+        h.window.visualViewport.width = 390;
+        h.window.visualViewport.height = 844;
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 0);
+        const media = addVideo(h, { left: 20, top: 200, right: 370, bottom: 420, width: 350, height: 220 });
+        h.triggerMutation([media.video]);
+        h.flushAnimationFrames();
+        const button = h.document.querySelector('.tm-fullscreen-game-view-button');
+        assert(button, 'New Nitter video must mount on the mutation tick.');
+        assert.equal(button.hidden, false);
+        h.document.body.removeChild(media.wrapper);
+        h.triggerMutation([], { removedNodes: [media.wrapper] });
+        h.flushAnimationFrames();
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 0,
+            'Removed Nitter videos must clean up their associated controls.');
+    });
+
+    test('late ARC game root without a canvas still mounts its fullscreen control', () => {
+        const h = createHarness({ url: 'https://arcprize.org/tasks/ls20' });
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 0);
+        const playground = h.document.createElement('section');
+        playground.id = 'playground';
+        const game = h.document.createElement('div');
+        game.className = 'game-page-inner';
+        playground.appendChild(game);
+        h.document.body.appendChild(playground);
+        h.triggerMutation([playground]);
+        h.flushAnimationFrames();
+        const button = h.document.getElementById('tm-fullscreen-game-view-button');
+        assert(button, 'Hydrated game container must be recognized even without a video/canvas descendant.');
+        assert.equal(button.parentElement, game);
+    });
+});
