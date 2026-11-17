@@ -668,7 +668,7 @@ function buildPopularityArticle(harness, id, points, comments, timestamp) {
 
 function popularityLightness(metric) {
     const color = metric.style.getPropertyValue('--tm-popularity-color');
-    const match = color.match(/hsl\\(\\d+ 100% (\\d+)%\\)/);
+    const match = color.match(/hsl\(\d+ 100% (\d+)%\)/);
     assert(match, `Expected computed popularity color, received ${color}`);
     return Number(match[1]);
 }
@@ -679,7 +679,7 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         assert.match(html, /class="post-meta"/);
         assert.match(html, /class="score" title="Score"/);
         assert.match(html, /class="comment" title="Comments"/);
-        assert.match(html, /class="last-updated"[\\s\\S]*?data-submitted="/);
+        assert.match(html, /class="last-updated"[\s\S]*?data-submitted="/);
     });
 
     test('same totals are brighter when earned in fewer hours and links remain functional', () => {
