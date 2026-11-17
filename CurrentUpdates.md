@@ -1,6 +1,12 @@
 # Current updates
 
-Updated: 2026-11-17
+Updated: 2026-11-18
+
+## BetaCat popularity indicators — 2026-11-18_1.9.3
+
+- [Install AutoOpenNewArticles.user.js — 2026-11-18_1.9.3](src/AutoOpenNewArticles.user.js) — bold points/comments with yellow intensity based on logarithmic, two-hour-smoothed points/hour and comments/hour. Archive pages display readable neutral counts. Reload after updating.
+- **Tests:** [Latest](https://hackernews.betacat.io/) — compare the yellow highlights and metric tooltips; [Archive](https://hackernews.betacat.io/daily/2026-11-16) — no inferred live heat.
+
 
 ## Fullscreen controls visible on Android — 2026-11-18
 
