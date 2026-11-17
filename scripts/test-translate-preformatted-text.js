@@ -76,6 +76,86 @@ describe('Translate Preformatted Text', () => {
             'Teammates are agents for complex, ongoing work');
     });
 
+    // The two Perplexity device reports captured on 2026-11-17 found:
+    // Decider's English article is already marked <html lang="zh-TW">
+    // from document-start; Teammates begins en-GB and switches to zh-TW
+    // only after Edge translated its visible heading and paragraphs.
+    const englishProse = 'The article explains how the service can help the reader use new tools and work with the team, and how this approach will improve the experience. '.repeat(3);
+    const appendArticle = (h, title, paragraphs) => {
+        const article = h.document.createElement('article');
+        const h1 = h.document.createElement('h1');
+        h1.textContent = title;
+        article.appendChild(h1);
+        for (const prose of paragraphs) {
+            const p = h.document.createElement('p');
+            p.textContent = prose;
+            article.appendChild(p);
+        }
+        h.appendToBody(article);
+        return article;
+    };
+
+    test('Decider: an English article falsely marked zh-TW is relabeled en without rewriting prose', () => {
+        let article;
+        const harness = execute((h) => {
+            h.document.documentElement.setAttribute('lang', 'zh-TW');
+            article = appendArticle(h, 'Perplexity Decider', Array(8).fill(englishProse));
+        }, 'https://www.perplexity.ai/hub/blog/perplexity-decider');
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
+        assert.equal(article.querySelector('p').textContent, englishProse);
+        assert.equal(article.querySelectorAll('p').length, 8);
+        assert.equal(article.querySelector('h1').textContent, 'Perplexity Decider');
+    });
+
+    test('same language-label repair applies to an unrelated English article', () => {
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'zh-Hant');
+            appendArticle(h, 'Understanding autonomous agents', Array(8).fill(englishProse));
+        }, 'https://example.org/essays/autonomous-agents');
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
+    });
+
+    test('Teammates remains en-GB, and successful Edge translation can set zh-TW afterward', () => {
+        let article;
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'en-GB');
+            article = appendArticle(h, 'Teammates are agents for complex, ongoing work', Array(8).fill(englishProse));
+        }, 'https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work');
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en-GB');
+        // Edge has now translated the heading and most paragraphs to Chinese.
+        article.querySelector('h1').textContent = '協作代理程式與持續工作';
+        for (const p of article.querySelectorAll('p')) p.textContent = '這篇文章已成功翻譯成繁體中文。'.repeat(15);
+        harness.document.documentElement.setAttribute('lang', 'zh-TW');
+        harness.triggerMutation([article], { target: article });
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'zh-TW');
+    });
+
+    test('genuine Chinese, mixed-language pages and short apps retain zh-TW labels', () => {
+        const chinese = '這是一篇繁體中文技術文章，包含處理流程、測試步驟和必要的完整內容。'.repeat(8);
+        const cases = [
+            { title: '中文文章介紹新的翻譯技術', paragraphs: Array(8).fill(chinese) },
+            { title: 'English APIs in Chinese documentation', paragraphs: Array(8).fill(chinese + englishProse) },
+            { title: 'Interactive Application', paragraphs: [englishProse] }
+        ];
+        for (const info of cases) {
+            const harness = execute(h => {
+                h.document.documentElement.setAttribute('lang', 'zh-TW');
+                appendArticle(h, info.title, info.paragraphs);
+            }, 'https://example.com/article');
+            assert.equal(harness.document.documentElement.getAttribute('lang'), 'zh-TW', info.title);
+        }
+    });
+
+    test('dynamically hydrated English article can fix a misleading language label', () => {
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'zh-TW');
+        }, 'https://news.example.net/read/late');
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'zh-TW');
+        const article = appendArticle(harness, 'The future of collaborative work', Array(8).fill(englishProse));
+        harness.triggerMutation([article]);
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
+    });
+
     test('root notranslate class uses the same shared opt-out handling', () => {
         const harness = execute((h) => {
             h.document.documentElement.classList.add('notranslate');
