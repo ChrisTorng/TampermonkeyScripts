@@ -8,67 +8,102 @@ const { createHarness } = require('./dom-harness');
 const script = fs.readFileSync(path.join(__dirname, '../src/TranslationDiagnostics.user.js'), 'utf8');
 
 function run(url, setup = () => {}) {
-    const harness = createHarness({ url });
-    setup(harness);
-    vm.runInNewContext(script, harness.context);
-    return harness;
+    const h = createHarness({ url });
+    const values = new Map();
+    const calls = [];
+    h.location.protocol = new URL(url).protocol;
+    h.context.crypto = {
+        randomUUID: () => '9fbd37be-dfab-477a-ad93-90732813a4af',
+        getRandomValues(arr) { arr.fill(0x17); return arr; }
+    };
+    h.context.navigator = { language: 'zh-TW', userAgent: 'Mozilla/5.0 Android Edge' };
+    h.context.NodeFilter = { SHOW_TEXT: 4 };
+    h.document.createTextNode = text => {
+        const el = h.document.createElement('span');
+        el.textContent = text;
+        return el;
+    };
+    h.document.documentElement.cloneNode = () => ({
+        querySelectorAll: () => [],
+        outerHTML: '<html lang="zh-TW"><body><article>[content is sanitized]</article></body></html>'
+    });
+    h.context.GM_getValue = (key, fallback) => values.has(key) ? values.get(key) : fallback;
+    h.context.GM_setValue = (key, value) => values.set(key, value);
+    h.context.GM_xmlhttpRequest = options => {
+        calls.push({ url: options.url, method: options.method, data: JSON.parse(options.data) });
+        let response = { ok: true };
+        if (options.url.endsWith('/api/status')) response = { authorized: true };
+        if (options.url.endsWith('/api/pair')) response = { pairingCode: 'ABCDE234', expiresMinutes: 60 };
+        if (options.url.endsWith('/api/report')) response = { ok: true, reportId: '20261117-ABCDE2345678' };
+        options.onload({ status: 200, responseText: JSON.stringify(response) });
+    };
+    h.window.confirm = () => true;
+    setup(h);
+    h.context.globalThis = h.context;
+    vm.runInNewContext(script, h.context, { filename: 'TranslationDiagnostics.user.js' });
+    return { h, values, calls };
 }
 
-test('diagnostics remain inert on every ordinary URL', () => {
-    const h = run('https://www.perplexity.ai/hub/blog/perplexity-decider');
-    assert.equal(h.document.getElementById('tm-translation-diag'), null);
-    assert.equal(h.document.getElementById('tm-translation-diag-report'), null);
+test('common web pages show the report button without special query parameters', () => {
+    for (const url of [
+        'https://www.perplexity.ai/hub/blog/perplexity-decider',
+        'https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work',
+        'https://www.perplexity.ai/search/test',
+        'https://example.org/',
+    ]) {
+        const { h } = run(url);
+        assert(h.document.getElementById('tm-webdiag-toggle'), url);
+        assert.equal(h.document.querySelectorAll('#tm-webdiag-toggle').length, 1, url);
+    }
 });
 
-test('diagnostics expose ancestor translation opt-outs without article content', () => {
-    const secret = 'PERSONAL-ARTICLE-TEXT-NOT-TO-COPY';
-    const h = run('https://www.perplexity.ai/hub/blog/perplexity-decider?tm_translation_diag=1&token=private', (harness) => {
-        harness.document.documentElement.setAttribute('lang', 'en-GB');
-        harness.document.documentElement.setAttribute('translate', 'no');
-        const main = harness.document.createElement('main');
-        const region = harness.document.createElement('div');
-        region.setAttribute('translate', 'no');
-        const article = harness.document.createElement('article');
-        const h1 = harness.document.createElement('h1');
-        h1.textContent = 'Public science research';
-        article.appendChild(h1);
-        for (let n = 0; n < 4; n++) {
-            const p = harness.document.createElement('p');
-            p.textContent = (secret + ' The article contains substantial narrative prose. ').repeat(3);
-            article.appendChild(p);
-        }
-        region.appendChild(article);
-        main.appendChild(region);
-        harness.appendToBody(main);
-    });
-    const button = h.document.getElementById('tm-translation-diag');
-    assert(button);
-    button.click();
-    const area = h.document.querySelector('#tm-translation-diag-report textarea');
-    assert(area, 'an in-page report should be available without developer tools');
-    const raw = area.value;
-    const report = JSON.parse(raw);
-    assert.equal(report.page, 'https://www.perplexity.ai/hub/blog/perplexity-decider');
-    assert.equal(report.snapshots[0].html.translate, 'no');
-    assert(report.snapshots[0].articles.some(a =>
-        a.ancestorChain.some(element => element.tag === 'DIV' && element.translate === 'no')));
-    assert(!raw.includes(secret));
-    assert(!raw.includes('token=private'));
+test('reports cannot be sent before an explicit click', () => {
+    const { h, calls } = run('https://www.perplexity.ai/hub/blog/perplexity-decider');
+    assert.equal(calls.length, 0);
+    h.runAllTimeouts();
+    assert.equal(calls.length, 0);
+    assert.equal(h.document.querySelectorAll('#tm-webdiag-toggle').length, 1);
 });
 
-test('diagnostics recognize a readable app without changing translation attributes', () => {
-    const h = run('https://sample.example/search?q=secret&tm_translation_diag=1', (harness) => {
-        harness.document.documentElement.setAttribute('translate', 'no');
-        const main = harness.document.createElement('main');
-        const form = harness.document.createElement('input');
-        main.appendChild(form);
-        harness.appendToBody(main);
-    });
-    const button = h.document.getElementById('tm-translation-diag');
-    assert(button);
-    assert.equal(h.document.documentElement.getAttribute('translate'), 'no');
-    button.click();
-    const report = JSON.parse(h.document.querySelector('#tm-translation-diag-report textarea').value);
-    assert.equal(report.snapshots[0].articles[0].paragraphCount, 0);
-    assert.equal(h.document.documentElement.getAttribute('translate'), 'no');
+test('a report is sent only to the paired Cloudflare endpoint, without URL search strings', async () => {
+    const { h, calls } = run('https://www.perplexity.ai/hub/blog/perplexity-decider?session=SUPERSECRET');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    assert(panel);
+    h.document.getElementById('tm-webdiag-toggle').click();
+    assert.equal(panel.hidden, false);
+    await Promise.resolve();
+    const submit = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '送出報告至 Cloudflare');
+    assert(submit);
+    submit.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    const item = calls.find(c => c.url.endsWith('/api/report'));
+    assert(item);
+    assert.equal(item.url, 'https://tm-web-diagnostics.christorng.workers.dev/api/report');
+    assert.equal(item.data.report.url, 'https://www.perplexity.ai/hub/blog/perplexity-decider');
+    assert.equal(item.data.report.mode, 'structure');
+    assert.equal(item.data.report.snapshots[0].html.lang, null);
+    assert.equal(item.data.report.domTruncated, false);
+    assert(!JSON.stringify(item.data.report).includes('SUPERSECRET'));
+    assert(!JSON.stringify(item.data.report).includes(item.data.secret));
+});
+
+test('starting recording wraps the console only after user activation', () => {
+    const { h } = run('https://example.org/');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const monitor = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '開始記錄 Console');
+    assert(monitor);
+    assert.equal(monitor.textContent, '開始記錄 Console');
+    monitor.click();
+    assert.equal(monitor.textContent, '已開始記錄');
+    assert(h.document.getElementById('tm-webdiag-toggle'));
+});
+
+test('report panel can be recovered if a site removes the control', () => {
+    const { h } = run('https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work');
+    const host = h.document.getElementById('tm-webdiag-host');
+    host.remove();
+    assert.equal(h.document.getElementById('tm-webdiag-host'), null);
+    h.runAllIntervals();
+    assert(h.document.getElementById('tm-webdiag-toggle'));
 });
