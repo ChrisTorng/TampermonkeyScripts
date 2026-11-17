@@ -843,10 +843,27 @@ body:has(#task-detail-root) {
             }
         }
 
-        // Every YouTube iframe needs a control of its own, including players
-        // created after clicking GIF/video posters or scrolling into view.
+        // Keep one entry for EVERY distinct visible game or media block. The
+        // primary container already owns its descendants (notably ARC games).
+        const inside = (node, root) => {
+            for (let current = node; current; current = current.parentElement) {
+                if (current === root) return true;
+            }
+            return false;
+        };
+        if (!isNitter) {
+            for (const media of document.querySelectorAll('canvas, video, [role="application"]')) {
+                const rect = media.getBoundingClientRect();
+                if (rect.width < 160 || rect.height < 120 || (primary && inside(media, primary))) continue;
+                targets.add(media.parentElement || media);
+            }
+        }
+
+        // Multiple embedded providers, including lazy YouTube players, each
+        // deserve an independent button; advertising iframes are never included.
         for (const frame of document.querySelectorAll('iframe')) {
-            if (!youtubeFrame(frame) || !frame.parentElement) continue;
+            if (!isEmbeddedPlayer(frame) || !frame.parentElement ||
+                (primary && inside(frame, primary))) continue;
             targets.add(frame.parentElement);
         }
 
