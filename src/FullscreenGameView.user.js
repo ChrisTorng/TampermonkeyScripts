@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.2.5
+// @version      2026-11-18_1.2.6
 // @description  Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -322,6 +322,13 @@ video.tm-fullscreen-game-view-media:fullscreen {
     height: 100dvw !important;
     transform-origin: top left !important;
     transform: rotate(90deg) !important;
+}
+
+/* A fullscreen <video> needs swapped dimensions too: the unrotated video rule
+   has higher CSS specificity than the generic landscape fallback rule. */
+video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen {
+    width: 100dvh !important;
+    height: 100dvw !important;
 }
 
 /* Rotate a landscape video's fullscreen surface only when the browser refuses
