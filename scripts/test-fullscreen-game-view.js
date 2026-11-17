@@ -547,8 +547,11 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(exit.getAttribute('aria-label'), 'Exit simulated fullscreen');
         assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'),
             'Fallback rotates visually on a portrait viewport when screen lock is rejected.');
-        assert.match(h.document.getElementById('tm-fullscreen-game-view-style').textContent,
+        const fallbackCss = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
+        assert.match(fallbackCss,
             /#tm-fullscreen-video-dialog\[open\]\.tm-fullscreen-game-view-landscape-rotated/);
+        assert.match(fallbackCss, /landscape-rotated > #tm-fullscreen-game-view-exit-button/,
+            'CSS rotation keeps the exit button in the physical upper-right corner.');
         assert.equal(h.getLocks(), 1);
         h.triggerMutation([h.video]);
         h.flushAnimationFrames();
