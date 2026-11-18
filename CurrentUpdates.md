@@ -2,6 +2,11 @@
 
 Updated: 2026-11-18
 
+## Readable articles with Google notranslate meta — 2026-11-18
+
+- [Install TranslatePreformattedText.user.js — 2026-11-18_1.5.30](src/TranslatePreformattedText.user.js) — allow native translation of substantial articles blocked by `<meta name="google" content="notranslate">`, while preserving unrelated meta directives, child opt-outs, and short interactive pages. Reload after updating.
+- **Tests:** [TechSpot Nvidia article](https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html) — verified Android Edge reports show an `en-US` article with a global Google `notranslate` marker; check whether automatic translation starts on a new page load. [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — existing language correction stays intact. Android Edge behavior still needs actual confirmation.
+
 ## BetaCat popularity indicators — 2026-11-18_1.9.5
 
 - [Install AutoOpenNewArticles.user.js — 2026-11-18_1.9.5](src/AutoOpenNewArticles.user.js) — highlight **numeric totals only**; the fastest time-adjusted score and comment on the current Latest page independently receive the brightest yellow, with continuous linear fading for the rest. Archives remain neutral. Reload after updating.
