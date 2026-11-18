@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.9.4
-// @description  Preserve Hacker News Summary reading controls and load times; highlight only numeric scores and comments with continuous mellow heat.
+// @version      2026-11-18_1.9.5
+// @description  Preserve Hacker News Summary controls and load times; show page-relative time-adjusted popularity on score and comment numbers.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -595,17 +595,16 @@
         return /^\d[\d,]*$/.test(value) ? Number(value.replace(/,/g, '')) : null;
     }
 
-    function popularityHeat(rate, referenceRate) {
-        // Asymptotic logarithmic curve: no buckets and no saturation plateau.
-        // The scale keeps ordinary HN engagement in the pale-yellow range.
-        const magnitude = Math.log1p(Math.max(0, rate) / referenceRate);
-        return magnitude / (2.3 + magnitude);
+    function popularityRate(count, ageHours, kind) {
+        // Two-hour smoothing avoids overrating a handful of very early votes.
+        // HN's first score point belongs to the submitter, not other readers.
+        return (kind === 'score' ? Math.max(0, count - 1) : count) / (ageHours + 2);
     }
 
-    function markPopularity(metric, count, ageHours, kind, isLatest) {
+    function markPopularity(metric, count, ageHours, kind, isLatest, pageMaxRate) {
         if (!metric || count === null || !Number.isFinite(count)) return;
-        // Apply the background to the number only, never the icon, link arrow,
-        // surrounding separators, or the entire post-meta span.
+        // The number alone receives a background: never the adjacent icon,
+        // article link arrow or punctuation separators.
         const number = metric.querySelector(kind === 'score' ? 'span' : 'a span');
         if (!number) return;
         number.classList.add(POPULARITY_CLASS);
@@ -616,29 +615,28 @@
             return;
         }
 
-        // A two-hour prior prevents a few early votes from looking viral.
-        // Subtract the submitter's initial HN point for the scoring rate.
-        const rate = (kind === 'score' ? Math.max(0, count - 1) : count) / (ageHours + 2);
-        const referenceRate = kind === 'score' ? 16 : 6;
-        const heat = popularityHeat(rate, referenceRate);
-        metric.title = `${label} ${count}；發文約 ${ageHours.toFixed(1)} 小時；平滑平均 ${rate.toFixed(1)}/小時（含 2 小時平滑，非即時增量）`;
-        if (heat <= 0) return;
+        const rate = popularityRate(count, ageHours, kind);
+        const relativeHeat = pageMaxRate > 0 ? Math.min(1, Math.max(0, rate / pageMaxRate)) : 0;
+        metric.title = `${label} ${count}；發文約 ${ageHours.toFixed(1)} 小時；平滑平均 ${rate.toFixed(1)}/小時（含 2 小時平滑）；本頁相對熱度 ${(relativeHeat * 100).toFixed(1)}%（非即時增量）`;
+        if (relativeHeat <= 0) return;
 
-        // Continuous, softly graded yellow. Keep fractional HSL values;
-        // no discrete bands, integer-rounded brightness or upper cutoff.
-        const saturation = 72 + 23 * heat;
-        const lightness = 96 - 33 * heat;
+        // Linear normalization to the hottest visible listing; no logarithm,
+        // fixed rate threshold, discrete bands or saturation plateau.
+        // A page of similarly popular articles gives all of them bright yellow.
+        const saturation = 88 + 12 * relativeHeat;
+        const lightness = 96 - 42 * relativeHeat;
         number.classList.add(POPULARITY_HOT_CLASS);
         number.style.setProperty('--tm-popularity-color',
-            `hsl(48 ${saturation.toFixed(3)}% ${lightness.toFixed(3)}%)`);
+            `hsl(50 ${saturation.toFixed(3)}% ${lightness.toFixed(3)}%)`);
     }
 
     function addHackerNewsPopularity(articles, displayedDate) {
         const isLatest = displayedDate === null;
+        const rows = [];
+        const maxRates = { score: 0, comments: 0 };
+
         articles.forEach(({ link }) => {
-            if (link.classList.contains('ad')) {
-                return;
-            }
+            if (link.classList.contains('ad')) return;
             const timestamp = link.querySelector('.last-updated[data-submitted]')?.getAttribute('data-submitted');
             const submittedAt = timestamp ? Date.parse(timestamp) : NaN;
             const ageHours = Number.isFinite(submittedAt) && submittedAt <= PAGE_LOADED_AT
@@ -646,8 +644,20 @@
                 : null;
             const score = link.querySelector('.post-meta .score');
             const comments = link.querySelector('.post-meta .comment');
-            markPopularity(score, readPopularityNumber(score, 'span'), ageHours, 'score', isLatest);
-            markPopularity(comments, readPopularityNumber(comments, 'a span'), ageHours, 'comments', isLatest);
+            const scoreCount = readPopularityNumber(score, 'span');
+            const commentCount = readPopularityNumber(comments, 'a span');
+            if (isLatest && ageHours !== null) {
+                if (scoreCount !== null)
+                    maxRates.score = Math.max(maxRates.score, popularityRate(scoreCount, ageHours, 'score'));
+                if (commentCount !== null)
+                    maxRates.comments = Math.max(maxRates.comments, popularityRate(commentCount, ageHours, 'comments'));
+            }
+            rows.push({ score, comments, scoreCount, commentCount, ageHours });
+        });
+
+        rows.forEach(({ score, comments, scoreCount, commentCount, ageHours }) => {
+            markPopularity(score, scoreCount, ageHours, 'score', isLatest, maxRates.score);
+            markPopularity(comments, commentCount, ageHours, 'comments', isLatest, maxRates.comments);
         });
     }
 
