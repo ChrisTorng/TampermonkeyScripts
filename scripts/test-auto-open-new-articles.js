@@ -668,7 +668,7 @@ function buildPopularityArticle(harness, id, points, comments, timestamp) {
 
 function popularityLightness(metric) {
     const color = metric.style.getPropertyValue('--tm-popularity-color');
-    const match = color.match(/hsl\(\d+ 100% (\d+)%\)/);
+    const match = color.match(/hsl\(48 [\d.]+% ([\d.]+)%\)/);
     assert(match, `Expected computed popularity color, received ${color}`);
     return Number(match[1]);
 }
@@ -691,18 +691,38 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
-        for (const metric of [recent.score, recent.comment, older.score, older.comment]) {
+        for (const metric of [recent.pointsNumber, recent.commentNumber, older.pointsNumber, older.commentNumber]) {
             assert(metric.classList.contains('auto-open-new-articles-popularity'));
             assert(metric.classList.contains('auto-open-new-articles-popularity-hot'));
         }
-        assert(popularityLightness(recent.score) < popularityLightness(older.score));
-        assert(popularityLightness(recent.comment) < popularityLightness(older.comment));
+        assert(popularityLightness(recent.pointsNumber) < popularityLightness(older.pointsNumber));
+        assert(popularityLightness(recent.commentNumber) < popularityLightness(older.commentNumber));
+        // Only numeric glyphs get backgrounds, not chevrons, comment icons or delimiters.
+        assert(!recent.score.classList.contains('auto-open-new-articles-popularity'));
+        assert(!recent.comment.classList.contains('auto-open-new-articles-popularity'));
+        assert.equal(recent.pointsNumber.style.getPropertyValue('--tm-popularity-color').startsWith('hsl(48 '), true);
         assert.equal(recent.pointsNumber.textContent, '90');
         assert.equal(recent.commentNumber.textContent, '36');
         assert.equal(recent.commentLink.href, 'https://news.ycombinator.com/item?id=610');
         assert.match(recent.score.title, /平滑平均/);
         assert.match(recent.comment.title, /非即時增量/);
         assert.equal(recent.article.classList.contains('auto-open-new-articles-collapsed'), false);
+    });
+
+    test('large growing scores remain continuously differentiated without a brightness ceiling', () => {
+        const now = Date.parse('2026-11-18T08:00:00Z');
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, [], now);
+        const medium = buildPopularityArticle(harness, '700', 86, 43, new Date(now - 3600000).toISOString());
+        const large = buildPopularityArticle(harness, '701', 190, 90, new Date(now - 3600000).toISOString());
+        const huge = buildPopularityArticle(harness, '702', 500, 240, new Date(now - 3600000).toISOString());
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert(popularityLightness(medium.pointsNumber) > popularityLightness(large.pointsNumber));
+        assert(popularityLightness(large.pointsNumber) > popularityLightness(huge.pointsNumber));
+        assert(popularityLightness(medium.commentNumber) > popularityLightness(large.commentNumber));
+        assert(popularityLightness(large.commentNumber) > popularityLightness(huge.commentNumber));
+        // A common 86-point story should no longer hit an extremely saturated gold background.
+        assert(popularityLightness(medium.pointsNumber) >= 80);
     });
 
     test('a handful of new votes never appears hotter than a sustained fast-growing story', () => {
@@ -714,10 +734,11 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
-        assert.equal(tiny.score.classList.contains('auto-open-new-articles-popularity-hot'), false);
-        assert.equal(tiny.comment.classList.contains('auto-open-new-articles-popularity-hot'), false);
-        assert(fast.score.classList.contains('auto-open-new-articles-popularity-hot'));
-        assert(fast.comment.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(!tiny.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(tiny.commentNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(fast.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(fast.commentNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(popularityLightness(tiny.commentNumber) > popularityLightness(fast.commentNumber));
     });
 
     test('historical archives and missing timestamps keep legible neutral totals, not misleading heat', () => {
@@ -726,16 +747,16 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         const old = buildPopularityArticle(archived.harness, '630', 900, 300, new Date(now - 24 * 3600000).toISOString());
         runAutoOpenScript(archived.harness);
         archived.harness.dispatchDocumentEvent('DOMContentLoaded');
-        assert(old.score.classList.contains('auto-open-new-articles-popularity'));
-        assert(!old.score.classList.contains('auto-open-new-articles-popularity-hot'));
-        assert(!old.comment.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(old.pointsNumber.classList.contains('auto-open-new-articles-popularity'));
+        assert(!old.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(!old.commentNumber.classList.contains('auto-open-new-articles-popularity-hot'));
 
         const latest = createAutoOpenHarness('https://hackernews.betacat.io/', {}, [], now);
         const undated = buildPopularityArticle(latest.harness, '631', 900, 300, null);
         runAutoOpenScript(latest.harness);
         latest.harness.dispatchDocumentEvent('DOMContentLoaded');
-        assert(undated.score.classList.contains('auto-open-new-articles-popularity'));
-        assert(!undated.score.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(undated.pointsNumber.classList.contains('auto-open-new-articles-popularity'));
+        assert(!undated.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
         assert.match(undated.score.title, /不計算熱度/);
     });
 });
