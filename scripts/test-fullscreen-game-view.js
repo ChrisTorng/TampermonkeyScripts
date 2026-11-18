@@ -681,3 +681,146 @@ describe('Android Nitter and ARC fullscreen visibility regressions', () => {
         assert.equal(button.parentElement, h.document.body);
     });
 });
+
+describe('Fullscreen photos, orientation, and actual Back history', () => {
+    const imageUrl = 'https://nitter.tiekoetter.com/example/status/123456789';
+    function imageHarness(width = 1920, height = 1080) {
+        const h = createHarness({ url: imageUrl });
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        h.window.visualViewport.width = 390;
+        h.window.visualViewport.height = 844;
+        let pushes = 0, backs = 0, locks = 0;
+        h.window.history = {
+            pushState(state, unused, url) { pushes++; assert.equal(url, imageUrl); },
+            back() { backs++; }
+        };
+        h.window.screen = { orientation: {
+            lock() { locks++; return Promise.reject(new Error('Unsupported')); },
+            unlock() {}
+        } };
+        const anchor = h.document.createElement('a');
+        anchor.className = 'still-image';
+        const img = h.document.createElement('img');
+        img.naturalWidth = width;
+        img.naturalHeight = height;
+        img._rect = {left: 20, top: 240, right: 370, bottom: 460, width: 350, height: 220};
+        img.closest = (selector) => selector.includes('a.still-image') ? anchor : null;
+        anchor.appendChild(img);
+        h.document.body.appendChild(anchor);
+        const nativeCreate = h.document.createElement.bind(h.document);
+        h.document.createElement = tag => {
+            const node = nativeCreate(tag);
+            if (tag === 'dialog') {
+                node.showModal = () => { node.open = true; node.setAttribute('open', ''); };
+                node.close = () => { node.open = false; node.removeAttribute('open'); };
+            }
+            return node;
+        };
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        return {
+            ...h, anchor, img,
+            button: h.document.querySelector('.tm-fullscreen-game-view-button'),
+            pushes: () => pushes, backs: () => backs, locks: () => locks
+        };
+    }
+
+    test('native fullscreen for a landscape image uses intrinsic aspect ratio', async () => {
+        const h = imageHarness();
+        assert(h.button, 'Large Nitter still-image gets an independent control.');
+        assert.equal(h.button.parentElement, h.document.body);
+        h.img.requestFullscreen = async () => {
+            h.document.fullscreenElement = h.img;
+            h.dispatchDocumentEvent('fullscreenchange');
+        };
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.locks(), 1, 'Intrinsic landscape dimensions require an orientation attempt.');
+        assert(h.img.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(h.pushes(), 0, 'Do not intercept Back for real browser fullscreen.');
+        assert(!h.document.getElementById('tm-fullscreen-video-dialog'));
+    });
+
+    test('landscape image fallback rotates, Back closes it and × remains understated', async () => {
+        const h = imageHarness();
+        h.img.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        const exit = h.document.getElementById('tm-fullscreen-game-view-exit-button');
+        assert(dialog && exit);
+        assert.equal(h.img.parentElement, dialog);
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(h.pushes(), 1, 'Entering fallback should push one same-page Back entry.');
+        const css = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
+        assert.match(css, /background: rgba\(0,0,0,\.22\) !important/,
+            'Fallback exit must be much less visually prominent.');
+        assert.match(css, /landscape-rotated > #tm-fullscreen-game-view-exit-button\s*\{\s*left: auto !important;\s*right:/,
+            'The visually rotated top-right must stay on the local top-right.');
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.img.parentElement, h.anchor);
+        assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
+        assert.equal(h.backs(), 0, 'Actual Back already consumed the synthetic entry.');
+    });
+
+    test('portrait photo remains upright, × unwinds history without leaving the article', async () => {
+        const h = imageHarness(720, 1280);
+        h.img.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog && !dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        h.document.getElementById('tm-fullscreen-game-view-exit-button').click();
+        assert.equal(h.backs(), 1, '× must remove the one fallback history entry.');
+        assert.equal(h.img.parentElement, h.anchor);
+        assert.equal(h.button.disabled, false);
+    });
+
+    test('landscape game canvas rotates in CSS fallback and Back restores it', () => {
+        const h = executeOnArcTask();
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        h.game._rect = {left: 20, top: 180, right: 380, bottom: 410, width: 360, height: 230};
+        const canvas = h.document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 450;
+        h.game.appendChild(canvas);
+        let pushed = 0, goneBack = 0;
+        h.window.history = {
+            pushState() { pushed++; },
+            back() { goneBack++; }
+        };
+        // Re-run in a fresh harness for the Android user agent to be observed at init.
+        // The orientation handler is registered at script initialization.
+        const android = createHarness({ url: 'https://arcprize.org/tasks/ls20' });
+        android.window.navigator = h.window.navigator;
+        android.window.innerWidth = 390;
+        android.window.innerHeight = 844;
+        android.window.history = h.window.history;
+        const playground = android.document.createElement('div');
+        playground.id = 'playground';
+        const game = android.document.createElement('div');
+        game.className = 'game-page-inner';
+        game._rect = {left:20, top:180, right:380, bottom:410, width:360, height:230};
+        const gameCanvas = android.document.createElement('canvas');
+        gameCanvas.width = 800;
+        gameCanvas.height = 450;
+        game.appendChild(gameCanvas);
+        playground.appendChild(game);
+        android.document.body.appendChild(playground);
+        android.context.globalThis = android.context;
+        vm.runInNewContext(scriptContents, android.context, { filename: scriptPath });
+        const button = android.document.getElementById('tm-fullscreen-game-view-button');
+        button.click();
+        assert(game.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(game.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(pushed, 1);
+        android.dispatchWindowEvent('popstate');
+        assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(!game.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(goneBack, 0);
+    });
+});
