@@ -99,19 +99,29 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     }
                     document.body.style.minHeight = '';
                     document.body.style.minWidth = '';
-                    // A local media control intentionally hides when its canvas is off-screen.
-                    // Bring the game into view before assessing its block-specific position.
+                    // Scroll the game into view to check that its CSS-anchored control
+                    // follows the media rather than sticking to the viewport.
                     document.getElementById('test-game').scrollIntoView({ block: 'center', behavior: 'instant' });
                     window.dispatchEvent(new Event('scroll'));
                     await frame();
                     const fullscreen = document.getElementById('tm-fullscreen-game-view-button');
                     assert(fullscreen && !fullscreen.hidden, 'Fullscreen test button must be available');
-                    assert(getComputedStyle(fullscreen).color === 'rgb(240, 240, 240)', 'Fullscreen icon must match the menu foreground');
+                    assert(getComputedStyle(fullscreen).color.includes('170, 180, 190'), 'Fullscreen icon should be intentionally muted');
+                    assert(getComputedStyle(fullscreen).backgroundColor === 'rgba(0, 0, 0, 0)', 'Fullscreen button must have no background fill');
+                    assert(getComputedStyle(fullscreen).boxShadow === 'none', 'Fullscreen button must have no shadow');
+                    assert(getComputedStyle(fullscreen).position === 'absolute', 'Fullscreen must use CSS media-local positioning');
                     assert(getComputedStyle(fullscreen).width === '38px', 'Fullscreen width must match the menu');
                     assert(getComputedStyle(fullscreen).height === '32px', 'Fullscreen height must match the menu');
                     const blockRect = document.getElementById('test-game').getBoundingClientRect();
                     assert(fullscreen.getBoundingClientRect().bottom <= blockRect.top + 1,
                         'Fullscreen entry belongs above the canvas, not at the browser/menu corner');
+                    const offset = fullscreen.getBoundingClientRect().bottom - blockRect.top;
+                    window.scrollBy({top: 140, behavior:'instant'});
+                    await frame();
+                    assert(Math.abs((fullscreen.getBoundingClientRect().bottom -
+                        document.getElementById('test-game').getBoundingClientRect().top) - offset) < 2,
+                        'Full screen glyph must scroll with media without lag or jitter');
+                    assert(!fullscreen.hidden, 'Offscreen entry must never be artificially hidden');
                     // Script-generated clicks have no user activation. Explicitly reject the native
                     // API so the real-browser CSS check exercises the fallback deterministically.
                     document.getElementById('test-game').requestFullscreen = () => Promise.reject(new Error('Fallback test'));
