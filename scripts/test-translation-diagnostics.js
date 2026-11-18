@@ -65,6 +65,54 @@ test('reports cannot be sent before an explicit click', () => {
     assert.equal(h.document.querySelectorAll('#tm-webdiag-toggle').length, 1);
 });
 
+test('diagnostics panel is reliably hidden by inline !important and closes from its top bar', async () => {
+    const { h, calls } = run('https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html');
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const close = h.document.getElementById('tm-webdiag-close');
+    assert(toggle && panel && close);
+    assert.equal(panel.hidden, true);
+    assert.equal(panel.style.getPropertyValue('display'), 'none');
+    assert.equal(panel.style.getPropertyPriority('display'), 'important');
+    assert.equal(panel.getAttribute('aria-hidden'), 'true');
+    assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(panel.children[0].id, 'tm-webdiag-panel-header');
+    assert.equal(panel.children[0].children[1], close);
+
+    toggle.click();
+    await Promise.resolve();
+    assert.equal(panel.hidden, false);
+    assert.equal(panel.style.getPropertyValue('display'), 'block');
+    assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+
+    close.click();
+    assert.equal(panel.hidden, true);
+    assert.equal(panel.style.getPropertyValue('display'), 'none');
+    assert.equal(panel.getAttribute('aria-hidden'), 'true');
+    h.runAllTimeouts();
+    h.runAllIntervals();
+    assert.equal(panel.hidden, true);
+    assert.equal(panel.style.getPropertyValue('display'), 'none');
+    assert.equal(calls.filter(x => x.url.endsWith('/api/report')).length, 0);
+
+    toggle.click();
+    assert.equal(panel.hidden, false);
+    toggle.click();
+    assert.equal(panel.hidden, true);
+});
+
+test('arming the next page refresh never reloads automatically or uploads a report', () => {
+    const { h, values, calls } = run('https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const next = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '下次重新整理時開始記錄');
+    assert(next);
+    next.click();
+    assert.equal(h.location.reloadCallCount, 0);
+    assert.equal(values.get('tm-webdiag-record-next:https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html'), true);
+    assert.equal(panel.hidden, true);
+    assert.equal(calls.length, 0);
+});
+
 test('a report is sent only to the paired Cloudflare endpoint, without URL search strings', async () => {
     const { h, calls } = run('https://www.perplexity.ai/hub/blog/perplexity-decider?session=SUPERSECRET');
     const panel = h.document.getElementById('tm-webdiag-panel');
@@ -106,4 +154,7 @@ test('report panel can be recovered if a site removes the control', () => {
     assert.equal(h.document.getElementById('tm-webdiag-host'), null);
     h.runAllIntervals();
     assert(h.document.getElementById('tm-webdiag-toggle'));
+    const recoveredPanel = h.document.getElementById('tm-webdiag-panel');
+    assert.equal(recoveredPanel.hidden, true);
+    assert.equal(recoveredPanel.style.getPropertyValue('display'), 'none');
 });
