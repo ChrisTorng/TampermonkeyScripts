@@ -576,13 +576,16 @@ body:has(#task-detail-root) {
                 return canvas.width > canvas.height ? 'landscape' : 'portrait';
         }
         const frames = root.matches?.('iframe') ? [root] : Array.from(root.querySelectorAll?.('iframe') || []);
-        for (const frame of frames) {
-            if (!youtubeFrame(frame)) continue;
+        const youtubeFrames = frames.filter(youtubeFrame);
+        for (const frame of youtubeFrames) {
             const metadata = youtubeDimensions.get(frame);
             if (metadata?.src === frame.src && metadata.width > 0 && metadata.height > 0) {
                 return metadata.width > metadata.height ? 'landscape' : 'portrait';
             }
         }
+        // An unloaded YouTube iframe might display portrait content even
+        // when the frame itself is 16:9. Wait for the true video metadata.
+        if (youtubeFrames.length) return null;
         // Games and unknown providers have no intrinsic media size; use their
         // rendered block aspect ratio instead of leaving landscape content upright.
         const rect = root.getBoundingClientRect?.();
@@ -701,7 +704,7 @@ body:has(#task-detail-root) {
         dialog.setAttribute('aria-label', video.tagName === 'IMG' ? 'Expanded image' : 'Expanded video');
         if (nativeFailure) {
             dialog.setAttribute('data-tm-native-fullscreen-error', nativeFailure.name || 'Rejected');
-            console.info('[Fullscreen Game View] Native fullscreen rejected', nativeFailure);
+            console?.info?.('[Fullscreen Game View] Native fullscreen rejected', nativeFailure);
         }
         (document.body || document.documentElement).appendChild(dialog);
         try {
