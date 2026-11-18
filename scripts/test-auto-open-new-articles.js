@@ -725,7 +725,7 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         assert.equal(popularityLightness(huge.pointsNumber), 54);
         assert.equal(popularityLightness(huge.commentNumber), 54);
         assert(popularityLightness(medium.pointsNumber) >= 80);
-        assert.match(huge.score.title, /本頁相對熱度 100\\.0%/);
+        assert.match(huge.score.title, /本頁相對熱度 100\.0%/);
     });
 
     test('a nearly uniform page gives every article a bright yellow, without a fixed global threshold', () => {
