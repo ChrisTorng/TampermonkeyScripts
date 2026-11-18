@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.3.1
-// @description  Subtle media-anchored fullscreen with no scroll jitter, Nitter photos and Back-only fallback.
+// @version      2026-11-18_1.3.2
+// @description  Restore Nitter video-poster fullscreen entry outside clipped galleries; preserve subtle CSS anchoring and Back exit.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -34,9 +34,24 @@
     window.addEventListener('resize', refreshFullscreenControls);
 
     function mediaRectTarget(target) {
-        return (isNitter && (target.matches?.('video') ? target : target.querySelector?.('video'))) || target;
+        if (!isNitter) return target;
+        // A Nitter video poster is painted inside <video poster="...">, not
+        // necessarily inside an <img>. Disabled players instead show a real
+        // preview img. Either must anchor the same attachment control.
+        return (target.matches?.('video') ? target : target.querySelector?.('video')) ||
+            (target.matches?.('img') ? target : target.querySelector?.('img')) || target;
     }
     function unclippedAnchor(target) {
+        // Nitter's .attachment/.gallery-video media containers clip overflow.
+        // The control is intentionally ABOVE the media, so mounting it within
+        // those wrappers makes it completely invisible. Anchor it to the
+        // containing tweet instead: still local, and scrolls in CSS lockstep.
+        if (isNitter) {
+            const tweet = target.closest?.('.status-el') || target.closest?.('.timeline-item');
+            if (tweet) return tweet;
+            const gallery = target.closest?.('.gallery-video') || target.closest?.('.gallery-gif');
+            if (gallery?.parentElement) return gallery.parentElement;
+        }
         let host = target.matches?.('img') ? target.parentElement : target;
         // Escape only explicit clipping containers. Non-clipped local hosts
         // preserve the correct position inside nested scrolling areas.
@@ -407,9 +422,11 @@ body:has(#task-detail-root) {
 
     function fullscreenImage(target) {
         if (!target) return null;
-        // Nitter photos are <a class="still-image"><img ...></a>; the
-        // same mechanism also supports standalone images on other sites.
-        return target.matches?.('img') ? target : null;
+        if (target.matches?.('img')) return target;
+        // A Nitter media attachment may initially be an image-only preview,
+        // later swapped for video. Keep the SAME attachment and button.
+        return isNitter && target.matches?.('.attachment') && !target.querySelector?.('video')
+            ? target.querySelector?.('img') || null : null;
     }
 
     let videoFallback = null;
@@ -813,8 +830,25 @@ body:has(#task-detail-root) {
         const primary = isNitter ? null : getTarget();
         if (primary?.isConnected) targets.add(primary);
         if (isNitter) {
+            // Key the control to the stable gallery attachment, not to the
+            // replaceable IMG/VIDEO. Its CSS-host sits outside clipping wrappers.
+            const galleryAttachments = new Set();
+            for (const attachment of document.querySelectorAll('.attachment')) {
+                if (!attachment.isConnected) continue;
+                const gallery = attachment.closest?.('.gallery-video') ||
+                    attachment.closest?.('.gallery-gif');
+                if (!gallery) continue;
+                if (!attachment.querySelector?.('video') &&
+                    !attachment.querySelector?.('img')) continue;
+                targets.add(attachment);
+                galleryAttachments.add(attachment);
+            }
+            // Support alternate Nitter players lacking the gallery wrapper.
             for (const video of document.querySelectorAll('video')) {
-                if (video.isConnected) targets.add(video.parentElement || video);
+                if (!video.isConnected) continue;
+                const attachment = video.closest?.('.attachment');
+                if (attachment && galleryAttachments.has(attachment)) continue;
+                targets.add(video.parentElement || video);
             }
         }
 
