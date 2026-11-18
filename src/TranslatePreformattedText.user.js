@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-18_1.5.29
+// @version      2026-11-18_1.5.30
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1213,7 +1213,7 @@
             || html.classList.contains('notranslate');
         const blockingMetas = Array.from(document.querySelectorAll('meta[name]'))
             .filter(meta => /^google$/i.test(meta.getAttribute('name') || '')
-                && /(^|[\\s,;])notranslate(?=$|[\\s,;])/i.test(meta.getAttribute('content') || ''));
+                && /(^|[\s,;])notranslate(?=$|[\s,;])/i.test(meta.getAttribute('content') || ''));
         if (!rootBlocked && !blockingMetas.length) return;
 
         const candidates = document.querySelectorAll('article, main');
@@ -1239,7 +1239,7 @@
             if (rootBlocked) makeContentTranslatable(html);
             for (const meta of blockingMetas) {
                 const remaining = (meta.getAttribute('content') || '')
-                    .split(/[\\s,;]+/).filter(token => token && token.toLowerCase() !== 'notranslate');
+                    .split(/[\s,;]+/).filter(token => token && token.toLowerCase() !== 'notranslate');
                 if (remaining.length) meta.setAttribute('content', remaining.join(', '));
                 else meta.remove();
             }
