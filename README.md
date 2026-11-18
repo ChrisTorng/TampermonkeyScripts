@@ -98,7 +98,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ### [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Preserve Hacker News Summary reading controls and load times; highlight only numeric scores and comments with continuous mellow heat.
+Preserve Hacker News Summary reading controls and load times; show page-relative time-adjusted popularity on score and comment numbers.
 
 ### [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
