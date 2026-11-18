@@ -90,7 +90,7 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.
-- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (collapse/read controls, reload timestamps and navigation; popularity tests use captured markup and a mocked browser clock to verify separate logarithmic, age-normalized score/comment highlighting; live browser colors require device validation)
+- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (collapse/read controls, reload timestamps and navigation; popularity tests use captured markup and a mocked browser clock to verify numbers-only, continuously graduated, age-normalized score/comment highlights without saturated plateaus; live browser colors require device validation)
 - https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (archive navigation remains date-scoped; popularity counts are legible but have no inferred live heat)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
