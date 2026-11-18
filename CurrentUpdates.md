@@ -2,11 +2,12 @@
 
 Updated: 2026-11-17
 
-## Universal web diagnostics — 2026-11-17
+## Universal web diagnostics — 2026-11-18
 
-- [Install Translation Diagnostics 2026-11-17_1.1.0](src/TranslationDiagnostics.user.js) — every HTTP(S) page gets a `回報` control. Pair the device once, then send sanitized DOM, translation flags, and optionally newly recorded console/errors to private Cloudflare KV (seven-day expiry). No site text by default; optional explicit public-text mode. Reload after update.
-- Tests: [Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — English article marked `zh-TW`, capture language/DOM info; [Teammates](https://www.perplexity.ai/en-GB/hub/blog/teammates-are-agents-for-complex-ongoing-work) — the report button must also appear after navigation; [Example](https://example.org/) — report control works without URL flags. Cloudflare [health](https://tm-web-diagnostics.christorng.workers.dev/health).
-- Initial setup: tap **回報 → 建立配對碼**, send the 10-character code once for approval, then **確認已配對**. Future reports upload without pasting JSON. The code is separate from the device secret and expires in 60 minutes. Do not install both this and a second legacy diagnostic copy.
+- [Install Translation Diagnostics 2026-11-18_1.1.1](src/TranslationDiagnostics.user.js) — the report panel starts hidden, opens above its compact button, and has an always-accessible top-row close button. It is capped to 60% of the viewport height. Update and reload.
+- The **Next page refresh** action only arms Console recording: it does **not** reload or upload anything. Refresh manually, then submit when ready.
+- **Tests:** [TechSpot](https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html) — no obstructing panel on entry, open/close works; [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — report stays accessible after navigation; [Example](https://example.org/) — no auto-upload.
+- Pairing uses a one-time 10-character code; after approval, user-initiated reports go to private Cloudflare KV for seven days.
 
 ## Readable article translation opt-out — 2026-11-15
 
