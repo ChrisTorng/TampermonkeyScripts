@@ -25,6 +25,7 @@
     const isNitter = window.location.hostname === 'nitter.tiekoetter.com';
     const isYouTubeDocument = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com']
         .includes(window.location.hostname);
+    if (isYouTubeDocument) return; // Managed exclusively by YouTube Tools.
     const fullscreenControlLayouts = new Set();
     const anchoredHosts = new WeakMap();
     function refreshFullscreenControls() {
