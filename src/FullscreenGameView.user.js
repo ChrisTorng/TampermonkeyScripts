@@ -43,8 +43,8 @@
             let clipped = false;
             try {
                 const css = window.getComputedStyle?.(node);
-                clipped = /^(?:hidden|clip|scroll|auto)$/.test(css?.overflowX || '') ||
-                    /^(?:hidden|clip|scroll|auto)$/.test(css?.overflowY || '');
+                clipped = /^(?:hidden|clip)$/.test(css?.overflowX || '') ||
+                    /^(?:hidden|clip)$/.test(css?.overflowY || '');
             } catch (_error) { /* Ignore missing computed styles. */ }
             if (!clipped) break;
             host = node.parentElement;
