@@ -520,7 +520,7 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.getLocks(), 1);
         assert(h.video.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         assert.match(h.document.getElementById('tm-fullscreen-game-view-style').textContent,
-            /video\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen\s*\{\s*width:\s*100dvh/i);
+            /video\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen,[\s\S]*img\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen\s*\{\s*width:\s*100dvh/i);
         assert.equal(h.button.disabled, true);
         assert.equal(h.document.querySelector('dialog'), null);
         h.document.fullscreenElement = null;
