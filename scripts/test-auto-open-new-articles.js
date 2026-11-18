@@ -668,7 +668,7 @@ function buildPopularityArticle(harness, id, points, comments, timestamp) {
 
 function popularityLightness(metric) {
     const color = metric.style.getPropertyValue('--tm-popularity-color');
-    const match = color.match(/hsl\(48 [\d.]+% ([\d.]+)%\)/);
+    const match = color.match(/hsl\(50 [\d.]+% ([\d.]+)%\)/);
     assert(match, `Expected computed popularity color, received ${color}`);
     return Number(match[1]);
 }
@@ -700,7 +700,7 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         // Only numeric glyphs get backgrounds, not chevrons, comment icons or delimiters.
         assert(!recent.score.classList.contains('auto-open-new-articles-popularity'));
         assert(!recent.comment.classList.contains('auto-open-new-articles-popularity'));
-        assert.equal(recent.pointsNumber.style.getPropertyValue('--tm-popularity-color').startsWith('hsl(48 '), true);
+        assert.equal(recent.pointsNumber.style.getPropertyValue('--tm-popularity-color').startsWith('hsl(50 '), true);
         assert.equal(recent.pointsNumber.textContent, '90');
         assert.equal(recent.commentNumber.textContent, '36');
         assert.equal(recent.commentLink.href, 'https://news.ycombinator.com/item?id=610');
@@ -709,7 +709,7 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         assert.equal(recent.article.classList.contains('auto-open-new-articles-collapsed'), false);
     });
 
-    test('large growing scores remain continuously differentiated without a brightness ceiling', () => {
+    test('page maxima reach full yellow and other values retain continuous proportional differences', () => {
         const now = Date.parse('2026-11-18T08:00:00Z');
         const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, [], now);
         const medium = buildPopularityArticle(harness, '700', 86, 43, new Date(now - 3600000).toISOString());
@@ -721,8 +721,37 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         assert(popularityLightness(large.pointsNumber) > popularityLightness(huge.pointsNumber));
         assert(popularityLightness(medium.commentNumber) > popularityLightness(large.commentNumber));
         assert(popularityLightness(large.commentNumber) > popularityLightness(huge.commentNumber));
-        // A common 86-point story should no longer hit an extremely saturated gold background.
+        // The hottest score AND the hottest comment value each use the vivid yellow maximum.
+        assert.equal(popularityLightness(huge.pointsNumber), 54);
+        assert.equal(popularityLightness(huge.commentNumber), 54);
         assert(popularityLightness(medium.pointsNumber) >= 80);
+        assert.match(huge.score.title, /本頁相對熱度 100\\.0%/);
+    });
+
+    test('a nearly uniform page gives every article a bright yellow, without a fixed global threshold', () => {
+        const now = Date.parse('2026-11-18T08:00:00Z');
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, [], now);
+        const a = buildPopularityArticle(harness, '710', 12, 5, new Date(now - 3600000).toISOString());
+        const b = buildPopularityArticle(harness, '711', 13, 6, new Date(now - 3600000).toISOString());
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(popularityLightness(b.pointsNumber), 54);
+        assert.equal(popularityLightness(b.commentNumber), 54);
+        assert(popularityLightness(a.pointsNumber) <= 60);
+        assert(popularityLightness(a.commentNumber) <= 62);
+    });
+
+    test('each metric uses its own page maximum instead of combined score and comment counts', () => {
+        const now = Date.parse('2026-11-18T08:00:00Z');
+        const { harness } = createAutoOpenHarness('https://hackernews.betacat.io/', {}, [], now);
+        const mostPoints = buildPopularityArticle(harness, '720', 300, 5, new Date(now - 3600000).toISOString());
+        const mostComments = buildPopularityArticle(harness, '721', 50, 65, new Date(now - 3600000).toISOString());
+        runAutoOpenScript(harness);
+        harness.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(popularityLightness(mostPoints.pointsNumber), 54);
+        assert.equal(popularityLightness(mostComments.commentNumber), 54);
+        assert(popularityLightness(mostPoints.commentNumber) > popularityLightness(mostComments.commentNumber));
+        assert(popularityLightness(mostComments.pointsNumber) > popularityLightness(mostPoints.pointsNumber));
     });
 
     test('a handful of new votes never appears hotter than a sustained fast-growing story', () => {
