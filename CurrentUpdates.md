@@ -2,9 +2,9 @@
 
 Updated: 2026-11-18
 
-## BetaCat popularity indicators — 2026-11-18_1.9.4
+## BetaCat popularity indicators — 2026-11-18_1.9.5
 
-- [Install AutoOpenNewArticles.user.js — 2026-11-18_1.9.4](src/AutoOpenNewArticles.user.js) — highlight **only the numeric totals**, not icons or separators; use a soft continuous yellow from independently time-normalized score/comment rates. Archive totals remain neutral. Reload after updating.
+- [Install AutoOpenNewArticles.user.js — 2026-11-18_1.9.5](src/AutoOpenNewArticles.user.js) — highlight **numeric totals only**; the fastest time-adjusted score and comment on the current Latest page independently receive the brightest yellow, with continuous linear fading for the rest. Archives remain neutral. Reload after updating.
 - **Tests:** [Latest](https://hackernews.betacat.io/) — compare the yellow highlights and metric tooltips; [Archive](https://hackernews.betacat.io/daily/2026-11-16) — no inferred live heat.
 
 
