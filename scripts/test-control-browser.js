@@ -124,17 +124,16 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     fullscreen.click();
                     await frame();
                     assert(getComputedStyle(fullscreen).display === 'none', 'Entry button should disappear during fallback');
-                    const exit = document.getElementById('tm-fullscreen-game-view-exit-button');
-                    assert(exit && getComputedStyle(exit).display !== 'none', 'Fallback requires a visible exit button');
+                    assert(!document.getElementById('tm-fullscreen-game-view-exit-button'),
+                        'History Back replaces the fallback × overlay.');
                     window.dispatchEvent(new Event('resize'));
                     await frame();
                     assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state entry');
                     window.scrollTo({ top: 0, behavior: 'instant' });
-                    exit.click();
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                     await frame();
-                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Close icon should restore the entry button');
-                    assert(!document.getElementById('tm-fullscreen-game-view-exit-button'),
-                        'Fallback close icon must not remain after exit');
+                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled,
+                        'Back should restore the entry button without any close icon');
                     assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Exit must restore the pre-entry page scroll position');
                     assert(scroller.scrollLeft === originalScroll.code, 'Other page scrollers must stay unchanged');
                     fullscreen.click();
@@ -145,7 +144,7 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Back should restore the entry button');
                     assert(window.scrollY === originalScroll.y, 'Back must restore the pre-entry page scroll position');
                     result.setAttribute('data-test-status', 'passed');
-                    result.textContent = 'Clipping, translation, outside media entry, visible fallback exit, and Back checks passed';
+                    result.textContent = 'Clipping, translation, outside media entry, no overlay ×, and Back restoration checks passed';
                 } catch (error) {
                     result.setAttribute('data-test-status', 'failed');
                     result.textContent = error.message;
