@@ -734,10 +734,11 @@ describe('BetaCat time-normalized popularity highlighting', () => {
         runAutoOpenScript(harness);
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
-        assert(!tiny.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(tiny.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
         assert(tiny.commentNumber.classList.contains('auto-open-new-articles-popularity-hot'));
         assert(fast.pointsNumber.classList.contains('auto-open-new-articles-popularity-hot'));
         assert(fast.commentNumber.classList.contains('auto-open-new-articles-popularity-hot'));
+        assert(popularityLightness(tiny.pointsNumber) > popularityLightness(fast.pointsNumber));
         assert(popularityLightness(tiny.commentNumber) > popularityLightness(fast.commentNumber));
     });
 
