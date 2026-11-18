@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-17_1.1.0
+// @version      2026-11-18_1.1.1
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,7 +19,7 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-17_1.1.0';
+    const VERSION = '2026-11-18_1.1.1';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
@@ -262,7 +262,10 @@
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
             '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:7px 10px!important;margin:3px!important;cursor:pointer!important}',
-            '#tm-webdiag-panel{background:#202020!important;color:white!important;border:1px solid #666!important;border-radius:9px!important;padding:10px!important;width:min(330px,94vw)!important;max-height:75vh!important;overflow:auto!important;pointer-events:auto!important}',
+            '#tm-webdiag-panel{position:absolute!important;bottom:calc(100% + 7px)!important;left:0!important;background:#202020!important;color:white!important;border:1px solid #666!important;border-radius:9px!important;padding:10px!important;width:min(330px,calc(100vw - 20px))!important;max-height:min(60dvh,440px)!important;overflow:auto!important;overscroll-behavior:contain!important;pointer-events:auto!important}',
+            '#tm-webdiag-panel[hidden]{display:none!important}',
+            '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:sticky!important;top:-10px!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
+            '#tm-webdiag-close{margin:0!important;padding:4px 9px!important;white-space:nowrap!important}',
             '#tm-webdiag-panel p{margin:7px 0!important;color:#ddd!important}',
             '#tm-webdiag-panel label{display:block!important;color:#fff!important;margin:5px 0!important}',
             '#tm-webdiag-panel code{font:12px monospace!important;overflow-wrap:anywhere!important;color:#fff!important}',
@@ -278,9 +281,18 @@
         const panel = document.createElement('section');
         panel.id = 'tm-webdiag-panel';
         panel.hidden = true;
+        const header = document.createElement('div');
+        header.id = 'tm-webdiag-panel-header';
         const headline = document.createElement('strong');
         headline.textContent = '網頁問題回報';
-        panel.appendChild(headline);
+        const close = document.createElement('button');
+        close.id = 'tm-webdiag-close';
+        close.type = 'button';
+        close.textContent = '關閉';
+        close.title = '收合回報面板';
+        header.appendChild(headline);
+        header.appendChild(close);
+        panel.appendChild(header);
         const notice = document.createElement('p');
         notice.textContent = '每次送出須手動確認。預設不含文章文字、表單值、Cookie 或網址參數；可選擇附上公開文章文字。';
         panel.appendChild(notice);
@@ -301,7 +313,9 @@
         monitor.textContent = recording ? '已開始記錄' : '開始記錄 Console';
         const next = document.createElement('button');
         next.type = 'button';
-        next.textContent = '記錄下一次重新整理';
+        next.textContent = '下次重新整理時開始記錄';
+        const reloadHelp = document.createElement('p');
+        reloadHelp.textContent = '此按鈕只設定記錄，請自行重新整理；不會自動重新整理，也不會自動送出報告。';
         const label = document.createElement('label');
         const include = document.createElement('input');
         include.type = 'checkbox';
@@ -311,15 +325,23 @@
         const submit = document.createElement('button');
         submit.type = 'button';
         submit.textContent = '送出報告至 Cloudflare';
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.textContent = '關閉';
-        for (const element of [pair, check, monitor, next, label, submit, close]) panel.appendChild(element);
+        for (const element of [pair, check, monitor, next, reloadHelp, label, submit]) panel.appendChild(element);
         host.appendChild(panel);
         const setStatus = text => { status.textContent = text; };
+        const setPanelOpen = open => {
+            panel.hidden = !open;
+            // Inline !important wins over a host website's global display rules
+            // and makes the hidden state reliable in mobile Edge.
+            panel.style.setProperty('display', open ? 'block' : 'none', 'important');
+            panel.setAttribute('aria-hidden', String(!open));
+            toggle.setAttribute('aria-expanded', String(open));
+        };
+        toggle.setAttribute('aria-controls', 'tm-webdiag-panel');
+        setPanelOpen(false);
         toggle.addEventListener('click', () => {
-            panel.hidden = !panel.hidden;
-            if (!panel.hidden) {
+            const open = panel.hidden;
+            setPanelOpen(open);
+            if (open) {
                 post('/api/status', { deviceId, secret }).then(r =>
                     setStatus(r.authorized ? '已配對：可送出報告' : '尚未配對：請先建立配對碼'))
                     .catch(e => setStatus('連線錯誤：' + e.message));
@@ -346,7 +368,7 @@
         });
         next.addEventListener('click', () => {
             GM_setValue(START_KEY, true);
-            location.reload();
+            setStatus('已設定：請自行重新整理此頁。重新載入後開始記錄，送出報告仍需手動按鈕。');
         });
         submit.addEventListener('click', async () => {
             if (include.checked && !window.confirm('這是公開文章嗎？報告會包含可見文字並保存 7 天。請勿在私人、登入或付款頁勾選。')) return;
@@ -362,7 +384,7 @@
                 setStatus('送出失敗：' + e.message + '。資料尚未上傳。');
             } finally { submit.disabled = false; }
         });
-        close.addEventListener('click', () => { panel.hidden = true; });
+        close.addEventListener('click', () => { setPanelOpen(false); });
     }
 
     recordSnapshot('document-start');
