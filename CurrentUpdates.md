@@ -7,6 +7,11 @@ Updated: 2026-11-17
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
 - **Live HTML test:** [Rendered fullscreen canvas](https://tm-fullscreen-test.christorng.workers.dev/) (not a GitHub source viewer). **Real pages:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) and [ARC game](https://arcprize.org/tasks/ls20).
 
+## Images, landscape, and Back-to-exit — 2026-11-18
+
+- [Install Fullscreen Game View v2026-11-18_1.2.9](src/FullscreenGameView.user.js): add large still-image controls (including Nitter photo attachments); rotate using intrinsic video/image/canvas dimensions; if media metadata is unknown, use block shape except for YouTube, which waits for true dimensions. In simulated fullscreen, pressing Android Back now consumes one same-URL history entry and restores media; × is lighter and sits in the actual **upper-right of the rotated viewing orientation**. The old native video fullscreen API remains the first attempt, with its actual rejection type recorded for diagnosis.
+- **Tests:** https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214 (video), https://tm-fullscreen-test.christorng.workers.dev/ (rendered canvas HTML), https://arcprize.org/tasks/ls20 (game). The Android Edge native-fullscreen result still requires device confirmation; HTML/CSS fallback cannot remove browser chrome.
+
 ## Per-block fullscreen entry and explicit fallback exit — 2026-11-18
 
 - [Install Fullscreen Game View 2026-11-18_1.2.8](src/FullscreenGameView.user.js): each game, video, canvas, or known embedded player has its own ⛶ icon just **outside, above the top-right of that block**. The page menu remains separate. Native fullscreen is attempted first even when the permission hint says false; only an actual rejected/unavailable call opens the simulated fallback. Fallback always exposes a top-right × to restore the original page without Android Back.
