@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.9.3
-// @description  Preserve Hacker News Summary reading controls, navigation, and load times; highlight time-normalized points and comments.
+// @version      2026-11-18_1.9.4
+// @description  Preserve Hacker News Summary reading controls and load times; highlight only numeric scores and comments with continuous mellow heat.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -57,28 +57,29 @@
                 opacity: 0.68 !important;
             }
             article.post-item .post-meta .${POPULARITY_CLASS} {
-                display: inline-flex !important;
-                align-items: center !important;
-                gap: 3px !important;
-                padding: 2px 5px !important;
-                border-radius: 5px !important;
+                display: inline !important;
+                padding: 1px 3px !important;
+                border-radius: 4px !important;
                 background-color: #e8eaed !important;
                 color: #202124 !important;
                 font-weight: 800 !important;
                 font-variant-numeric: tabular-nums !important;
                 text-shadow: none !important;
                 opacity: 1 !important;
-            }
-            article.post-item .post-meta .${POPULARITY_CLASS} a,
-            article.post-item .post-meta .${POPULARITY_CLASS} i,
-            article.post-item .post-meta .${POPULARITY_CLASS} span {
-                color: inherit !important;
-                font-weight: inherit !important;
-                opacity: 1 !important;
+                box-decoration-break: clone !important;
+                -webkit-box-decoration-break: clone !important;
             }
             article.post-item .post-meta .${POPULARITY_CLASS}.${POPULARITY_HOT_CLASS} {
-                background-color: var(--tm-popularity-color, #ffed98) !important;
-                color: #282006 !important;
+                background-color: var(--tm-popularity-color, #fff1ce) !important;
+                color: #382b0b !important;
+            }
+            article.post-item .post-meta .score > i,
+            article.post-item .post-meta .comment a > i {
+                opacity: 1 !important;
+                filter: contrast(1.1) !important;
+            }
+            article.post-item .post-meta .comment a > i {
+                color: #5687aa !important;
             }
             .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}):not(.tm-blog-bookmarks-save) {
                 display: none !important;
@@ -595,16 +596,19 @@
     }
 
     function popularityHeat(rate, referenceRate) {
-        // Log scaling preserves differences among fast-growing stories without making outliers dominate.
-        const logScore = Math.log1p(rate) / Math.log1p(referenceRate);
-        return Math.min(1, Math.max(0, (logScore - 0.3) / 0.7));
+        // Asymptotic logarithmic curve: no buckets and no saturation plateau.
+        // The scale keeps ordinary HN engagement in the pale-yellow range.
+        const magnitude = Math.log1p(Math.max(0, rate) / referenceRate);
+        return magnitude / (2.3 + magnitude);
     }
 
     function markPopularity(metric, count, ageHours, kind, isLatest) {
-        if (!metric || count === null || !Number.isFinite(count)) {
-            return;
-        }
-        metric.classList.add(POPULARITY_CLASS);
+        if (!metric || count === null || !Number.isFinite(count)) return;
+        // Apply the background to the number only, never the icon, link arrow,
+        // surrounding separators, or the entire post-meta span.
+        const number = metric.querySelector(kind === 'score' ? 'span' : 'a span');
+        if (!number) return;
+        number.classList.add(POPULARITY_CLASS);
 
         const label = kind === 'score' ? '推薦分數' : '留言';
         if (!isLatest || ageHours === null) {
@@ -612,23 +616,21 @@
             return;
         }
 
-        // A two-hour prior prevents very young posts from winning on a handful of interactions.
-        // HN score includes the submitter's initial point; subtract it for rate estimation.
-        const effectiveHours = ageHours + 2;
-        const rate = (kind === 'score' ? Math.max(0, count - 1) : count) / effectiveHours;
-        const referenceRate = kind === 'score' ? 35 : 12;
+        // A two-hour prior prevents a few early votes from looking viral.
+        // Subtract the submitter's initial HN point for the scoring rate.
+        const rate = (kind === 'score' ? Math.max(0, count - 1) : count) / (ageHours + 2);
+        const referenceRate = kind === 'score' ? 16 : 6;
         const heat = popularityHeat(rate, referenceRate);
-
         metric.title = `${label} ${count}；發文約 ${ageHours.toFixed(1)} 小時；平滑平均 ${rate.toFixed(1)}/小時（含 2 小時平滑，非即時增量）`;
-        if (heat <= 0) {
-            return;
-        }
+        if (heat <= 0) return;
 
-        // Move continuously from pale yellow to saturated yellow as log-rate rises.
-        const hue = Math.round(51 - 4 * heat);
-        const lightness = Math.round(91 - 35 * heat);
-        metric.classList.add(POPULARITY_HOT_CLASS);
-        metric.style.setProperty('--tm-popularity-color', `hsl(${hue} 100% ${lightness}%)`);
+        // Continuous, softly graded yellow. Keep fractional HSL values;
+        // no discrete bands, integer-rounded brightness or upper cutoff.
+        const saturation = 72 + 23 * heat;
+        const lightness = 96 - 33 * heat;
+        number.classList.add(POPULARITY_HOT_CLASS);
+        number.style.setProperty('--tm-popularity-color',
+            `hsl(48 ${saturation.toFixed(3)}% ${lightness.toFixed(3)}%)`);
     }
 
     function addHackerNewsPopularity(articles, displayedDate) {
