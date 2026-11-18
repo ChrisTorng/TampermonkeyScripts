@@ -700,8 +700,8 @@ describe('Android Nitter and ARC fullscreen visibility regressions', () => {
         assert.equal(buttons.length, 2);
         assert.equal(buttons.filter((b) => !b.hidden).length, 2,
             'Off-screen controls must remain in their media blocks; viewport naturally clips them.');
-        const visibleControl = buttons.find((b) => !b.hidden);
-        assert(visibleControl);
+        const visibleControl = buttons[1];
+        assert(visibleControl && !visibleControl.hidden);
         assert.equal(visibleControl.parentElement, visible.wrapper,
             'Control should be a CSS-positioned child of the media, not a viewport overlay.');
         assert.equal(distant.wrapper.querySelector('button') !== null, true,
@@ -751,7 +751,7 @@ describe('Android Nitter and ARC fullscreen visibility regressions', () => {
         h.flushAnimationFrames();
         const button = h.document.getElementById('tm-fullscreen-game-view-button');
         assert(button, 'Hydrated game container must be recognized even without a video/canvas descendant.');
-        assert.equal(button.parentElement, h.document.body);
+        assert.equal(button.parentElement, game);
     });
 });
 
