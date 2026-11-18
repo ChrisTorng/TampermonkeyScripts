@@ -7,6 +7,11 @@ Updated: 2026-11-17
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
 - **Live HTML test:** [Rendered fullscreen canvas](https://tm-fullscreen-test.christorng.workers.dev/) (not a GitHub source viewer). **Real pages:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) and [ARC game](https://arcprize.org/tasks/ls20).
 
+## Back-only fullscreen fallback, Nitter landscape correction, and YouTube isolation — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.3.0](src/FullscreenGameView.user.js): **No × in simulated fullscreen**; use Android Back (same-URL History entry). Cache the Nitter video's pre-dialog aspect ratio to keep landscape rotation despite reparenting and CSS-induced portrait dimensions. On `youtube.com`/`youtube-nocookie.com`, Fullscreen Game View does not mount at all; YouTube Tools remains the single owner of its integrated fullscreen/rotation/speed controls.
+- **Test:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — landscape fallback fills the sideways view and Back returns to the article; [YouTube mobile watch](https://m.youtube.com/watch?v=zeWBx3AePow) — only the original YouTube Tools fullscreen in the playback-speed toolbar; [Canvas HTML](https://tm-fullscreen-test.christorng.workers.dev/) — use Back to exit fallback. Device-level native fullscreen browser-bar hiding still requires Android Edge confirmation.
+
 ## Images, landscape, and Back-to-exit — 2026-11-18
 
 - [Install Fullscreen Game View v2026-11-18_1.2.9](src/FullscreenGameView.user.js): add large still-image controls (including Nitter photo attachments); rotate using intrinsic video/image/canvas dimensions; if media metadata is unknown, use block shape except for YouTube, which waits for true dimensions. In simulated fullscreen, pressing Android Back now consumes one same-URL history entry and restores media; × is lighter and sits in the actual **upper-right of the rotated viewing orientation**. The old native video fullscreen API remains the first attempt, with its actual rejection type recorded for diagnosis.
