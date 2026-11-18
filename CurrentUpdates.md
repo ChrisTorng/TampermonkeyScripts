@@ -7,6 +7,11 @@ Updated: 2026-11-17
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
 - **Live HTML test:** [Rendered fullscreen canvas](https://tm-fullscreen-test.christorng.workers.dev/) (not a GitHub source viewer). **Real pages:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) and [ARC game](https://arcprize.org/tasks/ls20).
 
+## Media-anchored subtle fullscreen button — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.3.1](src/FullscreenGameView.user.js): transparent background, muted ⛶ corner glyph, no shadow. Buttons are absolutely positioned in their own media/iframe/game host, not viewport-following; normal scrolling (including nested scrolling) uses CSS only, without JS movement, hiding or edge clamping. Ordinary article photos no longer get buttons; Nitter photo attachments still do. On YouTube watch pages, YouTube Tools remains the only fullscreen control.
+- **Check:** [Nitter media](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214), [rendered canvas](https://tm-fullscreen-test.christorng.workers.dev/), [embedded YouTube](https://www.anthropic.com/claude-fable-and-mythos-5-2). Scroll slowly/rapidly and ensure the icon remains fixed relative to the block.
+
 ## Back-only fullscreen fallback, Nitter landscape correction, and YouTube isolation — 2026-11-18
 
 - [Install Fullscreen Game View 2026-11-18_1.3.0](src/FullscreenGameView.user.js): **No × in simulated fullscreen**; use Android Back (same-URL History entry). Cache the Nitter video's pre-dialog aspect ratio to keep landscape rotation despite reparenting and CSS-induced portrait dimensions. On `youtube.com`/`youtube-nocookie.com`, Fullscreen Game View does not mount at all; YouTube Tools remains the single owner of its integrated fullscreen/rotation/speed controls.
