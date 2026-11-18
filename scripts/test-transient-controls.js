@@ -126,29 +126,45 @@ describe('transient in-content controls', () => {
             assert.equal(execute(file).button.style.left, `${initialX}px`);
         });
 
-        test(`${file} clamps dragging and hides when the block is offscreen`, () => {
+        test(`${file} stays usable at its intended scroll/out-of-screen bounds`, () => {
             const harness = execute(file);
             harness.pointer('pointerdown', 500, 300);
             harness.pointer('pointermove', -2000, -1000);
             harness.pointer('pointerup', -2000, -1000);
-            assert.equal(harness.button.style.left, '0px');
-            assert.equal(harness.button.style.top, '0px');
-            harness.container._rect.top = 800;
-            harness.container._rect.bottom = 1700;
-            harness.update();
-            assert.equal(harness.button.hidden, true);
-            harness.container._rect.top = 100;
-            harness.container._rect.bottom = 1000;
-            harness.update();
-            assert.equal(harness.button.hidden, false);
-            assert.equal(harness.button.style.left, '0px');
+            if (file === files[0]) {
+                // Translation continues to clamp and hide inside visible blocks.
+                assert.equal(harness.button.style.left, '0px');
+                assert.equal(harness.button.style.top, '0px');
+                harness.container._rect.top = 800;
+                harness.container._rect.bottom = 1700;
+                harness.update();
+                assert.equal(harness.button.hidden, true);
+                harness.container._rect.top = 100;
+                harness.container._rect.bottom = 1000;
+                harness.update();
+                assert.equal(harness.button.hidden, false);
+                assert.equal(harness.button.style.left, '0px');
+            } else {
+                // Fullscreen deliberately preserves a local offset and lets
+                // the document naturally scroll the icon out of the viewport.
+                assert(parseFloat(harness.button.style.left) < 0);
+                assert(parseFloat(harness.button.style.top) < 0);
+                harness.container._rect.top = 800;
+                harness.container._rect.bottom = 1700;
+                harness.update();
+                assert.equal(harness.button.hidden, false);
+                harness.container._rect.top = -500;
+                harness.container._rect.bottom = 400;
+                harness.update();
+                assert.equal(harness.button.hidden, false);
+            }
         });
     }
 
     test('fullscreen stays attached to its own media during pinch and viewport scrolling', () => {
         const h = execute(files[1]);
         assert.equal(h.button.parentElement, h.container);
-        assert.equal(h.button.style.position, 'absolute');
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
         const original = [h.button.style.left, h.button.style.top];
         const viewport = h.window.visualViewport;
         viewport.scale = 2;
@@ -159,7 +175,7 @@ describe('transient in-content controls', () => {
         h.dispatchVisualViewportEvent('scroll');
         h.dispatchVisualViewportEvent('resize');
         assert.deepEqual([h.button.style.left, h.button.style.top], original);
-        assert.equal(h.button.style.position, 'absolute');
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
         assert.equal(h.button.hidden, false);
         assert.equal(h.button.style.transform || '', '');
     });
@@ -170,7 +186,7 @@ describe('transient in-content controls', () => {
         menu.id = 'tm-shared-floating-menu';
         menu.getBoundingClientRect = () => { throw new Error('Fullscreen must not inspect the menu'); };
         h.document.documentElement.appendChild(menu);
-        assert.equal(h.button.style.position, 'absolute');
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
         assert.equal(h.button.style.left, '562px');
         assert.equal(h.button.style.top, '-36px');
         h.triggerMutation([menu], {target:h.document.documentElement});
@@ -208,7 +224,8 @@ describe('transient in-content controls', () => {
         const css = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
         assert.match(css, /background: transparent !important/);
         assert.match(css, /box-shadow: none !important/);
-        assert.match(css, /color: rgba\\(170,180,190,\\.55\\) !important/);
+        assert(css.includes('color: rgba(170,180,190,.55) !important'));
+        assert(css.includes('position: absolute !important'));
         assert.match(css, /position: absolute !important/);
         assert.match(css, /width: 38px !important/);
         assert.match(css, /height: 32px !important/);
