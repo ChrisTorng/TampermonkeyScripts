@@ -670,6 +670,108 @@ describe('Nitter video fullscreen migration', () => {
 });
 
 
+describe('Nitter poster-to-video controls outside clipped media wrappers', () => {
+    function makeGallery(previewTag = 'img') {
+        const h = createHarness({
+            url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214'
+        });
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        const tweet = h.document.createElement('section');
+        tweet.className = 'status-el';
+        tweet._rect = { left: 8, top: 90, right: 385, bottom: 700, width: 377, height: 610 };
+        const body = h.document.createElement('div');
+        body.className = 'status-body';
+        const content = h.document.createElement('div');
+        content.className = 'status-content media-body';
+        const attachments = h.document.createElement('div');
+        attachments.className = 'attachments card';
+        const gallery = h.document.createElement('div');
+        gallery.className = 'gallery-video';
+        const attachment = h.document.createElement('div');
+        attachment.className = 'attachment video-container';
+        attachment._rect = { left: 30, top: 350, right: 362, bottom: 540, width: 332, height: 190 };
+        const preview = h.document.createElement(previewTag);
+        preview._rect = { left: 30, top: 350, right: 362, bottom: 540, width: 332, height: 190 };
+        if (previewTag === 'video') {
+            preview.setAttribute('poster', '/pic/media%2Ftest.jpg');
+            preview.videoWidth = 1920;
+            preview.videoHeight = 1080;
+        } else {
+            preview.naturalWidth = 1920;
+            preview.naturalHeight = 1080;
+        }
+        attachment.appendChild(preview);
+        gallery.appendChild(attachment);
+        attachments.appendChild(gallery);
+        content.appendChild(attachments);
+        body.appendChild(content);
+        tweet.appendChild(body);
+        h.document.body.appendChild(tweet);
+        h.window.getComputedStyle = element => ({
+            position: 'static',
+            overflowX: element === attachment || element === gallery ? 'hidden' : 'visible',
+            overflowY: element === attachment || element === gallery ? 'hidden' : 'visible'
+        });
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        return { ...h, tweet, attachment, gallery, preview,
+            button: h.document.querySelector('.tm-fullscreen-game-view-button') };
+    }
+
+    test('poster-only Nitter image has one visible media control outside overflow:hidden wrappers', async () => {
+        const h = makeGallery('img');
+        assert(h.button, 'The video poster must receive a control before playback.');
+        assert.equal(h.button.parentElement, h.tweet,
+            'Place the control in the tweet, outside clipped attachment/gallery wrappers.');
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
+        assert.equal(h.button.style.left, '316px');
+        assert.equal(h.button.style.top, '224px');
+        assert.equal(h.button.hidden, false);
+        assert.equal(h.attachment.querySelector('.tm-fullscreen-game-view-button'), null);
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog, 'The poster must be enlargeable even if the player has not loaded.');
+        assert.equal(h.preview.parentElement, dialog);
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.preview.parentElement, h.attachment);
+    });
+
+    test('preview IMG changing to VIDEO retains one stable button without scroll-position chasing', () => {
+        const h = makeGallery('img');
+        const initialButton = h.button;
+        const initialPosition = [initialButton.style.left, initialButton.style.top];
+        const video = h.document.createElement('video');
+        video.setAttribute('poster', '/pic/media%2Ftest.jpg');
+        video._rect = { ...h.preview._rect };
+        video.videoWidth = 1920;
+        video.videoHeight = 1080;
+        h.attachment.removeChild(h.preview);
+        h.attachment.appendChild(video);
+        h.triggerMutation([video], {target:h.attachment, removedNodes:[h.preview]});
+        h.flushAnimationFrames();
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+        assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), initialButton);
+        assert.equal(initialButton.parentElement, h.tweet);
+        assert.deepEqual([initialButton.style.left, initialButton.style.top], initialPosition);
+        video.getBoundingClientRect = () => { throw new Error('Scroll must not chase media position'); };
+        h.dispatchWindowEvent('scroll');
+        assert.deepEqual([initialButton.style.left, initialButton.style.top], initialPosition);
+    });
+
+    test('VIDEO poster and playing video share the same attachment-level button', () => {
+        const h = makeGallery('video');
+        assert(h.button);
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+        assert.equal(h.button.parentElement, h.tweet);
+        h.preview.setAttribute('src', '/video/test.mp4');
+        h.triggerMutation([], {target:h.preview, type:'attributes', attributeName:'src'});
+        h.flushAnimationFrames();
+        assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), h.button);
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+    });
+});
+
 describe('Android Nitter and ARC fullscreen visibility regressions', () => {
     function addVideo(h, rectangle) {
         const wrapper = h.document.createElement('section');
