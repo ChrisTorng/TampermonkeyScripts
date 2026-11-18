@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.2.8
-// @description  Native-first per-media fullscreen with external block controls, explicit fallback exit, and auto-orientation.
+// @version      2026-11-18_1.2.9
+// @description  Native-first fullscreen for media, images and games; rotate by intrinsic aspect ratio, exit with Back or subtle close control.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -267,19 +267,20 @@ html.tm-fullscreen-game-view-active body {
     left: auto !important;
     bottom: auto !important;
     display: block !important;
-    background: rgba(0,0,0,.78) !important;
-    color: #fff !important;
-    border: 1px solid rgba(255,255,255,.7) !important;
-    border-radius: 6px !important;
-    font: 600 24px/44px system-ui,sans-serif !important;
+    background: rgba(0,0,0,.22) !important;
+    color: rgba(255,255,255,.72) !important;
+    border: 0 !important;
+    border-radius: 5px !important;
+    box-shadow: none !important;
+    font: 500 21px/38px system-ui,sans-serif !important;
     text-align: center !important;
     padding: 0 !important;
     margin: 0 !important;
-    width: 44px !important;
-    height: 44px !important;
-    min-width: 44px !important;
-    min-height: 44px !important;
-    max-width: 44px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    max-width: 38px !important;
     z-index: 2147483647 !important;
     cursor: pointer !important;
     touch-action: manipulation !important;
@@ -332,7 +333,8 @@ html.tm-fullscreen-game-view-active body {
     z-index: 2147483647 !important;
 }
 #${VIDEO_DIALOG_ID}::backdrop { background: #000 !important; }
-#${VIDEO_DIALOG_ID} > video {
+#${VIDEO_DIALOG_ID} > video,
+#${VIDEO_DIALOG_ID} > img {
     background: #000 !important;
     display: block !important;
     flex: 1 1 auto !important;
@@ -345,7 +347,8 @@ html.tm-fullscreen-game-view-active body {
     width: 100% !important;
 }
 .${VIDEO_PLACEHOLDER_CLASS} { display: none !important; }
-video.tm-fullscreen-game-view-media:fullscreen {
+video.tm-fullscreen-game-view-media:fullscreen,
+img.tm-fullscreen-game-view-media:fullscreen {
     background: #000 !important;
     height: 100dvh !important;
     max-height: none !important;
@@ -364,17 +367,19 @@ video.tm-fullscreen-game-view-media:fullscreen {
     transform-origin: top left !important;
     transform: rotate(90deg) !important;
 }
-/* After a clockwise dialog rotation, its local TOP-LEFT maps to the
-   physical screen TOP-RIGHT. Keep × in that actual visible corner. */
+/* In the visually landscape-oriented content, its TOP-RIGHT is the
+   dialog's LOCAL top-right. The device is physically held counterclockwise;
+   placing × at the local left mapped it to the user's wrong, left corner. */
 #${VIDEO_DIALOG_ID}[open].tm-fullscreen-game-view-landscape-rotated > #${EXIT_BUTTON_ID} {
-    left: max(8px, env(safe-area-inset-top)) !important;
-    right: auto !important;
-    top: max(8px, env(safe-area-inset-right)) !important;
+    left: auto !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    top: max(8px, env(safe-area-inset-top)) !important;
 }
 
 /* A fullscreen <video> needs swapped dimensions too: the unrotated video rule
    has higher CSS specificity than the generic landscape fallback rule. */
-video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen {
+video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen,
+img.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen {
     width: 100dvh !important;
     height: 100dvw !important;
 }
@@ -399,8 +404,9 @@ video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fu
     transform: rotate(90deg) !important;
     overflow: hidden !important;
 }
-.tm-fullscreen-game-view-landscape-rotated iframe,
-.tm-fullscreen-game-view-landscape-rotated video {
+ .tm-fullscreen-game-view-landscape-rotated iframe,
+.tm-fullscreen-game-view-landscape-rotated video,
+.tm-fullscreen-game-view-landscape-rotated img {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
@@ -487,11 +493,36 @@ body:has(#task-detail-root) {
         return target.matches?.('video') ? target : target.querySelector?.('video') || null;
     }
 
+    function fullscreenImage(target) {
+        if (!target) return null;
+        // Nitter photos are <a class="still-image"><img ...></a>; the
+        // same mechanism also supports standalone images on other sites.
+        return target.matches?.('img') ? target : null;
+    }
+
     let videoFallback = null;
+    let fallbackHistoryArmed = false;
+    function armFallbackHistory() {
+        if (fallbackHistoryArmed || typeof window.history?.pushState !== 'function') return;
+        try {
+            // A same-URL history entry lets Android's real Back affordance close
+            // the fallback without navigating to the preceding site.
+            window.history.pushState({ tmFullscreenGameViewFallback: true }, '', window.location.href);
+            fallbackHistoryArmed = true;
+        } catch (_error) { /* History may be disabled by the embedding document. */ }
+    }
+    function clearFallbackHistory(fromPopstate = false) {
+        if (!fallbackHistoryArmed) return;
+        fallbackHistoryArmed = false;
+        if (!fromPopstate) {
+            try { window.history?.back?.(); } catch (_error) { /* Already navigating. */ }
+        }
+    }
 
     function isFullscreen(target) {
         return document.fullscreenElement === target ||
             Boolean(nitterVideo(target) && document.fullscreenElement === nitterVideo(target)) ||
+            Boolean(fullscreenImage(target) && document.fullscreenElement === fullscreenImage(target)) ||
             Boolean(videoFallback?.target === target) ||
             target.classList.contains(FALLBACK_CLASS);
     }
@@ -532,6 +563,18 @@ body:has(#task-detail-root) {
                 return video.videoWidth > video.videoHeight ? 'landscape' : 'portrait';
             }
         }
+        // For photos use intrinsic size, never the thumbnail's CSS dimensions.
+        const images = root.matches?.('img') ? [root] : Array.from(root.querySelectorAll?.('img') || []);
+        for (const image of images) {
+            if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+                return image.naturalWidth > image.naturalHeight ? 'landscape' : 'portrait';
+            }
+        }
+        const canvases = root.matches?.('canvas') ? [root] : Array.from(root.querySelectorAll?.('canvas') || []);
+        for (const canvas of canvases) {
+            if (canvas.width > 0 && canvas.height > 0)
+                return canvas.width > canvas.height ? 'landscape' : 'portrait';
+        }
         const frames = root.matches?.('iframe') ? [root] : Array.from(root.querySelectorAll?.('iframe') || []);
         for (const frame of frames) {
             if (!youtubeFrame(frame)) continue;
@@ -540,7 +583,11 @@ body:has(#task-detail-root) {
                 return metadata.width > metadata.height ? 'landscape' : 'portrait';
             }
         }
-        return null;
+        // Games and unknown providers have no intrinsic media size; use their
+        // rendered block aspect ratio instead of leaving landscape content upright.
+        const rect = root.getBoundingClientRect?.();
+        return rect?.width > 0 && rect?.height > 0
+            ? (rect.width > rect.height ? 'landscape' : 'portrait') : null;
     }
 
     function childOwnsFullscreen(root) {
@@ -580,7 +627,7 @@ body:has(#task-detail-root) {
         // CSS is a visual backup. The actual screen is rotated by the browser API
         // when permission is granted; resizing then removes this CSS rotation.
         target.classList.toggle(rotatedClass, window.innerHeight > window.innerWidth);
-        if ((!nativeTarget && !videoFallback) || session.requested) return;
+        if (session.requested) return;
         const orientation = window.screen?.orientation;
         if (typeof orientation?.lock !== 'function') return;
         session.requested = true;
@@ -623,10 +670,11 @@ body:has(#task-detail-root) {
         fallbackExitButton = close;
     }
 
-    function closeVideoFallback() {
+    function closeVideoFallback(fromPopstate = false) {
         const session = videoFallback;
         if (!session) return;
         videoFallback = null;
+        clearFallbackHistory(fromPopstate === true);
         removeFallbackExit();
         const { dialog, video, marker, target, button } = session;
         dialog.removeEventListener('close', closeVideoFallback);
@@ -645,12 +693,16 @@ body:has(#task-detail-root) {
         mountButtons();
     }
 
-    function openVideoFallback(target, video, button) {
+    function openVideoFallback(target, video, button, nativeFailure) {
         if (videoFallback || !video?.parentNode) return;
         const parent = video.parentNode;
         const dialog = document.createElement('dialog');
         dialog.id = VIDEO_DIALOG_ID;
-        dialog.setAttribute('aria-label', 'Expanded video');
+        dialog.setAttribute('aria-label', video.tagName === 'IMG' ? 'Expanded image' : 'Expanded video');
+        if (nativeFailure) {
+            dialog.setAttribute('data-tm-native-fullscreen-error', nativeFailure.name || 'Rejected');
+            console.info('[Fullscreen Game View] Native fullscreen rejected', nativeFailure);
+        }
         (document.body || document.documentElement).appendChild(dialog);
         try {
             if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -670,7 +722,7 @@ body:has(#task-detail-root) {
         dialog.addEventListener('close', closeVideoFallback);
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
-            closeVideoFallback();
+            exitFallback();
         });
         document.documentElement.classList.add('tm-fullscreen-game-view-active');
         updateButton(button, target);
@@ -759,8 +811,10 @@ body:has(#task-detail-root) {
     async function enterFullscreen(target, button) {
         if (isFullscreen(target)) return;
         const video = nitterVideo(target);
-        if (video) video.classList.add('tm-fullscreen-game-view-media');
-        const surface = video || target;
+        const image = fullscreenImage(target);
+        const media = video || image;
+        if (media) media.classList.add('tm-fullscreen-game-view-media');
+        const surface = media || target;
         rememberPageState(target);
         // Call native fullscreen on a real click even when a policy hint says no.
         // The actual browser resolve/reject determines whether fallback is needed.
@@ -769,19 +823,20 @@ body:has(#task-detail-root) {
                 // Preserve the user-tested native Nitter video fullscreen route.
                 await surface.requestFullscreen({ navigationUI: 'hide' });
             } catch (_error) {
-                if (video) openVideoFallback(target, video, button);
+                if (media) openVideoFallback(target, media, button, _error);
                 else {
                     target.classList.add(FALLBACK_CLASS);
                     addFallbackExit(target);
                 }
             }
-        } else if (video) {
-            openVideoFallback(target, video, button);
+        } else if (media) {
+            openVideoFallback(target, media, button);
         } else {
             target.classList.add(FALLBACK_CLASS);
             addFallbackExit(target);
         }
 
+        if (videoFallback || target.classList.contains(FALLBACK_CLASS)) armFallbackHistory();
         if (!isFullscreen(target)) restorePageState(target);
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
         syncMediaOrientation();
@@ -850,6 +905,22 @@ body:has(#task-detail-root) {
             }
         }
 
+        // Photographs, not avatars or video poster previews, get their own icon.
+        // Prefer Nitter's still-image anchor, but include large article images
+        // across sites. Using the IMG directly ensures the native request and
+        // dialog fallback enlarge only the picture, not the whole article.
+        for (const image of document.querySelectorAll('img')) {
+            const rect = image.getBoundingClientRect();
+            if (!image.isConnected || rect.width < 160 || rect.height < 120) continue;
+            if (isNitter) {
+                if (!image.closest?.('a.still-image, .attachment.image')) continue;
+                if (image.closest?.('.video-container, .gallery-video')) continue;
+            } else if (!image.closest?.('article, main, figure, picture')) {
+                continue;
+            }
+            targets.add(image);
+        }
+
         // Keep one entry for EVERY distinct visible game or media block. The
         // primary container already owns its descendants (notably ARC games).
         const inside = (node, root) => {
@@ -885,10 +956,11 @@ body:has(#task-detail-root) {
         refreshFullscreenControls();
     }
 
-    function exitFallback() {
-        if (videoFallback) closeVideoFallback();
+    function exitFallback(fromPopstate = false) {
+        if (videoFallback) closeVideoFallback(fromPopstate === true);
         for (const [target, button] of mountedButtons) {
             if (!target.classList.contains(FALLBACK_CLASS)) continue;
+            clearFallbackHistory(fromPopstate === true);
             removeFallbackExit();
             target.classList.remove(FALLBACK_CLASS);
             syncMediaOrientation();
@@ -901,7 +973,7 @@ body:has(#task-detail-root) {
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') exitFallback();
     }, true);
-    window.addEventListener('popstate', exitFallback);
+    window.addEventListener('popstate', () => exitFallback(true));
     document.addEventListener('fullscreenchange', () => {
         const active = Array.from(mountedButtons).some(([target]) => isFullscreen(target));
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', active);
