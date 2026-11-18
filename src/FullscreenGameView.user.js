@@ -749,6 +749,10 @@ body:has(#task-detail-root) {
         syncMediaOrientation();
     });
     document.addEventListener('loadedmetadata', syncMediaOrientation, true);
+    document.addEventListener('load', (event) => {
+        // Lazy photos can acquire their naturalWidth/naturalHeight after mounting.
+        if (event.target?.matches?.('img')) syncMediaOrientation();
+    }, true);
     document.addEventListener('fullscreenchange', syncMediaOrientation);
     window.addEventListener('resize', syncMediaOrientation);
     window.addEventListener('orientationchange', syncMediaOrientation);
@@ -1000,10 +1004,10 @@ body:has(#task-detail-root) {
         });
     }
     function isMediaNode(node) {
-        return Boolean(['iframe', 'video', 'canvas', '[role="application"]',
+        return Boolean(['iframe', 'video', 'canvas', 'img', '[role="application"]',
             '#playground', '.game-page-inner'].some(
             (selector) => node?.matches?.(selector)) ||
-            node?.querySelector?.(GENERIC_MEDIA_SELECTOR + ', #playground, .game-page-inner'));
+            node?.querySelector?.(GENERIC_MEDIA_SELECTOR + ', img, #playground, .game-page-inner'));
     }
     new MutationObserver((changes) => {
         const relevant = changes.some((change) => {
