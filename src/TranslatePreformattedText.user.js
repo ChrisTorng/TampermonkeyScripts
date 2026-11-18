@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-18_1.5.28
-// @description  Translate formatted prose without losing layout, unblock readable articles, and correct misleading language labels on English articles.
+// @version      2026-11-18_1.5.29
+// @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1201,19 +1201,24 @@
         }
     }
 
-    // The HTML translate attribute is inherited. A single translate="no"
-    // on <html> suppresses translation of an entire readable article, even
-    // when the article itself contains no opt-out markers. Only clear this
-    // document-wide opt-out after a meaningful article is actually present;
-    // interactive applications and short pages retain their own settings.
+    // Document-level translation opt-outs suppress native browser prompts,
+    // even if the article itself is readable. A Google "notranslate" meta tag
+    // can have the same effect as an inherited root translate=no. Leave both
+    // untouched on short applications until a substantial article is present.
     function allowTranslationForReadableArticle() {
         if (window !== window.top) return;
         const html = document.documentElement;
-        if (!html || ((html.getAttribute('translate') || '').toLowerCase() !== 'no'
-            && !html.classList.contains('notranslate'))) return;
+        if (!html) return;
+        const rootBlocked = (html.getAttribute('translate') || '').toLowerCase() === 'no'
+            || html.classList.contains('notranslate');
+        const blockingMetas = Array.from(document.querySelectorAll('meta[name]'))
+            .filter(meta => /^google$/i.test(meta.getAttribute('name') || '')
+                && /(^|[\\s,;])notranslate(?=$|[\\s,;])/i.test(meta.getAttribute('content') || ''));
+        if (!rootBlocked && !blockingMetas.length) return;
 
         const candidates = document.querySelectorAll('article, main');
         for (const candidate of candidates) {
+            if (candidate.querySelector('input[type="password"], [contenteditable="true"]')) continue;
             const heading = candidate.querySelector('h1, h2');
             if (!heading || (heading.textContent || '').trim().length < 8) continue;
 
@@ -1228,9 +1233,16 @@
             }
             if (paragraphCount < 2 || substantialLength < 300) continue;
 
-            // Restore native browser translation without moving or rewriting
-            // the article nodes. Child-level translation exclusions remain.
-            makeContentTranslatable(html);
+            // Preserve the real article DOM, inherited child opt-outs, and
+            // unrelated meta directives. The browser still decides whether
+            // and when to start translation.
+            if (rootBlocked) makeContentTranslatable(html);
+            for (const meta of blockingMetas) {
+                const remaining = (meta.getAttribute('content') || '')
+                    .split(/[\\s,;]+/).filter(token => token && token.toLowerCase() !== 'notranslate');
+                if (remaining.length) meta.setAttribute('content', remaining.join(', '));
+                else meta.remove();
+            }
             break;
         }
     }
@@ -1964,7 +1976,9 @@
             }
             if (mutation.type === 'attributes') {
                 revealWikipediaSections(mutation.target);
-                if (mutation.target === document.documentElement && mutation.attributeName === 'translate') {
+                if ((mutation.target === document.documentElement && mutation.attributeName === 'translate')
+                    || (mutation.target?.tagName === 'META'
+                        && ['content', 'name'].includes(mutation.attributeName))) {
                     allowTranslationForReadableArticle();
                 }
                 return;
@@ -1976,7 +1990,7 @@
         });
     }).observe(document.documentElement, {
         attributes: true,
-        attributeFilter: isWikipedia ? ['hidden', 'translate'] : ['translate'],
+        attributeFilter: isWikipedia ? ['hidden', 'translate', 'content', 'name'] : ['translate', 'content', 'name'],
         characterData: true,
         childList: true,
         subtree: true,
