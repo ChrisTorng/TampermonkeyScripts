@@ -572,6 +572,14 @@ body:has(#task-detail-root) {
         }
     }
 
+    function intrinsicMediaShape(media) {
+        if (media?.matches?.('video') && media.videoWidth > 0 && media.videoHeight > 0)
+            return media.videoWidth > media.videoHeight ? 'landscape' : 'portrait';
+        if (media?.matches?.('img') && media.naturalWidth > 0 && media.naturalHeight > 0)
+            return media.naturalWidth > media.naturalHeight ? 'landscape' : 'portrait';
+        return null;
+    }
+
     function syncMediaOrientation() {
         const nativeTarget = document.fullscreenElement;
         const fallbackTarget = videoFallback?.dialog ||
@@ -582,7 +590,7 @@ body:has(#task-detail-root) {
         // Snapshot the ORIGINAL media size before moving it into the top layer;
         // video metadata may not exist yet or may be refreshed on reparenting.
         const actualMediaShape = videoFallback
-            ? (videoShape(videoFallback.video) || videoFallback.shape)
+            ? (intrinsicMediaShape(videoFallback.video) || videoFallback.shape)
             : null;
         const shape = actualMediaShape || videoShape(target);
         // The child YouTube document already controls its own native player.
