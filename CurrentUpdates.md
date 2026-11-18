@@ -2,6 +2,11 @@
 
 Updated: 2026-11-17
 
+## Nitter fullscreen controls restored — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.3.2](src/FullscreenGameView.user.js): render one ⛶ for Nitter poster images and video playback, anchored to the unclipped tweet container instead of the overflow-hidden gallery. Keep CSS-stable scrolling, transparent glyph, and Back-to-exit.
+- [Live Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — verify the same ⛶ appears before and after Play.
+
 ## Fullscreen controls visible on Android — 2026-11-18
 
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
