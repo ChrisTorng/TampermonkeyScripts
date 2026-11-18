@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.2.9
-// @description  Native-first fullscreen for media, images and games; rotate by intrinsic aspect ratio, exit with Back or subtle close control.
+// @version      2026-11-18_1.3.0
+// @description  Native-first fullscreen for media, images and games; reliably rotate landscape Nitter media; Back-only fallback exit; defer YouTube to YouTube Tools.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -23,6 +23,12 @@
     const FULLSCREEN_WIDTH = 38;
     const FULLSCREEN_HEIGHT = 32;
     const isNitter = window.location.hostname === 'nitter.tiekoetter.com';
+    // YouTube Tools owns the watch-page player, orientation, speed toolbar,
+    // and fullscreen button. Never mount a competing Fullscreen Game View
+    // control on any YouTube document (including embedded YouTube frames).
+    const isYouTubeDocument = /^(?:(?:www|m)\.)?youtube\.com$|^(?:www\.)?youtube-nocookie\.com$/i
+        .test(window.location.hostname);
+    if (isYouTubeDocument) return;
     const clampFullscreen = (value, low, high) => Math.max(low, Math.min(value, high));
     const fullscreenScrollY = () => {
         const viewport = window.visualViewport;
@@ -197,7 +203,6 @@
     const TARGET_POSITION_CLASS = 'tm-fullscreen-game-view-local-position';
     const FALLBACK_CLASS = 'tm-fullscreen-game-view-fallback';
     const VIDEO_DIALOG_ID = 'tm-fullscreen-video-dialog';
-    const EXIT_BUTTON_ID = 'tm-fullscreen-game-view-exit-button';
     const VIDEO_PLACEHOLDER_CLASS = 'tm-fullscreen-video-placeholder';
     const STYLE_ID = 'tm-fullscreen-game-view-style';
     const GENERIC_MEDIA_SELECTOR = 'canvas, iframe, video, [role="application"]';
@@ -254,38 +259,6 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS}:focus-visible {
-    outline: 3px solid #4da3ff !important;
-    outline-offset: 2px !important;
-}
-
-/* Visible fallback exit, even when Android Back does not dispatch popstate. */
-#${EXIT_BUTTON_ID} {
-    appearance: none !important;
-    position: absolute !important;
-    top: max(8px, env(safe-area-inset-top)) !important;
-    right: max(8px, env(safe-area-inset-right)) !important;
-    left: auto !important;
-    bottom: auto !important;
-    display: block !important;
-    background: rgba(0,0,0,.22) !important;
-    color: rgba(255,255,255,.72) !important;
-    border: 0 !important;
-    border-radius: 5px !important;
-    box-shadow: none !important;
-    font: 500 21px/38px system-ui,sans-serif !important;
-    text-align: center !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: 38px !important;
-    height: 38px !important;
-    min-width: 38px !important;
-    min-height: 38px !important;
-    max-width: 38px !important;
-    z-index: 2147483647 !important;
-    cursor: pointer !important;
-    touch-action: manipulation !important;
-}
-#${EXIT_BUTTON_ID}:focus-visible {
     outline: 3px solid #4da3ff !important;
     outline-offset: 2px !important;
 }
@@ -367,15 +340,6 @@ img.tm-fullscreen-game-view-media:fullscreen {
     transform-origin: top left !important;
     transform: rotate(90deg) !important;
 }
-/* In the visually landscape-oriented content, its TOP-RIGHT is the
-   dialog's LOCAL top-right. The device is physically held counterclockwise;
-   placing × at the local left mapped it to the user's wrong, left corner. */
-#${VIDEO_DIALOG_ID}[open].tm-fullscreen-game-view-landscape-rotated > #${EXIT_BUTTON_ID} {
-    left: auto !important;
-    right: max(8px, env(safe-area-inset-right)) !important;
-    top: max(8px, env(safe-area-inset-top)) !important;
-}
-
 /* A fullscreen <video> needs swapped dimensions too: the unrotated video rule
    has higher CSS specificity than the generic landscape fallback rule. */
 video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen,
@@ -614,10 +578,17 @@ body:has(#task-detail-root) {
             (savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
                 ? savedPageState.target : null);
         const target = nativeTarget || fallbackTarget;
+        // Do not infer a landscape image/video from the portrait-shaped dialog.
+        // Snapshot the ORIGINAL media size before moving it into the top layer;
+        // video metadata may not exist yet or may be refreshed on reparenting.
+        const actualMediaShape = videoFallback
+            ? (videoShape(videoFallback.video) || videoFallback.shape)
+            : null;
+        const shape = actualMediaShape || videoShape(target);
         // The child YouTube document already controls its own native player.
         // Rotating both the iframe and its fullscreen player would rotate twice.
         if (!isAndroid || !target || (nativeTarget && childOwnsFullscreen(target)) ||
-            videoShape(target) !== 'landscape') {
+            shape !== 'landscape') {
             releaseOrientation();
             return;
         }
@@ -649,36 +620,11 @@ body:has(#task-detail-root) {
         } catch (_error) { /* CSS fallback remains active. */ }
     }
 
-    let fallbackExitButton = null;
-
-    function removeFallbackExit() {
-        fallbackExitButton?.remove();
-        fallbackExitButton = null;
-    }
-
-    function addFallbackExit(host) {
-        removeFallbackExit();
-        const close = document.createElement('button');
-        close.id = EXIT_BUTTON_ID;
-        close.type = 'button';
-        close.textContent = '×';
-        close.title = 'Exit simulated fullscreen';
-        close.setAttribute('aria-label', 'Exit simulated fullscreen');
-        close.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation?.();
-            exitFallback();
-        });
-        host.appendChild(close);
-        fallbackExitButton = close;
-    }
-
     function closeVideoFallback(fromPopstate = false) {
         const session = videoFallback;
         if (!session) return;
         videoFallback = null;
         clearFallbackHistory(fromPopstate === true);
-        removeFallbackExit();
         const { dialog, video, marker, target, button } = session;
         dialog.removeEventListener('close', closeVideoFallback);
         if (dialog.open) dialog.close();
@@ -699,6 +645,12 @@ body:has(#task-detail-root) {
     function openVideoFallback(target, video, button, nativeFailure) {
         if (videoFallback || !video?.parentNode) return;
         const parent = video.parentNode;
+        // The media's pre-modal rectangle is authoritative when videoWidth,
+        // naturalWidth, etc. are temporarily unavailable inside the dialog.
+        const originalRect = video.getBoundingClientRect?.();
+        const initialShape = videoShape(video) ||
+            (originalRect?.width > 0 && originalRect?.height > 0
+                ? (originalRect.width > originalRect.height ? 'landscape' : 'portrait') : null);
         const dialog = document.createElement('dialog');
         dialog.id = VIDEO_DIALOG_ID;
         dialog.setAttribute('aria-label', video.tagName === 'IMG' ? 'Expanded image' : 'Expanded video');
@@ -720,8 +672,7 @@ body:has(#task-detail-root) {
         parent.insertBefore(marker, video);
         video.parentNode?.removeChild(video);
         dialog.appendChild(video);
-        videoFallback = { dialog, video, marker, target, button };
-        addFallbackExit(dialog);
+        videoFallback = { dialog, video, marker, target, button, shape: initialShape };
         dialog.addEventListener('close', closeVideoFallback);
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
@@ -833,14 +784,12 @@ body:has(#task-detail-root) {
                 if (media) openVideoFallback(target, media, button, _error);
                 else {
                     target.classList.add(FALLBACK_CLASS);
-                    addFallbackExit(target);
                 }
             }
         } else if (media) {
             openVideoFallback(target, media, button);
         } else {
             target.classList.add(FALLBACK_CLASS);
-            addFallbackExit(target);
         }
 
         if (videoFallback || target.classList.contains(FALLBACK_CLASS)) armFallbackHistory();
@@ -968,7 +917,6 @@ body:has(#task-detail-root) {
         for (const [target, button] of mountedButtons) {
             if (!target.classList.contains(FALLBACK_CLASS)) continue;
             clearFallbackHistory(fromPopstate === true);
-            removeFallbackExit();
             target.classList.remove(FALLBACK_CLASS);
             syncMediaOrientation();
             document.documentElement.classList.remove('tm-fullscreen-game-view-active');
