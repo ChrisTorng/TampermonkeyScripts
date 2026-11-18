@@ -34,6 +34,25 @@ function executeOnArcTask() {
     return { ...harness, game, dPad };
 }
 
+describe('YouTube Tools owns fullscreen on YouTube hosts', () => {
+    for (const url of [
+        'https://m.youtube.com/watch?v=nCg3aXn5F3M',
+        'https://www.youtube.com/watch?v=nCg3aXn5F3M',
+        'https://www.youtube-nocookie.com/embed/nCg3aXn5F3M',
+    ]) {
+        test(`no duplicate Fullscreen Game View button or fullscreen CSS on ${url}`, () => {
+            const h = createHarness({url});
+            const player = h.document.createElement('video');
+            player._rect = {left:0, top:140, width:360, height:230, right:360, bottom:370};
+            h.document.body.appendChild(player);
+            h.context.globalThis = h.context;
+            vm.runInNewContext(scriptContents, h.context, {filename:scriptPath});
+            assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), null);
+            assert.equal(h.document.getElementById('tm-fullscreen-game-view-style'), null);
+        });
+    }
+});
+
 describe('Fullscreen control must not modify unrelated article widgets', () => {
     test('two separate canvases get distinct outside buttons and expand only their own block', () => {
         const h = createHarness({ url: 'https://example.com/two-games' });
@@ -58,7 +77,8 @@ describe('Fullscreen control must not modify unrelated article widgets', () => {
         buttons[1].click();
         assert(lower.classList.contains('tm-fullscreen-game-view-fallback'));
         assert(!upper.classList.contains('tm-fullscreen-game-view-fallback'));
-        h.document.getElementById('tm-fullscreen-game-view-exit-button').click();
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
+        h.dispatchWindowEvent('popstate');
         assert(!lower.classList.contains('tm-fullscreen-game-view-fallback'));
     });
 
@@ -135,13 +155,8 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(button.textContent, '⛶');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(button.disabled, true);
-        const exit = document.getElementById('tm-fullscreen-game-view-exit-button');
-        assert(exit, 'A visible exit is required when browser Back cannot close fallback.');
-        assert.equal(exit.parentElement, game);
-        exit.click();
-
-        // Escape remains an alternative exit after reopening the same block.
-        button.click();
+        assert.equal(document.getElementById('tm-fullscreen-game-view-exit-button'), null,
+            'Back provides exit; the fallback must not cover media with an ×.');
         document.dispatchEvent({ type: 'keydown', key: 'Escape' });
         await Promise.resolve();
         assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
@@ -150,12 +165,12 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(button.disabled, false);
     });
 
-    test('browser Back remains an optional fallback exit alongside the close button', () => {
+    test('browser Back exits fallback without an overlaid close button', () => {
         const harness = executeOnArcTask();
         const button = harness.document.getElementById('tm-fullscreen-game-view-button');
         button.click();
         assert.equal(button.getAttribute('aria-pressed'), 'true');
-        assert(harness.document.getElementById('tm-fullscreen-game-view-exit-button'));
+        assert.equal(harness.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
         harness.dispatchWindowEvent('popstate');
         assert(!harness.game.classList.contains('tm-fullscreen-game-view-fallback'));
         assert.equal(button.getAttribute('aria-pressed'), 'false');
@@ -541,28 +556,46 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.video.parentNode, dialog);
         assert.equal(dialog.open, true);
         assert.equal(h.button.disabled, true);
-        const exit = h.document.getElementById('tm-fullscreen-game-view-exit-button');
-        assert(exit, 'Nitter dialog needs an accessible visible exit control.');
-        assert.equal(exit.parentElement, dialog);
-        assert.equal(exit.getAttribute('aria-label'), 'Exit simulated fullscreen');
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null,
+            'Nitter fullscreen must not add an unwanted × overlay.');
         assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'),
             'Fallback rotates visually on a portrait viewport when screen lock is rejected.');
         const fallbackCss = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
         assert.match(fallbackCss,
             /#tm-fullscreen-video-dialog\[open\]\.tm-fullscreen-game-view-landscape-rotated/);
-        assert.match(fallbackCss, /landscape-rotated > #tm-fullscreen-game-view-exit-button/,
-            'CSS rotation keeps the exit button in the physical upper-right corner.');
+        assert.doesNotMatch(fallbackCss, /tm-fullscreen-game-view-exit-button/,
+            'No exit control or style should obscure the video.');
         assert.equal(h.getLocks(), 1);
         h.triggerMutation([h.video]);
         h.flushAnimationFrames();
         assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1,
             'Moving a playing video into the dialog must not remount duplicate controls.');
-        exit.click();
+        h.dispatchWindowEvent('popstate');
         assert.equal(h.video.parentNode, h.media);
         assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
         assert.equal(h.button.disabled, false);
         assert.equal(h.getUnlocks(), 0);
         assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+    });
+
+    test('landscape video without loaded intrinsic metadata keeps its original orientation after dialog reparenting', async () => {
+        const h = setupNitter(0, 0, { rejectLock: true });
+        h.video._rect = { left: 20, top: 220, right: 370, bottom: 420, width: 350, height: 200 };
+        h.video.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog);
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        // A media element may become portrait-shaped because the fallback
+        // dialog's CSS styles it to fill a portrait viewport. That is not
+        // evidence of a portrait video; preserve the pre-modal media ratio.
+        h.video._rect = { left: 0, top: 0, right: 390, bottom: 844, width: 390, height: 844 };
+        h.dispatchWindowEvent('resize');
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'),
+            'Portrait-shaped fallback layout must not override the originally landscape video.');
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.video.parentNode, h.media);
     });
 
     test('portrait video attempts native fullscreen even when the policy hint says false', async () => {
@@ -743,37 +776,36 @@ describe('Fullscreen photos, orientation, and actual Back history', () => {
         assert(!h.document.getElementById('tm-fullscreen-video-dialog'));
     });
 
-    test('landscape image fallback rotates, Back closes it and × remains understated', async () => {
+    test('landscape image fallback rotates and browser Back closes it without an overlay', async () => {
         const h = imageHarness();
         h.img.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
         h.button.click();
         await new Promise(resolve => setImmediate(resolve));
         const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
-        const exit = h.document.getElementById('tm-fullscreen-game-view-exit-button');
-        assert(dialog && exit);
+        assert(dialog);
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
         assert.equal(h.img.parentElement, dialog);
         assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         assert.equal(h.pushes(), 1, 'Entering fallback should push one same-page Back entry.');
         const css = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
-        assert.match(css, /background: rgba\(0,0,0,\.22\) !important/,
-            'Fallback exit must be much less visually prominent.');
-        assert.match(css, /landscape-rotated > #tm-fullscreen-game-view-exit-button\s*\{\s*left: auto !important;\s*right:/,
-            'The visually rotated top-right must stay on the local top-right.');
+        assert.doesNotMatch(css, /tm-fullscreen-game-view-exit-button/,
+            'Do not create any close overlay in the CSS.');
         h.dispatchWindowEvent('popstate');
         assert.equal(h.img.parentElement, h.anchor);
         assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
         assert.equal(h.backs(), 0, 'Actual Back already consumed the synthetic entry.');
     });
 
-    test('portrait photo remains upright, × unwinds history without leaving the article', async () => {
+    test('portrait photo remains upright; browser Back unwinds history', async () => {
         const h = imageHarness(720, 1280);
         h.img.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
         h.button.click();
         await new Promise(resolve => setImmediate(resolve));
         const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
         assert(dialog && !dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
-        h.document.getElementById('tm-fullscreen-game-view-exit-button').click();
-        assert.equal(h.backs(), 1, '× must remove the one fallback history entry.');
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.backs(), 0, 'Actual Back already consumed the one synthetic entry.');
         assert.equal(h.img.parentElement, h.anchor);
         assert.equal(h.button.disabled, false);
     });
