@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-15_1.5.26
-// @description  Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; enable readable articles blocked by document-level translate=no.
+// @version      2026-11-18_1.5.28
+// @description  Translate formatted prose without losing layout, unblock readable articles, and correct misleading language labels on English articles.
 // @author       Chris Torng
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
@@ -1151,6 +1151,56 @@
         element.classList.remove('notranslate');
     }
 
+    // A translated-looking document language may hide a genuinely English
+    // article from native browser translation. Use strong evidence from the
+    // readable article, not the domain, navigation language or URL.
+    // Remember the corrected article so a browser's later translation to
+    // Chinese is not mistaken for a new language mismatch.
+    let lastArticleLanguageRepair = null;
+    function restoreReadableArticleLanguage() {
+        if (window !== window.top) return;
+        const html = document.documentElement;
+        const declaredLanguage = (html?.getAttribute('lang') || '').trim();
+        // An absent language marker lets the browser perform its own detection.
+        // Keep English variants as-is; avoid changes to normal English pages.
+        if (!declaredLanguage || /^en(?:-|$)/i.test(declaredLanguage)) return;
+
+        const pageKey = location.pathname + location.search;
+        for (const article of document.querySelectorAll('article, main')) {
+            if (lastArticleLanguageRepair?.article === article
+                && lastArticleLanguageRepair.pageKey === pageKey) continue;
+            if (article.querySelector('input[type="password"], [contenteditable="true"]')) continue;
+            const heading = article.querySelector('h1, h2');
+            const title = (heading?.textContent || '').trim();
+            if ((title.match(/[A-Za-z]/g) || []).length < 8
+                || /[\u3400-\u9fff]/.test(title)) continue;
+
+            let longParagraphs = 0;
+            let latin = 0, han = 0, commonEnglishWords = 0, distinctiveEnglishWords = 0;
+            for (const paragraph of article.querySelectorAll('p')) {
+                const prose = (paragraph.textContent || '').trim();
+                if (prose.length < 70) continue;
+                longParagraphs++;
+                const excerpt = prose.slice(0, 1800);
+                latin += (excerpt.match(/[A-Za-z]/g) || []).length;
+                han += (excerpt.match(/[\u3400-\u9fff]/g) || []).length;
+                commonEnglishWords += (excerpt.match(/\b(?:the|and|of|to|in|is|for|that|with|on|as|are|by|from|this|which|have|will|can|their|you|our)\b/gi) || []).length;
+                // These function words help separate English prose from a
+                // German or other European-language article with Latin text.
+                distinctiveEnglishWords += (excerpt.match(/\b(?:the|and|of|that|which|with|from|their|this|these|they|would|could)\b/gi) || []).length;
+                if (longParagraphs >= 8) break;
+            }
+            if (longParagraphs < 4 || latin < 700 || han * 20 >= latin
+                || commonEnglishWords < 35 || distinctiveEnglishWords < 14) continue;
+
+            lastArticleLanguageRepair = { article, pageKey };
+            // This changes only the language hint; Edge remains responsible
+            // for deciding if/when to offer or start native translation.
+            html.setAttribute('lang', 'en');
+            return;
+        }
+    }
+
     // The HTML translate attribute is inherited. A single translate="no"
     // on <html> suppresses translation of an entire readable article, even
     // when the article itself contains no opt-out markers. Only clear this
@@ -1770,6 +1820,7 @@
     }
 
     function scan(root = document) {
+        restoreReadableArticleLanguage();
         allowTranslationForReadableArticle();
         if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
