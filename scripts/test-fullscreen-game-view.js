@@ -71,15 +71,54 @@ describe('Fullscreen control must not modify unrelated article widgets', () => {
         vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
         const buttons = h.document.querySelectorAll('.tm-fullscreen-game-view-button');
         assert.equal(buttons.length, 2, 'Each independent block owns its own control.');
-        assert(buttons.every(button => button.parentElement === h.document.body));
-        const tops = buttons.map(button => Number.parseFloat(button.style.top)).sort((a,b) => a-b);
-        assert.deepEqual(tops, [64, 344], 'Both icons must be above their respective block edges.');
+        assert.equal(buttons[0].parentElement, upper);
+        assert.equal(buttons[1].parentElement, lower);
+        assert.deepEqual(buttons.map(button => button.style.top), ['-36px', '-36px'],
+            'Each icon is positioned above its own local media edge, independent of page scroll.');
+        assert.equal(upper.style.getPropertyValue('position'), 'relative');
         buttons[1].click();
         assert(lower.classList.contains('tm-fullscreen-game-view-fallback'));
         assert(!upper.classList.contains('tm-fullscreen-game-view-fallback'));
         assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
         h.dispatchWindowEvent('popstate');
         assert(!lower.classList.contains('tm-fullscreen-game-view-fallback'));
+    });
+
+    test('generic article photos no longer receive intrusive fullscreen controls', () => {
+        const h = createHarness({url:'https://example.com/article'});
+        const article = h.document.createElement('article');
+        const img = h.document.createElement('img');
+        img._rect = {left:20,top:180,right:670,bottom:510,width:650,height:330};
+        img.naturalWidth = 1600;
+        img.naturalHeight = 900;
+        article.appendChild(img);
+        h.document.body.appendChild(article);
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, {filename:scriptPath});
+        assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), null);
+        assert.equal(article.style.getPropertyValue('position'), '');
+    });
+
+    test('fullscreen position does not re-measure media on scroll, including off-screen edges', () => {
+        const h = createHarness({url:'https://example.com/canvas'});
+        const wrap = h.document.createElement('section');
+        const canvas = h.document.createElement('canvas');
+        wrap._rect = {left:20,top:160,right:620,bottom:480,width:600,height:320};
+        canvas._rect = {...wrap._rect};
+        wrap.appendChild(canvas);
+        h.document.body.appendChild(wrap);
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, {filename:scriptPath});
+        const b = h.document.querySelector('.tm-fullscreen-game-view-button');
+        assert.equal(b.parentElement, wrap);
+        const initial = [b.style.left, b.style.top];
+        canvas.getBoundingClientRect = () => { throw new Error('No layout measurement while scrolling'); };
+        wrap.getBoundingClientRect = () => { throw new Error('No layout measurement while scrolling'); };
+        h.dispatchWindowEvent('scroll');
+        h.dispatchWindowEvent('scroll');
+        assert.deepEqual([b.style.left, b.style.top], initial);
+        assert.equal(b.hidden, false);
+        assert.equal(b.style.position || 'absolute', 'absolute');
     });
 
     test('Nieman Lab advertising iframe is not treated as a playable media surface', () => {
@@ -119,8 +158,8 @@ describe('Fullscreen control must not modify unrelated article widgets', () => {
 
         const button = harness.document.querySelector('.tm-fullscreen-game-view-button');
         assert(button, 'A known embedded video must keep its fullscreen entry.');
-        assert.equal(button.parentElement, harness.document.body);
-        assert.equal(media.style.getPropertyValue('position'), '', 'Do not alter the media wrapper.');
+        assert.equal(button.parentElement, media);
+        assert.equal(media.style.getPropertyValue('position'), '', 'Preserve the sticky media wrapper.');
         assert.equal(media.classList.contains('tm-fullscreen-game-view-target'), true);
         assert.equal(media.classList.contains('tm-fullscreen-game-view-local-position'), false,
             'Do not replace an existing fixed, sticky, or absolute positioning context.');
@@ -140,7 +179,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.match(style.textContent, /overflow: visible !important/);
         assert.match(style.textContent, /#playground \.d-pad-grid[\s\S]*transform: translateX\(2rem\) !important/);
         assert(game.classList.contains('tm-fullscreen-game-view-target'));
-        assert.equal(button.parentElement, document.body);
+        assert.equal(button.parentElement, game);
         assert.equal(button.getAttribute('aria-label'), 'Enter fullscreen game view');
     });
 
@@ -397,7 +436,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         vm.runInNewContext(scriptContents, harness.context, { filename: scriptPath });
 
         assert(wrapper.classList.contains('tm-fullscreen-game-view-target'));
-        assert.equal(harness.document.getElementById('tm-fullscreen-game-view-button').parentElement, harness.document.body);
+        assert.equal(harness.document.getElementById('tm-fullscreen-game-view-button').parentElement, wrapper);
     });
 
     for (const mode of ['native', 'fallback-escape', 'fallback-back']) {
@@ -659,14 +698,15 @@ describe('Android Nitter and ARC fullscreen visibility regressions', () => {
 
         const buttons = h.document.querySelectorAll('.tm-fullscreen-game-view-button');
         assert.equal(buttons.length, 2);
-        assert.equal(buttons.filter((b) => !b.hidden).length, 1,
-            'Do not leave the sole fullscreen control on an off-screen video.');
+        assert.equal(buttons.filter((b) => !b.hidden).length, 2,
+            'Off-screen controls must remain in their media blocks; viewport naturally clips them.');
         const visibleControl = buttons.find((b) => !b.hidden);
         assert(visibleControl);
-        assert.equal(visibleControl.parentElement, h.document.body,
-            'A top-level fixed overlay must not be clipped by the video wrapper.');
-        assert.equal(distant.wrapper.querySelector('button'), null);
-        assert.equal(visible.wrapper.querySelector('button'), null);
+        assert.equal(visibleControl.parentElement, visible.wrapper,
+            'Control should be a CSS-positioned child of the media, not a viewport overlay.');
+        assert.equal(distant.wrapper.querySelector('button') !== null, true,
+            'Off-screen media keeps its own control in the document without forced hiding.');
+        assert.equal(visible.wrapper.querySelector('button'), visibleControl);
         assert(Number.parseFloat(visibleControl.style.left) >= 20);
         assert.equal(Number.parseFloat(visibleControl.style.top), 184,
             'Media control must appear 4px ABOVE the 220px video edge.');
@@ -763,7 +803,7 @@ describe('Fullscreen photos, orientation, and actual Back history', () => {
     test('native fullscreen for a landscape image uses intrinsic aspect ratio', async () => {
         const h = imageHarness();
         assert(h.button, 'Large Nitter still-image gets an independent control.');
-        assert.equal(h.button.parentElement, h.document.body);
+        assert.equal(h.button.parentElement, h.anchor);
         h.img.requestFullscreen = async () => {
             h.document.fullscreenElement = h.img;
             h.dispatchDocumentEvent('fullscreenchange');
