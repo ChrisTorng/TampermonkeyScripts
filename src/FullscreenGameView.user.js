@@ -23,8 +23,8 @@
     const FULLSCREEN_WIDTH = 38;
     const FULLSCREEN_HEIGHT = 32;
     const isNitter = window.location.hostname === 'nitter.tiekoetter.com';
-    const isYouTubeDocument = /^(?:(?:www|m)\\.)?youtube\\.com$|^(?:www\\.)?youtube-nocookie\\.com$/i.test(window.location.hostname);
-    if (isYouTubeDocument) return; // YouTube Tools owns its fullscreen control.
+    const isYouTubeDocument = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com']
+        .includes(window.location.hostname);
     const fullscreenControlLayouts = new Set();
     const anchoredHosts = new WeakMap();
     function refreshFullscreenControls() {
