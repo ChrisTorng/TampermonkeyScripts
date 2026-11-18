@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Open New Articles
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-17_1.9.1
-// @description  Preserve Hacker News Summary reading controls and dated navigation; show previous/current browser loads under Latest.
+// @version      2026-11-18_1.9.5
+// @description  Preserve Hacker News Summary controls and load times; show page-relative time-adjusted popularity on score and comment numbers.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js
@@ -33,6 +33,8 @@
     const ALL_TOGGLE_ID = 'auto-open-new-articles-all-toggle';
     const DATE_NAV_CLASS = 'auto-open-new-articles-date-nav';
     const UPDATE_TIME_CLASS = 'auto-open-new-articles-update-time';
+    const POPULARITY_CLASS = 'auto-open-new-articles-popularity';
+    const POPULARITY_HOT_CLASS = 'auto-open-new-articles-popularity-hot';
     const LATEST_LOAD_HISTORY_KEY = 'autoOpenNewArticles:hackerNewsSummary:latestLoads';
     const PAGE_LOADED_AT = Date.now();
     const STYLE_ID = 'auto-open-new-articles-style';
@@ -53,6 +55,31 @@
             }
             .${SEEN_CLASS} {
                 opacity: 0.68 !important;
+            }
+            article.post-item .post-meta .${POPULARITY_CLASS} {
+                display: inline !important;
+                padding: 1px 3px !important;
+                border-radius: 4px !important;
+                background-color: #e8eaed !important;
+                color: #202124 !important;
+                font-weight: 800 !important;
+                font-variant-numeric: tabular-nums !important;
+                text-shadow: none !important;
+                opacity: 1 !important;
+                box-decoration-break: clone !important;
+                -webkit-box-decoration-break: clone !important;
+            }
+            article.post-item .post-meta .${POPULARITY_CLASS}.${POPULARITY_HOT_CLASS} {
+                background-color: var(--tm-popularity-color, #fff1ce) !important;
+                color: #382b0b !important;
+            }
+            article.post-item .post-meta .score > i,
+            article.post-item .post-meta .comment a > i {
+                opacity: 1 !important;
+                filter: contrast(1.1) !important;
+            }
+            article.post-item .post-meta .comment a > i {
+                color: #5687aa !important;
             }
             .${COLLAPSED_CLASS} > :not(.post-title):not(.${ITEM_TOGGLE_CLASS}):not(.tm-blog-bookmarks-save) {
                 display: none !important;
@@ -563,7 +590,79 @@
         last.insertAdjacentElement('afterend', bottomNavigation);
     }
 
+    function readPopularityNumber(metric, selector) {
+        const value = metric?.querySelector(selector)?.textContent?.trim() || '';
+        return /^\d[\d,]*$/.test(value) ? Number(value.replace(/,/g, '')) : null;
+    }
+
+    function popularityRate(count, ageHours, kind) {
+        // Two-hour smoothing avoids overrating a handful of very early votes.
+        // HN's first score point belongs to the submitter, not other readers.
+        return (kind === 'score' ? Math.max(0, count - 1) : count) / (ageHours + 2);
+    }
+
+    function markPopularity(metric, count, ageHours, kind, isLatest, pageMaxRate) {
+        if (!metric || count === null || !Number.isFinite(count)) return;
+        // The number alone receives a background: never the adjacent icon,
+        // article link arrow or punctuation separators.
+        const number = metric.querySelector(kind === 'score' ? 'span' : 'a span');
+        if (!number) return;
+        number.classList.add(POPULARITY_CLASS);
+
+        const label = kind === 'score' ? '推薦分數' : '留言';
+        if (!isLatest || ageHours === null) {
+            metric.title = `${label} ${count}；未提供可比較的即時發文時間，不計算熱度`;
+            return;
+        }
+
+        const rate = popularityRate(count, ageHours, kind);
+        const relativeHeat = pageMaxRate > 0 ? Math.min(1, Math.max(0, rate / pageMaxRate)) : 0;
+        metric.title = `${label} ${count}；發文約 ${ageHours.toFixed(1)} 小時；平滑平均 ${rate.toFixed(1)}/小時（含 2 小時平滑）；本頁相對熱度 ${(relativeHeat * 100).toFixed(1)}%（非即時增量）`;
+        if (relativeHeat <= 0) return;
+
+        // Linear normalization to the hottest visible listing; no logarithm,
+        // fixed rate threshold, discrete bands or saturation plateau.
+        // A page of similarly popular articles gives all of them bright yellow.
+        const saturation = 88 + 12 * relativeHeat;
+        const lightness = 96 - 42 * relativeHeat;
+        number.classList.add(POPULARITY_HOT_CLASS);
+        number.style.setProperty('--tm-popularity-color',
+            `hsl(50 ${saturation.toFixed(3)}% ${lightness.toFixed(3)}%)`);
+    }
+
+    function addHackerNewsPopularity(articles, displayedDate) {
+        const isLatest = displayedDate === null;
+        const rows = [];
+        const maxRates = { score: 0, comments: 0 };
+
+        articles.forEach(({ link }) => {
+            if (link.classList.contains('ad')) return;
+            const timestamp = link.querySelector('.last-updated[data-submitted]')?.getAttribute('data-submitted');
+            const submittedAt = timestamp ? Date.parse(timestamp) : NaN;
+            const ageHours = Number.isFinite(submittedAt) && submittedAt <= PAGE_LOADED_AT
+                ? Math.max(0, (PAGE_LOADED_AT - submittedAt) / 3600000)
+                : null;
+            const score = link.querySelector('.post-meta .score');
+            const comments = link.querySelector('.post-meta .comment');
+            const scoreCount = readPopularityNumber(score, 'span');
+            const commentCount = readPopularityNumber(comments, 'a span');
+            if (isLatest && ageHours !== null) {
+                if (scoreCount !== null)
+                    maxRates.score = Math.max(maxRates.score, popularityRate(scoreCount, ageHours, 'score'));
+                if (commentCount !== null)
+                    maxRates.comments = Math.max(maxRates.comments, popularityRate(commentCount, ageHours, 'comments'));
+            }
+            rows.push({ score, comments, scoreCount, commentCount, ageHours });
+        });
+
+        rows.forEach(({ score, comments, scoreCount, commentCount, ageHours }) => {
+            markPopularity(score, scoreCount, ageHours, 'score', isLatest, maxRates.score);
+            markPopularity(comments, commentCount, ageHours, 'comments', isLatest, maxRates.comments);
+        });
+    }
+
     function setupHackerNewsControls(articles, storageKey, storedIds, displayedDate) {
+        addHackerNewsPopularity(articles, displayedDate);
         let seenIds = new Set(storedIds);
         articles.forEach((article) => addArticleToggle(article.link, seenIds.has(article.id)));
 
