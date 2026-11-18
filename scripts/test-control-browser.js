@@ -179,3 +179,76 @@ test('real browser keeps translation inside its horizontal scrollport and render
         fs.rmSync(directory, { recursive: true, force: true });
     }
 });
+
+
+test('Nitter clipped gallery: poster and video share a visible media-anchored fullscreen corner', {
+    skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to a Chromium browser executable',
+}, () => {
+    const root = path.join(__dirname, '..');
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-nitter-fullscreen-'));
+    try {
+        // The file:// fixture must emulate the Nitter hostname to exercise
+        // the exact Nitter-specific branch; all remaining code is unchanged.
+        const source = fs.readFileSync(path.join(root, 'src', 'FullscreenGameView.user.js'), 'utf8');
+        const flag = "const isNitter = window.location.hostname === 'nitter.tiekoetter.com';";
+        assert(source.includes(flag));
+        const nitterScript = source.replace(flag, 'const isNitter = true;')
+            .replace(/<\/script/gi, '<\\/script');
+        const html = '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">'
+            + '<style>body{margin:0;min-height:2400px;font:16px sans-serif;background:#eee}'
+            + '.status-el{margin:90px 12px 0;padding:8px;min-height:670px;background:#ddd}'
+            + '.status-body{padding:4px}.status-content{margin-top:60px}'
+            + '.attachments{margin-top:70px}.gallery-video{overflow:hidden}'
+            + '.attachment{overflow:hidden;position:relative;width:340px;height:230px;background:#000}'
+            + '.attachment img,.attachment video{display:block;width:100%;height:100%;object-fit:contain}'
+            + '</style></head><body>'
+            + '<section class="status-el" id="tweet"><div class="status-body">'
+            + '<div>Tweet author</div><div class="status-content media-body">Nitter preview'
+            + '<div class="attachments"><div class="gallery-video"><div class="attachment video-container" id="clip">'
+            + '<img id="poster" alt="video preview"></div></div></div></div></div></section>'
+            + '<p id="nitter-check" data-test-status="pending"></p>'
+            + '<script>window.requestAnimationFrame = fn => setTimeout(() => fn(performance.now()), 0);</script>'
+            + '<script>' + nitterScript + '</script>'
+            + '<script>(async()=>{const out=document.getElementById("nitter-check");'
+            + 'const wait=()=>new Promise(r=>setTimeout(r,70));'
+            + 'const check=(ok,m)=>{if(!ok)throw Error(m)};'
+            + 'try{await wait();'
+            + 'const clip=document.getElementById("clip"),tweet=document.getElementById("tweet");'
+            + 'const buttons=document.querySelectorAll(".tm-fullscreen-game-view-button");'
+            + 'check(buttons.length===1,"Poster must have exactly one fullscreen icon");'
+            + 'const btn=buttons[0];check(btn.parentElement===tweet,"Icon must anchor outside clipped gallery");'
+            + 'let r=btn.getBoundingClientRect(),c=clip.getBoundingClientRect();'
+            + 'check(r.bottom<=c.top+2,"Icon must be above media, not inside clipped media");'
+            + 'check(document.elementFromPoint(r.left+20,r.top+16)===btn,"Icon must actually be visible and clickable");'
+            + 'const offset=r.bottom-c.top;'
+            + 'window.scrollBy({top:100,behavior:"instant"});await wait();'
+            + 'r=btn.getBoundingClientRect();c=clip.getBoundingClientRect();'
+            + 'check(Math.abs((r.bottom-c.top)-offset)<2,"Icon must scroll together with media without jitter");'
+            + 'const video=document.createElement("video");video.id="video";video.poster="poster.jpg";'
+            + 'document.getElementById("poster").remove();clip.insertBefore(video,clip.firstChild);'
+            + 'await wait();await wait();'
+            + 'check(document.querySelectorAll(".tm-fullscreen-game-view-button").length===1,"Video replacement duplicates button");'
+            + 'check(document.querySelector(".tm-fullscreen-game-view-button")===btn,"Video replacement must retain same button");'
+            + 'check(btn.parentElement===tweet,"After playing, button must remain outside clipping");'
+            + 'r=btn.getBoundingClientRect();c=clip.getBoundingClientRect();'
+            + 'check(document.elementFromPoint(r.left+20,r.top+16)===btn,"Video button must remain clickable");'
+            + 'out.dataset.testStatus="passed";out.textContent="Nitter poster, video, clipping and scroll passed";'
+            + '}catch(e){out.dataset.testStatus="failed";out.textContent=e.message}'
+            + '})();</script></body></html>';
+        const file = path.join(directory, 'nitter-clipping.html');
+        fs.writeFileSync(file, html);
+        const result = spawnSync(process.env.CONTROL_BROWSER_BIN, [
+            '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+            '--no-sandbox',
+            '--user-data-dir=' + path.join(directory, 'profile'),
+            '--virtual-time-budget=5000', '--window-size=900,1000',
+            '--dump-dom', pathToFileURL(file).href,
+        ], {encoding:'utf8',timeout:30000,maxBuffer:4*1024*1024});
+        assert.ifError(result.error);
+        assert.equal(result.status,0,result.stderr);
+        const report = result.stdout.match(/<p id="nitter-check"[^>]*>[\s\S]*?<\/p>/)?.[0] || 'No Nitter browser result';
+        assert.match(report,/data-test-status="passed"/,report);
+    } finally {
+        fs.rmSync(directory,{recursive:true,force:true});
+    }
+});
