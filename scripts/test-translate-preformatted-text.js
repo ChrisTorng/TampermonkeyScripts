@@ -217,6 +217,93 @@ describe('Translate Preformatted Text', () => {
         assert.equal(harness.document.documentElement.getAttribute('lang'), 'en');
     });
 
+    test('TechSpot-style Google notranslate meta is removed only for a readable article', () => {
+        let article, meta, exclusion;
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'en-US');
+            meta = h.document.createElement('meta');
+            meta.setAttribute('name', 'google');
+            meta.setAttribute('content', 'notranslate');
+            h.document.head.appendChild(meta);
+            article = appendArticle(h, 'Nvidia GPU pricing through circular investment', Array(5).fill(englishProse));
+            exclusion = h.document.createElement('span');
+            exclusion.setAttribute('translate', 'no');
+            exclusion.textContent = 'RTX 4090';
+            article.appendChild(exclusion);
+        }, 'https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html');
+        assert.equal(meta.isConnected, false);
+        assert.equal(harness.document.documentElement.getAttribute('lang'), 'en-US');
+        assert.equal(article.querySelectorAll('p').length, 5);
+        assert.equal(article.querySelector('p').textContent, englishProse);
+        assert.equal(exclusion.getAttribute('translate'), 'no');
+    });
+
+    test('Google meta opt-out and root translate=no are fixed together without changing unrelated meta tokens', () => {
+        let meta;
+        const harness = execute(h => {
+            h.document.documentElement.setAttribute('translate', 'no');
+            meta = h.document.createElement('meta');
+            meta.setAttribute('name', 'google');
+            meta.setAttribute('content', 'notranslate, nositelinkssearchbox');
+            h.document.head.appendChild(meta);
+            appendArticle(h, 'How independent research is conducted', Array(5).fill(englishProse));
+        }, 'https://reader.example.org/research/report');
+        assert.equal(harness.document.documentElement.getAttribute('translate'), null);
+        assert.equal(meta.getAttribute('content'), 'nositelinkssearchbox');
+    });
+
+    test('short interactive pages keep Google notranslate and non-Google metadata unchanged', () => {
+        let meta, robots;
+        const harness = execute(h => {
+            meta = h.document.createElement('meta');
+            meta.setAttribute('name', 'google');
+            meta.setAttribute('content', 'notranslate');
+            h.document.head.appendChild(meta);
+            robots = h.document.createElement('meta');
+            robots.setAttribute('name', 'googlebot');
+            robots.setAttribute('content', 'notranslate');
+            h.document.head.appendChild(robots);
+            const main = h.document.createElement('main');
+            const h1 = h.document.createElement('h1');
+            h1.textContent = 'Account settings';
+            main.appendChild(h1);
+            main.appendChild(h.document.createElement('input'));
+            h.appendToBody(main);
+        }, 'https://app.example.org/');
+        assert.equal(meta.getAttribute('content'), 'notranslate');
+        assert.equal(robots.getAttribute('content'), 'notranslate');
+        assert.equal(meta.isConnected, true);
+    });
+
+    test('late content and re-applied Google opt-outs are corrected without a mutation loop', () => {
+        let meta;
+        const harness = execute(h => {
+            meta = h.document.createElement('meta');
+            meta.setAttribute('name', 'google');
+            meta.setAttribute('content', 'notranslate');
+            h.document.head.appendChild(meta);
+        }, 'https://example.net/news/late');
+        assert.equal(meta.isConnected, true);
+        const article = appendArticle(harness, 'An article about machine learning systems', Array(4).fill(englishProse));
+        harness.triggerMutation([article]);
+        assert.equal(meta.isConnected, false);
+
+        const replacement = harness.document.createElement('meta');
+        replacement.setAttribute('name', 'google');
+        replacement.setAttribute('content', 'notranslate');
+        harness.document.head.appendChild(replacement);
+        harness.triggerMutation([replacement]);
+        assert.equal(replacement.isConnected, false);
+
+        const active = harness.document.createElement('meta');
+        active.setAttribute('name', 'google');
+        active.setAttribute('content', 'translate');
+        harness.document.head.appendChild(active);
+        active.setAttribute('content', 'notranslate');
+        harness.triggerMutation([], { type: 'attributes', target: active, attributeName: 'content' });
+        assert.equal(active.isConnected, false);
+    });
+
     test('root notranslate class uses the same shared opt-out handling', () => {
         const harness = execute((h) => {
             h.document.documentElement.classList.add('notranslate');
