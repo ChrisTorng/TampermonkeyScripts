@@ -39,6 +39,14 @@ Translate formatted prose without losing layout, unblock readable articles with 
 
 Update each script below separately as needed.
 
+### [Translation Diagnostics User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js)
+
+Universal opt-in web problem reporting with sanitized DOM, translation diagnostics, and new console/error logs; paired Cloudflare submission with seven-day retention.
+
+
+
+Update each script below separately as needed.
+
 ### [Hacker News Comments User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/HackerNewsComments.user.js)
 
 Add an article button for Hacker News comments, including pages reached through redirects.
