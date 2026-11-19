@@ -34,7 +34,93 @@ function executeOnArcTask() {
     return { ...harness, game, dPad };
 }
 
+describe('YouTube Tools owns fullscreen on YouTube hosts', () => {
+    for (const url of [
+        'https://m.youtube.com/watch?v=nCg3aXn5F3M',
+        'https://www.youtube.com/watch?v=nCg3aXn5F3M',
+        'https://www.youtube-nocookie.com/embed/nCg3aXn5F3M',
+    ]) {
+        test(`no duplicate Fullscreen Game View button or fullscreen CSS on ${url}`, () => {
+            const h = createHarness({url});
+            const player = h.document.createElement('video');
+            player._rect = {left:0, top:140, width:360, height:230, right:360, bottom:370};
+            h.document.body.appendChild(player);
+            h.context.globalThis = h.context;
+            vm.runInNewContext(scriptContents, h.context, {filename:scriptPath});
+            assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), null);
+            assert.equal(h.document.getElementById('tm-fullscreen-game-view-style'), null);
+        });
+    }
+});
+
 describe('Fullscreen control must not modify unrelated article widgets', () => {
+    test('two separate canvases get distinct outside buttons and expand only their own block', () => {
+        const h = createHarness({ url: 'https://example.com/two-games' });
+        const make = (r) => {
+            const box = h.document.createElement('section');
+            const canvas = h.document.createElement('canvas');
+            box._rect = { ...r };
+            canvas._rect = { ...r };
+            box.appendChild(canvas);
+            h.document.body.appendChild(box);
+            return box;
+        };
+        const upper = make({left: 350, top: 100, right: 720, bottom: 350, width: 370, height: 250});
+        const lower = make({left: 20, top: 380, right: 280, bottom: 560, width: 260, height: 180});
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        const buttons = h.document.querySelectorAll('.tm-fullscreen-game-view-button');
+        assert.equal(buttons.length, 2, 'Each independent block owns its own control.');
+        assert.equal(buttons[0].parentElement, upper);
+        assert.equal(buttons[1].parentElement, lower);
+        assert.deepEqual(buttons.map(button => button.style.top), ['-36px', '-36px'],
+            'Each icon is positioned above its own local media edge, independent of page scroll.');
+        assert.equal(upper.style.getPropertyValue('position'), 'relative');
+        buttons[1].click();
+        assert(lower.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(!upper.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
+        h.dispatchWindowEvent('popstate');
+        assert(!lower.classList.contains('tm-fullscreen-game-view-fallback'));
+    });
+
+    test('generic article photos no longer receive intrusive fullscreen controls', () => {
+        const h = createHarness({url:'https://example.com/article'});
+        const article = h.document.createElement('article');
+        const img = h.document.createElement('img');
+        img._rect = {left:20,top:180,right:670,bottom:510,width:650,height:330};
+        img.naturalWidth = 1600;
+        img.naturalHeight = 900;
+        article.appendChild(img);
+        h.document.body.appendChild(article);
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, {filename:scriptPath});
+        assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), null);
+        assert.equal(article.style.getPropertyValue('position'), '');
+    });
+
+    test('fullscreen position does not re-measure media on scroll, including off-screen edges', () => {
+        const h = createHarness({url:'https://example.com/canvas'});
+        const wrap = h.document.createElement('section');
+        const canvas = h.document.createElement('canvas');
+        wrap._rect = {left:20,top:160,right:620,bottom:480,width:600,height:320};
+        canvas._rect = {...wrap._rect};
+        wrap.appendChild(canvas);
+        h.document.body.appendChild(wrap);
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, {filename:scriptPath});
+        const b = h.document.querySelector('.tm-fullscreen-game-view-button');
+        assert.equal(b.parentElement, wrap);
+        const initial = [b.style.left, b.style.top];
+        canvas.getBoundingClientRect = () => { throw new Error('No layout measurement while scrolling'); };
+        wrap.getBoundingClientRect = () => { throw new Error('No layout measurement while scrolling'); };
+        h.dispatchWindowEvent('scroll');
+        h.dispatchWindowEvent('scroll');
+        assert.deepEqual([b.style.left, b.style.top], initial);
+        assert.equal(b.hidden, false);
+        assert.equal(b.style.position || 'absolute', 'absolute');
+    });
+
     test('Nieman Lab advertising iframe is not treated as a playable media surface', () => {
         const url = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
         const harness = createHarness({ url });
@@ -73,6 +159,7 @@ describe('Fullscreen control must not modify unrelated article widgets', () => {
         const button = harness.document.querySelector('.tm-fullscreen-game-view-button');
         assert(button, 'A known embedded video must keep its fullscreen entry.');
         assert.equal(button.parentElement, media);
+        assert.equal(media.style.getPropertyValue('position'), '', 'Preserve the sticky media wrapper.');
         assert.equal(media.classList.contains('tm-fullscreen-game-view-target'), true);
         assert.equal(media.classList.contains('tm-fullscreen-game-view-local-position'), false,
             'Do not replace an existing fixed, sticky, or absolute positioning context.');
@@ -107,7 +194,8 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(button.textContent, '⛶');
         assert.equal(button.getAttribute('aria-pressed'), 'true');
         assert.equal(button.disabled, true);
-
+        assert.equal(document.getElementById('tm-fullscreen-game-view-exit-button'), null,
+            'Back provides exit; the fallback must not cover media with an ×.');
         document.dispatchEvent({ type: 'keydown', key: 'Escape' });
         await Promise.resolve();
         assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
@@ -116,11 +204,12 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert.equal(button.disabled, false);
     });
 
-    test('browser Back exits the expanded fallback without a close button', () => {
+    test('browser Back exits fallback without an overlaid close button', () => {
         const harness = executeOnArcTask();
         const button = harness.document.getElementById('tm-fullscreen-game-view-button');
         button.click();
         assert.equal(button.getAttribute('aria-pressed'), 'true');
+        assert.equal(harness.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
         harness.dispatchWindowEvent('popstate');
         assert(!harness.game.classList.contains('tm-fullscreen-game-view-fallback'));
         assert.equal(button.getAttribute('aria-pressed'), 'false');
@@ -270,17 +359,17 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
             return frame;
         };
         const first = activate(0);
-        const firstButton = slots[0].querySelector('.tm-fullscreen-game-view-button');
+        const firstButton = harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[0];
         assert(firstButton);
         assert.equal(firstButton.id, 'tm-fullscreen-game-view-button');
         const second = activate(1);
-        assert(slots[1].querySelector('.tm-fullscreen-game-view-button'));
+        assert(harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[1]);
         activate(2);
         assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 3);
-        assert.equal(slots[0].querySelector('.tm-fullscreen-game-view-button'), firstButton,
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[0], firstButton,
             'A later embed must not replace the first already working control.');
 
-        const secondButton = slots[1].querySelector('.tm-fullscreen-game-view-button');
+        const secondButton = harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[1];
         assert.notEqual(secondButton, firstButton);
         harness.window.dispatchEvent({
             type: 'message', origin: 'https://www.youtube.com', source: second.contentWindow,
@@ -294,7 +383,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         assert(!slots[0].classList.contains('tm-fullscreen-game-view-fallback'));
         harness.document.dispatchEvent({type: 'keydown', key: 'Escape'});
         assert(!slots[1].classList.contains('tm-fullscreen-game-view-fallback'));
-        assert.equal(slots[0].querySelector('.tm-fullscreen-game-view-button'), firstButton);
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[0], firstButton);
         assert.equal(first.parentElement, slots[0]);
     });
 
@@ -316,7 +405,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         lazy.src = 'https://www.youtube-nocookie.com/embed/after-click';
         harness.triggerMutation([], {type: 'attributes', target: lazy, attributeName: 'src'});
         harness.flushAnimationFrames();
-        const button = lower.querySelector('.tm-fullscreen-game-view-button');
+        const button = harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[1];
         assert(button);
         assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
 
@@ -327,11 +416,11 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
         lower.appendChild(replacement);
         harness.triggerMutation([replacement], {removedNodes: [lazy]});
         harness.flushAnimationFrames();
-        assert.equal(lower.querySelector('.tm-fullscreen-game-view-button'), button);
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button')[1], button);
         assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
         harness.triggerMutation([], {type: 'attributes', target: lower, attributeName: 'class'});
         harness.flushAnimationFrames();
-        assert.equal(lower.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+        assert.equal(harness.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
     });
 
     test('uses the largest generic game surface outside ARC Prize', () => {
@@ -485,7 +574,7 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.getLocks(), 1);
         assert(h.video.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         assert.match(h.document.getElementById('tm-fullscreen-game-view-style').textContent,
-            /video\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen\s*\{\s*width:\s*100dvh/i);
+            /video\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen,[\s\S]*img\.tm-fullscreen-game-view-media\.tm-fullscreen-game-view-landscape-rotated:fullscreen\s*\{\s*width:\s*100dvh/i);
         assert.equal(h.button.disabled, true);
         assert.equal(h.document.querySelector('dialog'), null);
         h.document.fullscreenElement = null;
@@ -506,16 +595,21 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.video.parentNode, dialog);
         assert.equal(dialog.open, true);
         assert.equal(h.button.disabled, true);
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null,
+            'Nitter fullscreen must not add an unwanted × overlay.');
         assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'),
             'Fallback rotates visually on a portrait viewport when screen lock is rejected.');
-        assert.match(h.document.getElementById('tm-fullscreen-game-view-style').textContent,
+        const fallbackCss = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
+        assert.match(fallbackCss,
             /#tm-fullscreen-video-dialog\[open\]\.tm-fullscreen-game-view-landscape-rotated/);
+        assert.doesNotMatch(fallbackCss, /tm-fullscreen-game-view-exit-button/,
+            'No exit control or style should obscure the video.');
         assert.equal(h.getLocks(), 1);
         h.triggerMutation([h.video]);
         h.flushAnimationFrames();
         assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1,
             'Moving a playing video into the dialog must not remount duplicate controls.');
-        h.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
+        h.dispatchWindowEvent('popstate');
         assert.equal(h.video.parentNode, h.media);
         assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
         assert.equal(h.button.disabled, false);
@@ -523,15 +617,37 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
     });
 
-    test('portrait video remains upright, and Back closes the dialog under denied fullscreen policy', () => {
+    test('landscape video without loaded intrinsic metadata keeps its original orientation after dialog reparenting', async () => {
+        const h = setupNitter(0, 0, { rejectLock: true });
+        h.video._rect = { left: 20, top: 220, right: 370, bottom: 420, width: 350, height: 200 };
+        h.video.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog);
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        // A media element may become portrait-shaped because the fallback
+        // dialog's CSS styles it to fill a portrait viewport. That is not
+        // evidence of a portrait video; preserve the pre-modal media ratio.
+        h.video._rect = { left: 0, top: 0, right: 390, bottom: 844, width: 390, height: 844 };
+        h.dispatchWindowEvent('resize');
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'),
+            'Portrait-shaped fallback layout must not override the originally landscape video.');
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.video.parentNode, h.media);
+    });
+
+    test('portrait video attempts native fullscreen even when the policy hint says false', async () => {
         const h = setupNitter(720, 1280);
         h.document.fullscreenEnabled = false;
         let nativeCalls = 0;
-        h.video.requestFullscreen = () => { nativeCalls++; return Promise.resolve(); };
+        h.video.requestFullscreen = () => { nativeCalls++; return Promise.reject(new Error('NotAllowedError')); };
         h.button.click();
+        // Allow the rejected fullscreen Promise to cross the VM realm microtask boundary.
+        await new Promise(resolve => setImmediate(resolve));
         const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
         assert(dialog);
-        assert.equal(nativeCalls, 0);
+        assert.equal(nativeCalls, 1);
         assert.equal(h.getLocks(), 0);
         assert(!dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
         h.dispatchWindowEvent('popstate');
@@ -553,6 +669,108 @@ describe('Nitter video fullscreen migration', () => {
     });
 });
 
+
+describe('Nitter poster-to-video controls outside clipped media wrappers', () => {
+    function makeGallery(previewTag = 'img') {
+        const h = createHarness({
+            url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214'
+        });
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        const tweet = h.document.createElement('section');
+        tweet.className = 'status-el';
+        tweet._rect = { left: 8, top: 90, right: 385, bottom: 700, width: 377, height: 610 };
+        const body = h.document.createElement('div');
+        body.className = 'status-body';
+        const content = h.document.createElement('div');
+        content.className = 'status-content media-body';
+        const attachments = h.document.createElement('div');
+        attachments.className = 'attachments card';
+        const gallery = h.document.createElement('div');
+        gallery.className = 'gallery-video';
+        const attachment = h.document.createElement('div');
+        attachment.className = 'attachment video-container';
+        attachment._rect = { left: 30, top: 350, right: 362, bottom: 540, width: 332, height: 190 };
+        const preview = h.document.createElement(previewTag);
+        preview._rect = { left: 30, top: 350, right: 362, bottom: 540, width: 332, height: 190 };
+        if (previewTag === 'video') {
+            preview.setAttribute('poster', '/pic/media%2Ftest.jpg');
+            preview.videoWidth = 1920;
+            preview.videoHeight = 1080;
+        } else {
+            preview.naturalWidth = 1920;
+            preview.naturalHeight = 1080;
+        }
+        attachment.appendChild(preview);
+        gallery.appendChild(attachment);
+        attachments.appendChild(gallery);
+        content.appendChild(attachments);
+        body.appendChild(content);
+        tweet.appendChild(body);
+        h.document.body.appendChild(tweet);
+        h.window.getComputedStyle = element => ({
+            position: 'static',
+            overflowX: element === attachment || element === gallery ? 'hidden' : 'visible',
+            overflowY: element === attachment || element === gallery ? 'hidden' : 'visible'
+        });
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        return { ...h, tweet, attachment, gallery, preview,
+            button: h.document.querySelector('.tm-fullscreen-game-view-button') };
+    }
+
+    test('poster-only Nitter image has one visible media control outside overflow:hidden wrappers', async () => {
+        const h = makeGallery('img');
+        assert(h.button, 'The video poster must receive a control before playback.');
+        assert.equal(h.button.parentElement, h.tweet,
+            'Place the control in the tweet, outside clipped attachment/gallery wrappers.');
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
+        assert.equal(h.button.style.left, '316px');
+        assert.equal(h.button.style.top, '224px');
+        assert.equal(h.button.hidden, false);
+        assert.equal(h.attachment.querySelector('.tm-fullscreen-game-view-button'), null);
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog, 'The poster must be enlargeable even if the player has not loaded.');
+        assert.equal(h.preview.parentElement, dialog);
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.preview.parentElement, h.attachment);
+    });
+
+    test('preview IMG changing to VIDEO retains one stable button without scroll-position chasing', () => {
+        const h = makeGallery('img');
+        const initialButton = h.button;
+        const initialPosition = [initialButton.style.left, initialButton.style.top];
+        const video = h.document.createElement('video');
+        video.setAttribute('poster', '/pic/media%2Ftest.jpg');
+        video._rect = { ...h.preview._rect };
+        video.videoWidth = 1920;
+        video.videoHeight = 1080;
+        h.attachment.removeChild(h.preview);
+        h.attachment.appendChild(video);
+        h.triggerMutation([video], {target:h.attachment, removedNodes:[h.preview]});
+        h.flushAnimationFrames();
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+        assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), initialButton);
+        assert.equal(initialButton.parentElement, h.tweet);
+        assert.deepEqual([initialButton.style.left, initialButton.style.top], initialPosition);
+        video.getBoundingClientRect = () => { throw new Error('Scroll must not chase media position'); };
+        h.dispatchWindowEvent('scroll');
+        assert.deepEqual([initialButton.style.left, initialButton.style.top], initialPosition);
+    });
+
+    test('VIDEO poster and playing video share the same attachment-level button', () => {
+        const h = makeGallery('video');
+        assert(h.button);
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+        assert.equal(h.button.parentElement, h.tweet);
+        h.preview.setAttribute('src', '/video/test.mp4');
+        h.triggerMutation([], {target:h.preview, type:'attributes', attributeName:'src'});
+        h.flushAnimationFrames();
+        assert.equal(h.document.querySelector('.tm-fullscreen-game-view-button'), h.button);
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+    });
+});
 
 describe('Android Nitter and ARC fullscreen visibility regressions', () => {
     function addVideo(h, rectangle) {
@@ -582,17 +800,20 @@ describe('Android Nitter and ARC fullscreen visibility regressions', () => {
 
         const buttons = h.document.querySelectorAll('.tm-fullscreen-game-view-button');
         assert.equal(buttons.length, 2);
-        assert.equal(buttons.filter((b) => !b.hidden).length, 1,
-            'Do not leave the sole fullscreen control on an off-screen video.');
-        const visibleControl = buttons.find((b) => !b.hidden);
-        assert(visibleControl);
-        assert.equal(visibleControl.parentElement, h.document.body,
-            'A top-level fixed overlay must not be clipped by the video wrapper.');
-        assert.equal(distant.wrapper.querySelector('button'), null);
-        assert.equal(visible.wrapper.querySelector('button'), null);
+        assert.equal(buttons.filter((b) => !b.hidden).length, 2,
+            'Off-screen controls must remain in their media blocks; viewport naturally clips them.');
+        const visibleControl = buttons[1];
+        assert(visibleControl && !visibleControl.hidden);
+        assert.equal(visibleControl.parentElement, visible.wrapper,
+            'Control should be a CSS-positioned child of the media, not a viewport overlay.');
+        assert.equal(distant.wrapper.querySelector('button') !== null, true,
+            'Off-screen media keeps its own control in the document without forced hiding.');
+        assert.equal(visible.wrapper.querySelector('button'), visibleControl);
         assert(Number.parseFloat(visibleControl.style.left) >= 20);
-        assert(Number.parseFloat(visibleControl.style.top) >= 220);
-        assert(Number.parseFloat(visibleControl.style.top) <= 388);
+        assert.equal(Number.parseFloat(visibleControl.style.top), 184,
+            'Media control must appear 4px ABOVE the 220px video edge.');
+        assert.equal(Number.parseFloat(visibleControl.style.left), 332,
+            'Media control must align with the video right edge, not the window menu.');
     });
 
     test('Nitter video inserted after initial page render receives an independent control', () => {
@@ -633,5 +854,147 @@ describe('Android Nitter and ARC fullscreen visibility regressions', () => {
         const button = h.document.getElementById('tm-fullscreen-game-view-button');
         assert(button, 'Hydrated game container must be recognized even without a video/canvas descendant.');
         assert.equal(button.parentElement, game);
+    });
+});
+
+describe('Fullscreen photos, orientation, and actual Back history', () => {
+    const imageUrl = 'https://nitter.tiekoetter.com/example/status/123456789';
+    function imageHarness(width = 1920, height = 1080) {
+        const h = createHarness({ url: imageUrl });
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        h.window.visualViewport.width = 390;
+        h.window.visualViewport.height = 844;
+        let pushes = 0, backs = 0, locks = 0;
+        h.window.history = {
+            pushState(state, unused, url) { pushes++; assert.equal(url, imageUrl); },
+            back() { backs++; }
+        };
+        h.window.screen = { orientation: {
+            lock() { locks++; return Promise.reject(new Error('Unsupported')); },
+            unlock() {}
+        } };
+        const anchor = h.document.createElement('a');
+        anchor.className = 'still-image';
+        const img = h.document.createElement('img');
+        img.naturalWidth = width;
+        img.naturalHeight = height;
+        img._rect = {left: 20, top: 240, right: 370, bottom: 460, width: 350, height: 220};
+        img.closest = (selector) => selector.includes('a.still-image') ? anchor : null;
+        anchor.appendChild(img);
+        h.document.body.appendChild(anchor);
+        const nativeCreate = h.document.createElement.bind(h.document);
+        h.document.createElement = tag => {
+            const node = nativeCreate(tag);
+            if (tag === 'dialog') {
+                node.showModal = () => { node.open = true; node.setAttribute('open', ''); };
+                node.close = () => { node.open = false; node.removeAttribute('open'); };
+            }
+            return node;
+        };
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        return {
+            ...h, anchor, img,
+            button: h.document.querySelector('.tm-fullscreen-game-view-button'),
+            pushes: () => pushes, backs: () => backs, locks: () => locks
+        };
+    }
+
+    test('native fullscreen for a landscape image uses intrinsic aspect ratio', async () => {
+        const h = imageHarness();
+        assert(h.button, 'Large Nitter still-image gets an independent control.');
+        assert.equal(h.button.parentElement, h.anchor);
+        h.img.requestFullscreen = async () => {
+            h.document.fullscreenElement = h.img;
+            h.dispatchDocumentEvent('fullscreenchange');
+        };
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(h.locks(), 1, 'Intrinsic landscape dimensions require an orientation attempt.');
+        assert(h.img.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(h.pushes(), 0, 'Do not intercept Back for real browser fullscreen.');
+        assert(!h.document.getElementById('tm-fullscreen-video-dialog'));
+    });
+
+    test('landscape image fallback rotates and browser Back closes it without an overlay', async () => {
+        const h = imageHarness();
+        h.img.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog);
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
+        assert.equal(h.img.parentElement, dialog);
+        assert(dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(h.pushes(), 1, 'Entering fallback should push one same-page Back entry.');
+        const css = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
+        assert.doesNotMatch(css, /tm-fullscreen-game-view-exit-button/,
+            'Do not create any close overlay in the CSS.');
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.img.parentElement, h.anchor);
+        assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
+        assert.equal(h.backs(), 0, 'Actual Back already consumed the synthetic entry.');
+    });
+
+    test('portrait photo remains upright; browser Back unwinds history', async () => {
+        const h = imageHarness(720, 1280);
+        h.img.requestFullscreen = () => Promise.reject(new Error('NotAllowedError'));
+        h.button.click();
+        await new Promise(resolve => setImmediate(resolve));
+        const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+        assert(dialog && !dialog.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(h.document.getElementById('tm-fullscreen-game-view-exit-button'), null);
+        h.dispatchWindowEvent('popstate');
+        assert.equal(h.backs(), 0, 'Actual Back already consumed the one synthetic entry.');
+        assert.equal(h.img.parentElement, h.anchor);
+        assert.equal(h.button.disabled, false);
+    });
+
+    test('landscape game canvas rotates in CSS fallback and Back restores it', () => {
+        const h = executeOnArcTask();
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        h.game._rect = {left: 20, top: 180, right: 380, bottom: 410, width: 360, height: 230};
+        const canvas = h.document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 450;
+        h.game.appendChild(canvas);
+        let pushed = 0, goneBack = 0;
+        h.window.history = {
+            pushState() { pushed++; },
+            back() { goneBack++; }
+        };
+        // Re-run in a fresh harness for the Android user agent to be observed at init.
+        // The orientation handler is registered at script initialization.
+        const android = createHarness({ url: 'https://arcprize.org/tasks/ls20' });
+        android.window.navigator = h.window.navigator;
+        android.window.innerWidth = 390;
+        android.window.innerHeight = 844;
+        android.window.history = h.window.history;
+        const playground = android.document.createElement('div');
+        playground.id = 'playground';
+        const game = android.document.createElement('div');
+        game.className = 'game-page-inner';
+        game._rect = {left:20, top:180, right:380, bottom:410, width:360, height:230};
+        const gameCanvas = android.document.createElement('canvas');
+        gameCanvas.width = 800;
+        gameCanvas.height = 450;
+        game.appendChild(gameCanvas);
+        playground.appendChild(game);
+        android.document.body.appendChild(playground);
+        android.context.globalThis = android.context;
+        vm.runInNewContext(scriptContents, android.context, { filename: scriptPath });
+        const button = android.document.getElementById('tm-fullscreen-game-view-button');
+        button.click();
+        assert(game.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(game.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(pushed, 1);
+        android.dispatchWindowEvent('popstate');
+        assert(!game.classList.contains('tm-fullscreen-game-view-fallback'));
+        assert(!game.classList.contains('tm-fullscreen-game-view-landscape-rotated'));
+        assert.equal(goneBack, 0);
     });
 });

@@ -8,10 +8,35 @@ Updated: 2026-11-18
 - **Tests:** [Latest](https://hackernews.betacat.io/) — compare the yellow highlights and metric tooltips; [Archive](https://hackernews.betacat.io/daily/2026-11-16) — no inferred live heat.
 
 
+## Nitter fullscreen controls restored — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.3.2](src/FullscreenGameView.user.js): render one ⛶ for Nitter poster images and video playback, anchored to the unclipped tweet container instead of the overflow-hidden gallery. Keep CSS-stable scrolling, transparent glyph, and Back-to-exit.
+- [Live Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — verify the same ⛶ appears before and after Play.
+
 ## Fullscreen controls visible on Android — 2026-11-18
 
 - [Install FullscreenGameView.user.js — 2026-11-18_1.2.7](src/FullscreenGameView.user.js) — give each Nitter video a visible top-layer control, even with other videos off screen; detect late ARC game roots. Reload the page after updating.
 - **Live HTML test:** [Rendered fullscreen canvas](https://tm-fullscreen-test.christorng.workers.dev/) (not a GitHub source viewer). **Real pages:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) and [ARC game](https://arcprize.org/tasks/ls20).
+
+## Media-anchored subtle fullscreen button — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.3.1](src/FullscreenGameView.user.js): transparent background, muted ⛶ corner glyph, no shadow. Buttons are absolutely positioned in their own media/iframe/game host, not viewport-following; normal scrolling (including nested scrolling) uses CSS only, without JS movement, hiding or edge clamping. Ordinary article photos no longer get buttons; Nitter photo attachments still do. On YouTube watch pages, YouTube Tools remains the only fullscreen control.
+- **Check:** [Nitter media](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214), [rendered canvas](https://tm-fullscreen-test.christorng.workers.dev/), [embedded YouTube](https://www.anthropic.com/claude-fable-and-mythos-5-2). Scroll slowly/rapidly and ensure the icon remains fixed relative to the block.
+
+## Back-only fullscreen fallback, Nitter landscape correction, and YouTube isolation — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.3.0](src/FullscreenGameView.user.js): **No × in simulated fullscreen**; use Android Back (same-URL History entry). Cache the Nitter video's pre-dialog aspect ratio to keep landscape rotation despite reparenting and CSS-induced portrait dimensions. On `youtube.com`/`youtube-nocookie.com`, Fullscreen Game View does not mount at all; YouTube Tools remains the single owner of its integrated fullscreen/rotation/speed controls.
+- **Test:** [Nitter video](https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214) — landscape fallback fills the sideways view and Back returns to the article; [YouTube mobile watch](https://m.youtube.com/watch?v=zeWBx3AePow) — only the original YouTube Tools fullscreen in the playback-speed toolbar; [Canvas HTML](https://tm-fullscreen-test.christorng.workers.dev/) — use Back to exit fallback. Device-level native fullscreen browser-bar hiding still requires Android Edge confirmation.
+
+## Images, landscape, and Back-to-exit — 2026-11-18
+
+- [Install Fullscreen Game View v2026-11-18_1.2.9](src/FullscreenGameView.user.js): add large still-image controls (including Nitter photo attachments); rotate using intrinsic video/image/canvas dimensions; if media metadata is unknown, use block shape except for YouTube, which waits for true dimensions. In simulated fullscreen, pressing Android Back now consumes one same-URL history entry and restores media; × is lighter and sits in the actual **upper-right of the rotated viewing orientation**. The old native video fullscreen API remains the first attempt, with its actual rejection type recorded for diagnosis.
+- **Tests:** https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214 (video), https://tm-fullscreen-test.christorng.workers.dev/ (rendered canvas HTML), https://arcprize.org/tasks/ls20 (game). The Android Edge native-fullscreen result still requires device confirmation; HTML/CSS fallback cannot remove browser chrome.
+
+## Per-block fullscreen entry and explicit fallback exit — 2026-11-18
+
+- [Install Fullscreen Game View 2026-11-18_1.2.8](src/FullscreenGameView.user.js): each game, video, canvas, or known embedded player has its own ⛶ icon just **outside, above the top-right of that block**. The page menu remains separate. Native fullscreen is attempted first even when the permission hint says false; only an actual rejected/unavailable call opens the simulated fallback. Fallback always exposes a top-right × to restore the original page without Android Back.
+- **Direct live test page:** https://tm-fullscreen-test.christorng.workers.dev/ (rendered HTML, not a GitHub code listing). Also retest Nitter, ARC Prize, and embedded YouTube. A browser must grant the native Fullscreen API to actually hide its own navigation bars; a modal dialog alone cannot do that. Test on the real Android Edge device before merging.
 
 ## Nitter fullscreen and auto-orientation — 2026-11-18
 

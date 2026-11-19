@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.2.7
-// @description  Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
+// @version      2026-11-18_1.3.2
+// @description  Restore Nitter video-poster fullscreen entry outside clipped galleries; preserve subtle CSS anchoring and Back exit.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -17,157 +17,119 @@
     'use strict';
 
 
-    // Keep the independent fullscreen entry as steady as the shared fixed-position menu.
-    // The menu's default is top:70/right:0, so the entry defaults 42px to its left.
-    const fullscreenControlLayouts = new Set();
+    // Controls are absolutely positioned in the corresponding media host.
+    // No viewport following, scroll listeners, clipping, or edge clamping:
+    // the browser scrolls the glyph and media in the same rendering frame.
     const FULLSCREEN_WIDTH = 38;
     const FULLSCREEN_HEIGHT = 32;
     const isNitter = window.location.hostname === 'nitter.tiekoetter.com';
-    const clampFullscreen = (value, low, high) => Math.max(low, Math.min(value, high));
-    const fullscreenScrollY = () => {
-        const viewport = window.visualViewport;
-        return Math.max(0, window.scrollY || 0,
-            document.scrollingElement?.scrollTop || 0,
-            document.documentElement.scrollTop || 0,
-            document.body?.scrollTop || 0,
-            viewport && Number.isFinite(viewport.pageTop)
-                ? viewport.pageTop - (viewport.offsetTop || 0) : 0);
-    };
+    const isYouTubeDocument = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com']
+        .includes(window.location.hostname);
+    if (isYouTubeDocument) return; // Managed exclusively by YouTube Tools.
+    const fullscreenControlLayouts = new Set();
+    const anchoredHosts = new WeakMap();
     function refreshFullscreenControls() {
-        fullscreenControlLayouts.forEach((layout) => layout());
+        fullscreenControlLayouts.forEach(layout => layout());
     }
-    // Unlike animation-frame placement of in-block translation controls, a fixed
-    // fullscreen entry docks synchronously and does not trail normal scrolling.
-    window.addEventListener('scroll', refreshFullscreenControls, { passive: true });
-    document.addEventListener('scroll', refreshFullscreenControls, { capture: true, passive: true });
     window.addEventListener('resize', refreshFullscreenControls);
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('scroll', refreshFullscreenControls);
-        window.visualViewport.addEventListener('resize', refreshFullscreenControls);
-    }
 
-    function makeDockedFullscreenControl(button, target, alignWithMenuDefault) {
-        let placement = null;
-        let drag = null;
-        let suppressClick = false;
-        let pinchAnchored = false;
-        let pinchArmed = false;
-        let normalScale = window.visualViewport?.scale || 1;
-        let observer;
-        const bounds = () => {
-            const viewport = window.visualViewport;
-            const width = Math.max(FULLSCREEN_WIDTH, Math.min(window.innerWidth || FULLSCREEN_WIDTH,
-                document.documentElement.clientWidth || window.innerWidth || FULLSCREEN_WIDTH));
-            const left = viewport ? viewport.offsetLeft : 0;
-            const right = left + (viewport ? viewport.width : width);
-            const bottom = viewport ? viewport.height : window.innerHeight;
-            // Nitter media wrappers may be larger, zero-sized, or off-screen while
-            // their video is actually visible. Dock to the real video rectangle.
-            const visibleMedia = isNitter && (target.matches?.('video') ? target : target.querySelector?.('video'));
-            const rect = (visibleMedia || target).getBoundingClientRect();
-            return {
-                left, right,
-                visible: Math.min(rect.right, right) - Math.max(rect.left, left) >= FULLSCREEN_WIDTH &&
-                    Math.min(rect.bottom, bottom) - Math.max(rect.top, 0) >= FULLSCREEN_HEIGHT,
-                minX: alignWithMenuDefault ? left : Math.max(rect.left, left),
-                maxX: (alignWithMenuDefault ? right : Math.min(rect.right, right)) - FULLSCREEN_WIDTH,
-                minY: alignWithMenuDefault ? 0 : Math.max(rect.top, 0),
-                maxY: (alignWithMenuDefault ? bottom : Math.min(rect.bottom, bottom)) - FULLSCREEN_HEIGHT,
-            };
-        };
-        const place = (x, y, fixed = true) => {
-            button.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
-            button.style.setProperty('left', `${x}px`, 'important');
-            button.style.setProperty('top', `${y}px`, 'important');
-            button.style.setProperty('right', 'auto', 'important');
-            button.style.setProperty('bottom', 'auto', 'important');
-        };
+    function mediaRectTarget(target) {
+        if (!isNitter) return target;
+        // A Nitter video poster is painted inside <video poster="...">, not
+        // necessarily inside an <img>. Disabled players instead show a real
+        // preview img. Either must anchor the same attachment control.
+        return (target.matches?.('video') ? target : target.querySelector?.('video')) ||
+            (target.matches?.('img') ? target : target.querySelector?.('img')) || target;
+    }
+    function unclippedAnchor(target) {
+        // Nitter's .attachment/.gallery-video media containers clip overflow.
+        // The control is intentionally ABOVE the media, so mounting it within
+        // those wrappers makes it completely invisible. Anchor it to the
+        // containing tweet instead: still local, and scrolls in CSS lockstep.
+        if (isNitter) {
+            const tweet = target.closest?.('.status-el') || target.closest?.('.timeline-item');
+            if (tweet) return tweet;
+            const gallery = target.closest?.('.gallery-video') || target.closest?.('.gallery-gif');
+            if (gallery?.parentElement) return gallery.parentElement;
+        }
+        let host = target.matches?.('img') ? target.parentElement : target;
+        // Escape only explicit clipping containers. Non-clipped local hosts
+        // preserve the correct position inside nested scrolling areas.
+        for (let node = host; node?.parentElement && node !== document.body; node = node.parentElement) {
+            let clipped = false;
+            try {
+                const css = window.getComputedStyle?.(node);
+                clipped = /^(?:hidden|clip)$/.test(css?.overflowX || '') ||
+                    /^(?:hidden|clip)$/.test(css?.overflowY || '');
+            } catch (_error) { /* Ignore missing computed styles. */ }
+            if (!clipped) break;
+            host = node.parentElement;
+        }
+        return host || document.body;
+    }
+    function acquireAnchor(host) {
+        const existing = anchoredHosts.get(host);
+        if (existing) { existing.refs++; return () => releaseAnchor(host); }
+        const state = { refs: 1,
+            value: host.style?.getPropertyValue?.('position') || '',
+            priority: host.style?.getPropertyPriority?.('position') || '',
+            changed: false };
+        const position = window.getComputedStyle?.(host)?.position || state.value || 'static';
+        if (position === 'static' && host !== document.body && host !== document.documentElement) {
+            host.style?.setProperty?.('position', 'relative');
+            state.changed = true;
+        }
+        anchoredHosts.set(host, state);
+        return () => releaseAnchor(host);
+    }
+    function releaseAnchor(host) {
+        const state = anchoredHosts.get(host);
+        if (!state || --state.refs > 0) return;
+        anchoredHosts.delete(host);
+        if (!state.changed) return;
+        if (state.value) host.style?.setProperty?.('position', state.value, state.priority);
+        else host.style?.removeProperty?.('position');
+    }
+    function makeDockedFullscreenControl(button, target, host) {
+        let drag = null, dragged = false, suppressClick = false, observer = null;
+        const release = acquireAnchor(host);
         const layout = () => {
-            if (!button.isConnected || !target.isConnected) {
+            if (!button.isConnected || !target.isConnected || !host.isConnected) {
                 fullscreenControlLayouts.delete(layout);
                 observer?.disconnect();
-                document.removeEventListener('touchstart', touchStart, true);
-                document.removeEventListener('touchend', touchEnd, true);
-                document.removeEventListener('touchcancel', touchEnd, true);
                 return;
             }
-            const scale = window.visualViewport?.scale || 1;
-            if (!pinchAnchored && !pinchArmed) normalScale = scale;
-            if ((pinchAnchored || pinchArmed) && scale > normalScale * 1.01) {
-                if (!pinchAnchored) {
-                    // The shared menu freezes its document position during a real pinch.
-                    const rect = target.getBoundingClientRect();
-                    const inMedia = button.parentElement === target;
-                    const originX = inMedia
-                        ? rect.left + (target.clientLeft || 0) - (target.scrollLeft || 0)
-                        : -(window.scrollX || 0);
-                    const originY = inMedia
-                        ? rect.top + (target.clientTop || 0) - (target.scrollTop || 0)
-                        : -(window.scrollY || 0);
-                    // For a body-level Nitter overlay, absolute coordinates are
-                    // document-relative rather than video-container-relative.
-                    place((parseFloat(button.style.left) || 0) - originX,
-                        (parseFloat(button.style.top) || 0) - originY, false);
-                    pinchAnchored = true;
-                }
-                button.style.setProperty('transform', `scale(${normalScale / scale})`, 'important');
-                button.style.setProperty('transform-origin', 'top left', 'important');
-                return;
-            }
-            if (pinchAnchored) {
-                pinchAnchored = false;
-                pinchArmed = false;
-                button.style.removeProperty('transform');
-                button.style.removeProperty('transform-origin');
-            }
-            if (drag) return;
-            const area = bounds();
-            const hidden = !area.visible || area.maxX < area.minX || area.maxY < area.minY;
-            if (button.hidden !== hidden) button.hidden = hidden;
-            if (hidden) return;
-            // Only the DEFAULT coordinates account for the menu's DEFAULT position.
-            // A moved menu or a manually dragged entry may overlap; never chase either.
-            const defaultX = area.right - FULLSCREEN_WIDTH * 2 - 4;
-            const defaultY = Math.max(70 - fullscreenScrollY(), 0);
-            place(clampFullscreen(placement ? placement.x : defaultX, area.minX, area.maxX),
-                clampFullscreen(placement ? placement.y : defaultY, area.minY, area.maxY));
+            if (drag || dragged) return;
+            const rect = mediaRectTarget(target).getBoundingClientRect();
+            const parent = host.getBoundingClientRect();
+            const x = rect.right - parent.left - (host.clientLeft || 0) +
+                (host.scrollLeft || 0) - FULLSCREEN_WIDTH;
+            const y = rect.top - parent.top - (host.clientTop || 0) +
+                (host.scrollTop || 0) - FULLSCREEN_HEIGHT - 4;
+            button.style.setProperty('left', x + 'px', 'important');
+            button.style.setProperty('top', y + 'px', 'important');
         };
-        const touchStart = (event) => {
-            if (!pinchAnchored && event.touches?.length >= 2) {
-                normalScale = window.visualViewport?.scale || 1;
-                pinchArmed = true;
-            }
-        };
-        const touchEnd = (event) => {
-            if (!pinchAnchored && (!event.touches || event.touches.length < 2)) pinchArmed = false;
-        };
-        document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
-        document.addEventListener('touchend', touchEnd, { capture: true, passive: true });
-        document.addEventListener('touchcancel', touchEnd, { capture: true, passive: true });
-        button.addEventListener('pointerdown', (event) => {
+        button.addEventListener('pointerdown', event => {
             if (event.isPrimary === false || (event.button !== undefined && event.button !== 0)) return;
             suppressClick = false;
             drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
-                left: parseFloat(button.style.left), top: parseFloat(button.style.top), moved: false };
+                left: parseFloat(button.style.left) || 0,
+                top: parseFloat(button.style.top) || 0, moved: false };
             button.setPointerCapture?.(event.pointerId);
             event.stopPropagation?.();
         });
-        button.addEventListener('pointermove', (event) => {
+        button.addEventListener('pointermove', event => {
             if (!drag || drag.id !== event.pointerId) return;
-            const dx = event.clientX - drag.x;
-            const dy = event.clientY - drag.y;
+            const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
             if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
             drag.moved = true;
             event.preventDefault?.();
             event.stopPropagation?.();
-            const area = bounds();
-            placement = {
-                x: clampFullscreen(drag.left + dx, area.minX, area.maxX),
-                y: clampFullscreen(drag.top + dy, area.minY, area.maxY),
-            };
-            place(placement.x, placement.y);
+            dragged = true;
+            button.style.setProperty('left', (drag.left + dx) + 'px', 'important');
+            button.style.setProperty('top', (drag.top + dy) + 'px', 'important');
         });
-        const finish = (event) => {
+        const finish = event => {
             if (!drag || drag.id !== event.pointerId) return;
             suppressClick = drag.moved;
             drag = null;
@@ -177,7 +139,7 @@
         button.addEventListener('pointerup', finish);
         button.addEventListener('pointercancel', finish);
         button.addEventListener('lostpointercapture', finish);
-        button.addEventListener('click', (event) => {
+        button.addEventListener('click', event => {
             if (!suppressClick) return;
             suppressClick = false;
             event.preventDefault();
@@ -187,8 +149,14 @@
         if (typeof ResizeObserver !== 'undefined') {
             observer = new ResizeObserver(layout);
             observer.observe(target);
+            if (host !== target) observer.observe(host);
         }
         layout();
+        return () => {
+            fullscreenControlLayouts.delete(layout);
+            observer?.disconnect();
+            release();
+        };
     }
 
     const BUTTON_ID = 'tm-fullscreen-game-view-button';
@@ -215,12 +183,12 @@ html.tm-fullscreen-game-view-active body {
 
 .${BUTTON_CLASS} {
     appearance: none !important;
-    background: rgba(0,0,0,.55) !important;
+    background: transparent !important;
     border: 0 !important;
     border-radius: 5px !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,.25) !important;
+    box-shadow: none !important;
     box-sizing: border-box !important;
-    color: #f0f0f0 !important;
+    color: rgba(170,180,190,.55) !important;
     cursor: pointer !important;
     display: block !important;
     font: 600 15px/32px system-ui,sans-serif !important;
@@ -230,7 +198,7 @@ html.tm-fullscreen-game-view-active body {
     min-height: 32px !important;
     margin: 0 !important;
     padding: 0 !important;
-    position: fixed !important;
+    position: absolute !important;
     text-align: center !important;
     opacity: 1 !important;
     user-select: none !important;
@@ -246,7 +214,8 @@ html.tm-fullscreen-game-view-active body {
 }
 
 .${BUTTON_CLASS}:hover {
-    background: rgba(0,0,0,.75) !important;
+    background: transparent !important;
+    color: rgba(185,195,205,.82) !important;
 }
 .${BUTTON_CLASS}:hover, .${BUTTON_CLASS}:focus, .${BUTTON_CLASS}:active {
     text-decoration: none !important;
@@ -300,7 +269,8 @@ html.tm-fullscreen-game-view-active body {
     z-index: 2147483647 !important;
 }
 #${VIDEO_DIALOG_ID}::backdrop { background: #000 !important; }
-#${VIDEO_DIALOG_ID} > video {
+#${VIDEO_DIALOG_ID} > video,
+#${VIDEO_DIALOG_ID} > img {
     background: #000 !important;
     display: block !important;
     flex: 1 1 auto !important;
@@ -313,7 +283,8 @@ html.tm-fullscreen-game-view-active body {
     width: 100% !important;
 }
 .${VIDEO_PLACEHOLDER_CLASS} { display: none !important; }
-video.tm-fullscreen-game-view-media:fullscreen {
+video.tm-fullscreen-game-view-media:fullscreen,
+img.tm-fullscreen-game-view-media:fullscreen {
     background: #000 !important;
     height: 100dvh !important;
     max-height: none !important;
@@ -332,10 +303,10 @@ video.tm-fullscreen-game-view-media:fullscreen {
     transform-origin: top left !important;
     transform: rotate(90deg) !important;
 }
-
 /* A fullscreen <video> needs swapped dimensions too: the unrotated video rule
    has higher CSS specificity than the generic landscape fallback rule. */
-video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen {
+video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen,
+img.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fullscreen {
     width: 100dvh !important;
     height: 100dvw !important;
 }
@@ -360,8 +331,9 @@ video.tm-fullscreen-game-view-media.tm-fullscreen-game-view-landscape-rotated:fu
     transform: rotate(90deg) !important;
     overflow: hidden !important;
 }
-.tm-fullscreen-game-view-landscape-rotated iframe,
-.tm-fullscreen-game-view-landscape-rotated video {
+ .tm-fullscreen-game-view-landscape-rotated iframe,
+.tm-fullscreen-game-view-landscape-rotated video,
+.tm-fullscreen-game-view-landscape-rotated img {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
@@ -448,21 +420,38 @@ body:has(#task-detail-root) {
         return target.matches?.('video') ? target : target.querySelector?.('video') || null;
     }
 
-    function fullscreenAllowed() {
-        if (document.fullscreenEnabled === false) return false;
-        const policy = document.permissionsPolicy || document.featurePolicy;
-        try {
-            return typeof policy?.allowsFeature !== 'function' || policy.allowsFeature('fullscreen');
-        } catch (_error) {
-            return true;
-        }
+    function fullscreenImage(target) {
+        if (!target) return null;
+        if (target.matches?.('img')) return target;
+        // A Nitter media attachment may initially be an image-only preview,
+        // later swapped for video. Keep the SAME attachment and button.
+        return isNitter && target.matches?.('.attachment') && !target.querySelector?.('video')
+            ? target.querySelector?.('img') || null : null;
     }
 
     let videoFallback = null;
+    let fallbackHistoryArmed = false;
+    function armFallbackHistory() {
+        if (fallbackHistoryArmed || typeof window.history?.pushState !== 'function') return;
+        try {
+            // A same-URL history entry lets Android's real Back affordance close
+            // the fallback without navigating to the preceding site.
+            window.history.pushState({ tmFullscreenGameViewFallback: true }, '', window.location.href);
+            fallbackHistoryArmed = true;
+        } catch (_error) { /* History may be disabled by the embedding document. */ }
+    }
+    function clearFallbackHistory(fromPopstate = false) {
+        if (!fallbackHistoryArmed) return;
+        fallbackHistoryArmed = false;
+        if (!fromPopstate) {
+            try { window.history?.back?.(); } catch (_error) { /* Already navigating. */ }
+        }
+    }
 
     function isFullscreen(target) {
         return document.fullscreenElement === target ||
             Boolean(nitterVideo(target) && document.fullscreenElement === nitterVideo(target)) ||
+            Boolean(fullscreenImage(target) && document.fullscreenElement === fullscreenImage(target)) ||
             Boolean(videoFallback?.target === target) ||
             target.classList.contains(FALLBACK_CLASS);
     }
@@ -503,15 +492,34 @@ body:has(#task-detail-root) {
                 return video.videoWidth > video.videoHeight ? 'landscape' : 'portrait';
             }
         }
+        // For photos use intrinsic size, never the thumbnail's CSS dimensions.
+        const images = root.matches?.('img') ? [root] : Array.from(root.querySelectorAll?.('img') || []);
+        for (const image of images) {
+            if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+                return image.naturalWidth > image.naturalHeight ? 'landscape' : 'portrait';
+            }
+        }
+        const canvases = root.matches?.('canvas') ? [root] : Array.from(root.querySelectorAll?.('canvas') || []);
+        for (const canvas of canvases) {
+            if (canvas.width > 0 && canvas.height > 0)
+                return canvas.width > canvas.height ? 'landscape' : 'portrait';
+        }
         const frames = root.matches?.('iframe') ? [root] : Array.from(root.querySelectorAll?.('iframe') || []);
-        for (const frame of frames) {
-            if (!youtubeFrame(frame)) continue;
+        const youtubeFrames = frames.filter(youtubeFrame);
+        for (const frame of youtubeFrames) {
             const metadata = youtubeDimensions.get(frame);
             if (metadata?.src === frame.src && metadata.width > 0 && metadata.height > 0) {
                 return metadata.width > metadata.height ? 'landscape' : 'portrait';
             }
         }
-        return null;
+        // An unloaded YouTube iframe might display portrait content even
+        // when the frame itself is 16:9. Wait for the true video metadata.
+        if (youtubeFrames.length) return null;
+        // Games and unknown providers have no intrinsic media size; use their
+        // rendered block aspect ratio instead of leaving landscape content upright.
+        const rect = root.getBoundingClientRect?.();
+        return rect?.width > 0 && rect?.height > 0
+            ? (rect.width > rect.height ? 'landscape' : 'portrait') : null;
     }
 
     function childOwnsFullscreen(root) {
@@ -529,16 +537,31 @@ body:has(#task-detail-root) {
         }
     }
 
+    function intrinsicMediaShape(media) {
+        if (media?.matches?.('video') && media.videoWidth > 0 && media.videoHeight > 0)
+            return media.videoWidth > media.videoHeight ? 'landscape' : 'portrait';
+        if (media?.matches?.('img') && media.naturalWidth > 0 && media.naturalHeight > 0)
+            return media.naturalWidth > media.naturalHeight ? 'landscape' : 'portrait';
+        return null;
+    }
+
     function syncMediaOrientation() {
         const nativeTarget = document.fullscreenElement;
         const fallbackTarget = videoFallback?.dialog ||
             (savedPageState?.target?.classList?.contains(FALLBACK_CLASS)
                 ? savedPageState.target : null);
         const target = nativeTarget || fallbackTarget;
+        // Do not infer a landscape image/video from the portrait-shaped dialog.
+        // Snapshot the ORIGINAL media size before moving it into the top layer;
+        // video metadata may not exist yet or may be refreshed on reparenting.
+        const actualMediaShape = videoFallback
+            ? (intrinsicMediaShape(videoFallback.video) || videoFallback.shape)
+            : null;
+        const shape = actualMediaShape || videoShape(target);
         // The child YouTube document already controls its own native player.
         // Rotating both the iframe and its fullscreen player would rotate twice.
         if (!isAndroid || !target || (nativeTarget && childOwnsFullscreen(target)) ||
-            videoShape(target) !== 'landscape') {
+            shape !== 'landscape') {
             releaseOrientation();
             return;
         }
@@ -551,7 +574,7 @@ body:has(#task-detail-root) {
         // CSS is a visual backup. The actual screen is rotated by the browser API
         // when permission is granted; resizing then removes this CSS rotation.
         target.classList.toggle(rotatedClass, window.innerHeight > window.innerWidth);
-        if ((!nativeTarget && !videoFallback) || session.requested) return;
+        if (session.requested) return;
         const orientation = window.screen?.orientation;
         if (typeof orientation?.lock !== 'function') return;
         session.requested = true;
@@ -570,10 +593,11 @@ body:has(#task-detail-root) {
         } catch (_error) { /* CSS fallback remains active. */ }
     }
 
-    function closeVideoFallback() {
+    function closeVideoFallback(fromPopstate = false) {
         const session = videoFallback;
         if (!session) return;
         videoFallback = null;
+        clearFallbackHistory(fromPopstate === true);
         const { dialog, video, marker, target, button } = session;
         dialog.removeEventListener('close', closeVideoFallback);
         if (dialog.open) dialog.close();
@@ -591,12 +615,22 @@ body:has(#task-detail-root) {
         mountButtons();
     }
 
-    function openVideoFallback(target, video, button) {
+    function openVideoFallback(target, video, button, nativeFailure) {
         if (videoFallback || !video?.parentNode) return;
         const parent = video.parentNode;
+        // The media's pre-modal rectangle is authoritative when videoWidth,
+        // naturalWidth, etc. are temporarily unavailable inside the dialog.
+        const originalRect = video.getBoundingClientRect?.();
+        const initialShape = videoShape(video) ||
+            (originalRect?.width > 0 && originalRect?.height > 0
+                ? (originalRect.width > originalRect.height ? 'landscape' : 'portrait') : null);
         const dialog = document.createElement('dialog');
         dialog.id = VIDEO_DIALOG_ID;
-        dialog.setAttribute('aria-label', 'Expanded video');
+        dialog.setAttribute('aria-label', video.tagName === 'IMG' ? 'Expanded image' : 'Expanded video');
+        if (nativeFailure) {
+            dialog.setAttribute('data-tm-native-fullscreen-error', nativeFailure.name || 'Rejected');
+            console?.info?.('[Fullscreen Game View] Native fullscreen rejected', nativeFailure);
+        }
         (document.body || document.documentElement).appendChild(dialog);
         try {
             if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -611,11 +645,11 @@ body:has(#task-detail-root) {
         parent.insertBefore(marker, video);
         video.parentNode?.removeChild(video);
         dialog.appendChild(video);
-        videoFallback = { dialog, video, marker, target, button };
+        videoFallback = { dialog, video, marker, target, button, shape: initialShape };
         dialog.addEventListener('close', closeVideoFallback);
         dialog.addEventListener('cancel', (event) => {
             event.preventDefault();
-            closeVideoFallback();
+            exitFallback();
         });
         document.documentElement.classList.add('tm-fullscreen-game-view-active');
         updateButton(button, target);
@@ -642,6 +676,10 @@ body:has(#task-detail-root) {
         syncMediaOrientation();
     });
     document.addEventListener('loadedmetadata', syncMediaOrientation, true);
+    document.addEventListener('load', (event) => {
+        // Lazy photos can acquire their naturalWidth/naturalHeight after mounting.
+        if (event.target?.matches?.('img')) syncMediaOrientation();
+    }, true);
     document.addEventListener('fullscreenchange', syncMediaOrientation);
     window.addEventListener('resize', syncMediaOrientation);
     window.addEventListener('orientationchange', syncMediaOrientation);
@@ -704,23 +742,30 @@ body:has(#task-detail-root) {
     async function enterFullscreen(target, button) {
         if (isFullscreen(target)) return;
         const video = nitterVideo(target);
-        if (video) video.classList.add('tm-fullscreen-game-view-media');
-        const surface = video || target;
+        const image = fullscreenImage(target);
+        const media = video || image;
+        if (media) media.classList.add('tm-fullscreen-game-view-media');
+        const surface = media || target;
         rememberPageState(target);
-        if (typeof surface.requestFullscreen === 'function' && (!video || fullscreenAllowed())) {
+        // Call native fullscreen on a real click even when a policy hint says no.
+        // The actual browser resolve/reject determines whether fallback is needed.
+        if (typeof surface.requestFullscreen === 'function') {
             try {
                 // Preserve the user-tested native Nitter video fullscreen route.
                 await surface.requestFullscreen({ navigationUI: 'hide' });
             } catch (_error) {
-                if (video) openVideoFallback(target, video, button);
-                else target.classList.add(FALLBACK_CLASS);
+                if (media) openVideoFallback(target, media, button, _error);
+                else {
+                    target.classList.add(FALLBACK_CLASS);
+                }
             }
-        } else if (video) {
-            openVideoFallback(target, video, button);
+        } else if (media) {
+            openVideoFallback(target, media, button);
         } else {
             target.classList.add(FALLBACK_CLASS);
         }
 
+        if (videoFallback || target.classList.contains(FALLBACK_CLASS)) armFallbackHistory();
         if (!isFullscreen(target)) restorePageState(target);
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', isFullscreen(target));
         syncMediaOrientation();
@@ -734,29 +779,20 @@ body:has(#task-detail-root) {
     const watchedFrames = new WeakSet();
     let additionalButtonNumber = 0;
 
-    function mountButtonOnTarget(target, alignWithMenuDefault = false) {
+    function mountButtonOnTarget(target) {
         if (!target?.isConnected || mountedButtons.has(target)) return;
-        // Never turn a site's absolute/fixed/sticky media wrapper into a
-        // relative-flow box: that can insert a large blank region above articles.
-        const existingPosition = window.getComputedStyle?.(target)?.position
-            || target.style?.getPropertyValue?.('position') || 'static';
+        // Do not alter media wrapper positioning and shift the article's layout.
         target.classList.add(TARGET_CLASS);
-        if (existingPosition === 'static' && target !== document.body
-            && target !== document.documentElement) {
-            target.classList.add(TARGET_POSITION_CLASS);
-        }
         const button = document.createElement('button');
         button.id = document.getElementById(BUTTON_ID)
             ? `${BUTTON_ID}-${++additionalButtonNumber}` : BUTTON_ID;
         button.className = BUTTON_CLASS;
         button.type = 'button';
         updateButton(button, target);
-        // Video wrappers can clip fixed descendants on Android Edge. Keep Nitter
-        // controls in the document overlay layer, while anchoring their layout
-        // to each video. Other sites retain their existing button parent.
-        if (isNitter) (document.body || document.documentElement).appendChild(button);
-        else target.appendChild(button);
-        makeDockedFullscreenControl(button, target, alignWithMenuDefault);
+        // CSS absolute child of the media host: scrolls exactly with the media.
+        const host = unclippedAnchor(target);
+        host.appendChild(button);
+        button._tmFullscreenCleanup = makeDockedFullscreenControl(button, target, host);
         requestFrameDimensions(target);
         button.addEventListener('click', (event) => {
             event.preventDefault();
@@ -794,15 +830,58 @@ body:has(#task-detail-root) {
         const primary = isNitter ? null : getTarget();
         if (primary?.isConnected) targets.add(primary);
         if (isNitter) {
+            // Key the control to the stable gallery attachment, not to the
+            // replaceable IMG/VIDEO. Its CSS-host sits outside clipping wrappers.
+            const galleryAttachments = new Set();
+            for (const attachment of document.querySelectorAll('.attachment')) {
+                if (!attachment.isConnected) continue;
+                const gallery = attachment.closest?.('.gallery-video') ||
+                    attachment.closest?.('.gallery-gif');
+                if (!gallery) continue;
+                if (!attachment.querySelector?.('video') &&
+                    !attachment.querySelector?.('img')) continue;
+                targets.add(attachment);
+                galleryAttachments.add(attachment);
+            }
+            // Support alternate Nitter players lacking the gallery wrapper.
             for (const video of document.querySelectorAll('video')) {
-                if (video.isConnected) targets.add(video.parentElement || video);
+                if (!video.isConnected) continue;
+                const attachment = video.closest?.('.attachment');
+                if (attachment && galleryAttachments.has(attachment)) continue;
+                targets.add(video.parentElement || video);
             }
         }
 
-        // Every YouTube iframe needs a control of its own, including players
-        // created after clicking GIF/video posters or scrolling into view.
+        // Avoid cluttering generic articles: Nitter still-photo attachments only.
+        if (isNitter) for (const image of document.querySelectorAll('img')) {
+            const rect = image.getBoundingClientRect();
+            if (!image.isConnected || rect.width < 160 || rect.height < 120) continue;
+            if (!image.closest?.('a.still-image, .attachment.image')) continue;
+            if (image.closest?.('.video-container, .gallery-video')) continue;
+            targets.add(image);
+        }
+
+        // Keep one entry for EVERY distinct visible game or media block. The
+        // primary container already owns its descendants (notably ARC games).
+        const inside = (node, root) => {
+            for (let current = node; current; current = current.parentElement) {
+                if (current === root) return true;
+            }
+            return false;
+        };
+        if (!isNitter) {
+            for (const media of document.querySelectorAll('canvas, video, [role="application"]')) {
+                const rect = media.getBoundingClientRect();
+                if (rect.width < 160 || rect.height < 120 || (primary && inside(media, primary))) continue;
+                targets.add(media.parentElement || media);
+            }
+        }
+
+        // Multiple embedded providers, including lazy YouTube players, each
+        // deserve an independent button; advertising iframes are never included.
         for (const frame of document.querySelectorAll('iframe')) {
-            if (!youtubeFrame(frame) || !frame.parentElement) continue;
+            if (!isEmbeddedPlayer(frame) || !frame.parentElement ||
+                (primary && inside(frame, primary))) continue;
             targets.add(frame.parentElement);
         }
 
@@ -810,17 +889,19 @@ body:has(#task-detail-root) {
             if (targets.has(target) && target.isConnected && button.isConnected) continue;
             mountedButtons.delete(target);
             button.remove();
+            button._tmFullscreenCleanup?.();
             target.classList.remove(TARGET_CLASS, TARGET_POSITION_CLASS);
         }
-        for (const target of targets) mountButtonOnTarget(target, target === primary);
+        for (const target of targets) mountButtonOnTarget(target);
         updateFrameRequests();
         refreshFullscreenControls();
     }
 
-    function exitFallback() {
-        if (videoFallback) closeVideoFallback();
+    function exitFallback(fromPopstate = false) {
+        if (videoFallback) closeVideoFallback(fromPopstate === true);
         for (const [target, button] of mountedButtons) {
             if (!target.classList.contains(FALLBACK_CLASS)) continue;
+            clearFallbackHistory(fromPopstate === true);
             target.classList.remove(FALLBACK_CLASS);
             syncMediaOrientation();
             document.documentElement.classList.remove('tm-fullscreen-game-view-active');
@@ -832,7 +913,7 @@ body:has(#task-detail-root) {
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') exitFallback();
     }, true);
-    window.addEventListener('popstate', exitFallback);
+    window.addEventListener('popstate', () => exitFallback(true));
     document.addEventListener('fullscreenchange', () => {
         const active = Array.from(mountedButtons).some(([target]) => isFullscreen(target));
         document.documentElement.classList.toggle('tm-fullscreen-game-view-active', active);
@@ -859,10 +940,10 @@ body:has(#task-detail-root) {
         });
     }
     function isMediaNode(node) {
-        return Boolean(['iframe', 'video', 'canvas', '[role="application"]',
+        return Boolean(['iframe', 'video', 'canvas', 'img', '[role="application"]',
             '#playground', '.game-page-inner'].some(
             (selector) => node?.matches?.(selector)) ||
-            node?.querySelector?.(GENERIC_MEDIA_SELECTOR + ', #playground, .game-page-inner'));
+            node?.querySelector?.(GENERIC_MEDIA_SELECTOR + ', img, #playground, .game-page-inner'));
     }
     new MutationObserver((changes) => {
         const relevant = changes.some((change) => {

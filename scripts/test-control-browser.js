@@ -99,14 +99,29 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     }
                     document.body.style.minHeight = '';
                     document.body.style.minWidth = '';
-                    window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
+                    // Scroll the game into view to check that its CSS-anchored control
+                    // follows the media rather than sticking to the viewport.
+                    document.getElementById('test-game').scrollIntoView({ block: 'center', behavior: 'instant' });
                     window.dispatchEvent(new Event('scroll'));
                     await frame();
                     const fullscreen = document.getElementById('tm-fullscreen-game-view-button');
                     assert(fullscreen && !fullscreen.hidden, 'Fullscreen test button must be available');
-                    assert(getComputedStyle(fullscreen).color === 'rgb(240, 240, 240)', 'Fullscreen icon must match the menu foreground');
+                    assert(getComputedStyle(fullscreen).color.includes('170, 180, 190'), 'Fullscreen icon should be intentionally muted');
+                    assert(getComputedStyle(fullscreen).backgroundColor === 'rgba(0, 0, 0, 0)', 'Fullscreen button must have no background fill');
+                    assert(getComputedStyle(fullscreen).boxShadow === 'none', 'Fullscreen button must have no shadow');
+                    assert(getComputedStyle(fullscreen).position === 'absolute', 'Fullscreen must use CSS media-local positioning');
                     assert(getComputedStyle(fullscreen).width === '38px', 'Fullscreen width must match the menu');
                     assert(getComputedStyle(fullscreen).height === '32px', 'Fullscreen height must match the menu');
+                    const blockRect = document.getElementById('test-game').getBoundingClientRect();
+                    assert(fullscreen.getBoundingClientRect().bottom <= blockRect.top + 1,
+                        'Fullscreen entry belongs above the canvas, not at the browser/menu corner');
+                    const offset = fullscreen.getBoundingClientRect().bottom - blockRect.top;
+                    window.scrollBy({top: 140, behavior:'instant'});
+                    await frame();
+                    assert(Math.abs((fullscreen.getBoundingClientRect().bottom -
+                        document.getElementById('test-game').getBoundingClientRect().top) - offset) < 2,
+                        'Full screen glyph must scroll with media without lag or jitter');
+                    assert(!fullscreen.hidden, 'Offscreen entry must never be artificially hidden');
                     // Script-generated clicks have no user activation. Explicitly reject the native
                     // API so the real-browser CSS check exercises the fallback deterministically.
                     document.getElementById('test-game').requestFullscreen = () => Promise.reject(new Error('Fallback test'));
@@ -118,15 +133,18 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     const originalScroll = { x: window.scrollX, y: window.scrollY, code: scroller.scrollLeft };
                     fullscreen.click();
                     await frame();
-                    assert(getComputedStyle(fullscreen).display === 'none', 'No entry or close button should appear while expanded');
+                    assert(getComputedStyle(fullscreen).display === 'none', 'Entry button should disappear during fallback');
+                    assert(!document.getElementById('tm-fullscreen-game-view-exit-button'),
+                        'History Back replaces the fallback × overlay.');
                     window.dispatchEvent(new Event('resize'));
                     await frame();
-                    assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state button');
+                    assert(getComputedStyle(fullscreen).display === 'none', 'Layout updates must not reveal the expanded-state entry');
                     window.scrollTo({ top: 0, behavior: 'instant' });
-                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                    window.dispatchEvent(new PopStateEvent('popstate'));
                     await frame();
-                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Escape should restore the entry button');
-                    assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Escape must restore the pre-entry page scroll position');
+                    assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled,
+                        'Back should restore the entry button without any close icon');
+                    assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Exit must restore the pre-entry page scroll position');
                     assert(scroller.scrollLeft === originalScroll.code, 'Other page scrollers must stay unchanged');
                     fullscreen.click();
                     await frame();
@@ -136,7 +154,7 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     assert(getComputedStyle(fullscreen).display !== 'none' && !fullscreen.disabled, 'Back should restore the entry button');
                     assert(window.scrollY === originalScroll.y, 'Back must restore the pre-entry page scroll position');
                     result.setAttribute('data-test-status', 'passed');
-                    result.textContent = 'Clipping, translation, compact entry button, hidden expanded controls, Escape, and Back checks passed';
+                    result.textContent = 'Clipping, translation, outside media entry, no overlay ×, and Back restoration checks passed';
                 } catch (error) {
                     result.setAttribute('data-test-status', 'failed');
                     result.textContent = error.message;
@@ -159,5 +177,78 @@ test('real browser keeps translation inside its horizontal scrollport and render
         assert.equal(path.dirname(path.resolve(directory)), path.resolve(os.tmpdir()));
         assert(path.basename(directory).startsWith('tm-control-browser-'));
         fs.rmSync(directory, { recursive: true, force: true });
+    }
+});
+
+
+test('Nitter clipped gallery: poster and video share a visible media-anchored fullscreen corner', {
+    skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to a Chromium browser executable',
+}, () => {
+    const root = path.join(__dirname, '..');
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-nitter-fullscreen-'));
+    try {
+        // The file:// fixture must emulate the Nitter hostname to exercise
+        // the exact Nitter-specific branch; all remaining code is unchanged.
+        const source = fs.readFileSync(path.join(root, 'src', 'FullscreenGameView.user.js'), 'utf8');
+        const flag = "const isNitter = window.location.hostname === 'nitter.tiekoetter.com';";
+        assert(source.includes(flag));
+        const nitterScript = source.replace(flag, 'const isNitter = true;')
+            .replace(/<\/script/gi, '<\\/script');
+        const html = '<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">'
+            + '<style>body{margin:0;min-height:2400px;font:16px sans-serif;background:#eee}'
+            + '.status-el{margin:90px 12px 0;padding:8px;min-height:670px;background:#ddd}'
+            + '.status-body{padding:4px}.status-content{margin-top:60px}'
+            + '.attachments{margin-top:70px}.gallery-video{overflow:hidden}'
+            + '.attachment{overflow:hidden;position:relative;width:340px;height:230px;background:#000}'
+            + '.attachment img,.attachment video{display:block;width:100%;height:100%;object-fit:contain}'
+            + '</style></head><body>'
+            + '<section class="status-el" id="tweet"><div class="status-body">'
+            + '<div>Tweet author</div><div class="status-content media-body">Nitter preview'
+            + '<div class="attachments"><div class="gallery-video"><div class="attachment video-container" id="clip">'
+            + '<img id="poster" alt="video preview"></div></div></div></div></div></section>'
+            + '<p id="nitter-check" data-test-status="pending"></p>'
+            + '<script>window.requestAnimationFrame = fn => setTimeout(() => fn(performance.now()), 0);</script>'
+            + '<script>' + nitterScript + '</script>'
+            + '<script>(async()=>{const out=document.getElementById("nitter-check");'
+            + 'const wait=()=>new Promise(r=>setTimeout(r,70));'
+            + 'const check=(ok,m)=>{if(!ok)throw Error(m)};'
+            + 'try{await wait();'
+            + 'const clip=document.getElementById("clip"),tweet=document.getElementById("tweet");'
+            + 'const buttons=document.querySelectorAll(".tm-fullscreen-game-view-button");'
+            + 'check(buttons.length===1,"Poster must have exactly one fullscreen icon");'
+            + 'const btn=buttons[0];check(btn.parentElement===tweet,"Icon must anchor outside clipped gallery");'
+            + 'let r=btn.getBoundingClientRect(),c=clip.getBoundingClientRect();'
+            + 'check(r.bottom<=c.top+2,"Icon must be above media, not inside clipped media");'
+            + 'check(document.elementFromPoint(r.left+20,r.top+16)===btn,"Icon must actually be visible and clickable");'
+            + 'const offset=r.bottom-c.top;'
+            + 'window.scrollBy({top:100,behavior:"instant"});await wait();'
+            + 'r=btn.getBoundingClientRect();c=clip.getBoundingClientRect();'
+            + 'check(Math.abs((r.bottom-c.top)-offset)<2,"Icon must scroll together with media without jitter");'
+            + 'const video=document.createElement("video");video.id="video";video.poster="poster.jpg";'
+            + 'document.getElementById("poster").remove();clip.insertBefore(video,clip.firstChild);'
+            + 'await wait();await wait();'
+            + 'check(document.querySelectorAll(".tm-fullscreen-game-view-button").length===1,"Video replacement duplicates button");'
+            + 'check(document.querySelector(".tm-fullscreen-game-view-button")===btn,"Video replacement must retain same button");'
+            + 'check(btn.parentElement===tweet,"After playing, button must remain outside clipping");'
+            + 'r=btn.getBoundingClientRect();c=clip.getBoundingClientRect();'
+            + 'check(document.elementFromPoint(r.left+20,r.top+16)===btn,"Video button must remain clickable");'
+            + 'out.dataset.testStatus="passed";out.textContent="Nitter poster, video, clipping and scroll passed";'
+            + '}catch(e){out.dataset.testStatus="failed";out.textContent=e.message}'
+            + '})();</script></body></html>';
+        const file = path.join(directory, 'nitter-clipping.html');
+        fs.writeFileSync(file, html);
+        const result = spawnSync(process.env.CONTROL_BROWSER_BIN, [
+            '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+            '--no-sandbox',
+            '--user-data-dir=' + path.join(directory, 'profile'),
+            '--virtual-time-budget=5000', '--window-size=900,1000',
+            '--dump-dom', pathToFileURL(file).href,
+        ], {encoding:'utf8',timeout:30000,maxBuffer:4*1024*1024});
+        assert.ifError(result.error);
+        assert.equal(result.status,0,result.stderr);
+        const report = result.stdout.match(/<p id="nitter-check"[^>]*>[\s\S]*?<\/p>/)?.[0] || 'No Nitter browser result';
+        assert.match(report,/data-test-status="passed"/,report);
+    } finally {
+        fs.rmSync(directory,{recursive:true,force:true});
     }
 });

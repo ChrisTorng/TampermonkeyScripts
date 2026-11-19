@@ -20,9 +20,9 @@ function execute(file) {
     }
     vm.runInNewContext(fs.readFileSync(path.join(root, 'src', file), 'utf8'), harness.context, { filename: file });
     const button = harness.document.querySelector(file === files[0] ? '.tm-translate-pre-one' : '#tm-fullscreen-game-view-button');
-    const container = button.parentElement;
+    const container = file === files[0] ? button.parentElement : harness.document.querySelector('main');
     container._rect = { left: 100, top: 100, right: 700, bottom: 1000, width: 600, height: 900 };
-    const update = () => { harness.dispatchWindowEvent('scroll'); harness.flushAnimationFrames(); };
+    const update = () => { harness.dispatchWindowEvent(file === files[0] ? 'scroll' : 'resize'); harness.flushAnimationFrames(); };
     update();
     // Pointer capture is a browser API absent from the local DOM harness.
     let captured;
@@ -126,108 +126,113 @@ describe('transient in-content controls', () => {
             assert.equal(execute(file).button.style.left, `${initialX}px`);
         });
 
-        test(`${file} clamps dragging and hides when the block is offscreen`, () => {
+        test(`${file} stays usable at its intended scroll/out-of-screen bounds`, () => {
             const harness = execute(file);
             harness.pointer('pointerdown', 500, 300);
             harness.pointer('pointermove', -2000, -1000);
             harness.pointer('pointerup', -2000, -1000);
-            assert.equal(harness.button.style.left, '0px');
-            assert.equal(harness.button.style.top, '0px');
-            harness.container._rect.top = 800;
-            harness.container._rect.bottom = 1700;
-            harness.update();
-            assert.equal(harness.button.hidden, true);
-            harness.container._rect.top = 100;
-            harness.container._rect.bottom = 1000;
-            harness.update();
-            assert.equal(harness.button.hidden, false);
-            assert.equal(harness.button.style.left, '0px');
+            if (file === files[0]) {
+                // Translation continues to clamp and hide inside visible blocks.
+                assert.equal(harness.button.style.left, '0px');
+                assert.equal(harness.button.style.top, '0px');
+                harness.container._rect.top = 800;
+                harness.container._rect.bottom = 1700;
+                harness.update();
+                assert.equal(harness.button.hidden, true);
+                harness.container._rect.top = 100;
+                harness.container._rect.bottom = 1000;
+                harness.update();
+                assert.equal(harness.button.hidden, false);
+                assert.equal(harness.button.style.left, '0px');
+            } else {
+                // Fullscreen deliberately preserves a local offset and lets
+                // the document naturally scroll the icon out of the viewport.
+                assert(parseFloat(harness.button.style.left) < 0);
+                assert(parseFloat(harness.button.style.top) < 0);
+                harness.container._rect.top = 800;
+                harness.container._rect.bottom = 1700;
+                harness.update();
+                assert.equal(harness.button.hidden, false);
+                harness.container._rect.top = -500;
+                harness.container._rect.bottom = 400;
+                harness.update();
+                assert.equal(harness.button.hidden, false);
+            }
         });
     }
 
-    test('fullscreen freezes its document position and size during a real pinch gesture', () => {
-        const harness = execute(files[1]);
-        const left = parseFloat(harness.button.style.left);
-        const top = parseFloat(harness.button.style.top);
-        const viewport = harness.window.visualViewport;
-        harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
+    test('fullscreen stays attached to its own media during pinch and viewport scrolling', () => {
+        const h = execute(files[1]);
+        assert.equal(h.button.parentElement, h.container);
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
+        const original = [h.button.style.left, h.button.style.top];
+        const viewport = h.window.visualViewport;
         viewport.scale = 2;
         viewport.offsetLeft = 300;
         viewport.offsetTop = 200;
         viewport.width = 350;
         viewport.height = 260;
-        harness.dispatchVisualViewportEvent('resize');
-        assert.equal(harness.button.style.position, 'absolute');
-        assert.equal(parseFloat(harness.button.style.left), left - 100);
-        assert.equal(parseFloat(harness.button.style.top), top - 100);
-        assert.equal(harness.button.style.transform, 'scale(0.5)');
-        harness.dispatchVisualViewportEvent('scroll');
-        assert.equal(parseFloat(harness.button.style.left), left - 100);
-        viewport.scale = 1;
-        viewport.offsetLeft = 0;
-        viewport.offsetTop = 0;
-        viewport.width = 1280;
-        viewport.height = 720;
-        harness.dispatchVisualViewportEvent('resize');
-        assert.equal(harness.button.style.position, 'fixed');
-        assert.equal(harness.button.style.left, `${left}px`);
-        assert.equal(harness.button.style.top, `${top}px`);
-        assert.equal(harness.button.style.transform || '', '');
+        h.dispatchVisualViewportEvent('scroll');
+        h.dispatchVisualViewportEvent('resize');
+        assert.deepEqual([h.button.style.left, h.button.style.top], original);
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
+        assert.equal(h.button.hidden, false);
+        assert.equal(h.button.style.transform || '', '');
     });
 
-    test('fullscreen uses only the default menu position and never follows its movement', () => {
-        const harness = execute(files[1]);
-        const menu = harness.document.createElement('div');
+    test('fullscreen is anchored above media, unaffected by global menu and dragging', () => {
+        const h = execute(files[1]);
+        const menu = h.document.createElement('div');
         menu.id = 'tm-shared-floating-menu';
-        menu._rect = { left: 1165, top: 70, right: 1203, bottom: 102, width: 38, height: 32 };
         menu.getBoundingClientRect = () => { throw new Error('Fullscreen must not inspect the menu'); };
-        harness.document.documentElement.appendChild(menu);
-        assert.equal(harness.button.style.position, 'fixed');
-        assert.equal(harness.button.style.left, '1200px');
-        assert.equal(harness.button.style.top, '70px');
-        harness.triggerMutation([menu], { target: harness.document.documentElement });
-        harness.update();
-        assert.equal(harness.button.style.left, '1200px');
-        // A manual drag may overlap the menu, and later menu movement must not reposition it.
-        harness.pointer('pointerdown', 670, 110);
-        harness.pointer('pointermove', 635, 110);
-        harness.pointer('pointerup', 635, 110);
-        assert.equal(harness.button.style.left, '1165px');
-        menu._rect.left = 1165;
-        harness.update();
-        assert.equal(harness.button.style.left, '1165px');
+        h.document.documentElement.appendChild(menu);
+        assert.equal(h.button.style.position || 'absolute', 'absolute');
+        assert.equal(h.button.style.left, '562px');
+        assert.equal(h.button.style.top, '-36px');
+        h.triggerMutation([menu], {target:h.document.documentElement});
+        h.update();
+        assert.equal(h.button.style.left, '562px');
+        h.pointer('pointerdown', 670, 110);
+        h.pointer('pointermove', 635, 110);
+        h.pointer('pointerup', 635, 110);
+        assert.equal(h.button.style.left, '527px');
+        h.update();
+        assert.equal(h.button.style.left, '527px');
     });
 
-    test('fullscreen stays fixed at the top after docking, without animation-frame lag', () => {
-        const harness = execute(files[1]);
-        harness.window.scrollY = 350;
-        harness.container._rect.top = -200;
-        harness.container._rect.bottom = 800;
-        harness.dispatchWindowEvent('scroll');
-        assert.equal(harness.button.style.position, 'fixed');
-        assert.equal(harness.button.style.top, '0px');
-        harness.window.scrollY = 420;
-        harness.container._rect.top = -270;
-        harness.container._rect.bottom = 730;
-        harness.dispatchWindowEvent('scroll');
-        assert.equal(harness.button.style.top, '0px');
+    test('fullscreen icon never chases/clamps/hides when its media scrolls off screen', () => {
+        const h = execute(files[1]);
+        const top = h.button.style.top;
+        const left = h.button.style.left;
+        h.window.scrollY = 350;
+        h.container._rect.top = -200;
+        h.container._rect.bottom = 700;
+        h.dispatchWindowEvent('scroll');
+        assert.equal(h.button.style.top, top);
+        assert.equal(h.button.style.left, left);
+        assert.equal(h.button.hidden, false);
+        h.window.scrollY = 950;
+        h.container._rect.top = -800;
+        h.container._rect.bottom = 100;
+        h.dispatchWindowEvent('scroll');
+        assert.equal(h.button.style.top, top);
+        assert.equal(h.button.hidden, false);
     });
 
-    test('fullscreen shares menu-like translucent styling and hides while active', () => {
-        const harness = execute(files[1]);
-        // Color rendering is outside this DOM harness; verify the emitted CSS.
-        const css = harness.document.getElementById('tm-fullscreen-game-view-style').textContent;
-        assert.match(css, /color: #f0f0f0 !important/);
-        assert.match(css, /background: rgba\(0,0,0,\.55\) !important/);
+    test('fullscreen glyph has no fill, shadow, or bright color by default', () => {
+        const h = execute(files[1]);
+        const css = h.document.getElementById('tm-fullscreen-game-view-style').textContent;
+        assert.match(css, /background: transparent !important/);
+        assert.match(css, /box-shadow: none !important/);
+        assert(css.includes('color: rgba(170,180,190,.55) !important'));
+        assert(css.includes('position: absolute !important'));
+        assert.match(css, /position: absolute !important/);
         assert.match(css, /width: 38px !important/);
         assert.match(css, /height: 32px !important/);
-        assert.match(css, /border-radius: 5px !important/);
-        harness.button.click();
-        assert.equal(harness.button.disabled, true);
-        assert.equal(harness.button.textContent, '⛶');
-        harness.document.dispatchEvent({ type: 'keydown', key: 'Escape' });
-        assert.equal(harness.button.disabled, false);
-        assert.equal(harness.button.textContent, '⛶');
+        h.button.click();
+        assert.equal(h.button.disabled, true);
+        h.document.dispatchEvent({type:'keydown', key:'Escape'});
+        assert.equal(h.button.disabled, false);
     });
 
     test('translation embedded helper matches its canonical source', () => {
