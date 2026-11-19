@@ -31,11 +31,13 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Expose prose-heavy formatted and Markdown source text for browser translation while preserving line layout and originals; unblock native translation on readable articles with document-wide opt-outs; offer a draggable 譯↗ iframe reader.
+Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels. The independent 譯↗ reader is also supported.
 
 ---
 
 ## Independent scripts — update individually
+
+Update each script below separately as needed.
 
 ### [Translation Diagnostics User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js)
 
@@ -104,7 +106,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ### [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Preserve Hacker News Summary reading controls and dated navigation; show previous/current browser loads under Latest.
+Preserve Hacker News Summary reading controls and load times; show page-relative time-adjusted popularity on score and comment numbers.
 
 ### [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
@@ -132,7 +134,7 @@ Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
-Give embedded games and dynamic YouTube players fullscreen buttons with Android landscape rotation.
+Fullscreen games and embedded videos; restore Nitter video top-layer fallback with Android landscape rotation.
 
 ### [Better Discord User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterDiscord.user.js)
 
