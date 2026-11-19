@@ -2,7 +2,14 @@
 
 Updated: 2026-11-18
 
-## Readable articles with Google notranslate meta — 2026-11-18
+## Universal web diagnostics — 2026-11-18
+
+- [Install Translation Diagnostics 2026-11-18_1.1.1](src/TranslationDiagnostics.user.js) — the report panel starts hidden, opens above its compact button, and has an always-accessible top-row close button. It is capped to 60% of the viewport height. Update and reload.
+- The **Next page refresh** action only arms Console recording: it does **not** reload or upload anything. Refresh manually, then submit when ready.
+- **Tests:** [TechSpot](https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html) — no obstructing panel on entry, open/close works; [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — report stays accessible after navigation; [Example](https://example.org/) — no auto-upload.
+- Pairing uses a one-time 10-character code; after approval, user-initiated reports go to private Cloudflare KV for seven days.
+
+ ## Readable articles with Google notranslate meta — 2026-11-18
 
 - [Install TranslatePreformattedText.user.js — 2026-11-18_1.5.30](src/TranslatePreformattedText.user.js) — allow native translation of substantial articles blocked by `<meta name="google" content="notranslate">`, while preserving unrelated meta directives, child opt-outs, and short interactive pages. Reload after updating.
 - **Tests:** [TechSpot Nvidia article](https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html) — verified Android Edge reports show an `en-US` article with a global Google `notranslate` marker; check whether automatic translation starts on a new page load. [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — existing language correction stays intact. Android Edge behavior still needs actual confirmation.
