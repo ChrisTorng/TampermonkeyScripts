@@ -56,6 +56,10 @@ This repository hosts various Tampermonkey user scripts. Follow these rules to k
 - When the current execution environment cannot fetch a public page, report the exact failure. Do not use GitHub Actions, CI runners, Vercel deployment jobs, or any unrelated service to fetch external webpages as a workaround for the assistant's network restrictions. GitHub access is for repository work and ordinary tests/builds only, unless the user explicitly authorizes otherwise.
 - Use approved web/browsing capabilities for public pages, or ask the user to switch to a browser-enabled workflow when browser execution is necessary. Do not claim native Android Edge translation is proven solely by passing local DOM tests.
 
+## Pull request completion preference
+- For routine owner-requested changes, complete relevant tests and merge the PR into the default branch in the same work session. Do not leave a draft or open PR merely for an additional manual merge approval.
+- If an automated check fails, a merge conflict exists, or a substantial safety/data-loss risk is unresolved, report the blocker instead of claiming a merge. State clearly when mobile/browser behavior has only synthetic-test coverage.
+
 ## 9. Opt-in cross-site diagnostics and Cloudflare reporting
 - Use the generic `src/TranslationDiagnostics.user.js` and its `cloudflare/web-diagnostics-worker.js` collector instead of creating per-site test pages solely to receive reports. First verify the live browser installation and report button; page navigations must not depend on URL query flags.
 - Reports are manually submitted after device pairing. Default to sanitized DOM structure only; strip secrets, form values, URL query strings, scripts, hydration payloads and editable content. Public page text requires separate user opt-in. Never upload automatically on navigation or leave unauthenticated read access. Expire reports after seven days.
