@@ -701,6 +701,34 @@ describe('Translate Preformatted Text', () => {
         assert.equal(code.getAttribute('translate'), null);
     });
 
+    test('outer quotation containing a genuine nested code quotation keeps its manual wrapper', () => {
+        let outer, nested;
+        const harness = execute(h => {
+            outer = h.document.createElement('blockquote');
+            const prose = h.document.createElement('p');
+            prose.textContent = 'An introduction describes the example and the author explains why the exact quotation is important. '.repeat(4);
+            outer.appendChild(prose);
+            nested = h.document.createElement('blockquote');
+            const p = h.document.createElement('p');
+            const code = h.document.createElement('code');
+            code.textContent = 'Please treat this project as your own and consider the existing structure before deciding how to build on it.';
+            p.appendChild(code);
+            nested.appendChild(p);
+            outer.appendChild(nested);
+            h.appendToBody(outer);
+        }, 'https://example.org/nested-quote');
+        const button = harness.document.querySelector('.tm-translate-pre-one');
+        assert(button);
+        assert(outer.closest('[data-tm-translatable-pre-wrapper]'));
+        button.click();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted);
+        assert.equal(converted.tagName, 'BLOCKQUOTE');
+        assert(converted.querySelector('blockquote'));
+        button.click();
+        assert.equal(outer.querySelector('blockquote'), nested);
+    });
+
     test('OpenSSH release-note prose without PRE receives translation controls', () => {
         let heading;
         let prose;
