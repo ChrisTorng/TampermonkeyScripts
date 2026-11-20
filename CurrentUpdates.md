@@ -1,6 +1,11 @@
 # Current updates
 
-Updated: 2026-11-18
+## Prose quotations with inline code — 2026-11-20
+
+- [Install TranslatePreformattedText.user.js — 2026-11-20_1.5.31](src/TranslatePreformattedText.user.js) — leave prose-dominated quotations in native browser translation even when they contain many small inline code examples. Only code-dominated quotes keep the manual 譯 button; preformatted blocks stay manually controlled.
+- **Tests:** [Jack.cab siterate article](https://jack.cab/blog/siterate) — the "AI disclosure" quotation should translate automatically without tapping 譯; [Simon Willison quoted code](https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/) — manual code-block control remains. Live DOM was not available to the assistant; verify in Android Edge.
+
+Updated: 2026-11-20
 
 ## Universal web diagnostics — 2026-11-18
 
