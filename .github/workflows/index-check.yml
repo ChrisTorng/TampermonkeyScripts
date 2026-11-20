@@ -10,12 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Reject userscript content changes without a version bump
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_REF: ${{ github.base_ref }}
+        run: node --test scripts/test-userscript-version-bumps.js
       - name: Verify math translation strategy lab in headless Chrome
         run: node --test scripts/test-math-translation-strategies.js
       - name: Test Hacker News article navigation and read states
