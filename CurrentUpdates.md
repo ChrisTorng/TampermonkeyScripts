@@ -2,6 +2,12 @@
 
 Updated: 2026-11-20
 
+## Readable legacy WordPress and correctly sized floating menu — 2026-11-20
+
+- [Install Force Mobile View — 2026-11-20_2.1.14](src/ForceMobileView.user.js) — verified Twenty Ten WordPress blogs reflow automatically into a readable article with sidebar below it and independently scrollable code. Tap ↔ to disable.
+- The shared `≡` control compensates for initial browser auto-fit and pinch zoom. Update all five scripts together: All Go Internet Archive 2026-11-20_1.3.13; Internet Archive 2026-11-20_1.5.13; Force Mobile View 2026-11-20_2.1.14; Force Dark Mode 2026-11-20_2.0.13; Translate Preformatted Text 2026-11-20_1.5.33.
+- **Tests:** [Xena WordPress article](https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/) — readable article, sidebar below, no manual zoom; [OpenSSH release notes](https://www.openssh.org/releasenotes.html) — normal-sized floating control even on a scaled-down page. Native Android Edge rendering still needs confirmation.
+
 ## Prose quotations with inline code — 2026-11-20
 
 - [Install TranslatePreformattedText.user.js — 2026-11-20_1.5.32](src/TranslatePreformattedText.user.js) — leave prose-dominated quotations in native browser translation even when they contain many small inline code examples. Code-dominated and nested-code quotations keep manual 譯 controls; preformatted blocks stay manually controlled.
