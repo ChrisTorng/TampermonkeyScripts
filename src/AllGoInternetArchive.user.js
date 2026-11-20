@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         All Go InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-20_1.3.13
+// @version      2026-11-21_1.3.14
 // @description  Add a quick Internet Archive action in the shared floating menu and mark Archive Today links.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -323,26 +323,11 @@
         document.addEventListener('touchcancel', () => {
             if (!pinchAnchored) pinchGestureArmed = false;
         }, { capture: true, passive: true });
-
-        // A legacy 980px page can be shrunk by the browser before any pinch.
-        // Keep the touch target physically legible without changing coordinates.
-        const syncPhysicalScale = () => {
-            const currentScale = window.visualViewport && window.visualViewport.scale;
-            const scale = Number.isFinite(currentScale) && currentScale > 0 ? currentScale : 1;
-            if (Math.abs(scale - 1) > 0.01) {
-                root.style.setProperty('transform', `scale(${1 / scale})`, 'important');
-                root.style.setProperty('transform-origin', 'top right', 'important');
-            } else {
-                root.style.removeProperty('transform');
-                root.style.removeProperty('transform-origin');
-            }
-        };
         const place = (x, y, fixed) => {
             root.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
-            syncPhysicalScale();
             floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
@@ -359,13 +344,16 @@
                     }
                     pinchAnchored = true;
                 }
-                // Include any browser auto-fit that preceded the pinch gesture.
-                syncPhysicalScale();
+                // Keep the handle's physical size unchanged at higher zoom levels.
+                root.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+                root.style.setProperty('transform-origin', 'top right', 'important');
                 return;
             }
             if (pinchAnchored) {
                 pinchAnchored = false;
                 pinchGestureArmed = false;
+                root.style.removeProperty('transform');
+                root.style.removeProperty('transform-origin');
                 previousScrollY = scrollY();
             }
             const currentScrollY = scrollY();
