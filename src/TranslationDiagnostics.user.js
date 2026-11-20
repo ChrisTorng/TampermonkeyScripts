@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-21_1.2.0
+// @version      2026-11-21_1.2.1
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,13 +19,14 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-21_1.2.0';
+    const VERSION = '2026-11-21_1.2.1';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
     const AUTO_KEY = 'tm-webdiag-auto-once:' + location.origin + location.pathname;
-    const AUTO_QUIET_MS = 2500;
-    const AUTO_MAX_WAIT_MS = 40000;
+    const AUTO_QUIET_MS = 3000;
+    const AUTO_MIN_WAIT_MS = 8000;
+    const AUTO_MAX_WAIT_MS = 90000;
     const arm = GM_getValue(AUTO_KEY, null);
     const autoReportArmed = arm?.mode === 'once' && Number.isFinite(arm.armedAt)
         && Date.now() >= arm.armedAt && Date.now() - arm.armedAt < 5 * 60 * 1000;
@@ -345,7 +346,7 @@
         next.type = 'button';
         next.textContent = '重新整理並自動回報';
         const reloadHelp = document.createElement('p');
-        reloadHelp.textContent = '重整後會記錄至頁面載入穩定，最多觀察 40 秒，並自動送出一次；不會自動附上公開文章全文。';
+        reloadHelp.textContent = '重整後會記錄至頁面載入穩定，最多觀察 90 秒，並自動送出一次；不會自動附上公開文章全文。';
         const label = document.createElement('label');
         const include = document.createElement('input');
         include.type = 'checkbox';
@@ -430,7 +431,9 @@
             monitor.textContent = '已開始記錄';
             setStatus('開始記錄新產生的 Console 訊息與例外；不包含開始前的紀錄');
         });
-        next.addEventListener('click', async () => {
+        next.addEventListener('click', async event => {
+            // Reject synthetic clicks from arbitrary websites.
+            if (event.isTrusted === false) return;
             next.disabled = true;
             const authorized = pairingAuthorized === true || await refreshPairing();
             if (!authorized) {
@@ -475,7 +478,8 @@
             const elapsed = Date.now() - startedWaiting;
             const timeout = elapsed >= AUTO_MAX_WAIT_MS;
             if (document.readyState === 'complete') loaded = true;
-            if (!timeout && (!loaded || Date.now() - lastChange < AUTO_QUIET_MS)) return;
+            if (!timeout && (elapsed < AUTO_MIN_WAIT_MS
+                || !loaded || Date.now() - lastChange < AUTO_QUIET_MS)) return;
             completed = true;
             observer.disconnect();
             clearInterval(interval);
@@ -483,7 +487,8 @@
             try {
                 const report = buildReport(false);
                 report.autoSubmission = { triggeredBy: 'explicit-reload-click',
-                    reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed };
+                    reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed,
+                    readyState: document.readyState, quietMs: Date.now() - lastChange };
                 const response = await post('/api/report', { deviceId, secret, report });
                 showResult('已送出重新整理後的報告 ' + response.reportId
                     + (timeout ? '（頁面尚未確認穩定）' : '') + '（7 天後自動刪除）');
