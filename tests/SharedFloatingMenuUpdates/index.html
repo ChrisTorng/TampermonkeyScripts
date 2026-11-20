@@ -14,7 +14,10 @@
 </head>
 <body>
 <h1>Shared Floating Menu Updates</h1>
-<p>With Force Mobile View 2.1.7 or later installed, Tampermonkey opens all five update tabs. Confirm Update in each tab.</p>
+<p><strong>Already installed?</strong> Enable Tampermonkey Dashboard &rarr; Settings &rarr; Userscript Update &rarr; Automatic installation to receive newer <code>main</code> versions without opening any install pages. Set a suitable Check Interval.</p>
+<p><strong>Testing an unmerged PR?</strong> Manual installation is still required. Do not use Reinstall just because an installed version is already current.</p>
+<p><a id="open-in-edge" hidden>Open this update page directly in Microsoft Edge for Android</a> (if your in-app browser allows app links). If this link is blocked, use your viewer's <em>Open in external browser</em> option.</p>
+<p>With Force Mobile View 2.1.7 or later installed, Tampermonkey can open all five update tabs. Review and confirm each required update; this page cannot control Tampermonkey extension buttons or close its tabs.</p>
 <p><button id="open-all" type="button">Open all 5 update tabs</button></p>
 <p id="status" role="status" aria-live="polite">Without an updated Force Mobile View script, the page falls back to window.open, which browsers may block. If tabs do not open, use the links below.</p>
 <ol id="links"></ol>
@@ -34,6 +37,13 @@
   const base = 'https://github.com/ChrisTorng/TampermonkeyScripts/raw/refs/heads/'
     + ref.split('/').map(encodeURIComponent).join('/') + '/src/';
   const entries = scripts.map(([name, file]) => ({ name, url: base + file }));
+  // Android Edge supports this documented deep-link scheme, but an in-app
+  // browser may block external-app navigation. Keep the normal URL fallback.
+  const edgeLink = document.getElementById('open-in-edge');
+  if (location.protocol === 'https:') {
+    edgeLink.href = 'microsoft-edge-https://' + location.host + location.pathname + location.search + location.hash;
+    edgeLink.hidden = false;
+  }
   const list = document.getElementById('links');
   for (const entry of entries) {
     const item = document.createElement('li');
