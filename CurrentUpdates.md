@@ -1,6 +1,11 @@
 # Current updates
 
-Updated: 2026-11-20
+Updated: 2026-11-21
+
+## Large galleries: avoid repeated full-page scroll scans — 2026-11-21
+
+- [Install Responsive Scroll Position Indicator — 2026-11-21_1.4.1](src/ResponsiveScrollIndicator.user.js) — check only changed DOM subtrees during normal updates; throttle full scans on very large dynamic pages. Reload after updating.
+- **Tests:** [VisualBasic.World](https://visualbasic.world/) — project gallery loads without extreme delays; [Mastodon nested scroll area](https://mastodon.social/@firefoxwebdevs/115740500373677782) — only real, long, visible scrollports keep gray markers.
 
 ## Readable legacy WordPress and correctly sized floating menu — 2026-11-20
 
