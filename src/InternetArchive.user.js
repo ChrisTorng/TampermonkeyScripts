@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InternetArchive Redirect
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-21_1.5.14
+// @version      2026-11-21_1.5.15
 // @description  Send most paywall articles to Internet Archive for archiving, hide fixed titles, and offer an Archive Today fallback.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -88,21 +88,32 @@
         floatingMenuRender(root);
     }
 
+    // visualViewport.scale includes Edge's automatic shrink-to-fit, not only a pinch.
+    // Inverse-scaling this menu alone preserves its normal 38 x 32 CSS-pixel
+    // apparent size without changing the page viewport, text, or layout.
+    function floatingMenuViewportScale() {
+        const scale = window.visualViewport && window.visualViewport.scale;
+        return Number.isFinite(scale) && scale > 0 ? scale : 1;
+    }
+
     function floatingMenuPositionDialog(root) {
         const dialog = root.querySelector('[data-floating-dialog]');
         if (!dialog || dialog.hidden) return;
         const viewport = window.visualViewport;
         const viewportLeft = viewport ? viewport.offsetLeft : 0;
         const viewportWidth = viewport ? viewport.width : window.innerWidth;
-        const width = Math.max(1, Math.min(290, viewportWidth - 24));
+        const inverseScale = 1 / floatingMenuViewportScale();
+        // Account for the parent's transform when keeping the settings panel
+        // within the visible viewport. Its own readable size remains <= 290px.
+        const width = Math.max(1, Math.min(290, viewportWidth / inverseScale - 24));
+        const renderedWidth = width * inverseScale;
+        const margin = 12 * inverseScale;
         const rect = root.getBoundingClientRect();
-        const proposedLeft = rect.right - width;
-        const left = Math.max(viewportLeft + 12,
-            Math.min(proposedLeft, viewportLeft + viewportWidth - width - 12));
-        // Use a horizontal offset relative to the handle, rather than
-        // assuming that the handle is always on the viewport's right edge.
+        const left = Math.max(viewportLeft + margin,
+            Math.min(rect.right - renderedWidth,
+                viewportLeft + viewportWidth - renderedWidth - margin));
         dialog.style.setProperty('width', `${width}px`, 'important');
-        dialog.style.setProperty('left', `${left - rect.left}px`, 'important');
+        dialog.style.setProperty('left', `${(left - rect.left) / inverseScale}px`, 'important');
         dialog.style.setProperty('right', 'auto', 'important');
     }
 
@@ -219,7 +230,12 @@
         };
         const clampX = (x) => {
             const viewport = visualBounds();
-            return Math.max(viewport.left, Math.min(x, viewport.left + viewport.width - menuWidth));
+            // A transformed menu grows left from its right edge; keep the
+            // enlarged hit target visible when a saved position is near x=0.
+            const visibleWidth = Math.min(viewport.width,
+                menuWidth / floatingMenuViewportScale());
+            return Math.max(viewport.left + visibleWidth - menuWidth,
+                Math.min(x, viewport.left + viewport.width - menuWidth));
         };
         const scrollX = () => Math.max(0, window.scrollX || 0);
         // Older pages and mobile browser engines can scroll through body/html
@@ -282,11 +298,22 @@
         document.addEventListener('touchcancel', () => {
             if (!pinchAnchored) pinchGestureArmed = false;
         }, { capture: true, passive: true });
+        const scaleControlOnly = () => {
+            const inverseScale = 1 / floatingMenuViewportScale();
+            if (Math.abs(inverseScale - 1) < 0.01) {
+                root.style.removeProperty('transform');
+                root.style.removeProperty('transform-origin');
+            } else {
+                root.style.setProperty('transform', `scale(${inverseScale})`, 'important');
+                root.style.setProperty('transform-origin', 'top right', 'important');
+            }
+        };
         const place = (x, y, fixed) => {
             root.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
+            scaleControlOnly();
             floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
@@ -303,16 +330,15 @@
                     }
                     pinchAnchored = true;
                 }
-                // Keep the handle's physical size unchanged at higher zoom levels.
-                root.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
-                root.style.setProperty('transform-origin', 'top right', 'important');
+                // Preserve existing document anchoring during a pinch; resize
+                // only the menu and its child controls, never the webpage.
+                scaleControlOnly();
+                floatingMenuPositionDialog(root);
                 return;
             }
             if (pinchAnchored) {
                 pinchAnchored = false;
                 pinchGestureArmed = false;
-                root.style.removeProperty('transform');
-                root.style.removeProperty('transform-origin');
                 previousScrollY = scrollY();
             }
             const currentScrollY = scrollY();
