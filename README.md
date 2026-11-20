@@ -8,7 +8,7 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 [Open all five script update tabs](tests/SharedFloatingMenuUpdates/index.html) (each Tampermonkey Update still needs confirmation).
 
-**When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. Independent feature updates (such as Fullscreen Game View or an individual block control) do not require a five-script menu update.
+**When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. The menu maintains a normal-sized touch target even on shrink-to-fit pages; it never scales the article. Independent feature updates (such as Fullscreen Game View or an individual block control) do not require a five-script menu update.
 
 ### [All Go Internet Archive User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AllGoInternetArchive.user.js)
 
