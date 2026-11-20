@@ -1,6 +1,11 @@
 # Current updates
 
-Updated: 2026-11-18
+Updated: 2026-11-20
+
+## Prose quotations with inline code — 2026-11-20
+
+- [Install TranslatePreformattedText.user.js — 2026-11-20_1.5.32](src/TranslatePreformattedText.user.js) — leave prose-dominated quotations in native browser translation even when they contain many small inline code examples. Code-dominated and nested-code quotations keep manual 譯 controls; preformatted blocks stay manually controlled.
+- **Tests:** [Jack.cab siterate article](https://jack.cab/blog/siterate) — the "AI disclosure" quotation should translate automatically without tapping 譯; [Simon Willison quoted code](https://simonwillison.net/2026/Sep/2/claudes-new-system-prompt/) — manual code-block control remains. Live DOM was not available to the assistant; verify in Android Edge.
 
 ## Universal web diagnostics — 2026-11-18
 
@@ -9,7 +14,7 @@ Updated: 2026-11-18
 - **Tests:** [TechSpot](https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html) — no obstructing panel on entry, open/close works; [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — report stays accessible after navigation; [Example](https://example.org/) — no auto-upload.
 - Pairing uses a one-time 10-character code; after approval, user-initiated reports go to private Cloudflare KV for seven days.
 
- ## Readable articles with Google notranslate meta — 2026-11-18
+## Readable articles with Google notranslate meta — 2026-11-18
 
 - [Install TranslatePreformattedText.user.js — 2026-11-18_1.5.30](src/TranslatePreformattedText.user.js) — allow native translation of substantial articles blocked by `<meta name="google" content="notranslate">`, while preserving unrelated meta directives, child opt-outs, and short interactive pages. Reload after updating.
 - **Tests:** [TechSpot Nvidia article](https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html) — verified Android Edge reports show an `en-US` article with a global Google `notranslate` marker; check whether automatic translation starts on a new page load. [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — existing language correction stays intact. Android Edge behavior still needs actual confirmation.

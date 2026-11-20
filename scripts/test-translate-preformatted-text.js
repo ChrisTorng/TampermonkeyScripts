@@ -631,6 +631,104 @@ describe('Translate Preformatted Text', () => {
         assert.equal(quote.querySelector('code'), code);
     });
 
+    test('AI disclosure quote with many inline code examples remains native-translatable prose', () => {
+        let quote;
+        const inlineExamples = [
+            'http://siterate.org/css/commons.css',
+            '[domain].siterank.org',
+            '.headerText { margin-inline-end: .25rem }',
+            'height: .9375em',
+            'height: 1.1em'
+        ];
+        assert(inlineExamples.join(' ').length > 80);
+        const harness = execute(h => {
+            quote = h.document.createElement('blockquote');
+            const title = h.document.createElement('h2');
+            title.textContent = 'AI disclosure';
+            quote.appendChild(title);
+            for (const text of [
+                'All prose was written by the author without output from agents or inline completion tools. The writer explains which work did and did not use AI. ',
+                'A chatbot helped turn screenshots into a responsive layout. The remaining explanation describes the author’s manual adjustments, final review, and implementation details. '
+            ]) {
+                const p = h.document.createElement('p');
+                p.textContent = text.repeat(3);
+                quote.appendChild(p);
+            }
+            const list = h.document.createElement('ul');
+            for (const [index, snippet] of inlineExamples.entries()) {
+                const item = h.document.createElement('li');
+                const plain = h.document.createElement('span');
+                plain.textContent = 'The writer discusses a small styling adjustment in a much longer ordinary paragraph. '.repeat(2);
+                const code = h.document.createElement('code');
+                code.textContent = snippet;
+                item.appendChild(plain);
+                item.appendChild(code);
+                list.appendChild(item);
+            }
+            quote.appendChild(list);
+            h.appendToBody(quote);
+        }, 'https://jack.cab/blog/siterate');
+
+        assert.equal(quote.getAttribute('translate'), null, 'ordinary quote must never be blocked as code');
+        assert.equal(quote.closest('[data-tm-translatable-pre-wrapper]'), null);
+        assert.equal(harness.document.querySelectorAll('.tm-translate-pre-one').length, 0,
+            'prose does not need the manual translation control');
+        assert.equal(quote.querySelector('p').textContent.includes('All prose was written'), true);
+        assert.equal(quote.querySelectorAll('code').length, 0,
+            'small inline code elements still use the existing protected-span behavior');
+        assert.equal(quote.querySelectorAll('[data-tm-translatable-inline-code]').length, inlineExamples.length);
+        for (const span of quote.querySelectorAll('[data-tm-translatable-inline-code]')) {
+            assert.equal(span.getAttribute('translate'), 'no', 'inline code stays protected');
+        }
+    });
+
+    test('code-dominated blockquote still offers the manual translation button', () => {
+        let code;
+        const harness = execute(h => {
+            const quote = h.document.createElement('blockquote');
+            const p = h.document.createElement('p');
+            const lead = h.document.createElement('span');
+            lead.textContent = 'Quoted source: ';
+            code = h.document.createElement('code');
+            code.textContent = 'const settings = { label: "a configuration example", enabled: true, levels: [1, 2, 3] }; '.repeat(2);
+            p.appendChild(lead);
+            p.appendChild(code);
+            quote.appendChild(p);
+            h.appendToBody(quote);
+        }, 'https://example.org/technical-note');
+        assert(harness.document.querySelector('.tm-translate-pre-one'));
+        assert(code.closest('[data-tm-translatable-pre-wrapper]'));
+        assert.equal(code.getAttribute('translate'), null);
+    });
+
+    test('outer quotation containing a genuine nested code quotation keeps its manual wrapper', () => {
+        let outer, nested;
+        const harness = execute(h => {
+            outer = h.document.createElement('blockquote');
+            const prose = h.document.createElement('p');
+            prose.textContent = 'An introduction describes the example and the author explains why the exact quotation is important. '.repeat(4);
+            outer.appendChild(prose);
+            nested = h.document.createElement('blockquote');
+            const p = h.document.createElement('p');
+            const code = h.document.createElement('code');
+            code.textContent = 'Please treat this project as your own and consider the existing structure before deciding how to build on it.';
+            p.appendChild(code);
+            nested.appendChild(p);
+            outer.appendChild(nested);
+            h.appendToBody(outer);
+        }, 'https://example.org/nested-quote');
+        const button = harness.document.querySelector('.tm-translate-pre-one');
+        assert(button);
+        assert(outer.closest('[data-tm-translatable-pre-wrapper]'));
+        button.click();
+        const converted = harness.document.querySelector('[data-tm-translatable-pre-converted]');
+        assert(converted);
+        assert.equal(converted.tagName, 'BLOCKQUOTE');
+        assert(converted.querySelector('blockquote'));
+        button.click();
+        assert.equal(outer.querySelector('blockquote'), nested);
+    });
+
     test('OpenSSH release-note prose without PRE receives translation controls', () => {
         let heading;
         let prose;

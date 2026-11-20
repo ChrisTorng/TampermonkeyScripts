@@ -31,7 +31,7 @@ Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 
 ### [Translate Preformatted Text User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js)
 
-Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels. The independent 譯↗ reader is also supported.
+Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels. Prose quotations with inline code translate normally; code-heavy quotations keep manual controls. The independent 譯↗ reader is also supported.
 
 ---
 
