@@ -62,3 +62,19 @@ test('every modified userscript increases @version relative to the PR base', {
             `${filename} was changed without increasing @version: ${previous.join('.')} -> ${next.join('.')}`);
     }
 });
+
+
+test('all five shared-menu scripts track main for stable automatic updates', () => {
+    const scriptNames = [
+        'AllGoInternetArchive', 'InternetArchive', 'ForceDarkMode',
+        'ForceMobileView', 'TranslatePreformattedText'
+    ];
+    for (const name of scriptNames) {
+        const filename = `src/${name}.user.js`;
+        const source = fs.readFileSync(path.join(root, filename), 'utf8');
+        parseVersion(source, filename);
+        const stableUrl = `https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/${filename}`;
+        assert(source.includes(`// @updateURL    ${stableUrl}`), filename + ' requires stable @updateURL');
+        assert(source.includes(`// @downloadURL  ${stableUrl}`), filename + ' requires stable @downloadURL');
+    }
+});
