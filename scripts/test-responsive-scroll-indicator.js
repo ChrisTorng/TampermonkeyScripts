@@ -560,3 +560,58 @@ describe('ResponsiveScrollIndicator on captured pages', () => {
         assert.equal(indicators.length, 2);
     });
 });
+
+
+test('large gallery image mutations do not repeatedly recompute styles for every card', () => {
+    let computedStyleCalls = 0;
+    const images = [];
+    const harness = executeResponsiveScrollIndicator('https://visualbasic.world/', (currentHarness) => {
+        const originalComputedStyle = currentHarness.context.getComputedStyle;
+        currentHarness.context.getComputedStyle = (element) => {
+            computedStyleCalls += 1;
+            return originalComputedStyle(element);
+        };
+        const gallery = currentHarness.document.createElement('main');
+        for (let index = 0; index < 500; index += 1) {
+            const card = currentHarness.document.createElement('article');
+            const image = currentHarness.document.createElement('img');
+            const caption = currentHarness.document.createElement('p');
+            images.push(image);
+            card.appendChild(image);
+            card.appendChild(caption);
+            gallery.appendChild(card);
+        }
+        currentHarness.appendToBody(gallery);
+    });
+
+    const baseline = computedStyleCalls;
+    for (let index = 0; index < 25; index += 1) {
+        harness.triggerMutation([], {
+            type: 'attributes',
+            target: images[index],
+            attributeName: 'class'
+        });
+        harness.flushAnimationFrames();
+    }
+    const additional = computedStyleCalls - baseline;
+    assert(additional < 500,
+        `Hydrating 25 images should not trigger full-gallery scans: ${additional} computed styles`);
+    assert(harness.document.getElementById('tm-scroll-indicator-root'));
+});
+
+test('incremental scanner discovers and removes dynamically inserted nested scrollports', () => {
+    const harness = executeResponsiveScrollIndicator('https://visualbasic.world/');
+    const panel = createScrollablePanel(harness, {
+        top: 100, left: 400, right: 720, bottom: 400, width: 320, height: 300
+    });
+    harness.triggerMutation([panel], { target: harness.document.body });
+    harness.flushAnimationFrames();
+    assert.equal(harness.document.querySelectorAll('[data-tm-scroll-indicator]').length, 2,
+        'A newly inserted scrollport gets its own marker.');
+
+    harness.document.body.removeChild(panel);
+    harness.triggerMutation([], { target: harness.document.body, removedNodes: [panel] });
+    harness.flushAnimationFrames();
+    assert.equal(harness.document.querySelectorAll('[data-tm-scroll-indicator]').length, 1,
+        'Removing a scrollport immediately removes its marker without a full rescan.');
+});
