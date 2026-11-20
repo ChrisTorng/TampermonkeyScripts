@@ -184,6 +184,7 @@ describe('shared floating menu', () => {
         const menu = harness.document.getElementById('tm-shared-floating-menu');
         assert.equal(menu.style.top, '70px');
         assert.equal(menu.style.position, 'fixed');
+        assert.equal(menu.style.transform, 'scale(2.5)', 'Initial browser shrink-to-fit must not shrink the menu');
         // Auto-fit, browser toolbar movement and scroll are not pinch gestures.
         for (const [scale, scrollY, offsetTop, top] of [
             [0.43, 100, 15, 0],
@@ -200,8 +201,57 @@ describe('shared floating menu', () => {
             harness.dispatchWindowEvent('scroll');
             assert.equal(menu.style.position, 'fixed');
             assert.equal(menu.style.top, `${top}px`, `scale=${scale}, scrollY=${scrollY}`);
-            assert.equal(menu.style.transform || '', '', 'ordinary browser resizing must not inverse-scale the menu');
+            assert.equal(menu.style.transform, 'scale(' + (1 / scale) + ')', 'menu compensates for browser auto-fit without changing layout');
         }
+    });
+
+
+    test('Xena 0.508 browser auto-fit changes only the floating controls, never article layout', () => {
+        const url = 'https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/';
+        const harness = run(['mobile', 'dark'], { url, scale: 0.5075991749763489 });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        const body = harness.document.body;
+        const beforeHtml = body.innerHTML;
+        const beforeWidth = harness.document.documentElement.scrollWidth;
+        const save = harness.window.localStorage.getItem('tm-floating-menu-v1:xenaproject.wordpress.com');
+        assert.equal(menu.style.position, 'fixed');
+        assert.equal(menu.style.transform, 'scale(' + (1 / 0.5075991749763489) + ')');
+        assert.equal(menu.style.getPropertyValue('transform-origin'), 'top right');
+        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
+        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
+        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+        menu.querySelector('[data-floating-toggle]').click();
+        assert.equal(menu.getAttribute('data-floating-expanded'), 'true');
+        assert(menu.querySelector('[data-floating-tool="mobile"]') && !menu.querySelector('[data-floating-tool="mobile"]').hidden);
+        assert.equal(body.innerHTML, beforeHtml);
+        assert.equal(harness.document.documentElement.scrollWidth, beforeWidth);
+        assert.equal(harness.location.reloadCallCount, 0);
+        assert.equal(harness.window.localStorage.getItem('tm-floating-menu-v1:xenaproject.wordpress.com'), save);
+        harness.window.visualViewport.scale = 1;
+        harness.dispatchVisualViewportEvent('resize');
+        assert.equal(menu.style.transform || '', '');
+        assert.equal(harness.location.reloadCallCount, 0);
+    });
+
+    test('settings panel remains inside viewport after control-only inverse scaling', () => {
+        const harness = run(['dark'], { scale: 0.4 });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        harness.window.visualViewport.width = 800; // 320 physical CSS px after auto-fit
+        harness.dispatchVisualViewportEvent('resize');
+        menu.getBoundingClientRect = () => ({
+            left: 685, right: 780, top: 70, bottom: 150, width: 95, height: 80
+        });
+        menu.querySelector('[data-floating-toggle]').click();
+        menu.querySelector('[data-floating-close]').click();
+        const dialog = menu.querySelector('[data-floating-dialog]');
+        assert.equal(dialog.hidden, false);
+        assert.equal(menu.style.transform, 'scale(2.5)');
+        assert.equal(dialog.style.width, '290px');
+        const visualLeft = 685 + Number.parseFloat(dialog.style.left) * 2.5;
+        assert(Math.abs(visualLeft - 45) < 0.001, 'panel left is clamped in transformed viewport coordinates');
+        assert(visualLeft >= 12 / 0.4);
+        assert(visualLeft + 290 / 0.4 <= 800 - 12 / 0.4);
+        assert.equal(harness.location.reloadCallCount, 0);
     });
 
     test('OpenSSH-style body scrolling docks the handle without window.scrollY', () => {
@@ -279,7 +329,7 @@ describe('shared floating menu', () => {
         harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
         harness.window.visualViewport.scale = 0.8;
         harness.dispatchVisualViewportEvent('resize');
-        assert.equal(menu.style.transform, 'scale(0.5)');
+        assert.equal(menu.style.transform, 'scale(1.25)');
         harness.window.scrollY = 1200;
         harness.dispatchWindowEvent('scroll');
         assert.equal(menu.style.top, '800px');
@@ -287,7 +337,7 @@ describe('shared floating menu', () => {
         harness.dispatchVisualViewportEvent('resize');
         assert.equal(menu.style.position, 'absolute');
         assert.equal(menu.style.top, '1200px');
-        assert.equal(menu.style.transform || '', '');
+        assert.equal(menu.style.transform, 'scale(2.5)');
     });
 
     test('pinch zoom and panning do not reposition or save the menu', () => {
@@ -415,7 +465,7 @@ describe('shared floating menu', () => {
         harness.dispatchWindowEvent('scroll');
         assert.equal(menu.style.position, 'absolute');
         assert.equal(menu.style.top, '370px');
-        assert.equal(menu.style.transform, 'scale(0.5)');
+        assert.equal(menu.style.transform, 'scale(1.25)');
         harness.window.visualViewport.scale = 0.4;
         harness.window.scrollY = 0;
         harness.dispatchVisualViewportEvent('resize');
