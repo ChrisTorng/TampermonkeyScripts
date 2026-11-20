@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-15_2.1.13
-// @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
+// @version      2026-11-20_2.1.14
+// @description  Improve tiny mobile text, safely reflow legacy Twenty Ten WordPress pages, and auto-enlarge Hacker News discussions (not listings).
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js
@@ -369,11 +369,26 @@
         document.addEventListener('touchcancel', () => {
             if (!pinchAnchored) pinchGestureArmed = false;
         }, { capture: true, passive: true });
+
+        // A legacy 980px page can be shrunk by the browser before any pinch.
+        // Keep the touch target physically legible without changing coordinates.
+        const syncPhysicalScale = () => {
+            const currentScale = window.visualViewport && window.visualViewport.scale;
+            const scale = Number.isFinite(currentScale) && currentScale > 0 ? currentScale : 1;
+            if (Math.abs(scale - 1) > 0.01) {
+                root.style.setProperty('transform', `scale(${1 / scale})`, 'important');
+                root.style.setProperty('transform-origin', 'top right', 'important');
+            } else {
+                root.style.removeProperty('transform');
+                root.style.removeProperty('transform-origin');
+            }
+        };
         const place = (x, y, fixed) => {
             root.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
+            syncPhysicalScale();
             floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
@@ -390,16 +405,13 @@
                     }
                     pinchAnchored = true;
                 }
-                // Keep the handle's physical size unchanged at higher zoom levels.
-                root.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
-                root.style.setProperty('transform-origin', 'top right', 'important');
+                // Include any browser auto-fit that preceded the pinch gesture.
+                syncPhysicalScale();
                 return;
             }
             if (pinchAnchored) {
                 pinchAnchored = false;
                 pinchGestureArmed = false;
-                root.style.removeProperty('transform');
-                root.style.removeProperty('transform-origin');
                 previousScrollY = scrollY();
             }
             const currentScrollY = scrollY();
@@ -739,6 +751,84 @@
         autoMode = true;
         isEnabled = true;
         return true;
+    }
+
+
+    // Old Twenty Ten WordPress pages have a fixed-width desktop layout without
+    // a viewport. Detect the stylesheet during HEAD parsing, not from a guess
+    // about an unrelated site or after Edge has already laid out the document.
+    function isLegacyTwentyTenWordPress() {
+        return /\.wordpress\.com$/i.test(location.hostname)
+            && Array.from(document.querySelectorAll('link')).some((link) =>
+                /\/themes\/pub\/twentyten\/style\.css(?:[?#]|$)/i.test(link.getAttribute('href') || ''));
+    }
+
+    function installTwentyTenMobileLayout() {
+        if (!isAndroidBrowser() || !document.head || !isLegacyTwentyTenWordPress()
+            || autoDisabledByUser()) return false;
+        const authored = document.querySelector('meta[name="viewport"]');
+        if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return false;
+        if (!authored) {
+            const meta = document.createElement('meta');
+            meta.setAttribute('name', 'viewport');
+            meta.setAttribute('content', 'width=device-width, initial-scale=1');
+            meta.setAttribute('data-tm-force-mobile-auto', 'true');
+            document.head.appendChild(meta);
+        }
+        if (!document.getElementById(AUTO_STYLE_ID)) {
+            const style = document.createElement('style');
+            style.id = AUTO_STYLE_ID;
+            // Reflow only verified theme containers. The sidebar follows the
+            // article; code and syntax highlighting keep their own x-scrolling.
+            style.textContent = `
+                html, body { min-width: 0 !important; max-width: 100% !important;
+                    -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }
+                body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; }
+                #wrapper { width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+                    padding: 0 10px !important; margin: 0 auto !important; box-sizing: border-box !important; }
+                #header, #masthead, #branding, #access, #main, #container, #content,
+                #primary, #secondary, #footer, #colophon {
+                    width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+                    float: none !important; clear: both !important; box-sizing: border-box !important;
+                    margin-left: 0 !important; margin-right: 0 !important; }
+                #header { padding-top: 8px !important; }
+                #main { overflow: visible !important; padding-top: 12px !important; }
+                #content { padding: 0 !important; font-size: 16px !important; line-height: 1.5 !important; }
+                #content .entry-title, #content .entry-content h1,
+                #content .entry-content h2, #content .entry-content h3 {
+                    height: auto !important; max-height: none !important; line-height: 1.35 !important; }
+                #content .entry-content p, #content .entry-content li,
+                #content .entry-content blockquote {
+                    font-size: 16px !important; line-height: 1.5 !important;
+                    height: auto !important; max-height: none !important; overflow-wrap: break-word !important; }
+                #content .entry-content pre, #content .entry-content .cm-scroller {
+                    max-width: 100% !important; overflow-x: auto !important;
+                    white-space: pre !important; overflow-wrap: normal !important; word-break: normal !important; }
+                #content .entry-content .cm-line { white-space: pre !important; }
+                #content .entry-content img, #content .entry-content video,
+                #content .entry-content iframe { max-width: 100% !important; height: auto !important; }
+                #primary, #secondary { margin-top: 20px !important; }
+                #access { overflow-x: auto !important; }
+                #access .menu-header, #access .menu, #access ul {
+                    width: max-content !important; min-width: 100% !important; white-space: nowrap !important; }
+                #access li { float: none !important; display: inline-block !important; }
+            `;
+            document.head.appendChild(style);
+        }
+        earlyReflow = true;
+        autoMode = true;
+        isEnabled = true;
+        return true;
+    }
+
+    if (/\.wordpress\.com$/i.test(location.hostname) && isAndroidBrowser()) {
+        if (!installTwentyTenMobileLayout()) {
+            const twentyTenObserver = new MutationObserver(() => {
+                if (installTwentyTenMobileLayout()) twentyTenObserver.disconnect();
+            });
+            twentyTenObserver.observe(document, { childList: true, subtree: true });
+            document.addEventListener('DOMContentLoaded', () => twentyTenObserver.disconnect(), { once: true });
+        }
     }
 
     // Set the viewport before the first browser layout to avoid a second text-inflation pass.
@@ -1134,7 +1224,8 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
-         } else if ((isDataExplorer || isPlainTextUrl || simplePreReloadRequested()) && isAndroidBrowser()) {
+         } else if ((isDataExplorer || isPlainTextUrl || simplePreReloadRequested()
+            || isLegacyTwentyTenWordPress()) && isAndroidBrowser()) {
             // Restore the early mobile viewport instead of running the destructive legacy CSS.
             setAutomaticPreference(false);
             try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
