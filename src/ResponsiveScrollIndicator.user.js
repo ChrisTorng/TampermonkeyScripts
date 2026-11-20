@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-12_1.4.0
+// @version      2026-11-21_1.4.1
 // @description  Keep solid-gray scroll markers only for long, truly visible page and nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -28,7 +28,8 @@
     const PAINT_SAMPLE_COUNT = 9;
     const PAINT_SAMPLE_X_FRACTIONS = [0.75, 0.5, 0.25];
     const UPDATE_INTERVAL_MS = 100;
-    const SCAN_INTERVAL_MS = 1000;
+    const SCAN_INTERVAL_MS = 30000;
+    const ROOT_MUTATION_SCAN_INTERVAL_MS = 5000;
     const VISIBILITY_RATIO_THRESHOLD = 0.5;
     const MIN_EXPOSED_WIDTH_RATIO = 0.5;
     const SCROLLABLE_OVERFLOW_VALUES = new Set(['auto', 'scroll', 'overlay']);
@@ -47,6 +48,7 @@
     let viewportScale = 1;
     let lastScanTime = 0;
     let pendingScan = false;
+    const pendingScanRoots = new Set();
 
     const elementIndicators = new Map();
 
@@ -230,12 +232,27 @@
 
     function shouldScanScrollers() {
         const now = Date.now();
-        if (pendingScan || now - lastScanTime >= SCAN_INTERVAL_MS) {
+        // A site can mutate thousands of gallery cards per second. Never
+        // rescan every element in response to each individual mutation.
+        if (now - lastScanTime >= SCAN_INTERVAL_MS
+            || (pendingScan && now - lastScanTime >= ROOT_MUTATION_SCAN_INTERVAL_MS)) {
             pendingScan = false;
             lastScanTime = now;
             return true;
         }
         return false;
+    }
+
+    function queueScanRoot(element) {
+        if (!element || element.nodeType !== Node.ELEMENT_NODE) return;
+        if (element === document.documentElement || element === document.body) {
+            // A root class change can affect selectors anywhere on the page.
+            // Throttle this exceptional full scan, while keeping existing
+            // indicators live through their ordinary per-frame updates.
+            pendingScan = true;
+            return;
+        }
+        pendingScanRoots.add(element);
     }
 
     function isScrollableCandidate(element) {
@@ -248,7 +265,8 @@
         if (element === document.body || element === document.documentElement) {
             return false;
         }
-        if (element.dataset.tmScrollIndicator) {
+        if (element.dataset.tmScrollIndicator || element.tagName === 'IMG') {
+            // Replaced images never own scrollable text or child content.
             return false;
         }
         if (element.closest && element.closest('[data-tm-scroll-indicator]')) {
@@ -296,6 +314,40 @@
 
         for (const [element, indicator] of elementIndicators.entries()) {
             if (!element.isConnected || !found.has(element)) {
+                removeIndicator(indicator);
+                elementIndicators.delete(element);
+            }
+        }
+    }
+
+    function scanChangedScrollableElements() {
+        // Inspect only inserted subtrees and style/class-changed containers.
+        // Gallery image hydration must not trigger another complete DOM walk.
+        const roots = Array.from(pendingScanRoots);
+        pendingScanRoots.clear();
+        for (const root of roots) {
+            if (!root.isConnected) continue;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+            let element = walker.currentNode;
+            while (element) {
+                const existing = elementIndicators.get(element);
+                if (isScrollableCandidate(element)) {
+                    if (!existing) {
+                        const indicator = createIndicatorElement(null, false);
+                        if (indicator) elementIndicators.set(element, indicator);
+                    }
+                } else if (existing) {
+                    removeIndicator(existing);
+                    elementIndicators.delete(element);
+                }
+                element = walker.nextNode();
+            }
+        }
+
+        // Detached scrollports must not linger just because a full scan was
+        // deferred. Usually only a handful of true scrollports are tracked.
+        for (const [element, indicator] of elementIndicators.entries()) {
+            if (!element.isConnected) {
                 removeIndicator(indicator);
                 elementIndicators.delete(element);
             }
@@ -682,7 +734,10 @@
         ensureRootIndicator();
 
         if (shouldScanScrollers()) {
+            pendingScanRoots.clear();
             scanForScrollableElements();
+        } else {
+            scanChangedScrollableElements();
         }
 
         const pageScrollState = getPageScrollState();
@@ -707,14 +762,21 @@
         }
 
         const observer = new MutationObserver((records) => {
-            if (!records.some((record) => {
+            let changed = false;
+            for (const record of records) {
                 const target = record.target;
-                return !target || !target.closest || !target.closest('[data-tm-scroll-indicator]');
-            })) {
-                return;
+                if (target?.closest?.('[data-tm-scroll-indicator]')) continue;
+                changed = true;
+                if (record.type === 'attributes') {
+                    queueScanRoot(target);
+                } else {
+                    for (const node of record.addedNodes || []) {
+                        queueScanRoot(node);
+                    }
+                    // Removed scrollports are pruned during the next update.
+                }
             }
-            pendingScan = true;
-            scheduleUpdate();
+            if (changed) scheduleUpdate();
         });
 
         if (document.documentElement || document.body) {
@@ -732,6 +794,7 @@
         ensureStyle();
         ensureRootIndicator();
         scanForScrollableElements();
+        lastScanTime = Date.now();
         scheduleUpdate(true);
         addListeners();
 
