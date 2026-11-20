@@ -174,7 +174,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
     h.document.getElementById('tm-webdiag-toggle').click();
     assert.equal(panel.hidden, false);
     await Promise.resolve();
-    const submit = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '立即送出報告');
+    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
     assert(submit);
     submit.click();
     await Promise.resolve();
@@ -193,7 +193,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
 test('starting recording wraps the console only after user activation', () => {
     const { h } = run('https://example.org/');
     const panel = h.document.getElementById('tm-webdiag-panel');
-    const monitor = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '開始記錄 Console');
+    const monitor = h.document.getElementById('tm-webdiag-body').children.find(x => x.tagName === 'BUTTON' && x.textContent === '開始記錄 Console');
     assert(monitor);
     assert.equal(monitor.textContent, '開始記錄 Console');
     monitor.click();
