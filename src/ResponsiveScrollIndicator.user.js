@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-21_1.4.1
+// @version      2026-11-21_1.4.2
 // @description  Keep solid-gray scroll markers only for long, truly visible page and nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -48,6 +48,7 @@
     let viewportScale = 1;
     let lastScanTime = 0;
     let pendingScan = false;
+    let lastRootMutationScanTime = 0;
     const pendingScanRoots = new Set();
 
     const elementIndicators = new Map();
@@ -235,7 +236,9 @@
         // A site can mutate thousands of gallery cards per second. Never
         // rescan every element in response to each individual mutation.
         if (now - lastScanTime >= SCAN_INTERVAL_MS
-            || (pendingScan && now - lastScanTime >= ROOT_MUTATION_SCAN_INTERVAL_MS)) {
+            || (pendingScan && (!lastRootMutationScanTime
+                || now - lastRootMutationScanTime >= ROOT_MUTATION_SCAN_INTERVAL_MS))) {
+            if (pendingScan) lastRootMutationScanTime = now;
             pendingScan = false;
             lastScanTime = now;
             return true;
@@ -247,8 +250,8 @@
         if (!element || element.nodeType !== Node.ELEMENT_NODE) return;
         if (element === document.documentElement || element === document.body) {
             // A root class change can affect selectors anywhere on the page.
-            // Throttle this exceptional full scan, while keeping existing
-            // indicators live through their ordinary per-frame updates.
+            // Scan the first root-class change immediately (app-mode toggles
+            // need the marker at once), then throttle repeated root changes.
             pendingScan = true;
             return;
         }
