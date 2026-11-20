@@ -18,11 +18,13 @@ test('one click requests five distinct Tampermonkey update tabs in Chromium', {
         const verify = `<script>
             const urls = Array.from(document.querySelectorAll('#links a'), a => a.href);
             document.getElementById('open-all').click();
+            const edge = document.getElementById('open-in-edge');
             const result = document.getElementById('status');
             const opened = window.__opened.map(entry => entry[0]);
             const valid = opened.length === 5 && new Set(opened).size === 5
                 && urls.length === 5 && urls.every((url, i) => url === opened[i])
-                && opened.every(url => url.startsWith('https://github.com/ChrisTorng/TampermonkeyScripts/raw/'));
+                && opened.every(url => url.startsWith('https://github.com/ChrisTorng/TampermonkeyScripts/raw/'))
+                && edge.hidden && !edge.getAttribute('href');
             result.setAttribute('data-bulk-test', valid ? 'passed' : 'failed');
         </script>`;
         const html = original.replace('<script>\n(() => {', intercept + '<script>\n(() => {')

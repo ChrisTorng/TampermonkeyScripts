@@ -1,9 +1,12 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-21_1.5.36
+// @version      2026-11-21_1.5.37
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
+// @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
+// @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js
+// @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslatePreformattedText.user.js
 // @match        *://*/*
 // @exclude      *://*.christorng.idv.tw/*
 // @grant        GM_setValue

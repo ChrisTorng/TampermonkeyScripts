@@ -6,7 +6,9 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ## Shared floating-menu scripts — update together when the menu changes
 
-[Open all five script update tabs](tests/SharedFloatingMenuUpdates/index.html) (each Tampermonkey Update still needs confirmation).
+**Already installed?** Prefer Tampermonkey Dashboard → Settings → Userscript Update → a suitable Check Interval + **Automatic installation**. All five scripts already have `@version`, `@updateURL`, and `@downloadURL` pointing to `main`; published updates should require no manual install tabs. Reload the affected page after an update.
+
+[Manual test-build updater (open in Edge on Android)](tests/SharedFloatingMenuUpdates/index.html) — use for unmerged PR builds; on supported mobile devices the page offers an Edge deep link. Each Tampermonkey Update still needs individual confirmation, and in-app browsers may block deep links.
 
 **When the shared menu implementation changes, update all five scripts below together** to keep the menu consistent. The menu maintains a normal-sized touch target even on shrink-to-fit pages; it never scales the article. Independent feature updates (such as Fullscreen Game View or an individual block control) do not require a five-script menu update.
 

@@ -2,9 +2,15 @@
 
 Updated: 2026-11-21
 
+## Easier Android Edge userscript updates — 2026-11-21
+
+- Already-installed `main` scripts update via Tampermonkey's **Userscript Update → Automatic installation**; choose an appropriate check interval. Translate Preformatted Text **2026-11-21_1.5.37** ([install](src/TranslatePreformattedText.user.js)) now explicitly tracks `main` through `@updateURL` and `@downloadURL`; this metadata fix requires one update, then normal automatic updates can take over.
+- The [five-script test-update launcher](tests/SharedFloatingMenuUpdates/index.html) now offers a Microsoft Edge deep link for opening the page outside an in-app viewer. This depends on Android/app link handling; standard external-browser opening is the fallback. PR builds still need manual confirmation.
+- PR CI now rejects changed `.user.js` files when their `@version` was not increased. Use an installed version check and a direct PR install link for testing; avoid unnecessary Reinstall.
+
 ## Floating menu only: normal touch size on tiny webpages — 2026-11-21
 
-- The shared `≡` and expanded controls maintain their normal 38 × 32 apparent size as Edge shrinks or pinches a page. Position anchoring and manual `↔` remain; article/viewport styles and auto-enlargement are **untouched**. Settings panel remains visible. Update all five together: [All Go Internet Archive 1.3.15](src/AllGoInternetArchive.user.js), [Internet Archive 1.5.15](src/InternetArchive.user.js), [Force Mobile View 2.1.16](src/ForceMobileView.user.js), [Force Dark Mode 2.0.15](src/ForceDarkMode.user.js), [Translate Preformatted Text 1.5.36](src/TranslatePreformattedText.user.js).
+- The shared `≡` and expanded controls maintain their normal 38 × 32 apparent size as Edge shrinks or pinches a page. Position anchoring and manual `↔` remain; article/viewport styles and auto-enlargement are **untouched**. Settings panel remains visible. Update all five together: [All Go Internet Archive 1.3.15](src/AllGoInternetArchive.user.js), [Internet Archive 1.5.15](src/InternetArchive.user.js), [Force Mobile View 2.1.16](src/ForceMobileView.user.js), [Force Dark Mode 2.0.15](src/ForceDarkMode.user.js), [Translate Preformatted Text 1.5.37](src/TranslatePreformattedText.user.js).
 - **Tests:** [Xena WordPress article](https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/) — tiny original page, readable `≡`, no page reflow/reload; [OpenSSH release notes](https://www.openssh.org/releasenotes.html) — 1:1 menu size on initial browser auto-fit. Android Edge visual confirmation still required.
 
 ## Rollback: Android Edge oversized text and reload loop — 2026-11-21
