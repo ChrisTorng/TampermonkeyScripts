@@ -184,6 +184,7 @@ describe('shared floating menu', () => {
         const menu = harness.document.getElementById('tm-shared-floating-menu');
         assert.equal(menu.style.top, '70px');
         assert.equal(menu.style.position, 'fixed');
+        assert.equal(menu.style.transform, 'scale(2.5)', 'auto-fit must not shrink the tap target');
         // Auto-fit, browser toolbar movement and scroll are not pinch gestures.
         for (const [scale, scrollY, offsetTop, top] of [
             [0.43, 100, 15, 0],
@@ -200,7 +201,7 @@ describe('shared floating menu', () => {
             harness.dispatchWindowEvent('scroll');
             assert.equal(menu.style.position, 'fixed');
             assert.equal(menu.style.top, `${top}px`, `scale=${scale}, scrollY=${scrollY}`);
-            assert.equal(menu.style.transform || '', '', 'ordinary browser resizing must not inverse-scale the menu');
+            assert.equal(menu.style.transform, `scale(${1 / scale})`, 'auto-fit should keep a physically readable menu');
         }
     });
 
@@ -279,7 +280,7 @@ describe('shared floating menu', () => {
         harness.document.dispatchEvent({ type: 'touchstart', touches: [{}, {}] });
         harness.window.visualViewport.scale = 0.8;
         harness.dispatchVisualViewportEvent('resize');
-        assert.equal(menu.style.transform, 'scale(0.5)');
+        assert.equal(menu.style.transform, 'scale(1.25)');
         harness.window.scrollY = 1200;
         harness.dispatchWindowEvent('scroll');
         assert.equal(menu.style.top, '800px');
@@ -287,7 +288,7 @@ describe('shared floating menu', () => {
         harness.dispatchVisualViewportEvent('resize');
         assert.equal(menu.style.position, 'absolute');
         assert.equal(menu.style.top, '1200px');
-        assert.equal(menu.style.transform || '', '');
+        assert.equal(menu.style.transform, 'scale(2.5)');
     });
 
     test('pinch zoom and panning do not reposition or save the menu', () => {
@@ -415,7 +416,7 @@ describe('shared floating menu', () => {
         harness.dispatchWindowEvent('scroll');
         assert.equal(menu.style.position, 'absolute');
         assert.equal(menu.style.top, '370px');
-        assert.equal(menu.style.transform, 'scale(0.5)');
+        assert.equal(menu.style.transform, 'scale(1.25)');
         harness.window.visualViewport.scale = 0.4;
         harness.window.scrollY = 0;
         harness.dispatchVisualViewportEvent('resize');
