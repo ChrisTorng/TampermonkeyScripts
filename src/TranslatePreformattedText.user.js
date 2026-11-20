@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-18_1.5.30
+// @version      2026-11-20_1.5.31
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1920,7 +1920,13 @@
         const codeText = Array.from(element.querySelectorAll('code'))
             .map((code) => code.textContent.trim())
             .join(' ');
-        return codeText.length >= 80;
+        if (codeText.length < 80) return false;
+        // Inline code examples in a prose quotation can add up to 80+
+        // characters without making the quotation code. A code quotation
+        // must be predominantly code; otherwise leave its normal text
+        // available to native browser translation without a manual button.
+        const readableText = getBlockText(element).trim();
+        return codeText.length / Math.max(1, readableText.length) >= 0.65;
     }
 
     function isSpecialBlock(element) {
