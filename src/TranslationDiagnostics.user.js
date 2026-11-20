@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-18_1.1.1
+// @version      2026-11-21_1.2.1
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,10 +19,21 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-18_1.1.1';
+    const VERSION = '2026-11-21_1.2.1';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
+    const AUTO_KEY = 'tm-webdiag-auto-once:' + location.origin + location.pathname;
+    const AUTO_QUIET_MS = 3000;
+    const AUTO_MIN_WAIT_MS = 8000;
+    const AUTO_MAX_WAIT_MS = 90000;
+    const arm = GM_getValue(AUTO_KEY, null);
+    const autoReportArmed = arm?.mode === 'once' && Number.isFinite(arm.armedAt)
+        && Date.now() >= arm.armedAt && Date.now() - arm.armedAt < 5 * 60 * 1000;
+    if (arm) GM_setValue(AUTO_KEY, null); // Consume one-shot permission first.
+    let latestResult = '';
+    let onResult = () => {};
+    function showResult(message) { latestResult = message; onResult(message); }
     const snapshots = [];
     const events = [];
     const started = Date.now();
@@ -262,14 +273,22 @@
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
             '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:7px 10px!important;margin:3px!important;cursor:pointer!important}',
-            '#tm-webdiag-panel{position:absolute!important;bottom:calc(100% + 7px)!important;left:0!important;background:#202020!important;color:white!important;border:1px solid #666!important;border-radius:9px!important;padding:10px!important;width:min(330px,calc(100vw - 20px))!important;max-height:min(60dvh,440px)!important;overflow:auto!important;overscroll-behavior:contain!important;pointer-events:auto!important}',
+            '#tm-webdiag-panel{position:absolute!important;bottom:calc(100% + 7px)!important;left:0!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 20px))!important;height:min(82dvh,600px)!important;max-height:calc(100dvh - 80px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
             '#tm-webdiag-panel[hidden]{display:none!important}',
             '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:sticky!important;top:-10px!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
             '#tm-webdiag-close{margin:0!important;padding:4px 9px!important;white-space:nowrap!important}',
             '#tm-webdiag-panel p{margin:7px 0!important;color:#ddd!important}',
             '#tm-webdiag-panel label{display:block!important;color:#fff!important;margin:5px 0!important}',
             '#tm-webdiag-panel code{font:12px monospace!important;overflow-wrap:anywhere!important;color:#fff!important}',
-            '#tm-webdiag-panel [data-status]{white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:12px!important}'
+            '#tm-webdiag-panel [data-status]{white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:13px!important;margin:7px 0 0!important;max-height:100px!important;overflow-y:auto!important}',
+            '#tm-webdiag-panel-header{flex:0 0 auto!important;padding:8px 10px!important;border-bottom:1px solid #555!important}',
+            '#tm-webdiag-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding:8px 10px!important}',
+            '#tm-webdiag-footer{flex:0 0 auto!important;border-top:1px solid #555!important;padding:8px 10px!important}',
+            '#tm-webdiag-actions{display:flex!important;flex-wrap:wrap!important;gap:4px!important}',
+            '#tm-webdiag-actions button{flex:1 1 130px!important}',
+            '#tm-webdiag-pairing[hidden]{display:none!important}',
+            '#tm-webdiag-result{display:none!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:5px 8px!important;max-width:min(320px,calc(100vw - 20px))!important}',
+            '#tm-webdiag-result[data-visible="true"]{display:block!important}'
         ].join('\n');
         host.appendChild(css);
         const toggle = document.createElement('button');
@@ -293,15 +312,27 @@
         header.appendChild(headline);
         header.appendChild(close);
         panel.appendChild(header);
+        const body = document.createElement('div');
+        body.id = 'tm-webdiag-body';
+        panel.appendChild(body);
+        const pairingState = document.createElement('p');
+        pairingState.id = 'tm-webdiag-pair-state';
+        pairingState.textContent = '配對狀態：尚未檢查';
+        body.appendChild(pairingState);
+        const pairing = document.createElement('div');
+        pairing.id = 'tm-webdiag-pairing';
+        pairing.hidden = true;
+        pairing.style.setProperty('display', 'none', 'important');
+        body.appendChild(pairing);
         const notice = document.createElement('p');
-        notice.textContent = '每次送出須手動確認。預設不含文章文字、表單值、Cookie 或網址參數；可選擇附上公開文章文字。';
-        panel.appendChild(notice);
+        notice.textContent = '按下「重新整理並自動回報」即授權下一次載入後自動送出一份結構報告。預設不含文章文字、表單值、Cookie 或網址參數。';
+        body.appendChild(notice);
         const status = document.createElement('p');
         status.dataset.status = 'true';
-        status.textContent = '尚未檢查配對';
-        panel.appendChild(status);
+        status.textContent = latestResult || '按鈕在此區，回報結果顯示在最下方。';
+        status.setAttribute('role','status');
+        status.setAttribute('aria-live','polite');
         const info = document.createElement('p');
-        panel.appendChild(info);
         const pair = document.createElement('button');
         pair.type = 'button';
         pair.textContent = '建立配對碼';
@@ -313,9 +344,9 @@
         monitor.textContent = recording ? '已開始記錄' : '開始記錄 Console';
         const next = document.createElement('button');
         next.type = 'button';
-        next.textContent = '下次重新整理時開始記錄';
+        next.textContent = '重新整理並自動回報';
         const reloadHelp = document.createElement('p');
-        reloadHelp.textContent = '此按鈕只設定記錄，請自行重新整理；不會自動重新整理，也不會自動送出報告。';
+        reloadHelp.textContent = '重整後會記錄至頁面載入穩定，最多觀察 90 秒，並自動送出一次；不會自動附上公開文章全文。';
         const label = document.createElement('label');
         const include = document.createElement('input');
         include.type = 'checkbox';
@@ -324,51 +355,95 @@
         label.appendChild(document.createTextNode(' 包含公開頁面文字（需確認）'));
         const submit = document.createElement('button');
         submit.type = 'button';
-        submit.textContent = '送出報告至 Cloudflare';
-        for (const element of [pair, check, monitor, next, reloadHelp, label, submit]) panel.appendChild(element);
+        submit.textContent = '立即送出報告';
+        for (const element of [pair, check, info]) pairing.appendChild(element);
+        for (const element of [monitor, reloadHelp, label]) body.appendChild(element);
+        const footer = document.createElement('div');
+        footer.id = 'tm-webdiag-footer';
+        const actions = document.createElement('div');
+        actions.id = 'tm-webdiag-actions';
+        actions.appendChild(next);
+        actions.appendChild(submit);
+        footer.appendChild(actions);
+        footer.appendChild(status);
+        panel.appendChild(footer);
         host.appendChild(panel);
+        const result = document.createElement('p');
+        result.id = 'tm-webdiag-result';
+        host.appendChild(result);
+        let pairingAuthorized = null;
+        const showPairing = visible => {
+            pairing.hidden = !visible;
+            pairing.style.setProperty('display', visible ? 'block' : 'none', 'important');
+        };
+        onResult = message => {
+            status.textContent = message;
+            result.textContent = message;
+            result.dataset.visible = 'true';
+            toggle.textContent = message.startsWith('已送出') ? '已送出' : '回報';
+        };
+        if (latestResult) onResult(latestResult);
+        async function refreshPairing() {
+            pairingState.textContent = '配對狀態：正在檢查…';
+            showPairing(false);
+            try {
+                const r = await post('/api/status', { deviceId, secret });
+                pairingAuthorized = r.authorized === true;
+                pairingState.textContent = pairingAuthorized ? '配對狀態：已配對' : '配對狀態：尚未配對';
+                showPairing(!pairingAuthorized);
+                if (!pairingAuthorized && !latestResult) status.textContent = '請先完成配對。';
+                return pairingAuthorized;
+            } catch (e) {
+                pairingState.textContent = '配對狀態：檢查失敗';
+                showPairing(true);
+                status.textContent = '檢查失敗：' + e.message;
+                return false;
+            }
+        }
         const setStatus = text => { status.textContent = text; };
         const setPanelOpen = open => {
             panel.hidden = !open;
             // Inline !important wins over a host website's global display rules
             // and makes the hidden state reliable in mobile Edge.
-            panel.style.setProperty('display', open ? 'block' : 'none', 'important');
+            panel.style.setProperty('display', open ? 'flex' : 'none', 'important');
             panel.setAttribute('aria-hidden', String(!open));
             toggle.setAttribute('aria-expanded', String(open));
+            if (open) result.dataset.visible = 'false';
         };
         toggle.setAttribute('aria-controls', 'tm-webdiag-panel');
         setPanelOpen(false);
         toggle.addEventListener('click', () => {
             const open = panel.hidden;
             setPanelOpen(open);
-            if (open) {
-                post('/api/status', { deviceId, secret }).then(r =>
-                    setStatus(r.authorized ? '已配對：可送出報告' : '尚未配對：請先建立配對碼'))
-                    .catch(e => setStatus('連線錯誤：' + e.message));
-            }
+            if (open) void refreshPairing();
         });
         pair.addEventListener('click', async () => {
             setStatus('正在建立配對碼…');
             try {
                 const r = await post('/api/pair', { deviceId, secret });
-                info.textContent = '配對碼：' + r.pairingCode + '（60 分鐘內有效）。僅須將這個代碼告訴 ChatGPT 一次，完成核准後按「確認已配對」。';
+                info.textContent = '配對碼：' + r.pairingCode + '（60 分鐘內有效），交給 ChatGPT 完成核准。';
                 setStatus('等待配對核准');
             } catch (e) { setStatus('配對失敗：' + e.message); }
         });
-        check.addEventListener('click', async () => {
-            try {
-                const r = await post('/api/status', { deviceId, secret });
-                setStatus(r.authorized ? '已配對：可送出報告' : '尚未核准配對');
-            } catch (e) { setStatus('檢查失敗：' + e.message); }
-        });
+        check.addEventListener('click', () => { void refreshPairing(); });
         monitor.addEventListener('click', () => {
             startRecording();
             monitor.textContent = '已開始記錄';
             setStatus('開始記錄新產生的 Console 訊息與例外；不包含開始前的紀錄');
         });
-        next.addEventListener('click', () => {
-            GM_setValue(START_KEY, true);
-            setStatus('已設定：請自行重新整理此頁。重新載入後開始記錄，送出報告仍需手動按鈕。');
+        next.addEventListener('click', async event => {
+            // Reject synthetic clicks from arbitrary websites.
+            if (event.isTrusted === false) return;
+            next.disabled = true;
+            const authorized = pairingAuthorized === true || await refreshPairing();
+            if (!authorized) {
+                setStatus('尚未配對，請先完成配對。');
+                next.disabled = false;
+                return;
+            }
+            GM_setValue(AUTO_KEY, { mode: 'once', armedAt: Date.now() });
+            setStatus('正在重新整理，頁面穩定後將自動送出一次。');
+            window.location.reload();
         });
         submit.addEventListener('click', async () => {
             if (include.checked && !window.confirm('這是公開文章嗎？報告會包含可見文字並保存 7 天。請勿在私人、登入或付款頁勾選。')) return;
@@ -377,9 +452,7 @@
             try {
                 const report = buildReport(include.checked);
                 const response = await post('/api/report', { deviceId, secret, report });
-                setStatus('Cloudflare 已收到報告 ' + response.reportId
-                    + '。之後只要告訴 ChatGPT「已送出」，無需貼上 JSON。');
-                info.textContent = '報告 ID：' + response.reportId + '，7 天後自動刪除。';
+                showResult('已送出報告 ' + response.reportId + '（7 天後自動刪除）');
             } catch (e) {
                 setStatus('送出失敗：' + e.message + '。資料尚未上傳。');
             } finally { submit.disabled = false; }
@@ -387,11 +460,53 @@
         close.addEventListener('click', () => { setPanelOpen(false); });
     }
 
+    function startAutomaticReport() {
+        if (!autoReportArmed) return;
+        startRecording();
+        let completed = false;
+        let loaded = document.readyState === 'complete';
+        let lastChange = Date.now();
+        const startedWaiting = Date.now();
+        const observer = new MutationObserver(records => {
+            if (records.some(record => !record.target?.closest?.('#tm-webdiag-host'))) {
+                lastChange = Date.now();
+            }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        const tick = async () => {
+            if (completed) return;
+            const elapsed = Date.now() - startedWaiting;
+            const timeout = elapsed >= AUTO_MAX_WAIT_MS;
+            if (document.readyState === 'complete') loaded = true;
+            if (!timeout && (elapsed < AUTO_MIN_WAIT_MS
+                || !loaded || Date.now() - lastChange < AUTO_QUIET_MS)) return;
+            completed = true;
+            observer.disconnect();
+            clearInterval(interval);
+            recordSnapshot(timeout ? 'auto-timeout' : 'auto-page-stable');
+            try {
+                const report = buildReport(false);
+                report.autoSubmission = { triggeredBy: 'explicit-reload-click',
+                    reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed,
+                    readyState: document.readyState, quietMs: Date.now() - lastChange };
+                const response = await post('/api/report', { deviceId, secret, report });
+                showResult('已送出重新整理後的報告 ' + response.reportId
+                    + (timeout ? '（頁面尚未確認穩定）' : '') + '（7 天後自動刪除）');
+            } catch (e) {
+                showResult('自動回報失敗：' + e.message + '；未自動重試，可手動送出。');
+            }
+        };
+        const interval = setInterval(() => { void tick(); }, 500);
+        window.addEventListener('load', () => { loaded = true; }, { once: true });
+        setTimeout(() => { void tick(); }, AUTO_MAX_WAIT_MS);
+    }
+
     recordSnapshot('document-start');
     if (GM_getValue(START_KEY, false)) {
         GM_setValue(START_KEY, false);
         startRecording();
     }
+    startAutomaticReport();
     installUI();
     document.addEventListener('DOMContentLoaded', () => {
         recordSnapshot('dom-ready');

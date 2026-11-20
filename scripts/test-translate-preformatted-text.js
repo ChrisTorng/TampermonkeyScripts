@@ -50,6 +50,37 @@ function addAstroRouterMarker(harness, content = 'true') {
 }
 
 describe('Translate Preformatted Text', () => {
+
+    test('gallery hydration batches expensive document-wide translation checks', () => {
+        let gallery;
+        const h = execute(current => {
+            current.document.documentElement.setAttribute('lang', 'zh-TW');
+            gallery = current.document.createElement('main');
+            current.appendToBody(gallery);
+        }, 'https://visualbasic.world/');
+        const originalQuery = h.document.querySelectorAll.bind(h.document);
+        let globalArticleChecks = 0;
+        h.document.querySelectorAll = selector => {
+            if (selector === 'article, main') globalArticleChecks += 1;
+            return originalQuery(selector);
+        };
+        const added = [];
+        for (let i = 0; i < 120; i += 1) {
+            const card = h.document.createElement('div');
+            card.className = 'gallery-card';
+            const image = h.document.createElement('img');
+            const caption = h.document.createElement('p');
+            caption.textContent = 'Project screenshot ' + i;
+            card.appendChild(image);
+            card.appendChild(caption);
+            gallery.appendChild(card);
+            added.push(card);
+        }
+        h.triggerMutation(added, { target: gallery });
+        assert(globalArticleChecks <= 1,
+            'One mutation delivery with 120 new cards must not rescan all articles 120 times.');
+    });
+
     // The public Perplexity HTML response captured on 2026-11-08 contains
     // <html lang="en-GB" translate="no"> and a full article with 1 H1 and
     // 24 paragraphs. These runtime tests reproduce that observed structure;

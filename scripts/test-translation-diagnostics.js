@@ -7,9 +7,11 @@ const { createHarness } = require('./dom-harness');
 
 const script = fs.readFileSync(path.join(__dirname, '../src/TranslationDiagnostics.user.js'), 'utf8');
 
-function run(url, setup = () => {}) {
+function run(url, setup = () => {}, seededValues = null) {
     const h = createHarness({ url });
-    const values = new Map();
+    const values = new Map(seededValues || []);
+    const clock = { now: Date.now() };
+    h.context.Date = class extends Date { static now() { return clock.now; } };
     const calls = [];
     h.location.protocol = new URL(url).protocol;
     h.context.crypto = {
@@ -41,7 +43,7 @@ function run(url, setup = () => {}) {
     setup(h);
     h.context.globalThis = h.context;
     vm.runInNewContext(script, h.context, { filename: 'TranslationDiagnostics.user.js' });
-    return { h, values, calls };
+    return { h, values, calls, clock };
 }
 
 test('common web pages show the report button without special query parameters', () => {
@@ -82,7 +84,7 @@ test('diagnostics panel is reliably hidden by inline !important and closes from 
     toggle.click();
     await Promise.resolve();
     assert.equal(panel.hidden, false);
-    assert.equal(panel.style.getPropertyValue('display'), 'block');
+    assert.equal(panel.style.getPropertyValue('display'), 'flex');
     assert.equal(toggle.getAttribute('aria-expanded'), 'true');
 
     close.click();
@@ -101,16 +103,68 @@ test('diagnostics panel is reliably hidden by inline !important and closes from 
     assert.equal(panel.hidden, true);
 });
 
-test('arming the next page refresh never reloads automatically or uploads a report', () => {
-    const { h, values, calls } = run('https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html');
+test('one-click refresh explicitly arms a single sanitized automatic report', async () => {
+    const url = 'https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html';
+    const { h, values, calls } = run(url);
     const panel = h.document.getElementById('tm-webdiag-panel');
-    const next = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '下次重新整理時開始記錄');
-    assert(next);
+    const body = h.document.getElementById('tm-webdiag-body');
+    const footer = h.document.getElementById('tm-webdiag-footer');
+    const pairing = h.document.getElementById('tm-webdiag-pairing');
+    assert(body && footer && pairing);
+    assert.equal(panel.children[1], body);
+    assert.equal(panel.children[2], footer);
+    assert.equal(footer.children[1].getAttribute('role'), 'status');
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(pairing.hidden, true, 'Already paired devices must not show pairing code controls.');
+    const next = footer.querySelector('#tm-webdiag-actions').children[0];
+    assert.equal(next.textContent, '重新整理並自動回報');
     next.click();
-    assert.equal(h.location.reloadCallCount, 0);
-    assert.equal(values.get('tm-webdiag-record-next:https://www.techspot.com/news/114558-nvidia-deliberately-kept-gpu-prices-high-through-circular.html'), true);
-    assert.equal(panel.hidden, true);
-    assert.equal(calls.length, 0);
+    await Promise.resolve();
+    assert.equal(h.location.reloadCallCount, 1, 'Click immediately reloads the page.');
+    assert.equal(values.get('tm-webdiag-auto-once:' + url).mode, 'once');
+    assert.equal(calls.filter(x => x.url.endsWith('/api/report')).length, 0,
+        'Report is sent only after the next page loads.');
+});
+
+test('armed reload records a settled page and automatically sends only once', async () => {
+    const url = 'https://visualbasic.world/';
+    const key = 'tm-webdiag-auto-once:' + url;
+    const seed = new Map([[key, { mode: 'once', armedAt: Date.now() - 500 }]]);
+    const { h, calls, values, clock } = run(url, () => {}, seed);
+    assert.equal(values.get(key), null, 'One-shot authorization is consumed at page start.');
+    assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 0);
+    h.dispatchWindowEvent('load');
+    clock.now += 9500;
+    h.runAllIntervals();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    const reports = calls.filter(c => c.url.endsWith('/api/report'));
+    assert.equal(reports.length, 1);
+    assert.equal(reports[0].data.report.mode, 'structure');
+    assert.equal(reports[0].data.report.autoSubmission.reason, 'page-stable');
+    assert.equal(reports[0].data.report.autoSubmission.triggeredBy, 'explicit-reload-click');
+    assert.equal(h.document.getElementById('tm-webdiag-toggle').textContent, '已送出');
+    assert.match(h.document.getElementById('tm-webdiag-footer').querySelector('[data-status]').textContent,
+        /已送出重新整理後的報告/);
+    clock.now += 10000;
+    h.runAllIntervals();
+    h.runAllTimeouts();
+    assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 1);
+    const repeat = run(url, () => {}, values);
+    repeat.h.runAllTimeouts();
+    assert.equal(repeat.calls.filter(c => c.url.endsWith('/api/report')).length, 0,
+        'Subsequent reloads cannot auto-submit without another explicit click.');
+});
+
+test('unarmed diagnostic pages never auto-upload after timers and load', () => {
+    const { h, calls } = run('https://visualbasic.world/');
+    h.dispatchWindowEvent('load');
+    h.runAllTimeouts();
+    h.runAllIntervals();
+    assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 0);
 });
 
 test('a report is sent only to the paired Cloudflare endpoint, without URL search strings', async () => {
@@ -120,7 +174,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
     h.document.getElementById('tm-webdiag-toggle').click();
     assert.equal(panel.hidden, false);
     await Promise.resolve();
-    const submit = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '送出報告至 Cloudflare');
+    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
     assert(submit);
     submit.click();
     await Promise.resolve();
@@ -139,7 +193,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
 test('starting recording wraps the console only after user activation', () => {
     const { h } = run('https://example.org/');
     const panel = h.document.getElementById('tm-webdiag-panel');
-    const monitor = panel.children.find(x => x.tagName === 'BUTTON' && x.textContent === '開始記錄 Console');
+    const monitor = h.document.getElementById('tm-webdiag-body').children.find(x => x.tagName === 'BUTTON' && x.textContent === '開始記錄 Console');
     assert(monitor);
     assert.equal(monitor.textContent, '開始記錄 Console');
     monitor.click();

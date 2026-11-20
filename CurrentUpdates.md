@@ -2,6 +2,14 @@
 
 Updated: 2026-11-21
 
+## Large gallery performance and one-click diagnostics — 2026-11-21
+
+- [Install Translate Preformatted Text — 2026-11-21_1.5.34](src/TranslatePreformattedText.user.js) — batch global article scans once per DOM mutation delivery; preserve per-code controls and auto-translation.
+- [Install Translation Diagnostics — 2026-11-21_1.2.1](src/TranslationDiagnostics.user.js) — larger panel, hide pairing controls once paired, pinned bottom actions/status, explicit one-click refresh then single automatic structure report after page stabilizes (40-second cap).
+- [Install Responsive Scroll Position Indicator — 2026-11-21_1.4.3](src/ResponsiveScrollIndicator.user.js) — keep very long-page gray scrollbar thumb at least 24 CSS pixels tall.
+- **Tests:** [VisualBasic.World gallery](https://visualbasic.world/) — verify that images and cards load promptly and the gray edge marker is visible; [Perplexity Decider](https://www.perplexity.ai/hub/blog/perplexity-decider) — English article translation unaffected; [Example.org](https://example.org/) — diagnostics panel close, pairing, and manual/auto controls.
+
+
 ## Large galleries: avoid repeated full-page scroll scans — 2026-11-21
 
 - [Install Responsive Scroll Position Indicator — 2026-11-21_1.4.2](src/ResponsiveScrollIndicator.user.js) — check only changed DOM subtrees during normal updates; throttle full scans on very large dynamic pages. Reload after updating.

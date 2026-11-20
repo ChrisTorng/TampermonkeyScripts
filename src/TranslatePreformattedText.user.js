@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-20_1.5.33
+// @version      2026-11-21_1.5.34
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @match        *://*/*
@@ -1843,9 +1843,14 @@
         }, 180);
     }
 
-    function scan(root = document) {
-        restoreReadableArticleLanguage();
-        allowTranslationForReadableArticle();
+    function scan(root = document, globalChecks = true) {
+        // Hydration can append thousands of unrelated gallery items in one
+        // mutation delivery. Rechecking every existing article for EACH item
+        // scales quadratically and stalls mobile browser main threads.
+        if (globalChecks) {
+            restoreReadableArticleLanguage();
+            allowTranslationForReadableArticle();
+        }
         if (root === document) enhanceOpenSSHReleaseNotes();
         enableAstroFullPageNavigation(root);
         enableMastodonTranslation(root);
@@ -1881,8 +1886,10 @@
         if (root.querySelectorAll) {
             root.querySelectorAll('code').forEach(makeInlineCodeTranslatable);
         }
-        updateAllButton();
-        scheduleAutomaticTranslation();
+        if (globalChecks) {
+            updateAllButton();
+            scheduleAutomaticTranslation();
+        }
     }
 
     function enableAstroFullPageNavigation(root) {
@@ -1992,10 +1999,9 @@
     window.addEventListener('load', scheduleAutomaticTranslation, { once: true });
 
     new MutationObserver((mutations) => {
+        let addedContent = false;
         mutations.forEach((mutation) => {
-            if (restoreInlineCode(mutation.target)) {
-                return;
-            }
+            if (restoreInlineCode(mutation.target)) return;
             if (mutation.type === 'attributes') {
                 revealWikipediaSections(mutation.target);
                 if ((mutation.target === document.documentElement && mutation.attributeName === 'translate')
@@ -2007,9 +2013,20 @@
             }
             mutation.addedNodes.forEach((node) => {
                 restoreInlineCode(node);
-                scan(node);
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                // Per-subtree code/quote controls remain synchronous, but
+                // costly document-wide article and floating-menu checks only
+                // run ONCE after all nodes in this mutation batch.
+                scan(node, false);
+                addedContent = true;
             });
         });
+        if (addedContent) {
+            restoreReadableArticleLanguage();
+            allowTranslationForReadableArticle();
+            updateAllButton();
+            scheduleAutomaticTranslation();
+        }
     }).observe(document.documentElement, {
         attributes: true,
         attributeFilter: isWikipedia ? ['hidden', 'translate', 'content', 'name'] : ['translate', 'content', 'name'],
