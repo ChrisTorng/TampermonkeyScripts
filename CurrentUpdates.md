@@ -2,6 +2,12 @@
 
 Updated: 2026-11-21
 
+## Easier Android Edge userscript updates — 2026-11-21
+
+- Already-installed `main` scripts update via Tampermonkey's **Userscript Update → Automatic installation**; choose an appropriate check interval. No userscript replacement is required for this setting.
+- The [five-script test-update launcher](tests/SharedFloatingMenuUpdates/index.html) now offers a Microsoft Edge deep link for opening the page outside an in-app viewer. This depends on Android/app link handling; standard external-browser opening is the fallback. PR builds still need manual confirmation.
+- PR CI now rejects changed `.user.js` files when their `@version` was not increased. Use an installed version check and a direct PR install link for testing; avoid unnecessary Reinstall.
+
 ## Floating menu only: normal touch size on tiny webpages — 2026-11-21
 
 - The shared `≡` and expanded controls maintain their normal 38 × 32 apparent size as Edge shrinks or pinches a page. Position anchoring and manual `↔` remain; article/viewport styles and auto-enlargement are **untouched**. Settings panel remains visible. Update all five together: [All Go Internet Archive 1.3.15](src/AllGoInternetArchive.user.js), [Internet Archive 1.5.15](src/InternetArchive.user.js), [Force Mobile View 2.1.16](src/ForceMobileView.user.js), [Force Dark Mode 2.0.15](src/ForceDarkMode.user.js), [Translate Preformatted Text 1.5.36](src/TranslatePreformattedText.user.js).
