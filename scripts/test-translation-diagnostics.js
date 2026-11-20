@@ -136,7 +136,7 @@ test('armed reload records a settled page and automatically sends only once', as
     assert.equal(values.get(key), null, 'One-shot authorization is consumed at page start.');
     assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 0);
     h.dispatchWindowEvent('load');
-    clock.now += 3000;
+    clock.now += 9500;
     h.runAllIntervals();
     await Promise.resolve();
     await Promise.resolve();
