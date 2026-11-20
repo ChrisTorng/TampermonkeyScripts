@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-21_1.5.34
+// @version      2026-11-21_1.5.35
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @match        *://*/*
@@ -700,26 +700,11 @@
         document.addEventListener('touchcancel', () => {
             if (!pinchAnchored) pinchGestureArmed = false;
         }, { capture: true, passive: true });
-
-        // A legacy 980px page can be shrunk by the browser before any pinch.
-        // Keep the touch target physically legible without changing coordinates.
-        const syncPhysicalScale = () => {
-            const currentScale = window.visualViewport && window.visualViewport.scale;
-            const scale = Number.isFinite(currentScale) && currentScale > 0 ? currentScale : 1;
-            if (Math.abs(scale - 1) > 0.01) {
-                root.style.setProperty('transform', `scale(${1 / scale})`, 'important');
-                root.style.setProperty('transform-origin', 'top right', 'important');
-            } else {
-                root.style.removeProperty('transform');
-                root.style.removeProperty('transform-origin');
-            }
-        };
         const place = (x, y, fixed) => {
             root.style.setProperty('position', fixed ? 'fixed' : 'absolute', 'important');
             root.style.setProperty('left', `${x}px`, 'important');
             root.style.setProperty('top', `${y}px`, 'important');
             root.style.setProperty('right', 'auto', 'important');
-            syncPhysicalScale();
             floatingMenuPositionDialog(root);
         };
         let pinchAnchored = false;
@@ -736,13 +721,16 @@
                     }
                     pinchAnchored = true;
                 }
-                // Include any browser auto-fit that preceded the pinch gesture.
-                syncPhysicalScale();
+                // Keep the handle's physical size unchanged at higher zoom levels.
+                root.style.setProperty('transform', `scale(${normalScale / window.visualViewport.scale})`, 'important');
+                root.style.setProperty('transform-origin', 'top right', 'important');
                 return;
             }
             if (pinchAnchored) {
                 pinchAnchored = false;
                 pinchGestureArmed = false;
+                root.style.removeProperty('transform');
+                root.style.removeProperty('transform-origin');
                 previousScrollY = scrollY();
             }
             const currentScrollY = scrollY();

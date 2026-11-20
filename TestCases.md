@@ -186,6 +186,6 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 - https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fuxdesign.cc%2Ffear-of-missing-out-on-ai-is-overshadowing-the-fear-of-losing-our-humanity-d628aacfb950 [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (global-identity reload skip logic only)
   - Expect a single reload even if Medium rewrites the redirectUrl query parameters on subsequent visits.
 
-# Twenty Ten WordPress mobile readability — 2026-11-20
+# Twenty Ten WordPress mobile readability — 2026-11-21
 
-- https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (private Android Edge diagnostics verify old Twenty Ten stylesheet, no viewport, 980px layout and 0.508 zoom; tests cover theme-specific early viewport, sidebar stacking CSS, independent PRE scrolling and opt-out; native translated layout requires user validation)
+- https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: FAILED_AND_REVERTED] (2026-11-20 early viewport auto-reflow produced giant fonts, narrow/overlapping columns and repeated reloads in native Android Edge; do not re-enable until a visually validated non-looping approach exists. Only the previous manual ↔ mode remains.)

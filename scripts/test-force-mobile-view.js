@@ -408,56 +408,6 @@ describe('Force Mobile View automatic readability pilot', () => {
         assert.equal(harness.document.getElementById('tm-force-width-style'), null);
     });
 
-    test('verified Twenty Ten WordPress theme gets an early viewport and safe stacked layout', () => {
-        const { harness } = executeForceMobileView(
-            'https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/', {
-                userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/158',
-                setupBody(h) {
-                    h.window.screen = { width: 360 };
-                    h.window.innerWidth = 980;
-                    h.window.visualViewport.width = 980;
-                    h.window.visualViewport.scale = 0.36;
-                    const theme = h.document.createElement('link');
-                    theme.setAttribute('href', 'https://s0.wp.com/wp-content/themes/pub/twentyten/style.css');
-                    h.document.head.appendChild(theme);
-                    addParagraphs(h, 4);
-                }
-            });
-        const viewport = harness.document.querySelector('meta[name="viewport"]');
-        const style = harness.document.getElementById('tm-force-mobile-auto-style');
-        assert(viewport, 'A recognized fixed-width Twenty Ten document needs an early viewport.');
-        assert.equal(viewport.getAttribute('content'), 'width=device-width, initial-scale=1');
-        assert.match(style.textContent, /#primary, #secondary/);
-        assert.match(style.textContent, /float: none !important/);
-        assert.match(style.textContent, /overflow-x: auto !important/);
-        assert.match(style.textContent, /white-space: pre !important/);
-        assert.doesNotMatch(style.textContent, /body \*/);
-        harness.window.innerWidth = 360;
-        harness.window.visualViewport.width = 360;
-        harness.window.visualViewport.scale = 1;
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
-        assert.equal(button.getAttribute('aria-pressed'), 'true');
-        button.click();
-        assert.equal(harness.window.localStorage.getItem('tm-force-mobile-auto-v2:xenaproject.wordpress.com'), 'off');
-        assert.equal(harness.location.reloadCallCount, 1);
-    });
-
-    test('other WordPress themes keep their author-provided layout', () => {
-        const { harness } = executeForceMobileView('https://other.wordpress.com/2026/article', {
-            userAgent: 'Mozilla/5.0 (Linux; Android 16)',
-            setupBody(h) {
-                const theme = h.document.createElement('link');
-                theme.setAttribute('href', 'https://s0.wp.com/wp-content/themes/pub/twentytwenty/style.css');
-                h.document.head.appendChild(theme);
-                addParagraphs(h, 4);
-            }
-        });
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-        assert.equal(harness.document.querySelector('meta[name="viewport"]'), null);
-        assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null);
-    });
-
     test('unverified legacy layouts do not dynamically inject viewport after load', () => {
         const { harness } = executeForceMobileView('https://example.org/legacy', {
             userAgent: 'Mozilla/5.0 (Linux; Android 16)',

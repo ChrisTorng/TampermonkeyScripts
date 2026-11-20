@@ -23,7 +23,7 @@ Send most paywall articles to [Internet Archive](https://web.archive.org) for ar
 
 ### [Force Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceMobileView.user.js)
 
-Improve tiny mobile text, safely reflow legacy Twenty Ten WordPress pages, and auto-enlarge Hacker News discussions (not listings).
+Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 
 ### [Force Dark Mode User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ForceDarkMode.user.js)
 

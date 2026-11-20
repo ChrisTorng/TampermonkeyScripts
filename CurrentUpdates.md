@@ -2,6 +2,12 @@
 
 Updated: 2026-11-21
 
+## Rollback: Android Edge oversized text and reload loop — 2026-11-21
+
+- [Force Mobile View 2026-11-21_2.1.15](src/ForceMobileView.user.js) — remove the failed Twenty Ten WordPress auto-reflow; return to manual ↔ only. Avoid automatic viewport injection and page reload loops.
+- Restore the previous shared menu zoom behavior, retaining other feature updates. Update all five scripts: [All Go Internet Archive 1.3.14](src/AllGoInternetArchive.user.js), [Internet Archive 1.5.14](src/InternetArchive.user.js), [Force Mobile View 2.1.15](src/ForceMobileView.user.js), [Force Dark Mode 2.0.14](src/ForceDarkMode.user.js), [Translate Preformatted Text 1.5.35](src/TranslatePreformattedText.user.js).
+- **Tests:** [Xena WordPress article](https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/) — must not reload repeatedly or get giant fonts; [OpenSSH release notes](https://www.openssh.org/releasenotes.html) — shared menu retains prior behavior. This rollback does not yet solve tiny controls on old desktop layouts.
+
 ## Large gallery performance and one-click diagnostics — 2026-11-21
 
 - [Install Translate Preformatted Text — 2026-11-21_1.5.34](src/TranslatePreformattedText.user.js) — batch global article scans once per DOM mutation delivery; preserve per-code controls and auto-translation.
@@ -14,12 +20,6 @@ Updated: 2026-11-21
 
 - [Install Responsive Scroll Position Indicator — 2026-11-21_1.4.2](src/ResponsiveScrollIndicator.user.js) — check only changed DOM subtrees during normal updates; throttle full scans on very large dynamic pages. Reload after updating.
 - **Tests:** [VisualBasic.World](https://visualbasic.world/) — project gallery loads without extreme delays; [Mastodon nested scroll area](https://mastodon.social/@firefoxwebdevs/115740500373677782) — only real, long, visible scrollports keep gray markers.
-
-## Readable legacy WordPress and correctly sized floating menu — 2026-11-20
-
-- [Install Force Mobile View — 2026-11-20_2.1.14](src/ForceMobileView.user.js) — verified Twenty Ten WordPress blogs reflow automatically into a readable article with sidebar below it and independently scrollable code. Tap ↔ to disable.
-- The shared `≡` control compensates for initial browser auto-fit and pinch zoom. Update all five scripts together: All Go Internet Archive 2026-11-20_1.3.13; Internet Archive 2026-11-20_1.5.13; Force Mobile View 2026-11-20_2.1.14; Force Dark Mode 2026-11-20_2.0.13; Translate Preformatted Text 2026-11-20_1.5.33.
-- **Tests:** [Xena WordPress article](https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/) — readable article, sidebar below, no manual zoom; [OpenSSH release notes](https://www.openssh.org/releasenotes.html) — normal-sized floating control even on a scaled-down page. Native Android Edge rendering still needs confirmation.
 
 ## Prose quotations with inline code — 2026-11-20
 
