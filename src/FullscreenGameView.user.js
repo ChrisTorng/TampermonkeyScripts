@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-18_1.3.2
-// @description  Restore Nitter video-poster fullscreen entry outside clipped galleries; preserve subtle CSS anchoring and Back exit.
+// @version      2026-11-23_1.3.3
+// @description  Show visible fullscreen controls on embedded videos, rotate landscape media, and preserve Nitter poster and Back behavior.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js
@@ -34,7 +34,16 @@
     window.addEventListener('resize', refreshFullscreenControls);
 
     function mediaRectTarget(target) {
-        if (!isNitter) return target;
+        if (!isNitter) {
+            // The outer player host can be larger than the actual media, or
+            // clipped by the site's layout. Position the entry using the
+            // visible video/iframe instead of the wrapper's top-left corner.
+            const video = target.matches?.('video') ? target : target.querySelector?.('video');
+            if (video) return video;
+            const frames = target.matches?.('iframe') ? [target] :
+                Array.from(target.querySelectorAll?.('iframe') || []);
+            return frames.find(isEmbeddedPlayer) || target;
+        }
         // A Nitter video poster is painted inside <video poster="...">, not
         // necessarily inside an <img>. Disabled players instead show a real
         // preview img. Either must anchor the same attachment control.
@@ -102,10 +111,12 @@
             if (drag || dragged) return;
             const rect = mediaRectTarget(target).getBoundingClientRect();
             const parent = host.getBoundingClientRect();
+            const inset = !isNitter && ['VIDEO', 'IFRAME'].includes(mediaRectTarget(target).tagName);
             const x = rect.right - parent.left - (host.clientLeft || 0) +
-                (host.scrollLeft || 0) - FULLSCREEN_WIDTH;
+                (host.scrollLeft || 0) - FULLSCREEN_WIDTH - (inset ? 4 : 0);
             const y = rect.top - parent.top - (host.clientTop || 0) +
-                (host.scrollTop || 0) - FULLSCREEN_HEIGHT - 4;
+                (host.scrollTop || 0) + (inset ? 4 : -FULLSCREEN_HEIGHT - 4);
+            button.classList.toggle('tm-fullscreen-game-view-button-inset', inset);
             button.style.setProperty('left', x + 'px', 'important');
             button.style.setProperty('top', y + 'px', 'important');
         };
@@ -208,6 +219,11 @@ html.tm-fullscreen-game-view-active body {
     text-decoration: none !important;
 }
 
+.${BUTTON_CLASS}.tm-fullscreen-game-view-button-inset {
+    color: rgba(245,248,252,.9) !important;
+    background: rgba(15,20,25,.28) !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,.9) !important;
+}
 .${BUTTON_CLASS}[hidden],
 .${BUTTON_CLASS}[aria-pressed="true"] {
     display: none !important;

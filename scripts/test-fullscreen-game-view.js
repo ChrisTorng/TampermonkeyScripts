@@ -121,6 +121,75 @@ describe('Fullscreen control must not modify unrelated article widgets', () => {
         assert.equal(b.style.position || 'absolute', 'absolute');
     });
 
+    test('Google Blog-style HTML5 videos keep visible inset controls and rotate in fullscreen', async () => {
+        const h = createHarness({
+            url: 'https://blog.google/innovation-and-ai/models-and-research/google-deepmind/genie-4-now-available-project-genie/'
+        });
+        h.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/159.0' };
+        h.window.innerWidth = 390;
+        h.window.innerHeight = 844;
+        let locks = 0;
+        h.window.screen = { orientation: {
+            lock(direction) { assert.equal(direction, 'landscape'); locks++; return Promise.resolve(); },
+            unlock() {}
+        } };
+        const addClip = (top) => {
+            const wrapper = h.document.createElement('div');
+            wrapper.style.setProperty('overflow', 'hidden');
+            wrapper._rect = { left: 20, top, right: 370, bottom: top + 200, width: 350, height: 200 };
+            const video = h.document.createElement('video');
+            video.videoWidth = 1920;
+            video.videoHeight = 1080;
+            video._rect = { left: 20, top, right: 370, bottom: top + 200, width: 350, height: 200 };
+            wrapper.appendChild(video);
+            h.document.body.appendChild(wrapper);
+            return { wrapper, video };
+        };
+        const a = addClip(200);
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        const button = a.wrapper.querySelector('.tm-fullscreen-game-view-button');
+        assert(button, 'HTML5 videos need a control even without a YouTube iframe.');
+        assert(button.classList.contains('tm-fullscreen-game-view-button-inset'));
+        assert.equal(button.style.top, '4px', 'Button must not be clipped above the visible video.');
+        assert.equal(button.style.left, '308px', 'Button should sit inside the true media right edge.');
+        a.wrapper.requestFullscreen = () => {
+            h.document.fullscreenElement = a.wrapper;
+            h.dispatchDocumentEvent('fullscreenchange');
+            return Promise.resolve();
+        };
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(locks, 1, 'Actual video dimensions should trigger landscape locking.');
+        h.document.fullscreenElement = null;
+        h.dispatchDocumentEvent('fullscreenchange');
+        const b = addClip(500);
+        h.triggerMutation([b.video]);
+        h.flushAnimationFrames();
+        assert(b.wrapper.querySelector('.tm-fullscreen-game-view-button'),
+            'Late-inserted HTML5 videos should get their own control.');
+        assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
+    });
+
+    test('YouTube iframe embedded in a clipped article player has its own inset entry', () => {
+        const h = createHarness({ url: 'https://blog.google/innovation-and-ai/models-and-research/google-deepmind/genie-4-now-available-project-genie/' });
+        const wrapper = h.document.createElement('div');
+        wrapper.style.setProperty('overflow', 'hidden');
+        wrapper._rect = { left: 20, top: 260, right: 370, bottom: 460, width: 350, height: 200 };
+        const frame = h.document.createElement('iframe');
+        frame.src = 'https://www.youtube-nocookie.com/embed/example';
+        frame._rect = { ...wrapper._rect };
+        wrapper.appendChild(frame);
+        h.document.body.appendChild(wrapper);
+        h.context.globalThis = h.context;
+        vm.runInNewContext(scriptContents, h.context, { filename: scriptPath });
+        const button = wrapper.querySelector('.tm-fullscreen-game-view-button');
+        assert(button && button.classList.contains('tm-fullscreen-game-view-button-inset'));
+        assert.equal(button.style.top, '4px');
+        assert.equal(button.style.left, '308px');
+    });
+
     test('Nieman Lab advertising iframe is not treated as a playable media surface', () => {
         const url = 'https://www.niemanlab.org/2026/11/ai-is-becoming-an-information-gateway-audiences-still-dont-want-it-making-their-news/';
         const harness = createHarness({ url });
