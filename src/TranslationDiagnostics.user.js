@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-21_1.2.1
+// @version      2026-11-23_1.2.2
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,7 +19,7 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-21_1.2.1';
+    const VERSION = '2026-11-23_1.2.2';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
@@ -269,11 +269,11 @@
         if (host.querySelector('#tm-webdiag-toggle')) return;
         const css = document.createElement('style');
         css.textContent = [
-            '#tm-webdiag-host{all:initial!important;position:fixed!important;bottom:10px!important;left:8px!important;z-index:2147483647!important;pointer-events:none!important}',
+            '#tm-webdiag-host{all:initial!important;position:fixed!important;bottom:10px!important;left:8px!important;max-width:calc(100vw - 16px)!important;z-index:2147483647!important;pointer-events:none!important}',
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
             '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:7px 10px!important;margin:3px!important;cursor:pointer!important}',
-            '#tm-webdiag-panel{position:absolute!important;bottom:calc(100% + 7px)!important;left:0!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 20px))!important;height:min(82dvh,600px)!important;max-height:calc(100dvh - 80px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
+            '#tm-webdiag-panel{position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 16px))!important;height:min(72dvh,560px)!important;max-height:calc(100dvh - 90px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
             '#tm-webdiag-panel[hidden]{display:none!important}',
             '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:sticky!important;top:-10px!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
             '#tm-webdiag-close{margin:0!important;padding:4px 9px!important;white-space:nowrap!important}',
@@ -287,7 +287,7 @@
             '#tm-webdiag-actions{display:flex!important;flex-wrap:wrap!important;gap:4px!important}',
             '#tm-webdiag-actions button{flex:1 1 130px!important}',
             '#tm-webdiag-pairing[hidden]{display:none!important}',
-            '#tm-webdiag-result{display:none!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:5px 8px!important;max-width:min(320px,calc(100vw - 20px))!important}',
+            '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
         ].join('\n');
         host.appendChild(css);
@@ -377,10 +377,18 @@
             pairing.style.setProperty('display', visible ? 'block' : 'none', 'important');
         };
         onResult = message => {
+            // The full report ID is always available in the panel status.
+            // A second full-width result below the panel created a duplicate
+            // mobile banner and could overflow the viewport.
             status.textContent = message;
-            result.textContent = message;
-            result.dataset.visible = 'true';
+            result.textContent = message.startsWith('已送出')
+                ? '報告已送出，點選「已送出」查看編號'
+                : '回報結果已更新，點選「回報」查看';
+            result.dataset.visible = panel.hidden ? 'true' : 'false';
             toggle.textContent = message.startsWith('已送出') ? '已送出' : '回報';
+            if (result.dataset.visible === 'true') {
+                setTimeout(() => { result.dataset.visible = 'false'; }, 6000);
+            }
         };
         if (latestResult) onResult(latestResult);
         async function refreshPairing() {
