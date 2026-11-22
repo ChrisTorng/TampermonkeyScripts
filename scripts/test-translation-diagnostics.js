@@ -220,9 +220,9 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     const panel = h.document.getElementById('tm-webdiag-panel');
     const toast = h.document.getElementById('tm-webdiag-result');
     const css = host.children.find(child => child.tagName === 'STYLE').textContent;
-    assert.match(css, /#tm-webdiag-panel\\{position:fixed!important/);
-    assert.match(css, /#tm-webdiag-result\\{display:none!important;position:fixed!important/);
-    assert.match(css, /max-width:calc\\(100vw - 16px\\)/);
+    assert.ok(css.includes('#tm-webdiag-panel{position:fixed!important'));
+    assert.ok(css.includes('#tm-webdiag-result{display:none!important;position:fixed!important'));
+    assert.ok(css.includes('max-width:calc(100vw - 16px)'));
     toggle.click();
     await Promise.resolve();
     await Promise.resolve();
