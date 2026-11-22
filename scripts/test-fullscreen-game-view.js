@@ -166,6 +166,7 @@ describe('Fullscreen control must not modify unrelated article widgets', () => {
         h.dispatchDocumentEvent('fullscreenchange');
         const b = addClip(500);
         h.triggerMutation([b.video]);
+        h.flushAnimationFrames();
         assert(b.wrapper.querySelector('.tm-fullscreen-game-view-button'),
             'Late-inserted HTML5 videos should get their own control.');
         assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 2);
