@@ -212,3 +212,27 @@ test('report panel can be recovered if a site removes the control', () => {
     assert.equal(recoveredPanel.hidden, true);
     assert.equal(recoveredPanel.style.getPropertyValue('display'), 'none');
 });
+
+test('mobile report panel and success toast are fixed to viewport and never duplicate', async () => {
+    const { h } = run('https://christorng.idv.tw/notes/editor/');
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    const host = h.document.getElementById('tm-webdiag-host');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const toast = h.document.getElementById('tm-webdiag-result');
+    const css = host.children.find(child => child.tagName === 'STYLE').textContent;
+    assert.match(css, /#tm-webdiag-panel\\{position:fixed!important/);
+    assert.match(css, /#tm-webdiag-result\\{display:none!important;position:fixed!important/);
+    assert.match(css, /max-width:calc\\(100vw - 16px\\)/);
+    toggle.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
+    submit.click();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(panel.hidden, false);
+    assert.equal(toast.dataset.visible, 'false', 'Do not display a second status outside the open panel');
+    assert.match(h.document.getElementById('tm-webdiag-footer').querySelector('[data-status]').textContent, /已送出報告/);
+    assert.equal(toggle.textContent, '已送出');
+});
