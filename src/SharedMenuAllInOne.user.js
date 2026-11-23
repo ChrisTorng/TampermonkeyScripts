@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-23_1.0.0
+// @version      2026-11-23_1.0.1
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -41,9 +41,11 @@
         return matches.some(pattern => matchesPattern(pattern, url))
             && !excludes.some(pattern => matchesPattern(pattern, url));
     }
+    const __tmOriginalGMInfo = typeof GM_info === "undefined" ? null : GM_info;
     // BEGIN BUNDLED AllGoInternetArchive
     if (applies(["*://*/*"], ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*","*://hackernews.betacat.io/*","*://*.hackernews.betacat.io/*","*://theneurondaily.com/*","*://*.theneurondaily.com/*","*://tam.gov.taipei/*","*://*.tam.gov.taipei/*","*://wiwi.*/*","*://*.wiwi.*/*","*://*.kagi.com/*","*://kagi.com/*","*://chatgpt.com/*","*://*.chatgpt.com/*","*://christorng.github.io/*","*://github.com/*","*://*.github.com/*","*://discord.com/*","*://*.discord.com/*","*://ebird.org/*","*://*.ebird.org/*","*://newsminimalist.com/*","*://*.newsminimalist.com/*","*://*ycombinator.com/*","*://huggingface.co/*","*://*.huggingface.co/*","*://youtube.com/*","*://*.youtube.com/*","*://x.com/*","*://*.x.com/*","*://nitter.net/*","*://*.nitter.net/*","*://bing.com/*","*://*.bing.com/*","*://wikipedia.org/*","*://*.wikipedia.org/*","*://reddit.com/*","*://*.reddit.com/*","*://arxiv.org/*","*://*.arxiv.org/*","*://cht.com.tw/*","*://*.cht.com.tw/*","*://*.vercel.app/*","*://vercel.app/*","*://openai.com/*","*://*.openai.com/*","*://anthropic.com/*","*://*.anthropic.com/*","*://claude.ai/*","*://*.claude.ai/*","*://google.com/*","*://*.google.com/*","*://facebook.com/*","*://*.facebook.com/*","*://*.cwa.gov.tw/*","*://cwa.gov.tw/*","*://chrisrtxubuntu:*/*","*://microsoft.com/*","*://*.microsoft.com/*","*://instagram.com/*","*://*.instagram.com/*"])) {
         try {
+        const GM_info = __tmOriginalGMInfo ? Object.assign({}, __tmOriginalGMInfo, { script: Object.assign({}, __tmOriginalGMInfo.script, { matches: ["*://*/*"], excludes: ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*","*://hackernews.betacat.io/*","*://*.hackernews.betacat.io/*","*://theneurondaily.com/*","*://*.theneurondaily.com/*","*://tam.gov.taipei/*","*://*.tam.gov.taipei/*","*://wiwi.*/*","*://*.wiwi.*/*","*://*.kagi.com/*","*://kagi.com/*","*://chatgpt.com/*","*://*.chatgpt.com/*","*://christorng.github.io/*","*://github.com/*","*://*.github.com/*","*://discord.com/*","*://*.discord.com/*","*://ebird.org/*","*://*.ebird.org/*","*://newsminimalist.com/*","*://*.newsminimalist.com/*","*://*ycombinator.com/*","*://huggingface.co/*","*://*.huggingface.co/*","*://youtube.com/*","*://*.youtube.com/*","*://x.com/*","*://*.x.com/*","*://nitter.net/*","*://*.nitter.net/*","*://bing.com/*","*://*.bing.com/*","*://wikipedia.org/*","*://*.wikipedia.org/*","*://reddit.com/*","*://*.reddit.com/*","*://arxiv.org/*","*://*.arxiv.org/*","*://cht.com.tw/*","*://*.cht.com.tw/*","*://*.vercel.app/*","*://vercel.app/*","*://openai.com/*","*://*.openai.com/*","*://anthropic.com/*","*://*.anthropic.com/*","*://claude.ai/*","*://*.claude.ai/*","*://google.com/*","*://*.google.com/*","*://facebook.com/*","*://*.facebook.com/*","*://*.cwa.gov.tw/*","*://cwa.gov.tw/*","*://chrisrtxubuntu:*/*","*://microsoft.com/*","*://*.microsoft.com/*","*://instagram.com/*","*://*.instagram.com/*"] }) }) : undefined;
 
 
 (function() {
@@ -771,6 +773,7 @@
     // BEGIN BUNDLED InternetArchive
     if (applies(["https://web.archive.org/*","https://fortune.com/*","https://nautil.us/*","https://www.australiangeographic.com.au/*","https://www.bbc.com/*","https://www.cnbc.com/*","https://www.lrb.co.uk/*","https://www.scientificamerican.com/*","https://www.rawstory.com/*","https://www.scmp.com/*","https://www.smh.com.au/*","https://www.thetimes.com/*","https://www.theverge.com/*","https://www.washingtonpost.com/*"], ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*"])) {
         try {
+        const GM_info = __tmOriginalGMInfo ? Object.assign({}, __tmOriginalGMInfo, { script: Object.assign({}, __tmOriginalGMInfo.script, { matches: ["https://web.archive.org/*","https://fortune.com/*","https://nautil.us/*","https://www.australiangeographic.com.au/*","https://www.bbc.com/*","https://www.cnbc.com/*","https://www.lrb.co.uk/*","https://www.scientificamerican.com/*","https://www.rawstory.com/*","https://www.scmp.com/*","https://www.smh.com.au/*","https://www.thetimes.com/*","https://www.theverge.com/*","https://www.washingtonpost.com/*"], excludes: ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*"] }) }) : undefined;
 
 
 (function () {
@@ -1372,6 +1375,7 @@
     // BEGIN BUNDLED ForceMobileView
     if (applies(["https://news.ycombinator.com/item?*","https://archive.is/*","https://paulbourke.net/*","https://www.paulbourke.net/*","*://*/*"], ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*","*://hackernews.betacat.io/*","*://*.hackernews.betacat.io/*","*://theneurondaily.com/*","*://*.theneurondaily.com/*","*://tam.gov.taipei/*","*://*.tam.gov.taipei/*","*://wiwi.*/*","*://*.wiwi.*/*","*://*.kagi.com/*","*://kagi.com/*","*://chatgpt.com/*","*://*.chatgpt.com/*","*://christorng.github.io/*","*://github.com/*","*://*.github.com/*","*://discord.com/*","*://*.discord.com/*","*://ebird.org/*","*://*.ebird.org/*","*://newsminimalist.com/*","*://*.newsminimalist.com/*","*://huggingface.co/*","*://*.huggingface.co/*","*://youtube.com/*","*://*.youtube.com/*","*://x.com/*","*://*.x.com/*","*://nitter.net/*","*://*.nitter.net/*","*://bing.com/*","*://*.bing.com/*","*://wikipedia.org/*","*://*.wikipedia.org/*","*://reddit.com/*","*://*.reddit.com/*","*://arxiv.org/*","*://*.arxiv.org/*","*://cht.com.tw/*","*://*.cht.com.tw/*","*://openai.com/*","*://*.openai.com/*","*://anthropic.com/*","*://*.anthropic.com/*","*://claude.ai/*","*://*.claude.ai/*","*://google.com/*","*://*.google.com/*","*://facebook.com/*","*://*.facebook.com/*","*://*.cwa.gov.tw/*","*://cwa.gov.tw/*","*://chrisrtxubuntu:*/*","*://microsoft.com/*","*://*.microsoft.com/*","*://instagram.com/*","*://*.instagram.com/*"])) {
         try {
+        const GM_info = __tmOriginalGMInfo ? Object.assign({}, __tmOriginalGMInfo, { script: Object.assign({}, __tmOriginalGMInfo.script, { matches: ["https://news.ycombinator.com/item?*","https://archive.is/*","https://paulbourke.net/*","https://www.paulbourke.net/*","*://*/*"], excludes: ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*","*://hackernews.betacat.io/*","*://*.hackernews.betacat.io/*","*://theneurondaily.com/*","*://*.theneurondaily.com/*","*://tam.gov.taipei/*","*://*.tam.gov.taipei/*","*://wiwi.*/*","*://*.wiwi.*/*","*://*.kagi.com/*","*://kagi.com/*","*://chatgpt.com/*","*://*.chatgpt.com/*","*://christorng.github.io/*","*://github.com/*","*://*.github.com/*","*://discord.com/*","*://*.discord.com/*","*://ebird.org/*","*://*.ebird.org/*","*://newsminimalist.com/*","*://*.newsminimalist.com/*","*://huggingface.co/*","*://*.huggingface.co/*","*://youtube.com/*","*://*.youtube.com/*","*://x.com/*","*://*.x.com/*","*://nitter.net/*","*://*.nitter.net/*","*://bing.com/*","*://*.bing.com/*","*://wikipedia.org/*","*://*.wikipedia.org/*","*://reddit.com/*","*://*.reddit.com/*","*://arxiv.org/*","*://*.arxiv.org/*","*://cht.com.tw/*","*://*.cht.com.tw/*","*://openai.com/*","*://*.openai.com/*","*://anthropic.com/*","*://*.anthropic.com/*","*://claude.ai/*","*://*.claude.ai/*","*://google.com/*","*://*.google.com/*","*://facebook.com/*","*://*.facebook.com/*","*://*.cwa.gov.tw/*","*://cwa.gov.tw/*","*://chrisrtxubuntu:*/*","*://microsoft.com/*","*://*.microsoft.com/*","*://instagram.com/*","*://*.instagram.com/*"] }) }) : undefined;
 
 
 (function () {
@@ -2817,6 +2821,7 @@
     // BEGIN BUNDLED ForceDarkMode
     if (applies(["https://www.lesswrong.com/*","*://*/*"], ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*","*://hackernews.betacat.io/*","*://*.hackernews.betacat.io/*","*://theneurondaily.com/*","*://*.theneurondaily.com/*","*://tam.gov.taipei/*","*://*.tam.gov.taipei/*","*://wiwi.*/*","*://*.wiwi.*/*","*://*.kagi.com/*","*://kagi.com/*","*://chatgpt.com/*","*://*.chatgpt.com/*","*://christorng.github.io/*","*://github.com/*","*://*.github.com/*","*://discord.com/*","*://*.discord.com/*","*://ebird.org/*","*://*.ebird.org/*","*://newsminimalist.com/*","*://*.newsminimalist.com/*","*://*ycombinator.com/*","*://huggingface.co/*","*://*.huggingface.co/*","*://youtube.com/*","*://*.youtube.com/*","*://x.com/*","*://*.x.com/*","*://nitter.net/*","*://*.nitter.net/*","*://bing.com/*","*://*.bing.com/*","*://wikipedia.org/*","*://*.wikipedia.org/*","*://reddit.com/*","*://*.reddit.com/*","*://arxiv.org/*","*://*.arxiv.org/*","*://cht.com.tw/*","*://*.cht.com.tw/*","*://*.vercel.app/*","*://vercel.app/*","*://openai.com/*","*://*.openai.com/*","*://anthropic.com/*","*://*.anthropic.com/*","*://claude.ai/*","*://*.claude.ai/*","*://google.com/*","*://*.google.com/*","*://facebook.com/*","*://*.facebook.com/*","*://*.cwa.gov.tw/*","*://cwa.gov.tw/*","*://chrisrtxubuntu:*/*","*://microsoft.com/*","*://*.microsoft.com/*","*://instagram.com/*","*://*.instagram.com/*"])) {
         try {
+        const GM_info = __tmOriginalGMInfo ? Object.assign({}, __tmOriginalGMInfo, { script: Object.assign({}, __tmOriginalGMInfo.script, { matches: ["https://www.lesswrong.com/*","*://*/*"], excludes: ["*://christorng.idv.tw/*","*://*.christorng.idv.tw/*","*://hackernews.betacat.io/*","*://*.hackernews.betacat.io/*","*://theneurondaily.com/*","*://*.theneurondaily.com/*","*://tam.gov.taipei/*","*://*.tam.gov.taipei/*","*://wiwi.*/*","*://*.wiwi.*/*","*://*.kagi.com/*","*://kagi.com/*","*://chatgpt.com/*","*://*.chatgpt.com/*","*://christorng.github.io/*","*://github.com/*","*://*.github.com/*","*://discord.com/*","*://*.discord.com/*","*://ebird.org/*","*://*.ebird.org/*","*://newsminimalist.com/*","*://*.newsminimalist.com/*","*://*ycombinator.com/*","*://huggingface.co/*","*://*.huggingface.co/*","*://youtube.com/*","*://*.youtube.com/*","*://x.com/*","*://*.x.com/*","*://nitter.net/*","*://*.nitter.net/*","*://bing.com/*","*://*.bing.com/*","*://wikipedia.org/*","*://*.wikipedia.org/*","*://reddit.com/*","*://*.reddit.com/*","*://arxiv.org/*","*://*.arxiv.org/*","*://cht.com.tw/*","*://*.cht.com.tw/*","*://*.vercel.app/*","*://vercel.app/*","*://openai.com/*","*://*.openai.com/*","*://anthropic.com/*","*://*.anthropic.com/*","*://claude.ai/*","*://*.claude.ai/*","*://google.com/*","*://*.google.com/*","*://facebook.com/*","*://*.facebook.com/*","*://*.cwa.gov.tw/*","*://cwa.gov.tw/*","*://chrisrtxubuntu:*/*","*://microsoft.com/*","*://*.microsoft.com/*","*://instagram.com/*","*://*.instagram.com/*"] }) }) : undefined;
 
 
 (function () {
@@ -3521,6 +3526,7 @@
     // BEGIN BUNDLED TranslatePreformattedText
     if (applies(["*://*/*"], ["*://*.christorng.idv.tw/*"])) {
         try {
+        const GM_info = __tmOriginalGMInfo ? Object.assign({}, __tmOriginalGMInfo, { script: Object.assign({}, __tmOriginalGMInfo.script, { matches: ["*://*/*"], excludes: ["*://*.christorng.idv.tw/*"] }) }) : undefined;
 
 
 (function () {
@@ -5564,7 +5570,7 @@
     // A single small official-main metadata check on each top-level page load.
     // Never reload the document, and never fetch unmerged PR branches.
     if (window === window.top && typeof GM_xmlhttpRequest === 'function') {
-        const installedVersion = "2026-11-23_1.0.0";
+        const installedVersion = "2026-11-23_1.0.1";
         const installUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js";
         const metaUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js";
         function isNewer(next, installed) {
