@@ -27,6 +27,8 @@ test('the bundle and metadata match all canonical source files', () => {
     assert(!meta.includes('@grant'), 'small metadata file contains version and source only');
     for (const name of names) {
         assert(bundle.includes('// BEGIN BUNDLED ' + name), 'missing ' + name);
+        assert(bundle.includes('        const GM_info = __tmOriginalGMInfo ? Object.assign('),
+            'original per-script GM_info metadata must be preserved');
     }
 });
 
