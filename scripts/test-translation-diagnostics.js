@@ -236,3 +236,27 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     assert.match(h.document.getElementById('tm-webdiag-footer').querySelector('[data-status]').textContent, /已送出報告/);
     assert.equal(toggle.textContent, '已送出');
 });
+
+test('archive.is report UI counter-scales on a shrunk desktop page and restores at scale one', () => {
+    const { h } = run('https://archive.is/R5XUn', h => {
+        h.window.visualViewport.scale = 0.4;
+        h.window.visualViewport.width = 900;
+        h.window.visualViewport.height = 1500;
+    });
+    const host = h.document.getElementById('tm-webdiag-host');
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const result = h.document.getElementById('tm-webdiag-result');
+    assert.equal(host.style.getPropertyValue('bottom'), '25px');
+    assert.equal(toggle.style.getPropertyValue('transform'), 'scale(2.5)');
+    assert.equal(panel.style.getPropertyValue('transform'), 'scale(2.5)');
+    assert.equal(panel.style.getPropertyValue('width'), '336px');
+    assert.equal(panel.style.getPropertyValue('height'), '420px');
+    assert.equal(result.style.getPropertyValue('transform'), 'scale(2.5)');
+    assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
+    h.window.visualViewport.scale = 1;
+    h.dispatchVisualViewportEvent('resize');
+    assert.equal(toggle.style.getPropertyValue('transform'), '');
+    assert.equal(panel.style.getPropertyValue('transform'), '');
+    assert.equal(panel.style.getPropertyValue('width'), '');
+});

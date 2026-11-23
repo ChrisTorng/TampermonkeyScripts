@@ -52,6 +52,11 @@ describe('shared floating menu', () => {
         assert.equal(harness.document.querySelectorAll('#tm-shared-floating-menu').length, 1);
         assert.equal(menu.hidden, false);
         assert.equal(toggle.textContent, '≡');
+        const glyphStyle = harness.document.getElementById('tm-shared-floating-menu-style').textContent;
+        assert(glyphStyle.includes('[data-floating-toggle]::before'));
+        assert(glyphStyle.includes('box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor'));
+        assert(glyphStyle.includes('[data-floating-close]::after'));
+        assert(glyphStyle.includes('text-size-adjust: none !important'));
         assert.equal(toggle.getAttribute('aria-expanded'), 'false');
         assert.equal(close.hidden, true);
         assert.deepEqual(menuTools(harness).map((button) => button.getAttribute('data-floating-tool')), ['archive', 'mobile', 'dark', 'translate']);
