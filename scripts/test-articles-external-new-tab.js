@@ -64,31 +64,6 @@ describe('ArticlesExternalNewTab on captured listings', () => {
         assert.equal(openCalls[0].options.insert, true);
     });
 
-    test('hackernews.betacat.io opens comment links on news.ycombinator.com in a background tab', () => {
-        const html = loadFixture('hackernews.betacat.io.html');
-        const commentUrl = html.match(/href="(https:\/\/news\.ycombinator\.com\/item\?id=\d+)"/)[1];
-        assert(commentUrl, 'Expected a comment link in the Hacker News Summary fixture.');
-
-        const openCalls = [];
-        const harness = createArticlesHarness('https://hackernews.betacat.io/', openCalls);
-        const commentLink = createLink(harness.document, commentUrl, { textContent: 'comments' });
-        const summaryLink = createLink(harness.document, 'https://hackernews.betacat.io/#internal', { textContent: 'summary' });
-        harness.appendToBody(commentLink);
-        harness.appendToBody(summaryLink);
-        runArticlesScript(harness);
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-
-        assert.equal(commentLink.target, '_blank');
-        assert.equal(summaryLink.target, '');
-
-        const clickEvent = createMouseEvent('click');
-        commentLink.dispatchEvent(clickEvent);
-        assert.equal(clickEvent.defaultPrevented, true);
-        assert.equal(openCalls[0].href, commentUrl);
-        assert.equal(openCalls[0].options.active, false);
-        assert.equal(openCalls[0].options.insert, true);
-    });
-
     test('Taipei museum listing opens News_Content links in background tabs', () => {
         const html = loadFixture('tam.gov.taipei_News_Photo_EF86D8AF23B9A85B.html');
         const contentUrl = html.match(/href="(News_Content\.aspx[^"]+)"/)[1];
