@@ -15,6 +15,7 @@ const meta = fs.readFileSync(path.join(root, 'src', 'SharedMenuAllInOne.meta.js'
 const version = bundle.match(/^\/\/ @version\s+(\S+)$/m)[1];
 
 test('the bundle and metadata match all canonical source files', () => {
+    assert.doesNotThrow(() => new vm.Script(bundle), 'generated combined script must parse as JavaScript');
     const files = Object.fromEntries(names.map(name => [
         name, fs.readFileSync(path.join(root, 'src', name + '.user.js'), 'utf8')
     ]));
