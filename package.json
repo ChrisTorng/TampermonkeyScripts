@@ -5,6 +5,8 @@
   "description": "Utility scripts for the TampermonkeyScripts repository.",
   "scripts": {
     "generate:index": "node scripts/generate-index.js",
+    "build:all-in-one": "node scripts/build-shared-menu-all-in-one.js --bump",
+    "check:all-in-one": "node scripts/build-shared-menu-all-in-one.js --check",
     "test:redirect-urls": "node scripts/test-redirect-urls.js",
     "test:archive-redirects": "node --test tests/archive-redirects.test.js"
   },
