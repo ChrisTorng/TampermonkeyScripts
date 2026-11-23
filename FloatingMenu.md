@@ -23,6 +23,12 @@ The one-click update entry page is `tests/SharedFloatingMenuUpdates/index.html`,
 
 Site storage is scoped by browser origin. Page and folder exclusions apply within that origin; HTTP and HTTPS or different subdomains have separate browser storage.
 
+## One-install distribution
+
+`src/SharedMenuAllInOne.user.js` is generated from the five canonical standalone scripts by `node scripts/build-shared-menu-all-in-one.js --bump`. It embeds each original script in its own try/catch and retains its `@match` and `@exclude` patterns through a runtime dispatcher; no `eval` or remote `@require` is used. The generated bundle uses the combined Tampermonkey grants, raw sandbox, and document-start timing. The CI build-check enforces source synchronization, and PR CI rejects content edits without version increments.
+
+Also generate `src/SharedMenuAllInOne.meta.js`: the bundle checks this small official-main metadata once per top-level page load and adds a ↥ action only when a newer version is detected, without page reload or persistent controls. Prefer disabling the standalone scripts when using the bundle. Device-level Android Edge visual/permission compatibility still requires testing.
+
 ## Maintenance
 
 Keep the five userscript descriptions aligned with their concise README entries, grouped first in both the descriptions and installation links. Bump each modified `.user.js` `@version` using the current date. When site-specific URL rules change, update `TestCases.md`. Run `node --test` after synchronizing the shared code.

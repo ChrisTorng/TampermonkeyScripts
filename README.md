@@ -4,6 +4,14 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 **[Current updates: install the changed scripts and verify them](CurrentUpdates.md)**
 
+## Single-install option — recommended for personal use
+
+### [Shared Floating Menu — All in One](https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js)
+
+Install **one** script to get all five floating-menu functions: archive shortcut, archive redirect, mobile readability, dark mode, and formatted-text translation. The bundled script is built from the same five standalone sources, preserving each script's matching/exclusion rules. **Disable** the five separate scripts in Tampermonkey before enabling the bundle to avoid duplicate controls and side effects; do not uninstall them, so existing script-specific settings remain available if you switch back. Shared per-site menu settings are still stored in site localStorage.
+
+On each top-level page load, the bundle checks the small [official main version metadata](https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js), never an unmerged PR. If a newer version exists, the ≡ handle is outlined and exposes ↥ inside its expanded menu. Tap ↥ to open the direct one-script update link in Edge. After upgrading, reload the content page; a short status label displays the installed version on first load of a new version. Tampermonkey's own automatic updates remain supported. An installer cannot silently click Tampermonkey's extension-owned Update button or close extension tabs.
+
 ## Shared floating-menu scripts — update together when the menu changes
 
 **Already installed?** Prefer Tampermonkey Dashboard → Settings → Userscript Update → a suitable Check Interval + **Automatic installation**. All five scripts already have `@version`, `@updateURL`, and `@downloadURL` pointing to `main`; published updates should require no manual install tabs. Reload the affected page after an update.
