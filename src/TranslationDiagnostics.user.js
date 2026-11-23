@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-23_1.2.2
+// @version      2026-11-24_1.2.3
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,7 +19,7 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-23_1.2.2';
+    const VERSION = '2026-11-24_1.2.3';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
@@ -257,6 +257,47 @@
         };
     }
 
+    // Compensate only the report UI for Edge's shrink-to-fit on desktop-width pages.
+    // Never alter the webpage or its viewport.
+    function fitDiagnosticViewport() {
+        const host = document.getElementById('tm-webdiag-host');
+        const toggle = host?.querySelector('#tm-webdiag-toggle');
+        const panel = host?.querySelector('#tm-webdiag-panel');
+        const result = host?.querySelector('#tm-webdiag-result');
+        if (!toggle || !panel || !result) return;
+        const vv = window.visualViewport;
+        const scale = Number.isFinite(vv?.scale) && vv.scale > 0 ? vv.scale : 1;
+        const zoom = scale < 0.9 ? Math.min(3.5, 1 / scale) : 1;
+        const actualWidth = (vv?.width || window.innerWidth) * scale;
+        const actualHeight = (vv?.height || window.innerHeight) * scale;
+        if (zoom === 1) {
+            for (const [el, props] of [
+                [host, ['left', 'bottom']],
+                [toggle, ['transform', 'transform-origin']],
+                [panel, ['transform', 'transform-origin', 'left', 'bottom', 'width', 'height']],
+                [result, ['transform', 'transform-origin', 'left', 'bottom', 'width']]
+            ]) for (const prop of props) el.style.removeProperty(prop);
+            return;
+        }
+        const set = (el, prop, value) => el.style.setProperty(prop, value, 'important');
+        const left = 8 * zoom;
+        set(host, 'left', left + 'px');
+        set(host, 'bottom', 10 * zoom + 'px');
+        set(toggle, 'transform', 'scale(' + zoom + ')');
+        set(toggle, 'transform-origin', 'bottom left');
+        set(panel, 'transform', 'scale(' + zoom + ')');
+        set(panel, 'transform-origin', 'bottom left');
+        set(panel, 'left', left + 'px');
+        set(panel, 'bottom', 60 * zoom + 'px');
+        set(panel, 'width', Math.max(180, Math.min(370, actualWidth - 24)) + 'px');
+        set(panel, 'height', Math.max(160, Math.min(560, actualHeight * 0.7)) + 'px');
+        set(result, 'transform', 'scale(' + zoom + ')');
+        set(result, 'transform-origin', 'bottom left');
+        set(result, 'left', left + 'px');
+        set(result, 'bottom', 60 * zoom + 'px');
+        set(result, 'width', Math.max(160, Math.min(310, actualWidth - 24)) + 'px');
+    }
+
     function installUI() {
         if (!document.documentElement) return;
         let host = document.getElementById('tm-webdiag-host');
@@ -266,7 +307,7 @@
             host.setAttribute('translate', 'no');
             document.documentElement.appendChild(host);
         }
-        if (host.querySelector('#tm-webdiag-toggle')) return;
+        if (host.querySelector('#tm-webdiag-toggle')) { fitDiagnosticViewport(); return; }
         const css = document.createElement('style');
         css.textContent = [
             '#tm-webdiag-host{all:initial!important;position:fixed!important;bottom:10px!important;left:8px!important;max-width:calc(100vw - 16px)!important;z-index:2147483647!important;pointer-events:none!important}',
@@ -466,6 +507,7 @@
             } finally { submit.disabled = false; }
         });
         close.addEventListener('click', () => { setPanelOpen(false); });
+        fitDiagnosticViewport();
     }
 
     function startAutomaticReport() {
@@ -509,6 +551,8 @@
         setTimeout(() => { void tick(); }, AUTO_MAX_WAIT_MS);
     }
 
+    window.visualViewport?.addEventListener('resize', fitDiagnosticViewport);
+    window.addEventListener('orientationchange', fitDiagnosticViewport);
     recordSnapshot('document-start');
     if (GM_getValue(START_KEY, false)) {
         GM_setValue(START_KEY, false);

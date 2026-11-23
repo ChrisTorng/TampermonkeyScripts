@@ -194,20 +194,33 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(button.getAttribute('aria-pressed'), 'false');
     });
 
-    test('toggle button disables and re-enables styles and minimum font size overrides', () => {
-        const { harness, textElement } = executeForceMobileView('https://archive.is/75aY9');
-        harness.dispatchDocumentEvent('DOMContentLoaded');
-
-        const button = harness.document.querySelector('[data-floating-tool="mobile"]');
-        button.click();
-        assert.equal(harness.document.getElementById('tm-force-width-style'), null);
-        assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), null);
-        assert.equal(button.getAttribute('aria-pressed'), 'false');
-
-        button.click();
-        assert(harness.document.getElementById('tm-force-width-style'));
-        assert.equal(textElement.getAttribute('data-tm-force-width-min-font'), 'true');
-        assert.equal(button.getAttribute('aria-pressed'), 'true');
+    test('archive snapshots keep their natural wrapper and manual mobile toggle', () => {
+        for (const url of ['https://archive.is/R5XUn', 'https://archive.ph/R5XUn', 'https://archive.is/75aY9']) {
+            const { harness, textElement } = executeForceMobileView(url, {
+                userAgent: 'Mozilla/5.0 (Linux; Android 16)',
+                setupBody(h) {
+                    for (let i = 0; i < 5; i++) {
+                        const paragraph = h.document.createElement('p');
+                        paragraph.textContent = 'This archive snapshot contains a long translated article and desktop toolbar that must not be auto-modified.';
+                        h.appendToBody(paragraph);
+                    }
+                },
+                computedStyle(el) { return {fontSize: el.style.getPropertyValue('font-size') || '9px', lineHeight:'11px'}; }
+            });
+            harness.dispatchDocumentEvent('DOMContentLoaded');
+            harness.runAllTimeouts();
+            harness.dispatchWindowEvent('load');
+            harness.runAllTimeouts();
+            const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+            assert.equal(button.getAttribute('aria-pressed'), 'false', url);
+            assert.equal(harness.document.getElementById('tm-force-width-style'), null, url);
+            assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null, url);
+            button.click();
+            assert(harness.document.getElementById('tm-force-width-style'));
+            assert.equal(button.getAttribute('aria-pressed'), 'true');
+            button.click();
+            assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+        }
     });
 
     test('excessive horizontal spacing is trimmed on enable and restored on disable', () => {
@@ -232,6 +245,8 @@ describe('ForceMobileView on captured pages', () => {
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const button = harness.document.querySelector('[data-floating-tool="mobile"]');
+        assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), null);
+        button.click(); // Manual opt-in only for archive snapshots.
 
         assert.equal(post.style.getPropertyValue('margin-left'), '0px');
         assert.equal(post.style.getPropertyValue('padding-left'), '2px');

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-21_2.1.16
+// @version      2026-11-24_2.1.18
 // @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -243,7 +243,13 @@
             #${FLOATING_MENU_ID} button:hover { background: rgba(0,0,0,.75) !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; }
+            #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 0 !important; line-height: 0 !important; }
+            #${FLOATING_MENU_ID} [data-floating-toggle]::before { content: '' !important; display: block !important; width: 20px !important; height: 2px !important; background: currentColor !important; box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor !important; }
+            #${FLOATING_MENU_ID} [data-floating-close] { font-size: 0 !important; line-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+            #${FLOATING_MENU_ID} [data-floating-close]::before, #${FLOATING_MENU_ID} [data-floating-close]::after { content: '' !important; position: absolute !important; width: 20px !important; height: 2px !important; background: currentColor !important; }
+            #${FLOATING_MENU_ID} [data-floating-close]::before { transform: rotate(45deg) !important; }
+            #${FLOATING_MENU_ID} [data-floating-close]::after { transform: rotate(-45deg) !important; }
+            #${FLOATING_MENU_ID} { -webkit-text-size-adjust: none !important; text-size-adjust: none !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] { position: absolute !important; top: 0 !important; right: 0 !important; width: min(290px, calc(100vw - 24px)) !important; box-sizing: border-box !important; margin: 0 !important; padding: 14px !important; border: 1px solid #777 !important; border-radius: 9px !important; box-shadow: 0 5px 18px rgba(0,0,0,.4) !important; background: #fff !important; color: #111 !important; font: 15px/1.4 system-ui,sans-serif !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] p { margin: 0 0 10px !important; padding: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] button { width: 100% !important; max-width: none !important; margin-top: 7px !important; background: #444 !important; color: #fff !important; }
@@ -679,6 +685,9 @@
 
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
+    // Archive snapshots contain an independent toolbar and captured-site document.
+    // Skip automatic reflow of the whole wrapper, but retain manual ↔ toggling.
+    const isArchiveSnapshot = /^archive\.(?:is|ph|today|md|li)$/i.test(location.hostname);
     // Raw .txt documents commonly arrive without a viewport and shrink every
     // 38px floating control to roughly 14 visible pixels on Android.
     const isPlainTextUrl = /\.txt$/i.test(location.pathname);
@@ -780,7 +789,7 @@
     // The automatic path deliberately avoids the legacy body * layout overrides.
     // A reversible viewport adjustment is only attempted for a scaled-down desktop layout.
     function mobileAutoEligible() {
-        if (isHackerNewsNonDiscussion()) return false;
+        if (isArchiveSnapshot || isHackerNewsNonDiscussion()) return false;
         if (!shouldEnforceMinFontSize() || !document.body || document.hidden) return false;
         const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
         return /Android/i.test(agent) || (!agent && window.innerWidth <= 1100);
@@ -1336,7 +1345,7 @@
     }
 
     function shouldAutoEnableForUrl() {
-        if (isHackerNewsNonDiscussion()) return false;
+        if (isArchiveSnapshot || isHackerNewsNonDiscussion()) return false;
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
             return false;
