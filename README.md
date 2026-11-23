@@ -100,7 +100,6 @@ Turn floating toolbars and sticky overlays into scrollable elements on:
 Open supported article links in background tabs with a ↗︎ indicator on:
 
 - [Hacker News](https://news.ycombinator.com/)
-- [Hacker News Summary](https://hackernews.betacat.io/)
 - [The Neuron Daily](https://www.theneurondaily.com/)
 - [Taipei Astronomical Museum News](https://tam.gov.taipei/)
 - [Wiwi Blog](https://wiwi.blog/blog/)
@@ -108,7 +107,7 @@ Open supported article links in background tabs with a ↗︎ indicator on:
 
 ### [Auto Open New Articles User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/AutoOpenNewArticles.user.js)
 
-Preserve Hacker News Summary reading controls and load times; show page-relative time-adjusted popularity on score and comment numbers.
+Open newly published articles from Taipei Astronomical Museum, The Neuron Daily and Wiwi Blog. BetaCats reading functionality now belongs to [blog-bookmarks](https://github.com/ChrisTorng/blog-bookmarks).
 
 ### [Coding Diff Optimizer User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/CodingOptimizer.user.js)
 
@@ -129,10 +128,6 @@ Toggle the current page between original and Google Translate with Ctrl+Alt+S.
 ### [YouTube Tools User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/YouTubeTools.user.js)
 
 Control YouTube playback speed and Android Edge fullscreen; rotate landscape embedded videos automatically.
-
-### [Better Mobile View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/BetterMobileView.user.js)
-
-Expand Hacker News Summary article images to full width in portrait mobile view.
 
 ### [Fullscreen Game View User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/FullscreenGameView.user.js)
 
@@ -205,3 +200,6 @@ Feel free to open an issue or submit a pull request if you encounter any bugs or
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+
+**BetaCats 專屬功能移交（2026-11-23）：** 日期導覽、已讀與收合、相對熱度、手機圖片排版與 BetaCats 外部背景分頁，已改由 [blog-bookmarks 的 BlogBookmarks.user.js](https://github.com/ChrisTorng/blog-bookmarks/blob/main/tampermonkey/BlogBookmarks.user.js) 維護。其他網站的通用腳本保留於本 Repo。
