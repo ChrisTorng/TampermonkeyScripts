@@ -8,7 +8,7 @@ Updated: 2026-11-21
 
 ## One-install shared floating menu — 2026-11-23
 
-- [Install Shared Floating Menu — All in One **2026-11-23_1.0.0**](src/SharedMenuAllInOne.user.js). Combines the existing archive, mobile, dark and formatted translation scripts without changing the five standalone versions. **Disable** those five before enabling this bundle; no uninstall is needed.
+- [Install Shared Floating Menu — All in One **2026-11-23_1.0.1**](src/SharedMenuAllInOne.user.js). Combines the existing archive, mobile, dark and formatted translation scripts without changing the five standalone versions. **Disable** those five before enabling this bundle; no uninstall is needed.
 - Every top-level page load checks a small [main metadata file](src/SharedMenuAllInOne.meta.js), outlining ≡ and showing ↥ only if a newer merged version is available. Tapping ↥ opens one installer tab. The first page load after a new installed version shows a short version status.
 - **Tests:** [Example article](https://example.org/) — one shared ≡, update menu quiet when current; [BBC](https://www.bbc.com/) — archive source rules preserved; [Xena WordPress](https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/) — mobile action remains and no reload loop. Android Edge still requires native validation.
 
