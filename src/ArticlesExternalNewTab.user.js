@@ -1,15 +1,14 @@
 // ==UserScript==
 // @name         Articles External Links New Tab
 // @namespace    http://tampermonkey.net/
-// @version      2026-08-29_2.1.6
-// @description  Open supported article links in background tabs with a ↗︎ indicator on Hacker News, Hacker News Summary, The Neuron Daily, Taipei Astronomical Museum News, Wiwi Blog, and Paul Bourke.
+// @version      2026-11-23_2.1.7
+// @description  Open supported article links in background tabs with a ↗︎ indicator on Hacker News, The Neuron Daily, Taipei Astronomical Museum News, Wiwi Blog, and Paul Bourke.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/ArticlesExternalNewTab.user.js
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=news.ycombinator.com
 // @match        https://news.ycombinator.com/*
-// @match        https://hackernews.betacat.io/*
 // @match        https://www.theneurondaily.com/*
 // @match        https://tam.gov.taipei/News_Photo.aspx*
 // @match        https://tam.gov.taipei/News_Link_pic.aspx*
@@ -89,20 +88,6 @@
 
         if (pageHost === 'news.ycombinator.com') {
             return !INTERNAL_HOSTS.has(url.hostname);
-        }
-
-        if (pageHost === 'hackernews.betacat.io') {
-            // External links (articles) should open in new tab
-            if (!INTERNAL_HOSTS.has(url.hostname) && url.hostname !== 'hackernews.betacat.io') {
-                return true;
-            }
-            // Author links and comment links on news.ycombinator.com should open in new tab
-            if (url.hostname === 'news.ycombinator.com') {
-                const isAuthorLink = url.pathname.startsWith('/user');
-                const isCommentLink = url.pathname.startsWith('/item');
-                return isAuthorLink || isCommentLink;
-            }
-            return false;
         }
 
         if (pageHost === 'www.theneurondaily.com') {

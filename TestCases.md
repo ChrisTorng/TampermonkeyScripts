@@ -81,7 +81,6 @@ Section note: the Wayback fallback → action uses the shared floating menu and 
 # ArticlesExternalNewTab
 Section note: automated tests inject the script and mock `GM_openInTab`.
 - https://news.ycombinator.com/ [CONTENT_CLASS: VALID_NON_ARTICLE_OR_LISTING]
-- https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 - https://www.theneurondaily.com/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; URL/link rule only)
 - https://www.theneurondaily.com/p/you-can-now-build-agents-and-apps-inside-chatgpt [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: LIMITED] (anti-bot sample; URL/link rule only)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801 [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
@@ -91,8 +90,6 @@ Section note: automated tests inject the script and mock `GM_openInTab`.
 
 # AutoOpenNewArticles
 Section note: automated tests inject the script and mock `GM_getValue`, `GM_setValue`, and `GM_openInTab`.
-- https://hackernews.betacat.io/#sort=time&order=asc [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (collapse/read controls, reload timestamps and navigation; popularity tests use captured markup and a mocked browser clock to verify numeric-only linear relative heat, independent page maxima, proportional differences and near-uniform pages; live browser colors require device validation)
-- https://hackernews.betacat.io/daily/2026-03-07 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (archive navigation remains date-scoped; popularity counts are legible but have no inferred live heat)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED]
 - https://www.theneurondaily.com/ [CONTENT_CLASS: INVALID_ANTI_BOT] [TEST_STATUS: AUTOMATED] (listing detection and new-item open flow validated with local DOM harness)
@@ -160,8 +157,6 @@ Section note: 20 DOM-harness tests cover detection, viewport, rollback, HN listi
 - https://steveblank.com/2026/04/09/nowhere-is-safe/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (line-height regression via DOM mocks)
 - https://paulbourke.net/geometry/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (URL auto-enable)
 
-# Better Mobile View
-- https://hackernews.betacat.io/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT]
 
 # Fullscreen Game View
 - https://www.anthropic.com/claude-fable-and-mythos-5-2 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (synthetic GIF-preview to YouTube iframe insertion for three players, iframe src changes, repeated swaps, individual fullscreen buttons, dimension relay, orientation and exit restoration are automated; actual Anthropic player DOM and Android Edge behavior need manual verification)

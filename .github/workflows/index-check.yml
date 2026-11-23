@@ -25,7 +25,7 @@ jobs:
         run: node --test scripts/test-userscript-version-bumps.js
       - name: Verify math translation strategy lab in headless Chrome
         run: node --test scripts/test-math-translation-strategies.js
-      - name: Test Hacker News article navigation and read states
+      - name: Test other-site article discovery and auto-open
         run: node --test scripts/test-auto-open-new-articles.js
       - name: Test mobile readability and Hacker News comment-only auto-enlargement
         run: node --test scripts/test-force-mobile-view.js

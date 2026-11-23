@@ -61,8 +61,6 @@ Grouped by content class first, then script section, then URLs.
   Path: [Archive Today/www.theatlantic.com_health_archive_2015_07_split-brain-research-sperry-gazzaniga_399290.html](Archive%20Today/www.theatlantic.com_health_archive_2015_07_split-brain-research-sperry-gazzaniga_399290.html)
 
 ### ArticlesExternalNewTab
-- https://hackernews.betacat.io/  
-  Path: [ArticlesExternalNewTab/hackernews.betacat.io.html](ArticlesExternalNewTab/hackernews.betacat.io.html)
 - https://tam.gov.taipei/News_Photo.aspx?n=EF86D8AF23B9A85B&sms=F32C4FF0AC5C2801  
   Path: [ArticlesExternalNewTab/tam.gov.taipei_News_Photo.aspx_n_EF86D8AF23B9A85B_sms_F32C4FF0AC5C2801.html](ArticlesExternalNewTab/tam.gov.taipei_News_Photo.aspx_n_EF86D8AF23B9A85B_sms_F32C4FF0AC5C2801.html)
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913&sms=2CF1F5E2E0B96411  
@@ -73,10 +71,6 @@ Grouped by content class first, then script section, then URLs.
   Path: [AutoOpenNewArticles/tam.gov.taipei_News_Photo.aspx_n_EF86D8AF23B9A85B.html](AutoOpenNewArticles/tam.gov.taipei_News_Photo.aspx_n_EF86D8AF23B9A85B.html)
 - https://tam.gov.taipei/News_Link_pic.aspx?n=B64052C7930D4913  
   Path: [AutoOpenNewArticles/tam.gov.taipei_News_Link_pic.aspx_n_B64052C7930D4913.html](AutoOpenNewArticles/tam.gov.taipei_News_Link_pic.aspx_n_B64052C7930D4913.html)
-
-### Better Mobile View
-- https://hackernews.betacat.io/  
-  Path: [Better Mobile View/hackernews.betacat.io.html](Better%20Mobile%20View/hackernews.betacat.io.html)
 
 ### Fix Floating Elements
 - https://whatisintelligence.antikythera.org/chapter-02/  
