@@ -69,6 +69,10 @@ jobs:
         env:
           CONTROL_BROWSER_BIN: google-chrome
         run: node --test scripts/test-update-tabs-browser.js
+      - name: Verify one-install bundle exactly matches the five standalone sources
+        run: node scripts/build-shared-menu-all-in-one.js --check
+      - name: Test generated bundle version, metadata and host routing
+        run: node --test scripts/test-shared-menu-all-in-one.js
       - name: Generate documentation pages
         run: npm run generate:index
       - name: Verify HTML outputs were produced
