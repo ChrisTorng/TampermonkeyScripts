@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-21_2.1.16
+// @version      2026-11-24_2.1.17
 // @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -679,6 +679,9 @@
 
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
+    // Archive snapshots contain an independent toolbar and captured-site document.
+    // Skip automatic reflow of the whole wrapper, but retain manual ↔ toggling.
+    const isArchiveSnapshot = /^archive\.(?:is|ph|today|md|li)$/i.test(location.hostname);
     // Raw .txt documents commonly arrive without a viewport and shrink every
     // 38px floating control to roughly 14 visible pixels on Android.
     const isPlainTextUrl = /\.txt$/i.test(location.pathname);
@@ -780,7 +783,7 @@
     // The automatic path deliberately avoids the legacy body * layout overrides.
     // A reversible viewport adjustment is only attempted for a scaled-down desktop layout.
     function mobileAutoEligible() {
-        if (isHackerNewsNonDiscussion()) return false;
+        if (isArchiveSnapshot || isHackerNewsNonDiscussion()) return false;
         if (!shouldEnforceMinFontSize() || !document.body || document.hidden) return false;
         const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent || '';
         return /Android/i.test(agent) || (!agent && window.innerWidth <= 1100);
@@ -1336,7 +1339,7 @@
     }
 
     function shouldAutoEnableForUrl() {
-        if (isHackerNewsNonDiscussion()) return false;
+        if (isArchiveSnapshot || isHackerNewsNonDiscussion()) return false;
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
             return false;
