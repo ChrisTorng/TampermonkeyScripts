@@ -84,7 +84,8 @@ function renderBundle(version, files, updateRuntime) {
         '        const url = location.href;',
         '        return matches.some(pattern => matchesPattern(pattern, url))',
         '            && !excludes.some(pattern => matchesPattern(pattern, url));',
-        '    }'
+        '    }',
+        '    const __tmOriginalGMInfo = typeof GM_info === "undefined" ? null : GM_info;'
     ];
     for (const name of names) {
         const source = files[name];
@@ -96,6 +97,9 @@ function renderBundle(version, files, updateRuntime) {
         out.push('    // BEGIN BUNDLED ' + name);
         out.push('    if (applies(' + JSON.stringify(meta.matches) + ', ' + JSON.stringify(meta.excludes) + ')) {');
         out.push('        try {');
+        // When the original script reads GM_info.script.matches, it must see
+        // its own metadata, not the bundle's catch-all @match pattern.
+        out.push('        const GM_info = __tmOriginalGMInfo ? Object.assign({}, __tmOriginalGMInfo, { script: Object.assign({}, __tmOriginalGMInfo.script, { matches: ' + JSON.stringify(meta.matches) + ', excludes: ' + JSON.stringify(meta.excludes) + ' }) }) : undefined;');
         out.push(source.slice(index + marker.length));
         out.push('        } catch (error) { console.error("SharedMenuAllInOne: ' + name + ' failed", error); }');
         out.push('    }');
