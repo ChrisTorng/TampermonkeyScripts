@@ -420,12 +420,6 @@ class BasicDocument extends BasicNode {
         return element;
     }
 
-    createElementNS(namespace, tagName) {
-        const element = this.createElement(tagName);
-        element.namespaceURI = namespace;
-        return element;
-    }
-
     createDocumentFragment() {
         const fragment = new BasicDocumentFragment();
         fragment.ownerDocument = this;
