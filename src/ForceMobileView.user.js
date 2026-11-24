@@ -1378,8 +1378,11 @@
         if (isArchiveSnapshot) {
             // Enable only capture URLs, not archive submission/search/navigation pages.
             const segment = location.pathname.split('/').filter(Boolean)[0] || '';
-            return (/^(?=.*[0-9])[A-Za-z0-9]{4,10}$/.test(segment)
-                || /^\\d{4}\\.\\d{2}\\.\\d{2}-/.test(segment));
+            const reserved = ['search', 'submit', 'faq', 'help', 'blog', 'login',
+                'settings', 'download', 'robots', 'sitemap', 'favicon'];
+            return ((/^[A-Za-z0-9]{4,10}$/.test(segment)
+                && !reserved.includes(segment.toLowerCase()))
+                || /^\d{4}\.\d{2}\.\d{2}-/.test(segment));
         }
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
