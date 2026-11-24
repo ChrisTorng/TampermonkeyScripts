@@ -119,9 +119,9 @@
             #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 0 !important; line-height: 0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-toggle]::before { content: '' !important; display: block !important; width: 20px !important; height: 2px !important; background: currentColor !important; box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor !important; }
+            #${FLOATING_MENU_ID} [data-floating-toggle]::before { content: '' !important; display: block !important; width: 20px !important; height: 2px !important; background: #f0f0f0 !important; box-shadow: 0 -6px 0 #f0f0f0, 0 6px 0 #f0f0f0 !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { font-size: 0 !important; line-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-            #${FLOATING_MENU_ID} [data-floating-close]::before, #${FLOATING_MENU_ID} [data-floating-close]::after { content: '' !important; position: absolute !important; width: 20px !important; height: 2px !important; background: currentColor !important; }
+            #${FLOATING_MENU_ID} [data-floating-close]::before, #${FLOATING_MENU_ID} [data-floating-close]::after { content: '' !important; position: absolute !important; width: 20px !important; height: 2px !important; background: #f0f0f0 !important; }
             #${FLOATING_MENU_ID} [data-floating-close]::before { transform: rotate(45deg) !important; }
             #${FLOATING_MENU_ID} [data-floating-close]::after { transform: rotate(-45deg) !important; }
             #${FLOATING_MENU_ID} { -webkit-text-size-adjust: none !important; text-size-adjust: none !important; }

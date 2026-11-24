@@ -54,7 +54,10 @@ describe('shared floating menu', () => {
         assert.equal(toggle.textContent, '≡');
         const glyphStyle = harness.document.getElementById('tm-shared-floating-menu-style').textContent;
         assert(glyphStyle.includes('[data-floating-toggle]::before'));
-        assert(glyphStyle.includes('box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor'));
+        assert(glyphStyle.includes('box-shadow: 0 -6px 0 #f0f0f0, 0 6px 0 #f0f0f0'));
+        assert(glyphStyle.includes('[data-floating-close]::after'));
+        assert(glyphStyle.includes('background: #f0f0f0 !important'));
+        assert(!glyphStyle.includes('background: currentColor !important'));
         assert(glyphStyle.includes('[data-floating-close]::after'));
         assert(glyphStyle.includes('text-size-adjust: none !important'));
         assert.equal(toggle.getAttribute('aria-expanded'), 'false');

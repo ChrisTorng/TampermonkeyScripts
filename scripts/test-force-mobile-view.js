@@ -194,37 +194,58 @@ describe('ForceMobileView on captured pages', () => {
         assert.equal(button.getAttribute('aria-pressed'), 'false');
     });
 
-    test('archive snapshots keep their natural wrapper and manual mobile toggle', () => {
+
+    test('archive snapshot defaults ON, enlarges #CONTENT only, and remains manually reversible', () => {
         for (const url of ['https://archive.is/R5XUn', 'https://archive.ph/R5XUn', 'https://archive.is/75aY9']) {
-            const { harness, textElement } = executeForceMobileView(url, {
+            const { harness, textElement, archiveContent, headerText, contentText } = executeForceMobileView(url, {
                 userAgent: 'Mozilla/5.0 (Linux; Android 16)',
                 setupBody(h) {
-                    for (let i = 0; i < 5; i++) {
-                        const paragraph = h.document.createElement('p');
-                        paragraph.textContent = 'This archive snapshot contains a long translated article and desktop toolbar that must not be auto-modified.';
-                        h.appendToBody(paragraph);
-                    }
-                },
-                computedStyle(el) { return {fontSize: el.style.getPropertyValue('font-size') || '9px', lineHeight:'11px'}; }
+                    h.window.visualViewport.scale = 0.4;
+                    h.document.documentElement.clientWidth = 1028;
+                    h.document.body.clientWidth = 1028;
+                    const header = h.document.createElement('div');
+                    header.id = 'HEADER';
+                    const headerText = h.document.createElement('span');
+                    headerText.textContent = 'Archive.today fixed source toolbar';
+                    header.appendChild(headerText);
+                    h.appendToBody(header);
+                    const archiveContent = h.document.createElement('div');
+                    archiveContent.id = 'CONTENT';
+                    const contentText = h.document.createElement('span');
+                    contentText.textContent = 'An archive article with a readable content body';
+                    archiveContent.appendChild(contentText);
+                    h.appendToBody(archiveContent);
+                    return { archiveContent, headerText, contentText };
+                }
             });
             harness.dispatchDocumentEvent('DOMContentLoaded');
-            harness.runAllTimeouts();
-            harness.dispatchWindowEvent('load');
-            harness.runAllTimeouts();
             const button = harness.document.querySelector('[data-floating-tool="mobile"]');
-            assert.equal(button.getAttribute('aria-pressed'), 'false', url);
-            assert.equal(harness.document.getElementById('tm-force-width-style'), null, url);
-            assert.equal(harness.document.getElementById('tm-force-mobile-auto-style'), null, url);
+            assert.equal(button.getAttribute('aria-pressed'), 'true', url);
+            const style = harness.document.getElementById('tm-force-width-style');
+            assert(style, url);
+            assert.match(style.textContent, /#CONTENT/);
+            assert.doesNotMatch(style.textContent, /body \*/);
+            assert.equal(headerText.getAttribute('data-tm-force-width-min-font'), null);
+            assert.equal(headerText.style.getPropertyValue('font-size'), '');
+            assert.equal(contentText.style.getPropertyValue('font-size'), '40px');
+            assert.equal(contentText.style.getPropertyValue('line-height'), '56px');
+            assert.equal(textElement.style.getPropertyValue('font-size'), '', 'Text outside #CONTENT must remain unchanged');
             button.click();
-            assert(harness.document.getElementById('tm-force-width-style'));
-            assert.equal(button.getAttribute('aria-pressed'), 'true');
-            button.click();
+            assert.equal(button.getAttribute('aria-pressed'), 'false');
             assert.equal(harness.document.getElementById('tm-force-width-style'), null);
+            assert.equal(contentText.style.getPropertyValue('font-size'), '');
+            button.click();
+            assert.equal(button.getAttribute('aria-pressed'), 'true');
+            assert.equal(contentText.style.getPropertyValue('font-size'), '40px');
+            harness.window.visualViewport.scale = 1;
+            harness.dispatchVisualViewportEvent('resize');
+            harness.runAllTimeouts();
+            assert.equal(contentText.style.getPropertyValue('font-size'), '16px');
         }
     });
 
     test('excessive horizontal spacing is trimmed on enable and restored on disable', () => {
-        const { harness, post } = executeForceMobileView('https://archive.is/75aY9', {
+        const { harness, post } = executeForceMobileView('https://news.ycombinator.com/item?id=46255285', {
             setupBody(harness) {
                 const post = harness.document.createElement('article');
                 post.id = 'post';
@@ -245,8 +266,7 @@ describe('ForceMobileView on captured pages', () => {
         harness.dispatchDocumentEvent('DOMContentLoaded');
 
         const button = harness.document.querySelector('[data-floating-tool="mobile"]');
-        assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), null);
-        button.click(); // Manual opt-in only for archive snapshots.
+        assert.equal(post.getAttribute('data-tm-force-width-spacing-trimmed'), 'true');
 
         assert.equal(post.style.getPropertyValue('margin-left'), '0px');
         assert.equal(post.style.getPropertyValue('padding-left'), '2px');
