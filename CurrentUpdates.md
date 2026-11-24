@@ -1,3 +1,8 @@
+## Mastodon early language detection — 2026-11-24
+
+- [Install Shared Floating Menu — All in One 2026-11-24_1.0.6](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-24_1.5.42](src/TranslatePreformattedText.user.js), not both. Use verified post-specific Open Graph locale before asynchronous content hydration; retain the existing post-body fallback.
+- **Test:** [GrapheneOS post](https://grapheneos.social/@GrapheneOS/117645038299496084) — reopen and verify whether native Edge translation now starts automatically; no changes to the diagnostic script.
+
 ## Mastodon language and report panel — 2026-11-24
 
 - [Install Shared Floating Menu — All in One 2026-11-24_1.0.5](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-24_1.5.41](src/TranslatePreformattedText.user.js) (not both) — repair a localized Mastodon document language when the primary English post loads.
