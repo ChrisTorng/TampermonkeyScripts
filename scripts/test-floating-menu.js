@@ -43,6 +43,41 @@ function menuTools(harness) {
 }
 
 describe('shared floating menu', () => {
+
+    test('newer script repairs legacy dark text icons and pseudo-elements in an existing menu', () => {
+        const h = createHarness({
+            url: 'https://archive.is/R5XUn',
+            readyState: 'loading',
+            gmInfo: { script: { matches: ['*://*/*'] } }
+        });
+        h.context.globalThis = h.context;
+        h.context.global = h.context;
+        // Simulate an outdated sibling installed before the updated shared script.
+        const root = h.document.createElement('div');
+        root.id = 'tm-shared-floating-menu';
+        const toggle = h.document.createElement('button');
+        toggle.setAttribute('data-floating-toggle', 'true');
+        toggle.textContent = '≡';
+        const close = h.document.createElement('button');
+        close.setAttribute('data-floating-close', 'true');
+        close.textContent = '×';
+        root.appendChild(toggle);
+        root.appendChild(close);
+        h.document.documentElement.appendChild(root);
+        const style = h.document.createElement('style');
+        style.id = 'tm-shared-floating-menu-style';
+        style.textContent = '#tm-shared-floating-menu [data-floating-toggle]::before { background: #333 !important; }';
+        h.document.head.appendChild(style);
+        vm.runInNewContext(source.mobile, h.context, { filename: files.mobile });
+        h.dispatchDocumentEvent('DOMContentLoaded');
+        assert.equal(root.getAttribute('data-floating-glyphs'), 'svg-v1');
+        assert.equal(toggle.textContent, '');
+        assert.equal(close.textContent, '');
+        assert.equal(toggle.querySelectorAll('[data-floating-svg-icon]').length, 1);
+        assert.equal(close.querySelectorAll('[data-floating-svg-icon]').length, 1);
+        assert(style.textContent.includes('tm-floating-svg-glyphs-v1'));
+        assert(style.textContent.includes('content: none !important; display: none !important'));
+    });
     test('one collapsed menu owns the four controls in a stable order', () => {
         const harness = run(['translate', 'dark', 'mobile', 'archive'], { pre: true });
         const menu = harness.document.getElementById('tm-shared-floating-menu');
@@ -51,7 +86,19 @@ describe('shared floating menu', () => {
         assert(menu);
         assert.equal(harness.document.querySelectorAll('#tm-shared-floating-menu').length, 1);
         assert.equal(menu.hidden, false);
-        assert.equal(toggle.textContent, '≡');
+        assert.equal(toggle.textContent, '');
+        assert.equal(close.textContent, '');
+        assert.equal(menu.getAttribute('data-floating-glyphs'), 'svg-v1');
+        const menuIcon = toggle.querySelector('[data-floating-svg-icon]');
+        const closeIcon = close.querySelector('[data-floating-svg-icon]');
+        assert.equal(menuIcon.getAttribute('viewBox'), '0 0 24 24');
+        assert.equal(closeIcon.getAttribute('viewBox'), '0 0 24 24');
+        for (const icon of [menuIcon, closeIcon]) {
+            const stroke = icon.querySelector('path');
+            assert.equal(stroke.style.getPropertyValue('stroke'), '#f0f0f0');
+            assert.equal(stroke.style.getPropertyPriority('stroke'), 'important');
+            assert.equal(stroke.style.getPropertyValue('fill'), 'none');
+        }
         const glyphStyle = harness.document.getElementById('tm-shared-floating-menu-style').textContent;
         assert(glyphStyle.includes('[data-floating-toggle]::before'));
         assert(glyphStyle.includes('box-shadow: 0 -6px 0 #f0f0f0, 0 6px 0 #f0f0f0'));
@@ -60,6 +107,8 @@ describe('shared floating menu', () => {
         assert(!glyphStyle.includes('background: currentColor !important'));
         assert(glyphStyle.includes('[data-floating-close]::after'));
         assert(glyphStyle.includes('text-size-adjust: none !important'));
+        assert(glyphStyle.includes('tm-floating-svg-glyphs-v1'));
+        assert(glyphStyle.includes('content: none !important; display: none !important'));
         assert.equal(toggle.getAttribute('aria-expanded'), 'false');
         assert.equal(close.hidden, true);
         assert.deepEqual(menuTools(harness).map((button) => button.getAttribute('data-floating-tool')), ['archive', 'mobile', 'dark', 'translate']);
