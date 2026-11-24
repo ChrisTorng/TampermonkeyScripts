@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-24_2.1.20
+// @version      2026-11-25_2.1.21
 // @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -227,70 +227,9 @@
         floatingMenuPositionDialog(root);
     }
 
-
-    // Do not rely on font glyphs or pseudo-elements for critical controls:
-    // archive snapshots and browser translation can override their styles.
-    // An SVG path with an explicit white stroke remains legible on the dark menu.
-    function floatingMenuEnsureIcons(root) {
-        const white = '#f0f0f0';
-        const namespace = 'http://www.w3.org/2000/svg';
-        const glyphs = [
-            ['data-floating-toggle', 'menu', 'M4 6H20 M4 12H20 M4 18H20'],
-            ['data-floating-close', 'close', 'M5 5L19 19 M19 5L5 19']
-        ];
-        root.setAttribute('data-floating-glyphs', 'svg-v1');
-        for (const [attribute, name, lines] of glyphs) {
-            const button = root.querySelector('[' + attribute + ']');
-            if (!button) continue;
-            if (button.querySelector('[data-floating-svg-icon]')) continue;
-            button.textContent = '';
-            const svg = document.createElementNS(namespace, 'svg');
-            svg.setAttribute('data-floating-svg-icon', name);
-            svg.setAttribute('viewBox', '0 0 24 24');
-            svg.setAttribute('aria-hidden', 'true');
-            svg.setAttribute('focusable', 'false');
-            svg.style.setProperty('display', 'block', 'important');
-            svg.style.setProperty('width', '22px', 'important');
-            svg.style.setProperty('height', '22px', 'important');
-            svg.style.setProperty('flex', '0 0 22px', 'important');
-            svg.style.setProperty('pointer-events', 'none', 'important');
-            const path = document.createElementNS(namespace, 'path');
-            path.setAttribute('d', lines);
-            path.setAttribute('stroke', white);
-            path.setAttribute('stroke-width', '2.6');
-            path.setAttribute('stroke-linecap', 'round');
-            path.setAttribute('fill', 'none');
-            path.style.setProperty('stroke', white, 'important');
-            path.style.setProperty('stroke-width', '2.6', 'important');
-            path.style.setProperty('fill', 'none', 'important');
-            svg.appendChild(path);
-            button.appendChild(svg);
-        }
-        // A newer script can attach to a menu created by an older installed script.
-        // Repair that style in-place; old script observers may reattach the same node.
-        const sheet = document.getElementById(FLOATING_MENU_ID + '-style');
-        const marker = '/* tm-floating-svg-glyphs-v1 */';
-        if (sheet && !sheet.textContent.includes(marker)) {
-            sheet.textContent += '\n' + marker + '\n' + [
-                '#' + FLOATING_MENU_ID + '[data-floating-glyphs="svg-v1"] [data-floating-toggle]::before,',
-                '#' + FLOATING_MENU_ID + '[data-floating-glyphs="svg-v1"] [data-floating-toggle]::after,',
-                '#' + FLOATING_MENU_ID + '[data-floating-glyphs="svg-v1"] [data-floating-close]::before,',
-                '#' + FLOATING_MENU_ID + '[data-floating-glyphs="svg-v1"] [data-floating-close]::after {',
-                '  content: none !important; display: none !important;',
-                '}',
-                '#' + FLOATING_MENU_ID + '[data-floating-glyphs="svg-v1"] [data-floating-toggle],',
-                '#' + FLOATING_MENU_ID + '[data-floating-glyphs="svg-v1"] [data-floating-close] {',
-                '  display: flex !important; align-items: center !important;',
-                '  justify-content: center !important; color: #f0f0f0 !important;',
-                '}'
-            ].join('\n');
-        }
-    }
-
     function floatingMenuRoot() {
         let root = document.getElementById(FLOATING_MENU_ID);
         if (root) {
-            floatingMenuEnsureIcons(root);
             return root;
         }
         const style = document.createElement('style');
@@ -304,13 +243,7 @@
             #${FLOATING_MENU_ID} button:hover { background: rgba(0,0,0,.75) !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 0 !important; line-height: 0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-toggle]::before { content: '' !important; display: block !important; width: 20px !important; height: 2px !important; background: #f0f0f0 !important; box-shadow: 0 -6px 0 #f0f0f0, 0 6px 0 #f0f0f0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-close] { font-size: 0 !important; line-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-            #${FLOATING_MENU_ID} [data-floating-close]::before, #${FLOATING_MENU_ID} [data-floating-close]::after { content: '' !important; position: absolute !important; width: 20px !important; height: 2px !important; background: #f0f0f0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-close]::before { transform: rotate(45deg) !important; }
-            #${FLOATING_MENU_ID} [data-floating-close]::after { transform: rotate(-45deg) !important; }
-            #${FLOATING_MENU_ID} { -webkit-text-size-adjust: none !important; text-size-adjust: none !important; }
+            #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] { position: absolute !important; top: 0 !important; right: 0 !important; width: min(290px, calc(100vw - 24px)) !important; box-sizing: border-box !important; margin: 0 !important; padding: 14px !important; border: 1px solid #777 !important; border-radius: 9px !important; box-shadow: 0 5px 18px rgba(0,0,0,.4) !important; background: #fff !important; color: #111 !important; font: 15px/1.4 system-ui,sans-serif !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] p { margin: 0 0 10px !important; padding: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-dialog] button { width: 100% !important; max-width: none !important; margin-top: 7px !important; background: #444 !important; color: #fff !important; }
@@ -357,7 +290,6 @@
         root.appendChild(close);
         root.appendChild(toggle);
         root.appendChild(dialog);
-        floatingMenuEnsureIcons(root);
         // Use document coordinates so pinch zoom does not anchor the menu to the visual viewport.
         document.documentElement.appendChild(root);
 
