@@ -247,16 +247,32 @@ test('archive.is report UI counter-scales on a shrunk desktop page and restores 
     const toggle = h.document.getElementById('tm-webdiag-toggle');
     const panel = h.document.getElementById('tm-webdiag-panel');
     const result = h.document.getElementById('tm-webdiag-result');
-    assert.equal(host.style.getPropertyValue('bottom'), '25px');
+    assert.equal(host.style.getPropertyValue('bottom'), (h.window.innerHeight - 1500 + 25) + 'px');
     assert.equal(toggle.style.getPropertyValue('transform'), 'scale(2.5)');
     assert.equal(panel.style.getPropertyValue('transform'), 'scale(2.5)');
-    assert.equal(panel.style.getPropertyValue('width'), '336px');
-    assert.equal(panel.style.getPropertyValue('height'), '420px');
-    assert.equal(result.style.getPropertyValue('transform'), 'scale(2.5)');
+    assert.equal(panel.style.getPropertyValue('width'), '344px');
+    assert.equal(panel.style.getPropertyValue('height'), '560px');
+    assert.notEqual(result.dataset.visible, 'true');
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
     h.dispatchVisualViewportEvent('resize');
-    assert.equal(toggle.style.getPropertyValue('transform'), '');
-    assert.equal(panel.style.getPropertyValue('transform'), '');
-    assert.equal(panel.style.getPropertyValue('width'), '');
+    assert.equal(toggle.style.getPropertyValue('transform'), 'none');
+    assert.equal(panel.style.getPropertyValue('transform'), 'none');
+    assert.equal(panel.style.getPropertyValue('width'), '370px');
+});
+
+test('narrow visual viewport keeps the report panel inside all four edges', () => {
+    const { h } = run('https://grapheneos.social/@GrapheneOS/117645038299496084', h => {
+        Object.assign(h.window.visualViewport, { width: 288, height: 439, scale: 1, offsetTop: 40, offsetLeft: 12 });
+    });
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const host = h.document.getElementById('tm-webdiag-host');
+    h.document.getElementById('tm-webdiag-toggle').click();
+    assert.equal(panel.style.getPropertyValue('top'), '48px');
+    assert.equal(panel.style.getPropertyValue('left'), '20px');
+    assert.equal(panel.style.getPropertyValue('width'), '272px');
+    assert.equal(panel.style.getPropertyValue('height'), '423px');
+    assert.equal(host.dataset.open, 'true');
+    h.document.getElementById('tm-webdiag-close').click();
+    assert.equal(host.dataset.open, 'false');
 });

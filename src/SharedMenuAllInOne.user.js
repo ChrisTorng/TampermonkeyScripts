@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-24_1.0.4
+// @version      2026-11-24_1.0.5
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -5088,6 +5088,27 @@
         if (!declaredLanguage || /^en(?:-|$)/i.test(declaredLanguage)) return;
 
         const pageKey = location.pathname + location.search;
+        // Mastodon localizes its application shell independently of the
+        // primary post. The device capture shows a headingless English
+        // detailed status under a zh-TW document after asynchronous hydration.
+        const mastodon = document.getElementById('mastodon');
+        if (mastodon?.classList.contains('app-holder')) {
+            const detail = mastodon.querySelector('.detailed-status');
+            const post = detail?.querySelector('.status__content__text');
+            if (post && /^en(?:-|$)/i.test(post.getAttribute('lang') || '')
+                && !(lastArticleLanguageRepair?.article === detail
+                    && lastArticleLanguageRepair.pageKey === pageKey)) {
+                const prose = (post.textContent || '').trim();
+                const latin = (prose.match(/[A-Za-z]/g) || []).length;
+                const han = (prose.match(/[\u3400-\u9fff]/g) || []).length;
+                const common = (prose.match(/\b(?:the|and|of|to|in|is|for|that|with|on|are|by|from|this|they|their|will|can|also|not)\b/gi) || []).length;
+                if (latin >= 60 && han * 20 < latin && common >= 4) {
+                    lastArticleLanguageRepair = { article: detail, pageKey };
+                    html.setAttribute('lang', 'en');
+                    return;
+                }
+            }
+        }
         for (const article of document.querySelectorAll('article, main')) {
             if (lastArticleLanguageRepair?.article === article
                 && lastArticleLanguageRepair.pageKey === pageKey) continue;
@@ -5952,7 +5973,7 @@
     // A single small official-main metadata check on each top-level page load.
     // Never reload the document, and never fetch unmerged PR branches.
     if (window === window.top && typeof GM_xmlhttpRequest === 'function') {
-        const installedVersion = "2026-11-24_1.0.4";
+        const installedVersion = "2026-11-24_1.0.5";
         const installUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js";
         const metaUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js";
         function isNewer(next, installed) {

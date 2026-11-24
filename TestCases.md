@@ -137,6 +137,7 @@ Section note: automated tests use representative inline code, preformatted block
 - https://github.com/okf-memory/okf-agent-memory/blob/main/README.md [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (the captured Mermaid container and a simulated renderer frame verify that the diagram and hidden source stay in place when page-wide conversion is used)
 - https://en.wikipedia.org/wiki/Parque_Arqueol%C3%B3gico_do_Solst%C3%ADcio [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (initial and dynamically collapsed mobile sections are kept visible; machine-translation output requires manual validation)
 - https://mathstodon.xyz/@tao/117237320796901560 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED] (captured Mastodon app marker is detected without a host allowlist and its translation opt-out is removed; machine-translation output requires manual validation)
+- https://grapheneos.social/@GrapheneOS/117645038299496084 [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (captured device DOM informs headingless English post language repair and narrow visual viewport harness; native Edge translation and rendering require device verification)
 
 # YouTube Tools
 Section note: simulated iframe fullscreen and cross-origin metadata messages are covered by Node DOM-harness tests; browser rotation, parent/child fullscreen event delivery and permission policies require Android Edge validation.

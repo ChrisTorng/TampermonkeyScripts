@@ -1207,3 +1207,33 @@ describe('Translate Preformatted Text', () => {
     });
 
 });
+
+test('headingless English Mastodon post repairs localized root after hydration, once', () => {
+    let app, detail;
+    const h = execute(h => {
+        h.document.documentElement.setAttribute('lang', 'zh-TW');
+        app = h.document.createElement('div');
+        app.id = 'mastodon';
+        app.className = 'app-holder';
+        h.appendToBody(app);
+    }, 'https://grapheneos.social/@GrapheneOS/117645038299496084');
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'zh-TW');
+    detail = h.document.createElement('div');
+    detail.className = 'detailed-status';
+    const post = h.document.createElement('div');
+    post.className = 'status__content__text';
+    post.setAttribute('lang', 'en');
+    const p = h.document.createElement('p');
+    p.textContent = 'The project is working with their partners to improve support and to make the updates available for more devices.';
+    post.appendChild(p);
+    // The lightweight DOM harness does not aggregate descendant textContent.
+    post.textContent = p.textContent;
+    detail.appendChild(post);
+    app.appendChild(detail);
+    h.triggerMutation([detail], { target: app });
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'en');
+    h.document.documentElement.setAttribute('lang', 'zh-TW');
+    h.triggerMutation([detail], { target: app });
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'zh-TW');
+    assert.equal(post.getAttribute('lang'), 'en');
+});

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-24_1.2.3
+// @version      2026-11-24_1.2.4
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,7 +19,7 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-24_1.2.3';
+    const VERSION = '2026-11-24_1.2.4';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
@@ -263,39 +263,32 @@
         const host = document.getElementById('tm-webdiag-host');
         const toggle = host?.querySelector('#tm-webdiag-toggle');
         const panel = host?.querySelector('#tm-webdiag-panel');
-        const result = host?.querySelector('#tm-webdiag-result');
-        if (!toggle || !panel || !result) return;
+        if (!toggle || !panel) return;
         const vv = window.visualViewport;
         const scale = Number.isFinite(vv?.scale) && vv.scale > 0 ? vv.scale : 1;
         const zoom = scale < 0.9 ? Math.min(3.5, 1 / scale) : 1;
-        const actualWidth = (vv?.width || window.innerWidth) * scale;
-        const actualHeight = (vv?.height || window.innerHeight) * scale;
-        if (zoom === 1) {
-            for (const [el, props] of [
-                [host, ['left', 'bottom']],
-                [toggle, ['transform', 'transform-origin']],
-                [panel, ['transform', 'transform-origin', 'left', 'bottom', 'width', 'height']],
-                [result, ['transform', 'transform-origin', 'left', 'bottom', 'width']]
-            ]) for (const prop of props) el.style.removeProperty(prop);
-            return;
-        }
-        const set = (el, prop, value) => el.style.setProperty(prop, value, 'important');
-        const left = 8 * zoom;
-        set(host, 'left', left + 'px');
-        set(host, 'bottom', 10 * zoom + 'px');
-        set(toggle, 'transform', 'scale(' + zoom + ')');
+        const vw = vv?.width || window.innerWidth;
+        const vh = vv?.height || window.innerHeight;
+        const x = vv?.offsetLeft || 0;
+        const y = vv?.offsetTop || 0;
+        const width = Math.max(1, Math.min(370, vw / zoom - 16));
+        const height = Math.max(1, Math.min(560, vh / zoom - 16));
+        const set = (el, prop, value) => {
+            if (el.style.getPropertyValue(prop) !== value)
+                el.style.setProperty(prop, value, 'important');
+        };
+        set(host, 'left', (x + 8 * zoom) + 'px');
+        set(host, 'bottom', (window.innerHeight - y - vh + 10 * zoom) + 'px');
+        set(toggle, 'transform', zoom === 1 ? 'none' : 'scale(' + zoom + ')');
         set(toggle, 'transform-origin', 'bottom left');
-        set(panel, 'transform', 'scale(' + zoom + ')');
-        set(panel, 'transform-origin', 'bottom left');
-        set(panel, 'left', left + 'px');
-        set(panel, 'bottom', 60 * zoom + 'px');
-        set(panel, 'width', Math.max(180, Math.min(370, actualWidth - 24)) + 'px');
-        set(panel, 'height', Math.max(160, Math.min(560, actualHeight * 0.7)) + 'px');
-        set(result, 'transform', 'scale(' + zoom + ')');
-        set(result, 'transform-origin', 'bottom left');
-        set(result, 'left', left + 'px');
-        set(result, 'bottom', 60 * zoom + 'px');
-        set(result, 'width', Math.max(160, Math.min(310, actualWidth - 24)) + 'px');
+        set(panel, 'transform', zoom === 1 ? 'none' : 'scale(' + zoom + ')');
+        set(panel, 'transform-origin', 'top left');
+        set(panel, 'left', (x + (vw - width * zoom) / 2) + 'px');
+        set(panel, 'top', (y + (vh - height * zoom) / 2) + 'px');
+        set(panel, 'bottom', 'auto');
+        set(panel, 'width', width + 'px');
+        set(panel, 'height', height + 'px');
+        set(panel, 'max-height', 'none');
     }
 
     function installUI() {
@@ -313,21 +306,23 @@
             '#tm-webdiag-host{all:initial!important;position:fixed!important;bottom:10px!important;left:8px!important;max-width:calc(100vw - 16px)!important;z-index:2147483647!important;pointer-events:none!important}',
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
-            '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:7px 10px!important;margin:3px!important;cursor:pointer!important}',
+            '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:5px 8px!important;margin:0!important;cursor:pointer!important}',
             '#tm-webdiag-panel{position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 16px))!important;height:min(72dvh,560px)!important;max-height:calc(100dvh - 90px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
             '#tm-webdiag-panel[hidden]{display:none!important}',
-            '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:sticky!important;top:-10px!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
+            '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:relative!important;top:0!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
             '#tm-webdiag-close{margin:0!important;padding:4px 9px!important;white-space:nowrap!important}',
             '#tm-webdiag-panel p{margin:7px 0!important;color:#ddd!important}',
             '#tm-webdiag-panel label{display:block!important;color:#fff!important;margin:5px 0!important}',
             '#tm-webdiag-panel code{font:12px monospace!important;overflow-wrap:anywhere!important;color:#fff!important}',
-            '#tm-webdiag-panel [data-status]{white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:13px!important;margin:7px 0 0!important;max-height:100px!important;overflow-y:auto!important}',
-            '#tm-webdiag-panel-header{flex:0 0 auto!important;padding:8px 10px!important;border-bottom:1px solid #555!important}',
-            '#tm-webdiag-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding:8px 10px!important}',
-            '#tm-webdiag-footer{flex:0 0 auto!important;border-top:1px solid #555!important;padding:8px 10px!important}',
+            '#tm-webdiag-panel [data-status]{white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:13px!important;margin:7px 0 0!important;max-height:64px!important;overflow-y:auto!important}',
+            '#tm-webdiag-panel-header{flex:0 0 auto!important;padding:5px 8px!important;border-bottom:1px solid #555!important}',
+            '#tm-webdiag-body{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;padding:5px 8px!important}',
+            '#tm-webdiag-footer{flex:0 0 auto!important;border-top:1px solid #555!important;padding:5px 8px!important}',
             '#tm-webdiag-actions{display:flex!important;flex-wrap:wrap!important;gap:4px!important}',
-            '#tm-webdiag-actions button{flex:1 1 130px!important}',
+            '#tm-webdiag-actions button{flex:1 1 120px!important;min-width:0!important;white-space:normal!important}',
             '#tm-webdiag-pairing[hidden]{display:none!important}',
+            '#tm-webdiag-host[data-open="true"] #tm-webdiag-toggle{visibility:hidden!important}',
+            'html:has(#tm-webdiag-host[data-open="true"]) #tm-shared-floating-menu{visibility:hidden!important}',
             '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
         ].join('\n');
@@ -366,7 +361,7 @@
         pairing.style.setProperty('display', 'none', 'important');
         body.appendChild(pairing);
         const notice = document.createElement('p');
-        notice.textContent = '按下「重新整理並自動回報」即授權下一次載入後自動送出一份結構報告。預設不含文章文字、表單值、Cookie 或網址參數。';
+        notice.textContent = '預設只回報網頁結構，不含文章文字、表單值、Cookie 或網址參數。';
         body.appendChild(notice);
         const status = document.createElement('p');
         status.dataset.status = 'true';
@@ -387,7 +382,7 @@
         next.type = 'button';
         next.textContent = '重新整理並自動回報';
         const reloadHelp = document.createElement('p');
-        reloadHelp.textContent = '重整後會記錄至頁面載入穩定，最多觀察 90 秒，並自動送出一次；不會自動附上公開文章全文。';
+        reloadHelp.textContent = '重整並回報：授權下一次載入穩定後自動送出一次（最多 90 秒）。';
         const label = document.createElement('label');
         const include = document.createElement('input');
         include.type = 'checkbox';
@@ -422,14 +417,8 @@
             // A second full-width result below the panel created a duplicate
             // mobile banner and could overflow the viewport.
             status.textContent = message;
-            result.textContent = message.startsWith('已送出')
-                ? '報告已送出，點選「已送出」查看編號'
-                : '回報結果已更新，點選「回報」查看';
-            result.dataset.visible = panel.hidden ? 'true' : 'false';
-            toggle.textContent = message.startsWith('已送出') ? '已送出' : '回報';
-            if (result.dataset.visible === 'true') {
-                setTimeout(() => { result.dataset.visible = 'false'; }, 6000);
-            }
+            result.dataset.visible = 'false';
+            toggle.textContent = message.startsWith('已送出') ? '已送出' : '回報失敗';
         };
         if (latestResult) onResult(latestResult);
         async function refreshPairing() {
@@ -457,7 +446,9 @@
             panel.style.setProperty('display', open ? 'flex' : 'none', 'important');
             panel.setAttribute('aria-hidden', String(!open));
             toggle.setAttribute('aria-expanded', String(open));
-            if (open) result.dataset.visible = 'false';
+            host.dataset.open = String(open);
+            result.dataset.visible = 'false';
+            if (open) fitDiagnosticViewport();
         };
         toggle.setAttribute('aria-controls', 'tm-webdiag-panel');
         setPanelOpen(false);
@@ -552,6 +543,8 @@
     }
 
     window.visualViewport?.addEventListener('resize', fitDiagnosticViewport);
+    window.visualViewport?.addEventListener('scroll', fitDiagnosticViewport);
+    window.addEventListener('resize', fitDiagnosticViewport);
     window.addEventListener('orientationchange', fitDiagnosticViewport);
     recordSnapshot('document-start');
     if (GM_getValue(START_KEY, false)) {

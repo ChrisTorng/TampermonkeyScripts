@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-24_1.5.40
+// @version      2026-11-24_1.5.41
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -1263,6 +1263,27 @@
         if (!declaredLanguage || /^en(?:-|$)/i.test(declaredLanguage)) return;
 
         const pageKey = location.pathname + location.search;
+        // Mastodon localizes its application shell independently of the
+        // primary post. The device capture shows a headingless English
+        // detailed status under a zh-TW document after asynchronous hydration.
+        const mastodon = document.getElementById('mastodon');
+        if (mastodon?.classList.contains('app-holder')) {
+            const detail = mastodon.querySelector('.detailed-status');
+            const post = detail?.querySelector('.status__content__text');
+            if (post && /^en(?:-|$)/i.test(post.getAttribute('lang') || '')
+                && !(lastArticleLanguageRepair?.article === detail
+                    && lastArticleLanguageRepair.pageKey === pageKey)) {
+                const prose = (post.textContent || '').trim();
+                const latin = (prose.match(/[A-Za-z]/g) || []).length;
+                const han = (prose.match(/[\u3400-\u9fff]/g) || []).length;
+                const common = (prose.match(/\b(?:the|and|of|to|in|is|for|that|with|on|are|by|from|this|they|their|will|can|also|not)\b/gi) || []).length;
+                if (latin >= 60 && han * 20 < latin && common >= 4) {
+                    lastArticleLanguageRepair = { article: detail, pageKey };
+                    html.setAttribute('lang', 'en');
+                    return;
+                }
+            }
+        }
         for (const article of document.querySelectorAll('article, main')) {
             if (lastArticleLanguageRepair?.article === article
                 && lastArticleLanguageRepair.pageKey === pageKey) continue;
