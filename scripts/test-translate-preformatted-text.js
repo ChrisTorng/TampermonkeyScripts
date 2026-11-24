@@ -1226,6 +1226,8 @@ test('headingless English Mastodon post repairs localized root after hydration, 
     const p = h.document.createElement('p');
     p.textContent = 'The project is working with their partners to improve support and to make the updates available for more devices.';
     post.appendChild(p);
+    // The lightweight DOM harness does not aggregate descendant textContent.
+    post.textContent = p.textContent;
     detail.appendChild(post);
     app.appendChild(detail);
     h.triggerMutation([detail], { target: app });
