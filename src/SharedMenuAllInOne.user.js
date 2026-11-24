@@ -2522,7 +2522,10 @@
     function isArchiveReadingElement(element) {
         if (!isArchiveSnapshot) return true;
         const content = document.getElementById('CONTENT');
-        return Boolean(content && element && (element === content || content.contains(element)));
+        for (let node = element; content && node; node = node.parentElement) {
+            if (node === content) return true;
+        }
+        return false;
     }
 
     function getMaxCharsPerLine() {
