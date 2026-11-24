@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Mobile View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-24_2.1.18
+// @version      2026-11-24_2.1.19
 // @description  Improve tiny mobile text and prose-only pages, auto-enlarge Hacker News discussions (not listings), and retain manual / URL-based ↔ controls.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -244,9 +244,9 @@
             #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
             #${FLOATING_MENU_ID} [data-floating-toggle] { cursor: move !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 0 !important; line-height: 0 !important; }
-            #${FLOATING_MENU_ID} [data-floating-toggle]::before { content: '' !important; display: block !important; width: 20px !important; height: 2px !important; background: currentColor !important; box-shadow: 0 -6px 0 currentColor, 0 6px 0 currentColor !important; }
+            #${FLOATING_MENU_ID} [data-floating-toggle]::before { content: '' !important; display: block !important; width: 20px !important; height: 2px !important; background: #f0f0f0 !important; box-shadow: 0 -6px 0 #f0f0f0, 0 6px 0 #f0f0f0 !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { font-size: 0 !important; line-height: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-            #${FLOATING_MENU_ID} [data-floating-close]::before, #${FLOATING_MENU_ID} [data-floating-close]::after { content: '' !important; position: absolute !important; width: 20px !important; height: 2px !important; background: currentColor !important; }
+            #${FLOATING_MENU_ID} [data-floating-close]::before, #${FLOATING_MENU_ID} [data-floating-close]::after { content: '' !important; position: absolute !important; width: 20px !important; height: 2px !important; background: #f0f0f0 !important; }
             #${FLOATING_MENU_ID} [data-floating-close]::before { transform: rotate(45deg) !important; }
             #${FLOATING_MENU_ID} [data-floating-close]::after { transform: rotate(-45deg) !important; }
             #${FLOATING_MENU_ID} { -webkit-text-size-adjust: none !important; text-size-adjust: none !important; }
@@ -686,7 +686,7 @@
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
     // Archive snapshots contain an independent toolbar and captured-site document.
-    // Skip automatic reflow of the whole wrapper, but retain manual ↔ toggling.
+    // Auto-enlarge only their #CONTENT, keeping the archive toolbar unchanged.
     const isArchiveSnapshot = /^archive\.(?:is|ph|today|md|li)$/i.test(location.hostname);
     // Raw .txt documents commonly arrive without a viewport and shrink every
     // 38px floating control to roughly 14 visible pixels on Android.
@@ -1024,6 +1024,19 @@
 
 
     function buildStyleContent() {
+        if (isArchiveSnapshot) {
+            // Static Archive.today snapshots preserve desktop inline coordinates.
+            // Their parent/header must NOT receive generic width, table or font rewrites.
+            return `
+                #CONTENT { overflow-wrap: break-word !important; }
+                #CONTENT p, #CONTENT li, #CONTENT blockquote,
+                #CONTENT article, #CONTENT section, #CONTENT h1, #CONTENT h2,
+                #CONTENT h3, #CONTENT h4, #CONTENT h5, #CONTENT h6 {
+                    line-height: 1.45 !important; max-height: none !important;
+                }
+                #CONTENT img, #CONTENT video { max-width: 100% !important; height: auto !important; }
+            `;
+        }
         return `:root, body {\n` +
             `    width: auto !important;\n` +
             `    max-width: 100vw !important;\n` +
@@ -1192,6 +1205,15 @@
         return window.matchMedia('(max-width: 768px), (pointer: coarse)').matches;
     }
 
+    function isArchiveReadingElement(element) {
+        if (!isArchiveSnapshot) return true;
+        const content = document.getElementById('CONTENT');
+        for (let node = element; content && node; node = node.parentElement) {
+            if (node === content) return true;
+        }
+        return false;
+    }
+
     function getMaxCharsPerLine() {
         const isPortrait = window.matchMedia('(orientation: portrait)').matches || window.innerHeight >= window.innerWidth;
         return isPortrait ? PORTRAIT_MAX_CHARS : LANDSCAPE_MAX_CHARS;
@@ -1215,6 +1237,13 @@
     }
 
     function calculateMinimumFontSizePx() {
+        if (isArchiveSnapshot) {
+            // Use visual scale rather than the 1028px archive wrapper width.
+            // Clamp at 40 CSS px to avoid enormous fonts if Edge changes auto-fit.
+            const scale = window.visualViewport?.scale;
+            const factor = Number.isFinite(scale) && scale > 0 ? scale : 1;
+            return Math.min(40, Math.max(15, Math.round(16 / factor)));
+        }
         const contentWidth = getContentWidthPx();
         if (!Number.isFinite(contentWidth) || contentWidth <= 0) {
             return DEFAULT_MIN_FONT_SIZE_PX;
@@ -1268,10 +1297,10 @@
         if (!root || root.nodeType !== Node.ELEMENT_NODE) {
             return targets;
         }
-        if (root.matches && root.matches(SPACING_TARGET_SELECTOR)) {
+        if (root.matches && root.matches(SPACING_TARGET_SELECTOR) && isArchiveReadingElement(root)) {
             targets.push(root);
         }
-        targets.push(...root.querySelectorAll(SPACING_TARGET_SELECTOR));
+        targets.push(...Array.from(root.querySelectorAll(SPACING_TARGET_SELECTOR)).filter(isArchiveReadingElement));
         return targets;
     }
 
@@ -1345,7 +1374,16 @@
     }
 
     function shouldAutoEnableForUrl() {
-        if (isArchiveSnapshot || isHackerNewsNonDiscussion()) return false;
+        if (isHackerNewsNonDiscussion()) return false;
+        if (isArchiveSnapshot) {
+            // Enable only capture URLs, not archive submission/search/navigation pages.
+            const segment = location.pathname.split('/').filter(Boolean)[0] || '';
+            const reserved = ['search', 'submit', 'faq', 'help', 'blog', 'login',
+                'settings', 'download', 'robots', 'sitemap', 'favicon'];
+            return ((/^[A-Za-z0-9]{4,10}$/.test(segment)
+                && !reserved.includes(segment.toLowerCase()))
+                || /^\d{4}\.\d{2}\.\d{2}-/.test(segment));
+        }
         const matches = getUserScriptMatches().filter((matchPattern) => !isCatchAllMatch(matchPattern));
         if (matches.length === 0) {
             return false;
@@ -1369,6 +1407,7 @@
         }
         elements.push(...root.querySelectorAll('*'));
         elements.forEach((element) => {
+            if (!isArchiveReadingElement(element)) return;
             if (element.hasAttribute(MIN_FONT_FLAG_ATTR)) {
                 return;
             }
