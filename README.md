@@ -8,6 +8,15 @@ Some useful [Tampermonkey](https://www.tampermonkey.net/) scripts for browser ta
 
 ### [Shared Floating Menu — All in One](https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js)
 
+**Android Edge／Tampermonkey 5.5.1 安裝疑難：** 若直接點選上面的 `.user.js` 連結後跳至 `tampermonkey.net/script_installation.php#url=...`，接著出現 **Invalid Userscript!**，先不要改腳本內容或重複點同一連結。這可能是 Tampermonkey 中介安裝頁的交接問題，不表示原始腳本無效。請進入 Tampermonkey **Dashboard → Utilities → Import from URL**，貼入下列**原始碼 URL**（不可貼中介頁網址），再確認安裝：
+
+```text
+https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js
+```
+
+如果 URL 匯入也失敗，可從該 URL 下載完整 `.user.js` 檔，使用 Utilities 的 **Import from file**。不要使用 GitHub HTML 程式碼檢視頁或 `script_installation.php` 作為匯入來源。這是瀏覽器擴充功能的安裝操作，網頁 JavaScript 無法代替使用者核准。Tampermonkey 官方已記錄中介安裝頁異常（[Issue #2863](https://github.com/Tampermonkey/tampermonkey/issues/2863)）與 Utilities 匯入 URL 的替代方式（[Issue #2675](https://github.com/Tampermonkey/tampermonkey/issues/2675)）。
+
+
 Install **one** script to get all five floating-menu functions: archive shortcut, archive redirect, mobile readability, dark mode, and formatted-text translation. The bundled script is built from the same five standalone sources, preserving each script's matching/exclusion rules. **Disable** the five separate scripts in Tampermonkey before enabling the bundle to avoid duplicate controls and side effects; do not uninstall them, so existing script-specific settings remain available if you switch back. Shared per-site menu settings are still stored in site localStorage.
 
 On each top-level page load, the bundle checks the small [official main version metadata](https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js), never an unmerged PR. If a newer version exists, the ≡ handle is outlined and exposes ↥ inside its expanded menu. Tap ↥ to open the direct one-script update link in Edge. After upgrading, reload the content page; a short status label displays the installed version on first load of a new version. Tampermonkey's own automatic updates remain supported. An installer cannot silently click Tampermonkey's extension-owned Update button or close extension tabs.
