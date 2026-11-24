@@ -1,3 +1,9 @@
+## Mastodon language and report panel — 2026-11-24
+
+- [Install Shared Floating Menu — All in One 2026-11-24_1.0.5](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-24_1.5.41](src/TranslatePreformattedText.user.js) (not both) — repair a localized Mastodon document language when the primary English post loads.
+- [Install Translation Diagnostics 2026-11-24_1.2.4](src/TranslationDiagnostics.user.js) — fit the panel inside the visual viewport, hide the overlapping shared menu while open, keep actions compact, and show the report ID only in the panel.
+- **Test:** [GrapheneOS post](https://grapheneos.social/@GrapheneOS/117645038299496084) — reload and check native translation; open the report panel and verify the header, buttons and result remain visible. Android Edge verification required.
+
 ## BetaCats 專用功能移交至 blog-bookmarks — 2026-11-23
 
 BetaCats 日期、已讀／收合、熱度、手機排版、背景外連目前由 [BlogBookmarks.user.js](https://github.com/ChrisTorng/blog-bookmarks/blob/main/tampermonkey/BlogBookmarks.user.js) 維護。以下保留舊版歷史變更紀錄，舊版 BetaCats Scripts 不再是維護位置。
