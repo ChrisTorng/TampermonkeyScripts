@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-24_1.5.41
+// @version      2026-11-24_1.5.42
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -1254,6 +1254,33 @@
     // Remember the corrected article so a browser's later translation to
     // Chinese is not mistaken for a new language mismatch.
     let lastArticleLanguageRepair = null;
+    let lastMastodonMetadataRepairPath = null;
+
+    // Mastodon's status show template emits og:locale from @status.language
+    // before the React web app loads. Require the matching ActivityPub status
+    // link and canonical post URL so ordinary sites' og:locale, or stale SPA
+    // metadata from another post, cannot change the document language.
+    function repairMastodonHeadLanguage(html) {
+        const status = location.pathname.match(/^\/@[^/]+\/(\d+)\/?$/);
+        if (!status || lastMastodonMetadataRepairPath === location.pathname) return false;
+        const activity = document.querySelector('link[type="application/activity+json"]');
+        const locale = document.querySelector('meta[property="og:locale"]');
+        const type = document.querySelector('meta[property="og:type"]');
+        const canonical = document.querySelector('meta[property="og:url"]');
+        if (!activity || !locale || !canonical || type?.getAttribute('content') !== 'article'
+            || !/^en(?:[-_]|$)/i.test((locale.getAttribute('content') || '').trim())) return false;
+        try {
+            const ap = new URL(activity.getAttribute('href'), location.href);
+            const url = new URL(canonical.getAttribute('content'), location.href);
+            if (ap.origin !== location.origin || url.origin !== location.origin
+                || !ap.pathname.endsWith('/statuses/' + status[1])
+                || url.pathname.replace(/\/$/, '') !== location.pathname.replace(/\/$/, '')) return false;
+        } catch (_) { return false; }
+        lastMastodonMetadataRepairPath = location.pathname;
+        html.setAttribute('lang', 'en');
+        return true;
+    }
+
     function restoreReadableArticleLanguage() {
         if (window !== window.top) return;
         const html = document.documentElement;
@@ -1261,6 +1288,9 @@
         // An absent language marker lets the browser perform its own detection.
         // Keep English variants as-is; avoid changes to normal English pages.
         if (!declaredLanguage || /^en(?:-|$)/i.test(declaredLanguage)) return;
+
+        if (lastMastodonMetadataRepairPath === location.pathname) return;
+        if (repairMastodonHeadLanguage(html)) return;
 
         const pageKey = location.pathname + location.search;
         // Mastodon localizes its application shell independently of the
@@ -2099,6 +2129,7 @@
     }
     scan();
     document.addEventListener('DOMContentLoaded', () => {
+        restoreReadableArticleLanguage();
         autoTranslationReady = true;
         scheduleAutomaticTranslation();
     }, { once: true });

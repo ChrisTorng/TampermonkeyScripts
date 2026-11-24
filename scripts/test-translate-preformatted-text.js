@@ -1237,3 +1237,66 @@ test('headingless English Mastodon post repairs localized root after hydration, 
     assert.equal(h.document.documentElement.getAttribute('lang'), 'zh-TW');
     assert.equal(post.getAttribute('lang'), 'en');
 });
+
+function addMastodonHead(h, locale = 'en', id = '117645038299496084') {
+    const head = h.document.head;
+    const link = h.document.createElement('link');
+    link.setAttribute('type', 'application/activity+json');
+    link.setAttribute('href', 'https://grapheneos.social/users/GrapheneOS/statuses/' + id);
+    head.appendChild(link);
+    const metas = [link];
+    for (const [key, value] of [
+        ['og:type', 'article'],
+        ['og:url', 'https://grapheneos.social/@GrapheneOS/' + id],
+        ['og:locale', locale],
+    ]) {
+        const meta = h.document.createElement('meta');
+        meta.setAttribute('property', key);
+        meta.setAttribute('content', value);
+        head.appendChild(meta);
+        metas.push(meta);
+    }
+    return metas;
+}
+
+test('Mastodon English head metadata repairs language before any post renders', () => {
+    const h = execute(h => {
+        h.document.documentElement.setAttribute('lang', 'zh-TW');
+        addMastodonHead(h);
+    }, 'https://grapheneos.social/@GrapheneOS/117645038299496084');
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'en');
+    assert.equal(h.document.querySelector('.detailed-status'), null);
+    h.document.documentElement.setAttribute('lang', 'zh-TW');
+    const node = h.document.createElement('main');
+    h.appendToBody(node);
+    h.triggerMutation([node], { target: h.document.body });
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'zh-TW');
+});
+
+test('Mastodon metadata arriving during HTML parsing repairs the root without waiting for hydration', () => {
+    const h = execute(h => {
+        h.document.documentElement.setAttribute('lang', 'zh-TW');
+    }, 'https://grapheneos.social/@GrapheneOS/117645038299496084');
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'zh-TW');
+    const nodes = addMastodonHead(h, 'en_US');
+    h.triggerMutation(nodes, { target: h.document.head });
+    assert.equal(h.document.documentElement.getAttribute('lang'), 'en');
+});
+
+test('Chinese, stale and ordinary OG locale metadata do not force English', () => {
+    for (const mode of ['chinese', 'stale', 'ordinary']) {
+        const h = execute(h => {
+            h.document.documentElement.setAttribute('lang', 'zh-TW');
+            if (mode === 'ordinary') {
+                const meta = h.document.createElement('meta');
+                meta.setAttribute('property', 'og:locale');
+                meta.setAttribute('content', 'en_US');
+                h.document.head.appendChild(meta);
+            } else {
+                addMastodonHead(h, mode === 'chinese' ? 'zh-TW' : 'en',
+                    mode === 'stale' ? '123' : '117645038299496084');
+            }
+        }, 'https://grapheneos.social/@GrapheneOS/117645038299496084');
+        assert.equal(h.document.documentElement.getAttribute('lang'), 'zh-TW', mode);
+    }
+});
