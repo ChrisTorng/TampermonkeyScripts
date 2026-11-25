@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Responsive Scroll Position Indicator
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-21_1.4.3
+// @version      2026-11-26_1.4.4
 // @description  Keep solid-gray scroll markers only for long, truly visible page and nested content.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -23,7 +23,7 @@
     const VIEWPORT_CLASS = 'tm-viewport';
     const BAR_WIDTH = 6;
     const PAGE_SCROLLER_EDGE_TOLERANCE_PX = 24;
-    const MIN_VIEWPORT_HEIGHT_PX = 24;
+    const MIN_VIEWPORT_HEIGHT_PX = BAR_WIDTH - 2;
     const MIN_VISIBLE_TRACK_PX = 12;
     const PAINT_SAMPLE_COUNT = 9;
     const PAINT_SAMPLE_X_FRACTIONS = [0.75, 0.5, 0.25];
@@ -93,7 +93,7 @@
                 position: absolute;
                 left: calc(1px / var(--tm-scroll-scale, 1));
                 width: calc(${BAR_WIDTH - 2}px / var(--tm-scroll-scale, 1));
-                height: ${MIN_VIEWPORT_HEIGHT_PX}px;
+                height: calc(${MIN_VIEWPORT_HEIGHT_PX}px / var(--tm-scroll-scale, 1));
                 background-color: #c5c9ce !important;
                 background-image: none !important;
                 border-radius: calc(${(BAR_WIDTH - 2) / 2}px / var(--tm-scroll-scale, 1));
