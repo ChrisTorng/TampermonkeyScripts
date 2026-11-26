@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-26_1.2.5
+// @version      2026-11-26_1.2.6
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,7 +19,7 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-26_1.2.5';
+    const VERSION = '2026-11-26_1.2.6';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
@@ -239,7 +239,37 @@
             originalDomCharacters: raw.length };
     }
 
+    // Geometry only: never read the editor's contents, selector, name, or value.
+    const reportInteractionGeometry = [];
+    function isActiveTextEditor(element = document.activeElement) {
+        return !!element && (element.isContentEditable ||
+            !!element.matches?.('textarea, input:not([type]), input[type="text"], input[type="search"], input[type="url"], input[type="tel"], input[type="email"], input[type="password"], input[type="number"]'));
+    }
+    function measureReportInteraction(reason) {
+        const v = window.visualViewport;
+        const r = document.getElementById('tm-webdiag-toggle')?.getBoundingClientRect();
+        const a = document.activeElement;
+        const editor = isActiveTextEditor(a);
+        const er = editor ? a.getBoundingClientRect() : null;
+        reportInteractionGeometry.push({
+            reason, at: new Date().toISOString(), editorFocused: editor,
+            innerHeight: window.innerHeight, clientHeight: document.documentElement.clientHeight,
+            visualHeight: v?.height ?? window.innerHeight, visualTop: v?.offsetTop ?? 0,
+            visualWidth: v?.width ?? window.innerWidth, visualScale: v?.scale ?? 1,
+            reportBottom: r?.bottom ?? null, editorTop: er?.top ?? null, editorBottom: er?.bottom ?? null
+        });
+        if (reportInteractionGeometry.length > 24) reportInteractionGeometry.shift();
+    }
+    function preserveEditorFocus(event) {
+        // Cancel only pointer focus transfer, not click. Keep keyboard navigation.
+        if (event.button !== 0 || event.isPrimary === false || !isActiveTextEditor()) return;
+        const control = event.target?.closest?.('button, input[type="checkbox"], label');
+        if (!control || !event.cancelable) return;
+        if (event.type === 'pointerdown') measureReportInteraction('before-pointerdown');
+        event.preventDefault();
+    }
     function buildReport(includeText) {
+        measureReportInteraction('build-report');
         recordSnapshot('report');
         const dom = captureDom(includeText);
         return {
@@ -253,6 +283,7 @@
             mode: includeText ? 'public-text' : 'structure',
             snapshots: snapshots.slice(),
             events: events.slice(),
+            reportInteractionGeometry: reportInteractionGeometry.slice(),
             ...dom
         };
     }
@@ -414,6 +445,22 @@
         const result = document.createElement('p');
         result.id = 'tm-webdiag-result';
         host.appendChild(result);
+        // Touch and mouse report actions must not blur the active page editor.
+        host.addEventListener('pointerdown', preserveEditorFocus, { capture: true, passive: false });
+        host.addEventListener('mousedown', preserveEditorFocus, { capture: true, passive: false });
+        host.addEventListener('click', event => {
+            if (event.isTrusted && event.target?.closest?.('button, input[type="checkbox"], label')) {
+                measureReportInteraction('control-click');
+            }
+        }, true);
+        // Label activation can independently focus its checkbox.
+        label.addEventListener('click', event => {
+            if (event.target !== include && isActiveTextEditor()) {
+                event.preventDefault();
+                include.checked = !include.checked;
+                include.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
         let pairingAuthorized = null;
         const showPairing = visible => {
             pairing.hidden = !visible;

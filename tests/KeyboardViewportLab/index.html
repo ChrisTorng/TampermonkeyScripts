@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>軟鍵盤定位測試 2026-11-26 v1</title>
+<title>軟鍵盤定位測試 2026-11-26 v2</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;font:16px system-ui,sans-serif;background:#f5f6f8;color:#18202a}body{overflow:hidden}
-header{position:fixed;top:0;left:0;right:0;padding:8px;background:#fff;z-index:3;border-bottom:1px solid #bbb;font-size:13px}
+header{position:fixed;top:0;left:0;right:0;padding:8px;background:#fff;z-index:3;border-bottom:1px solid #bbb;font-size:13px;overflow:auto}
 h1{font-size:16px;margin:0 0 5px}button{font:inherit;padding:6px 8px;margin:2px;border:1px solid #889;border-radius:5px;background:#eee;color:#18202a;touch-action:manipulation}
 button[aria-pressed=true]{background:#164f80;color:white}
 #messages{position:fixed;left:0;right:0;top:0;bottom:0;overflow:auto;padding:180px 10px 170px}
@@ -20,19 +20,19 @@ textarea{display:block;width:100%;resize:none;font:16px system-ui;min-height:36p
 </style>
 </head>
 <body>
-<header id="head"><h1>鍵盤定位測試 v1</h1>
+<header id="head"><h1>鍵盤定位測試 v2</h1>
 <div id="modes"><button data-mode="native" aria-pressed="true">A 原生</button><button data-mode="legacy" aria-pressed="false">B 舊補償</button><button data-mode="measured" aria-pressed="false">C 實測補償</button></div>
 <div id="status" aria-live="off"></div>
 <button id="capture">記錄（不關鍵盤）</button><button id="copy">複製紀錄</button>
 </header>
-<main id="messages"><p>依序測試 A、B、C。點底部輸入框開啟鍵盤，等 1 秒，觀察綠框與鍵盤的距離。可直接切換模式，不需要關閉鍵盤。</p><p>輸入幾行測試文字即可，不會收集輸入內容。黃色短線表示原生 fixed bottom:0 的位置。</p><p>每種模式按一次「記錄」，最後關閉鍵盤，再使用原本 Tampermonkey 回報鈕送出（包含公開頁面文字）。或複製紀錄貼回對話。</p><p>記錄保留鍵盤開啟時的尺寸，即使回報時鍵盤已關閉也不會遺失。</p><pre id="log" translate="no"></pre></main>
+<main id="messages"><p>依序測試 A、B、C。點底部輸入框開啟鍵盤，等 1 秒，觀察綠框與鍵盤的距離。可直接切換模式，不需要關閉鍵盤。</p><p>輸入幾行測試文字即可，不會收集輸入內容。黃色短線表示原生 fixed bottom:0 的位置。</p><p>每種模式按一次「記錄」，最後保持鍵盤開啟，使用新版 Tampermonkey 回報鈕點兩次送出（包含公開頁面文字）。或複製紀錄貼回對話。</p><p>記錄保留鍵盤開啟時的尺寸，即使回報時鍵盤已關閉也不會遺失。</p><pre id="log" translate="no"></pre></main>
 <section id="composer"><div id="gap">輸入框</div><textarea id="editor" rows="1" placeholder="點此開啟鍵盤，可輸入多行"></textarea></section>
 <div id="probe"></div><div id="marker"></div>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
 const vv=window.visualViewport, composer=$('composer'), probe=$('probe'), editor=$('editor'), log=$('log');
-let mode='native', history=[], raf=0, timers=[], lastSignature='', lastCapture='', baseline=null;
+let mode='native', history=[], raf=0, timers=[], lastSignature='', lastCapture='', baseline=null, captures={};
 const round=n=>Math.round(n*10)/10;
 function geometry(){
  const h=vv?.height??innerHeight, y=vv?.offsetTop??0;
@@ -52,14 +52,16 @@ function update(reason,force=false){
  const report=document.querySelector('#tm-webdiag-toggle');
  if(report){row.reportBottom=round(report.getBoundingClientRect().bottom);row.reportGap=round(g.vvBottom-report.getBoundingClientRect().bottom);row.reportCssBottom=getComputedStyle(report.parentElement).bottom}
  if(!focused && !baseline)baseline={innerH:row.innerH,vvH:row.vvH};
+ $('head').style.top=g.vvTop+'px';
  $('head').style.maxHeight=Math.max(80,g.vvH-70)+'px';
  $('status').textContent='gap '+row.gap+'px / 目標 8px | '+(focused?'輸入中':'未輸入')+'\ninner '+row.innerH+' / vv '+row.vvH+' / top '+row.vvTop+' / fixed '+row.probe;
  $('gap').textContent='輸入框 '+mode+' · 間距 '+row.gap+'px';
  const signature=JSON.stringify({...row,t:0,reason:''});
+ if(reason==='manual-capture')captures[mode]=row;
  if(force||signature!==lastSignature){lastSignature=signature;history.push(row);if(history.length>60)history.shift();render()}
 }
 function render(){
- const payload=JSON.stringify({version:1,baseline,lastCapture,history},null,0);
+ const payload=JSON.stringify({version:2,baseline,lastCapture,captures,history},null,0);
  // Both a public-text report and a direct copy can retrieve the numeric history.
  log.textContent=payload;log.dataset.keyboardGeometry=payload;
 }
