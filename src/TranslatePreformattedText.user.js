@@ -103,7 +103,7 @@
                     if (value && value.length <= 300) node.style.setProperty(property, value);
                 }
             }
-            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            // XMLSerializer emits the SVG namespace from the DOM namespace.
             clone.setAttribute('width', String(Math.max(1, Math.round(bounds.width))));
             clone.setAttribute('height', String(Math.max(1, Math.round(bounds.height))));
             // The original viewBox is essential; do not replace it with CSS dimensions.
@@ -548,11 +548,12 @@
             if (event.source !== frame?.contentWindow || event.origin !== url.origin ||
                 data?.channel !== readerBridgeChannel || data.type !== 'live-ready' || data.id !== id) return;
             const textOK = Number.isFinite(data.textLength) &&
-                data.textLength >= Math.max(100, info.textLength * .65);
+                data.textLength >= Math.max(100, info.textLength * .25);
             const graphicsOK = !info.graphics || (Number.isFinite(data.graphics) &&
                 data.graphics >= Math.max(1, info.graphics * .6));
             const controlsOK = !info.controls || (Number.isFinite(data.controls) && data.controls >= 1);
-            if (!textOK || !graphicsOK || !controlsOK) return;
+            if (!ready && (!textOK || !graphicsOK || !controlsOK)) return;
+            if (ready && (!Number.isFinite(data.textLength) || data.textLength < 100)) return;
             lastAck = Date.now();
             if (Number.isFinite(data.height) && data.height > 0) {
                 frame.style.height = Math.min(100000, Math.max(320, Math.ceil(data.height))) + 'px';
