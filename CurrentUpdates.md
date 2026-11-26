@@ -1,3 +1,8 @@
+## Document-anchored report controls during pinch zoom — 2026-11-27
+
+- [Install Translation Diagnostics 2026-11-27_1.2.9](src/TranslationDiagnostics.user.js) — preserve report control and panel document coordinates and their original CSS scale during pinch zoom; restore normal docking at the original page scale.
+- **Test:** [micjm](https://micjm.com/blog/lowering-perplexity-without-scaling/) — zoom around the report button to see it grow, then pan it naturally out of view. Android Edge device verification required.
+
 ## Report controls during pinch zoom — 2026-11-27
 
 - [Install Translation Diagnostics 2026-11-27_1.2.8](src/TranslationDiagnostics.user.js) — hide report button and panel during manual zoom; restore at the original scale without changing page layout or report state.

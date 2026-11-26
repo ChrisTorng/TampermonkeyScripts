@@ -240,7 +240,7 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     assert.equal(toggle.textContent, '已送出');
 });
 
-test('archive.is report UI counter-scales at its initial shrink-to-fit scale and hides when zoomed in', () => {
+test('archive.is report UI retains its initial shrink-to-fit compensation and document anchor during zoom', () => {
     const { h } = run('https://archive.is/R5XUn', h => {
         h.window.visualViewport.scale = 0.4;
         h.window.visualViewport.width = 900;
@@ -260,10 +260,15 @@ test('archive.is report UI counter-scales at its initial shrink-to-fit scale and
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
     h.dispatchVisualViewportEvent('resize');
-    assert.equal(host.style.getPropertyValue('display'), 'none');
+    assert.equal(host.style.getPropertyValue('display'), 'block');
+    assert.equal(host.style.getPropertyValue('position'), 'absolute');
+    const anchoredTop = host.style.getPropertyValue('top');
+    const anchoredLeft = host.style.getPropertyValue('left');
+    assert.equal(toggle.style.getPropertyValue('transform'), 'scale(2.5)');
     h.window.visualViewport.offsetLeft = 120;
     h.dispatchVisualViewportEvent('scroll');
-    assert.equal(host.style.getPropertyValue('display'), 'none');
+    assert.equal(host.style.getPropertyValue('top'), anchoredTop);
+    assert.equal(host.style.getPropertyValue('left'), anchoredLeft);
     h.window.visualViewport.scale = 0.4;
     h.window.visualViewport.offsetLeft = 0;
     h.dispatchVisualViewportEvent('resize');
@@ -346,7 +351,7 @@ test('unapproved and wrong-origin frame requests cannot extract content', () => 
     assert.equal(child.calls.length, 0);
 });
 
-test('manual pinch zoom hides the report UI and preserves its open panel on return', () => {
+test('manual pinch zoom anchors report UI and its open panel to the document', () => {
     const { h, calls } = run('https://micjm.com/');
     const host = h.document.getElementById('tm-webdiag-host');
     const panel = h.document.getElementById('tm-webdiag-panel');
@@ -355,13 +360,18 @@ test('manual pinch zoom hides the report UI and preserves its open panel on retu
     assert.equal(panel.hidden, false);
     h.window.visualViewport.scale = 2;
     h.dispatchVisualViewportEvent('resize');
-    assert.equal(host.style.getPropertyValue('display'), 'none');
-    assert.equal(host.style.getPropertyPriority('display'), 'important');
+    assert.equal(host.style.getPropertyValue('display'), 'block');
+    assert.equal(host.style.getPropertyValue('position'), 'absolute');
+    assert.equal(panel.style.getPropertyValue('position'), 'absolute');
+    assert.equal(panel.style.getPropertyValue('left'), '0px');
+    assert.equal(panel.style.getPropertyValue('bottom'), '38px');
     assert.equal(host.dataset.pinched, 'true');
     h.window.visualViewport.scale = 1;
     h.dispatchVisualViewportEvent('resize');
     assert.equal(host.style.getPropertyValue('display'), 'block');
     assert.equal(host.dataset.pinched, 'false');
+    assert.equal(host.style.getPropertyValue('position'), 'fixed');
+    assert.equal(panel.style.getPropertyValue('position'), 'fixed');
     assert.equal(panel.hidden, false);
     assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 0);
 });

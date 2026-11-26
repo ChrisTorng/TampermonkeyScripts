@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-27_1.2.8
+// @version      2026-11-27_1.2.9
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -449,6 +449,7 @@
 
     let diagnosticNormalScale = Math.min(1, window.visualViewport?.scale || 1);
     let diagnosticOrientation = window.screen?.orientation?.type;
+    let diagnosticAnchor = null;
     // Compensate only the report UI for Edge's shrink-to-fit on desktop-width pages.
     // Never alter the webpage or its viewport.
     function fitDiagnosticViewport() {
@@ -466,10 +467,23 @@
         diagnosticNormalScale = Math.min(diagnosticNormalScale, scale);
         const pinched = scale > diagnosticNormalScale * 1.05;
         host.dataset.pinched = String(pinched);
-        const display = pinched ? 'none' : 'block';
-        if (host.style.getPropertyValue('display') !== display)
-            host.style.setProperty('display', display, 'important');
-        if (pinched) return;
+        const set = (el, prop, value) => {
+            if (el.style.getPropertyValue(prop) !== value)
+                el.style.setProperty(prop, value, 'important');
+        };
+        set(host, 'display', 'block');
+        if (pinched && diagnosticAnchor?.host === host) {
+            // Preserve the pre-zoom document position and CSS transforms so the
+            // controls enlarge naturally with the page and pan out of view.
+            set(host, 'position', 'absolute');
+            set(host, 'left', diagnosticAnchor.x + 'px');
+            set(host, 'top', diagnosticAnchor.y + 'px');
+            set(host, 'bottom', 'auto');
+            set(panel, 'position', 'absolute');
+            set(panel, 'left', '0px');
+            set(panel, 'bottom', diagnosticAnchor.gap + 'px');
+            return;
+        }
         const zoom = scale < 0.9 ? Math.min(3.5, 1 / scale) : 1;
         const vw = vv?.width || window.innerWidth;
         const vh = vv?.height || window.innerHeight;
@@ -477,12 +491,13 @@
         const y = vv?.offsetTop || 0;
         const width = Math.max(1, Math.min(370, vw / zoom - 16));
         const height = Math.max(1, Math.min(320, vh / zoom - 64));
-        const set = (el, prop, value) => {
-            if (el.style.getPropertyValue(prop) !== value)
-                el.style.setProperty(prop, value, 'important');
-        };
-        set(host, 'left', (x + 8 * zoom) + 'px');
-        set(host, 'bottom', (window.innerHeight - y - vh + 10 * zoom) + 'px');
+        const left = x + 8 * zoom;
+        const bottom = window.innerHeight - y - vh + 10 * zoom;
+        set(host, 'position', 'fixed');
+        set(host, 'top', 'auto');
+        set(host, 'left', left + 'px');
+        set(host, 'bottom', bottom + 'px');
+        set(panel, 'position', 'fixed');
         set(toggle, 'transform', zoom === 1 ? 'none' : 'scale(' + zoom + ')');
         set(toggle, 'transform-origin', 'bottom left');
         set(panel, 'transform', zoom === 1 ? 'none' : 'scale(' + zoom + ')');
@@ -493,6 +508,11 @@
         set(panel, 'width', width + 'px');
         set(panel, 'height', 'auto');
         set(panel, 'max-height', height + 'px');
+        diagnosticAnchor = {
+            host, x: (window.scrollX || 0) + left,
+            y: (window.scrollY || 0) + window.innerHeight - bottom - (host.offsetHeight || 0),
+            gap: 38 * zoom
+        };
     }
 
     function installUI() {
@@ -779,6 +799,7 @@
 
     window.visualViewport?.addEventListener('resize', fitDiagnosticViewport);
     window.visualViewport?.addEventListener('scroll', fitDiagnosticViewport);
+    window.addEventListener('scroll', fitDiagnosticViewport, { passive: true });
     window.addEventListener('resize', fitDiagnosticViewport);
     window.addEventListener('orientationchange', fitDiagnosticViewport);
     recordSnapshot('document-start');
