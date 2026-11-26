@@ -471,8 +471,8 @@
             Math.abs(layoutWidth - diagnosticLayoutWidth) > 2 ||
             orientation !== diagnosticOrientation;
         const scaleWithoutPinch = scale > diagnosticNormalScale * 1.05 &&
-            visualWidth >= diagnosticNormalVisualWidth * 0.95;
-        if (layoutChanged || scaleWithoutPinch || scale <= diagnosticNormalScale * 1.05) {
+            visualWidth >= diagnosticNormalVisualWidth * 0.98;
+        if (layoutChanged || scaleWithoutPinch || scale <= diagnosticNormalScale) {
             diagnosticOrientation = orientation;
             diagnosticLayoutWidth = layoutWidth;
             diagnosticNormalScale = Math.min(1, scale);
@@ -480,7 +480,7 @@
             if (layoutChanged || scaleWithoutPinch) diagnosticAnchor = null;
         }
         const pinched = scale > diagnosticNormalScale * 1.05 &&
-            visualWidth < diagnosticNormalVisualWidth * 0.95;
+            visualWidth < diagnosticNormalVisualWidth * 0.98;
         host.dataset.pinched = String(pinched);
         const set = (el, prop, value) => {
             if (el.style.getPropertyValue(prop) !== value)
