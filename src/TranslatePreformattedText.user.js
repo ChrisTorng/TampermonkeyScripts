@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-25_1.5.43
+// @version      2026-11-26_1.5.44
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -46,6 +46,113 @@
         'border', 'border-radius', 'vertical-align'
     ];
 
+    const readerImageLimit = 600000;
+    const readerGraphicStyles = [
+        'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity',
+        'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset',
+        'opacity', 'color', 'font-family', 'font-size', 'font-weight', 'font-style',
+        'text-anchor', 'dominant-baseline', 'visibility', 'display',
+        'stop-color', 'stop-opacity', 'clip-path', 'mask', 'filter',
+        'vector-effect', 'paint-order'
+    ];
+    const readerGraphicLayout = ['width', 'max-width', 'height', 'aspect-ratio'];
+    function readerIsImageData(value) {
+        return value.length <= readerImageLimit && (
+            /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(value) ||
+            /^data:image\/svg\+xml;charset=utf-8,/i.test(value));
+    }
+
+    // The SVG is an image resource, never inserted as active SVG markup.
+    // Preserve drawing geometry, local definitions and computed presentation.
+    function readerGraphicSnapshot(source, computed) {
+        const kind = String(source.localName || source.tagName).toLowerCase();
+        const bounds = source.getBoundingClientRect();
+        if (!bounds.width || !bounds.height) return null;
+        let uri;
+        if (kind === 'svg') {
+            const clone = source.cloneNode(true);
+            const originals = [source, ...source.querySelectorAll('*')];
+            const copies = [clone, ...clone.querySelectorAll('*')];
+            for (let index = 0; index < originals.length; index++) {
+                const node = copies[index];
+                const tag = String(node.localName || node.tagName).toLowerCase();
+                if (['script', 'foreignobject', 'iframe', 'object', 'embed', 'style',
+                    'animate', 'animatemotion', 'animatetransform', 'set'].includes(tag)) {
+                    node.remove();
+                    continue;
+                }
+                for (const attr of Array.from(node.attributes)) {
+                    const key = attr.name.toLowerCase();
+                    if (key.startsWith('on') || key === 'style' ||
+                        ((key === 'href' || key === 'xlink:href') && !/^#[\w:.-]+$/.test(attr.value))) {
+                        node.removeAttribute(attr.name);
+                    } else if (/url\s*\(/i.test(attr.value) &&
+                        !/^url\(\s*['"]?#[\w:.-]+['"]?\s*\)$/.test(attr.value)) {
+                        node.removeAttribute(attr.name);
+                    }
+                }
+                const css = getComputedStyle(originals[index]);
+                for (const property of readerGraphicStyles) {
+                    let value = css.getPropertyValue(property);
+                    // Computed local paint references may be resolved to absolute document URLs.
+                    if (/url\s*\(/i.test(value)) {
+                        const ref = value.match(/^url\(\s*['"]?(.*?)#([\w:.-]+)['"]?\s*\)$/);
+                        if (!ref || (ref[1] && ref[1] !== location.href.split('#')[0])) continue;
+                        value = 'url(#' + ref[2] + ')';
+                    }
+                    if (value && value.length <= 300) node.style.setProperty(property, value);
+                }
+            }
+            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clone.setAttribute('width', String(Math.max(1, Math.round(bounds.width))));
+            clone.setAttribute('height', String(Math.max(1, Math.round(bounds.height))));
+            // The original viewBox is essential; do not replace it with CSS dimensions.
+            uri = 'data:image/svg+xml;charset=utf-8,' +
+                encodeURIComponent(new XMLSerializer().serializeToString(clone));
+        } else {
+            // Bound large bitmap transfers; a tainted canvas throws and uses the placeholder.
+            let bitmap = source;
+            if (Math.max(source.width, source.height) > 1200) {
+                bitmap = document.createElement('canvas');
+                const scale = 1200 / Math.max(source.width, source.height);
+                bitmap.width = Math.max(1, Math.round(source.width * scale));
+                bitmap.height = Math.max(1, Math.round(source.height * scale));
+                bitmap.getContext('2d').drawImage(source, 0, 0, bitmap.width, bitmap.height);
+            }
+            uri = bitmap.toDataURL('image/png');
+        }
+        if (!readerIsImageData(uri)) return null;
+        const image = document.createElement('img');
+        image.setAttribute('src', uri);
+        image.setAttribute('alt', source.getAttribute('aria-label') || source.getAttribute('title') ||
+            (kind === 'svg' ? 'SVG graphic' : 'Canvas graphic'));
+        image.setAttribute('style', 'display:' + (computed.display === 'block' ? 'block' : 'inline-block') +
+            ';width:' + Math.round(bounds.width) + 'px;max-width:100%;height:auto;aspect-ratio:' +
+            Math.max(1, Math.round(bounds.width)) + '/' + Math.max(1, Math.round(bounds.height)) +
+            ';vertical-align:middle');
+        return image;
+    }
+
+    function readerFrameMetrics() {
+        const body = document.body;
+        if (!body) return { textLength: 0, graphics: 0, controls: 0, height: 0 };
+        return {
+            textLength: readerText().length,
+            graphics: body.querySelectorAll('svg,canvas,video').length,
+            controls: body.querySelectorAll('button,input,select,textarea,[role="button"],[role="slider"]').length,
+            height: Math.max(body.scrollHeight || 0, document.documentElement.scrollHeight || 0)
+        };
+    }
+
+    function readerLiveUrl(value) {
+        try {
+            const url = new URL(value);
+            if (url.protocol !== 'https:' || url.username || url.password ||
+                /(^|\.)christorng\.idv\.tw$/i.test(url.hostname)) return null;
+            return url;
+        } catch (_) { return null; }
+    }
+
     function readerCleanAttributes(element, baseUrl, allowStyle = false) {
         for (const attr of Array.from(element.attributes || [])) {
             const name = attr.name.toLowerCase();
@@ -57,9 +164,8 @@
             if (name !== 'href' && name !== 'src') continue;
             try {
                 const value = new URL(attr.value, baseUrl);
-                const isImageData = name === 'src'
-                    && /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(attr.value)
-                    && attr.value.length < 120000;
+                const isImageData = name === 'src' && element.tagName === 'IMG'
+                    && readerIsImageData(attr.value);
                 if (!['https:', 'http:'].includes(value.protocol) && !isImageData) {
                     element.removeAttribute(attr.name);
                 } else {
@@ -88,12 +194,26 @@
             const source = sourceNodes[index];
             const target = copyNodes[index];
             if (!target) continue;
-            if (readerForbiddenTags.has(source.tagName)) {
+            const tag = String(source.localName || source.tagName).toUpperCase();
+            // The graphic root is handled atomically; never strip attributes from its descendants.
+            if (source.parentElement?.closest?.('svg,canvas')) continue;
+            const computed = getComputedStyle(source);
+            if (computed.display === 'none' || computed.visibility === 'hidden') {
                 target.remove();
                 continue;
             }
-            const computed = getComputedStyle(source);
-            if (computed.display === 'none' || computed.visibility === 'hidden') {
+            if (tag === 'SVG' || tag === 'CANVAS') {
+                let image = null;
+                try { image = readerGraphicSnapshot(source, computed); } catch (_) { /* Fallback below. */ }
+                if (image) target.replaceWith(image);
+                else {
+                    const note = document.createElement('span');
+                    note.textContent = '[Graphic unavailable — see original page]';
+                    target.replaceWith(note);
+                }
+                continue;
+            }
+            if (readerForbiddenTags.has(tag)) {
                 target.remove();
                 continue;
             }
@@ -113,7 +233,7 @@
         wrapper.innerHTML = copy.innerHTML;
         const html = wrapper.outerHTML;
         if (html.length > 1800000) throw new Error('Article exceeds capture limit');
-        return { html, title: document.title.slice(0, 160) };
+        return { html, title: document.title.slice(0, 160), metrics: readerFrameMetrics() };
     }
 
     function startReaderInFrame() {
@@ -132,12 +252,21 @@
             const data = event.data;
             if (!data || data.channel !== readerBridgeChannel) return;
             if (data.type === 'probe') announce();
+            if (data.type === 'live-probe' && event.origin === 'https://christorng.idv.tw' &&
+                /^[a-z0-9-]{8,80}$/i.test(data.id || '') && document.readyState === 'complete' &&
+                document.body && !document.body.querySelector('input[type="password"]')) {
+                window.parent.postMessage({
+                    channel: readerBridgeChannel, type: 'live-ready', id: data.id,
+                    ...readerFrameMetrics()
+                }, event.origin);
+                return;
+            }
             if (data.type !== 'capture' || !/^[a-z0-9-]{8,80}$/i.test(data.id || '')) return;
             try {
                 const result = readerCapture();
                 window.parent.postMessage({
                     channel: readerBridgeChannel, type: 'captured', id: data.id,
-                    html: result.html, title: result.title
+                    html: result.html, title: result.title, metrics: result.metrics
                 }, '*');
             } catch (error) {
                 window.parent.postMessage({
@@ -291,8 +420,19 @@
             const id = info.pending;
             info.pending = null;
             try {
+                const rawFrameUrl = new URL(frame.getAttribute('src'), document.baseURI || location.href);
+                const liveUrl = readerLiveUrl(rawFrameUrl.href);
+                const metrics = data.metrics || {};
+                const count = n => Number.isInteger(n) && n >= 0 && n <= 1000000 ? n : 0;
+                const live = liveUrl && event.origin === liveUrl.origin &&
+                    count(metrics.textLength) >= 100 &&
+                    (count(metrics.graphics) || count(metrics.controls)) ? {
+                        url: liveUrl.href, textLength: count(metrics.textLength),
+                        graphics: count(metrics.graphics), controls: count(metrics.controls),
+                        height: count(metrics.height)
+                    } : null;
                 await Promise.resolve(GM_setValue(readerBridgeKey + id, {
-                    html: data.html, createdAt: Date.now()
+                    html: data.html, createdAt: Date.now(), ...(live ? { live } : {})
                 }));
                 // Every opener receives a distinct ID; source metadata stays in
                 // the URL even if the HTML session cache is later unavailable.
@@ -361,6 +501,99 @@
         } catch (_) { return null; }
     }
 
+    // Re-embed the actual remote document, not copied application scripts.
+    // A browser load event alone also fires for blocked frames; require the
+    // child userscript's origin-checked content acknowledgement.
+    function readerStartLive(target, record, id) {
+        const info = record.live;
+        const url = info && readerLiveUrl(info.url);
+        if (!url || !Number.isFinite(info.textLength) || info.textLength < 100) return;
+        const host = document.getElementById('iframe-viewer-live');
+        const status = document.getElementById('iframe-viewer-mode');
+        const toggle = document.getElementById('iframe-viewer-mode-toggle');
+        if (!host || !status || !toggle) return;
+        let frame, probeTimer, deadline, ready = false, visible = false;
+        let lastAck = 0, stopped = false;
+        function mode(show) {
+            visible = show;
+            host.classList.toggle('is-active', show);
+            target.hidden = show;
+            toggle.textContent = show ? '翻譯閱讀' : '互動模式';
+            status.textContent = show ? '原始互動內容' : '靜態翻譯閱讀';
+        }
+        function stop(message) {
+            stopped = true;
+            clearInterval(probeTimer);
+            clearTimeout(deadline);
+            window.removeEventListener('message', onMessage);
+            frame?.remove();
+            ready = false;
+            mode(false);
+            status.textContent = message;
+            toggle.hidden = false;
+            toggle.textContent = '重試互動';
+        }
+        function probe() {
+            if (stopped) return;
+            if (ready && Date.now() - lastAck > 12000) {
+                stop('互動內容已中斷，顯示靜態快照');
+                return;
+            }
+            frame?.contentWindow?.postMessage({
+                channel: readerBridgeChannel, type: 'live-probe', id
+            }, url.origin);
+        }
+        function onMessage(event) {
+            const data = event.data;
+            if (event.source !== frame?.contentWindow || event.origin !== url.origin ||
+                data?.channel !== readerBridgeChannel || data.type !== 'live-ready' || data.id !== id) return;
+            const textOK = Number.isFinite(data.textLength) &&
+                data.textLength >= Math.max(100, info.textLength * .65);
+            const graphicsOK = !info.graphics || (Number.isFinite(data.graphics) &&
+                data.graphics >= Math.max(1, info.graphics * .6));
+            const controlsOK = !info.controls || (Number.isFinite(data.controls) && data.controls >= 1);
+            if (!textOK || !graphicsOK || !controlsOK) return;
+            lastAck = Date.now();
+            if (Number.isFinite(data.height) && data.height > 0) {
+                frame.style.height = Math.min(100000, Math.max(320, Math.ceil(data.height))) + 'px';
+            }
+            if (!ready) {
+                ready = true;
+                clearTimeout(deadline);
+                toggle.hidden = false;
+                mode(true);
+            }
+        }
+        function start() {
+            stopped = false;
+            ready = false;
+            lastAck = 0;
+            mode(false);
+            toggle.hidden = true;
+            status.textContent = '正在載入原始互動內容…';
+            frame = document.createElement('iframe');
+            frame.title = 'Original interactive content';
+            // External HTTPS origin only; no top navigation or popup privileges.
+            frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+            frame.setAttribute('referrerpolicy', 'no-referrer');
+            frame.style.height = Math.min(100000, Math.max(420, Number(info.height) || 600)) + 'px';
+            frame.addEventListener('load', probe);
+            frame.addEventListener('error', () => stop('互動載入失敗，顯示靜態快照'));
+            window.addEventListener('message', onMessage);
+            frame.src = url.href;
+            host.appendChild(frame);
+            probeTimer = setInterval(probe, 1000);
+            deadline = setTimeout(() => {
+                if (!ready) stop('未能確認互動內容載入，顯示靜態快照');
+            }, 15000);
+        }
+        toggle.addEventListener('click', () => {
+            if (ready) mode(!visible);
+            else if (stopped) start();
+        });
+        start();
+    }
+
     function startStandaloneReader() {
         const query = new URL(location.href).searchParams;
         const id = query.get('id');
@@ -407,14 +640,15 @@
                     const template = document.createElement('template');
                     template.innerHTML = record.html;
                     for (const item of Array.from(template.content.querySelectorAll('*'))) {
-                        if (readerForbiddenTags.has(item.tagName)) {
+                        if (readerForbiddenTags.has(String(item.localName || item.tagName).toUpperCase())) {
                             item.remove();
                             continue;
                         }
                         readerCleanAttributes(item, readerBridgeUrl, true);
                         if (item.hasAttribute('style')) {
                             for (const property of Array.from(item.style)) {
-                                if (!readerStyleProperties.includes(property)
+                                if ((!readerStyleProperties.includes(property) &&
+                                    !(item.tagName === 'IMG' && readerGraphicLayout.includes(property)))
                                     || /url\s*\(/i.test(item.style.getPropertyValue(property))) {
                                     item.style.removeProperty(property);
                                 }
@@ -422,6 +656,7 @@
                         }
                     }
                     target.replaceChildren(template.content);
+                    readerStartLive(target, record, id);
                     if (transferred) {
                         let saved = false;
                         try {
