@@ -39,6 +39,13 @@
       #iframe-viewer-content :is(h1,h2,h3,p,li) { overflow-wrap: break-word !important; word-break: normal !important; }
       #iframe-viewer-content table { display: block; overflow-x: auto; }
     }
+    #iframe-viewer-modebar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; font:12px/1.4 system-ui,sans-serif; }
+    #iframe-viewer-mode { opacity:.7; }
+    #iframe-viewer-mode-toggle { font:inherit; color:inherit; background:transparent; border:1px solid rgba(160,160,160,.35); border-radius:4px; padding:3px 8px; cursor:pointer; }
+    #iframe-viewer-mode:empty, #iframe-viewer-mode-toggle[hidden], #iframe-viewer-content[hidden] { display:none !important; }
+    #iframe-viewer-live { position:absolute; left:0; width:100%; height:0; overflow:hidden; visibility:hidden; pointer-events:none; }
+    #iframe-viewer-live.is-active { position:relative; height:auto; overflow:visible; visibility:visible; pointer-events:auto; }
+    #iframe-viewer-live iframe { display:block; width:100%; border:0; }
     #iframe-viewer-status { font: 16px/1.5 system-ui,sans-serif; padding: 16px 20px; }
   </style>
 </head>
@@ -46,9 +53,11 @@
   <header id="iframe-viewer-header">
     <a id="iframe-viewer-source-link">原始網頁</a>
     <div id="iframe-viewer-source-url"></div>
+    <div id="iframe-viewer-modebar" translate="no"><span id="iframe-viewer-mode" role="status"></span><button id="iframe-viewer-mode-toggle" type="button" hidden>互動模式</button></div>
   </header>
   <main id="iframe-viewer-content" lang="en">
     <p id="iframe-viewer-status">Loading iframe content…</p>
   </main>
+  <div id="iframe-viewer-live"></div>
 </body>
 </html>
