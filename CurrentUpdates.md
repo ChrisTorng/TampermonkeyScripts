@@ -1,3 +1,9 @@
+## Independent iframe interactive replay — 2026-11-26
+
+- [Install Shared Floating Menu — All in One 2026-11-26_1.0.9](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-26_1.5.47](src/TranslatePreformattedText.user.js), not both.
+- Original live iframe first; if unavailable, try a locally compressed, self-contained HTML document in an opaque-origin sandbox, with no external resource requests allowed by its CSP. Retain the static translation snapshot if either replay or storage fails.
+- **Test:** [Claude Artifact](https://claude.ai/artifact/CtQyX8qfYAF822bgHJHHE3) — reload source, click 譯↗ to open a fresh reader; verify chart colors, interactions and the mode status. [Large replay fixture](https://christorng.idv.tw/TampermonkeyScripts/tests/IframeGraphicsLab/replay.html) — prior independent test passed on Android Edge.
+
 ## Native Android Edge keyboard viewport — 2026-11-26
 
 - [Install Native Keyboard Viewport 2026-11-26_1.0.0](src/NativeKeyboardViewport.user.js). Enables Chromium `interactive-widget=resizes-content` on Discord channels and Clipboard Viewer, preserving other viewport directives. Other sites are opt-in via the Tampermonkey menu; the same menu disables the change and reloads. Only Android Edge, top-level documents, existing viewport tags. No CSS height or transform hacks.
