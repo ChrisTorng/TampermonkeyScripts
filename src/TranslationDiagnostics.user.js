@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-24_1.2.4
+// @version      2026-11-26_1.2.5
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -19,7 +19,7 @@
     if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-24_1.2.4';
+    const VERSION = '2026-11-26_1.2.5';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
@@ -272,7 +272,7 @@
         const x = vv?.offsetLeft || 0;
         const y = vv?.offsetTop || 0;
         const width = Math.max(1, Math.min(370, vw / zoom - 16));
-        const height = Math.max(1, Math.min(560, vh / zoom - 16));
+        const height = Math.max(1, Math.min(320, vh / zoom - 64));
         const set = (el, prop, value) => {
             if (el.style.getPropertyValue(prop) !== value)
                 el.style.setProperty(prop, value, 'important');
@@ -282,13 +282,13 @@
         set(toggle, 'transform', zoom === 1 ? 'none' : 'scale(' + zoom + ')');
         set(toggle, 'transform-origin', 'bottom left');
         set(panel, 'transform', zoom === 1 ? 'none' : 'scale(' + zoom + ')');
-        set(panel, 'transform-origin', 'top left');
-        set(panel, 'left', (x + (vw - width * zoom) / 2) + 'px');
-        set(panel, 'top', (y + (vh - height * zoom) / 2) + 'px');
-        set(panel, 'bottom', 'auto');
+        set(panel, 'transform-origin', 'bottom left');
+        set(panel, 'left', (x + 8 * zoom) + 'px');
+        set(panel, 'top', 'auto');
+        set(panel, 'bottom', (window.innerHeight - y - vh + 48 * zoom) + 'px');
         set(panel, 'width', width + 'px');
-        set(panel, 'height', height + 'px');
-        set(panel, 'max-height', 'none');
+        set(panel, 'height', 'auto');
+        set(panel, 'max-height', height + 'px');
     }
 
     function installUI() {
@@ -321,7 +321,13 @@
             '#tm-webdiag-actions{display:flex!important;flex-wrap:wrap!important;gap:4px!important}',
             '#tm-webdiag-actions button{flex:1 1 120px!important;min-width:0!important;white-space:normal!important}',
             '#tm-webdiag-pairing[hidden]{display:none!important}',
-            '#tm-webdiag-host[data-open="true"] #tm-webdiag-toggle{visibility:hidden!important}',
+            '#tm-webdiag-host[data-open="true"] #tm-webdiag-toggle{min-width:52px!important;background:#126a4f!important}',
+            '#tm-webdiag-footer{display:contents!important}',
+            '#tm-webdiag-panel-header{order:-2!important}',
+            '#tm-webdiag-panel [data-status]{order:-1!important;margin:4px 8px!important}',
+            '#tm-webdiag-body{order:0!important;flex:0 1 auto!important}',
+            '#tm-webdiag-actions{order:1!important;padding:4px 8px!important}',
+            '#tm-webdiag-actions button:last-child{display:none!important}',
             'html:has(#tm-webdiag-host[data-open="true"]) #tm-shared-floating-menu{visibility:hidden!important}',
             '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
@@ -361,11 +367,12 @@
         pairing.style.setProperty('display', 'none', 'important');
         body.appendChild(pairing);
         const notice = document.createElement('p');
-        notice.textContent = '預設只回報網頁結構，不含文章文字、表單值、Cookie 或網址參數。';
+        notice.textContent = '表單值、Cookie、網址參數不會回報。';
+        notice.hidden = true;
         body.appendChild(notice);
         const status = document.createElement('p');
         status.dataset.status = 'true';
-        status.textContent = latestResult || '按鈕在此區，回報結果顯示在最下方。';
+        status.textContent = latestResult || '';
         status.setAttribute('role','status');
         status.setAttribute('aria-live','polite');
         const info = document.createElement('p');
@@ -386,14 +393,14 @@
         const label = document.createElement('label');
         const include = document.createElement('input');
         include.type = 'checkbox';
-        include.checked = false;
+        include.checked = true;
         label.appendChild(include);
-        label.appendChild(document.createTextNode(' 包含公開頁面文字（需確認）'));
+        label.appendChild(document.createTextNode(' 包含公開頁面文字'));
         const submit = document.createElement('button');
         submit.type = 'button';
         submit.textContent = '立即送出報告';
         for (const element of [pair, check, info]) pairing.appendChild(element);
-        for (const element of [monitor, reloadHelp, label]) body.appendChild(element);
+        for (const element of [monitor, label]) body.appendChild(element);
         const footer = document.createElement('div');
         footer.id = 'tm-webdiag-footer';
         const actions = document.createElement('div');
@@ -418,9 +425,11 @@
             // mobile banner and could overflow the viewport.
             status.textContent = message;
             result.dataset.visible = 'false';
-            toggle.textContent = message.startsWith('已送出') ? '已送出' : '回報失敗';
+            toggle.textContent = message.startsWith('已送出') ? '已送出' : '立即送出';
+            if (message.startsWith('已送出')) setPanelOpen(false);
+            else setPanelOpen(true);
         };
-        if (latestResult) onResult(latestResult);
+        
         async function refreshPairing() {
             pairingState.textContent = '配對狀態：正在檢查…';
             showPairing(false);
@@ -448,14 +457,15 @@
             toggle.setAttribute('aria-expanded', String(open));
             host.dataset.open = String(open);
             result.dataset.visible = 'false';
-            if (open) fitDiagnosticViewport();
+            if (open) { toggle.textContent = '立即送出'; fitDiagnosticViewport(); }
+            else toggle.textContent = latestResult.startsWith('已送出') ? '已送出' : '回報';
         };
         toggle.setAttribute('aria-controls', 'tm-webdiag-panel');
         setPanelOpen(false);
+        if (latestResult) onResult(latestResult);
         toggle.addEventListener('click', () => {
-            const open = panel.hidden;
-            setPanelOpen(open);
-            if (open) void refreshPairing();
+            if (panel.hidden) { setPanelOpen(true); void refreshPairing(); }
+            else if (!submit.disabled) void sendReport();
         });
         pair.addEventListener('click', async () => {
             setStatus('正在建立配對碼…');
@@ -481,12 +491,12 @@
                 next.disabled = false;
                 return;
             }
-            GM_setValue(AUTO_KEY, { mode: 'once', armedAt: Date.now() });
+            GM_setValue(AUTO_KEY, { mode: 'once', armedAt: Date.now(), includeText: include.checked });
             setStatus('正在重新整理，頁面穩定後將自動送出一次。');
             window.location.reload();
         });
-        submit.addEventListener('click', async () => {
-            if (include.checked && !window.confirm('這是公開文章嗎？報告會包含可見文字並保存 7 天。請勿在私人、登入或付款頁勾選。')) return;
+        async function sendReport() {
+            if (submit.disabled) return;
             submit.disabled = true;
             setStatus('正在擷取並送出…');
             try {
@@ -496,7 +506,8 @@
             } catch (e) {
                 setStatus('送出失敗：' + e.message + '。資料尚未上傳。');
             } finally { submit.disabled = false; }
-        });
+        }
+        submit.addEventListener('click', sendReport);
         close.addEventListener('click', () => { setPanelOpen(false); });
         fitDiagnosticViewport();
     }
@@ -526,7 +537,7 @@
             clearInterval(interval);
             recordSnapshot(timeout ? 'auto-timeout' : 'auto-page-stable');
             try {
-                const report = buildReport(false);
+                const report = buildReport(arm?.includeText === true);
                 report.autoSubmission = { triggeredBy: 'explicit-reload-click',
                     reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed,
                     readyState: document.readyState, quietMs: Date.now() - lastChange };
