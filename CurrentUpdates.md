@@ -1,3 +1,8 @@
+## Cross-origin iframe diagnostics — 2026-11-26
+
+- [Install Translation Diagnostics 2026-11-26_1.2.7](src/TranslationDiagnostics.user.js) — explicit reports include accessible direct child iframe DOM, SVG geometry and computed paint, script/style inventory and capture status. Frame responses stay in short-lived private GM storage; no iframe UI or unsolicited uploads. Script bodies, inputs and URL queries remain excluded.
+- **Test:** [Claude Artifact](https://claude.ai/artifact/CtQyX8qfYAF822bgHJHHE3) — after reloading, a report should contain a frame capture or an explicit no-response reason. The production reader is unchanged.
+
 ## Live iframe reader and graphic snapshots — 2026-11-26
 
 - [Install Shared Floating Menu — All in One 2026-11-26_1.0.8](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-26_1.5.45](src/TranslatePreformattedText.user.js), not both.

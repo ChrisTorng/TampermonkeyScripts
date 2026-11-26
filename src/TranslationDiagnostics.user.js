@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-26_1.2.6
+// @version      2026-11-26_1.2.7
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
 // @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
 // @connect      tm-web-diagnostics.christorng.workers.dev
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js
@@ -16,12 +17,165 @@
 
 (function () {
     'use strict';
-    if (window !== window.top || !/^https?:$/.test(location.protocol)) return;
+    if (!/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-26_1.2.6';
+    const VERSION = '2026-11-26_1.2.7';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
+    const FRAME_CHANNEL = 'tm-webdiag-frame-v1';
+    const FRAME_KEY = 'tm-webdiag-frame-once:';
+    const FRAME_LIMIT = 550000;
+    const FRAME_WAIT = 2200;
+    // A child never shows controls or uploads data. It only writes a private
+    // GM response to a short-lived request created by the reporting userscript.
+    // The page's postMessage contains the request ID, not the report or secret.
+    if (window !== window.top) {
+        window.addEventListener('message', receiveFrameRequest);
+        return;
+    }
+
+    function safeFrameUrl(value, base = location.href) {
+        try {
+            const u = new URL(value, base);
+            return /^https?:$/.test(u.protocol) && !u.username && !u.password
+                ? u.origin + u.pathname : null;
+        } catch (_) { return null; }
+    }
+
+    function frameInventory() {
+        const scripts = Array.from(document.querySelectorAll('script'));
+        const svg = Array.from(document.querySelectorAll('svg'));
+        const image = Array.from(document.querySelectorAll('img'));
+        const paint = [];
+        for (const root of svg.slice(0, 24)) {
+            const box = root.getBoundingClientRect();
+            if (box.width <= 0 || box.height <= 0) continue;
+            const samples = Array.from(root.querySelectorAll('path,line,rect,circle,text,polygon,polyline')).slice(0, 12);
+            paint.push({
+                width: box.width, height: box.height, viewBox: root.getAttribute('viewBox'),
+                samples: samples.map(node => {
+                    const css = getComputedStyle(node);
+                    return {
+                        tag: node.localName, fill: css.getPropertyValue('fill'),
+                        stroke: css.getPropertyValue('stroke'),
+                        opacity: css.getPropertyValue('opacity'),
+                        strokeWidth: css.getPropertyValue('stroke-width')
+                    };
+                })
+            });
+        }
+        return {
+            readyState: document.readyState,
+            inlineScripts: scripts.filter(node => !node.getAttribute('src')).length,
+            inlineScriptCharacters: scripts.filter(node => !node.getAttribute('src'))
+                .reduce((n, node) => n + (node.textContent || '').length, 0),
+            externalScripts: scripts.filter(node => node.getAttribute('src')).map(node => safeFrameUrl(node.getAttribute('src'))).filter(Boolean).slice(0, 30),
+            inlineStyles: document.querySelectorAll('style').length,
+            svg: svg.length, canvas: document.querySelectorAll('canvas').length,
+            buttons: document.querySelectorAll('button,[role="button"]').length,
+            image: image.length,
+            svgImageCount: image.filter(node => /^data:image\/svg\+xml/i.test(node.getAttribute('src') || '')).length,
+            paint
+        };
+    }
+
+    function receiveFrameRequest(event) {
+        const data = event.data;
+        if (event.source !== window.parent || data?.channel !== FRAME_CHANNEL ||
+            !/^[a-zA-Z0-9-]{8,100}$/.test(data.id || '')) return;
+        const key = FRAME_KEY + data.id;
+        const request = GM_getValue(key, null);
+        if (!request || request.state !== 'request' ||
+            request.parentOrigin !== event.origin ||
+            request.frameUrl !== safeFrameUrl(location.href) ||
+            Date.now() > request.expires || request.expires - Date.now() > 10000 ||
+            !document.documentElement || !document.body) return;
+        if (document.querySelector('input[type="password"]')) {
+            GM_setValue(key, { state: 'response', status: 'password-form-excluded' });
+            return;
+        }
+        try {
+            const dom = captureDom(request.includeText === true, FRAME_LIMIT);
+            const inventory = frameInventory();
+            GM_setValue(key, { state: 'response', status: 'captured', dom, inventory });
+        } catch (_) {
+            GM_setValue(key, { state: 'response', status: 'capture-error' });
+        }
+    }
+
+    function collectFrameReports(includeText) {
+        const all = Array.from(document.querySelectorAll('iframe[src]'));
+        if (!all.length) return null;
+        const frames = all.slice(0, 6);
+        const entries = [];
+        for (const frame of frames) {
+            const frameUrl = safeFrameUrl(frame.getAttribute('src'), document.baseURI || location.href);
+            const item = {
+                url: frameUrl, sandbox: frame.getAttribute('sandbox'),
+                status: 'unsupported-url'
+            };
+            entries.push(item);
+            if (!frameUrl || !frame.contentWindow) continue;
+            const id = generatedId();
+            const key = FRAME_KEY + id;
+            item.status = 'no-response';
+            item.key = key;
+            GM_setValue(key, {
+                state: 'request', parentOrigin: location.origin, frameUrl,
+                includeText: includeText === true, expires: Date.now() + 5000
+            });
+            try {
+                frame.contentWindow.postMessage({ channel: FRAME_CHANNEL, id }, '*');
+            } catch (_) { item.status = 'post-message-error'; }
+        }
+        return new Promise(resolve => {
+            let ticks = 0;
+            const finish = () => {
+                let pending = false;
+                for (const item of entries) {
+                    if (!item.key) continue;
+                    const result = GM_getValue(item.key, null);
+                    if (result?.state === 'response') {
+                        item.status = result.status;
+                        if (result.status === 'captured') {
+                            item.dom = result.dom;
+                            item.inventory = result.inventory;
+                        }
+                        GM_deleteValue(item.key);
+                        delete item.key;
+                    } else pending = true;
+                }
+                if (pending && ++ticks < Math.ceil(FRAME_WAIT / 100)) {
+                    setTimeout(finish, 100);
+                    return;
+                }
+                for (const item of entries) {
+                    if (item.key) GM_deleteValue(item.key);
+                    delete item.key;
+                }
+                resolve({ total: all.length, frames: entries });
+            };
+            finish();
+        });
+    }
+
+    function attachFrameReports(report, result) {
+        report.embeddedFrames = result;
+        // Keep a conservative UTF-8 size budget below the existing 5 MiB
+        // collector limit. Prefer frame inventory over an oversized DOM.
+        const bytes = value => new TextEncoder().encode(JSON.stringify(value)).length;
+        if (typeof TextEncoder === 'undefined') return;
+        for (const frame of result.frames.slice().reverse()) {
+            if (bytes(report) <= 4_500_000) break;
+            if (frame.dom) {
+                frame.dom = { originalDomCharacters: frame.dom.originalDomCharacters,
+                    domTruncated: true, domHtml: '' };
+                frame.status = 'inventory-only-size-limit';
+            }
+        }
+    }
+
     const START_KEY = 'tm-webdiag-record-next:' + location.origin + location.pathname;
     const AUTO_KEY = 'tm-webdiag-auto-once:' + location.origin + location.pathname;
     const AUTO_QUIET_MS = 3000;
@@ -193,7 +347,7 @@
     // Copy structure faithfully while excluding hidden credentials, hydration payloads,
     // input values, script contents, event handlers and arbitrary data attributes.
     // Full readable text is an explicit per-report choice.
-    function captureDom(includeText) {
+    function captureDom(includeText, limit = HTML_LIMIT) {
         const clone = document.documentElement.cloneNode(true);
         for (const element of Array.from(clone.querySelectorAll('*'))) {
             if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(element.tagName)) {
@@ -205,7 +359,12 @@
             }
             for (const attribute of Array.from(element.attributes)) {
                 const name = attribute.name.toLowerCase();
-                const keep = ['id', 'class', 'role', 'lang', 'dir', 'translate', 'contenteditable',
+                const svgGeometry = element.namespaceURI === 'http://www.w3.org/2000/svg' &&
+                    ['viewbox', 'width', 'height', 'd', 'x', 'y', 'x1', 'x2', 'y1', 'y2',
+                        'cx', 'cy', 'r', 'rx', 'ry', 'points', 'transform', 'fill', 'stroke',
+                        'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity'].includes(name) &&
+                    !/url\s*\(/i.test(attribute.value) && attribute.value.length <= 24000;
+                const keep = svgGeometry || ['id', 'class', 'role', 'lang', 'dir', 'translate', 'contenteditable',
                     'aria-hidden', 'aria-expanded', 'data-testid', 'type', 'style'].includes(name);
                 if (name === 'href' || name === 'src') {
                     try {
@@ -234,8 +393,8 @@
             }
         }
         const raw = '<!DOCTYPE html>\n' + clone.outerHTML;
-        return { domHtml: raw.length <= HTML_LIMIT ? raw : raw.slice(0, HTML_LIMIT),
-            domTruncated: raw.length > HTML_LIMIT,
+        return { domHtml: raw.length <= limit ? raw : raw.slice(0, limit),
+            domTruncated: raw.length > limit,
             originalDomCharacters: raw.length };
     }
 
@@ -398,7 +557,7 @@
         pairing.style.setProperty('display', 'none', 'important');
         body.appendChild(pairing);
         const notice = document.createElement('p');
-        notice.textContent = '表單值、Cookie、網址參數不會回報。';
+        notice.textContent = '表單值、Cookie、網址參數不會回報；可存取的內嵌頁面會一併回報。';
         notice.hidden = true;
         body.appendChild(notice);
         const status = document.createElement('p');
@@ -548,6 +707,8 @@
             setStatus('正在擷取並送出…');
             try {
                 const report = buildReport(include.checked);
+                const frameTask = collectFrameReports(include.checked);
+                if (frameTask) attachFrameReports(report, await frameTask);
                 const response = await post('/api/report', { deviceId, secret, report });
                 showResult('已送出報告 ' + response.reportId + '（7 天後自動刪除）');
             } catch (e) {
@@ -585,6 +746,8 @@
             recordSnapshot(timeout ? 'auto-timeout' : 'auto-page-stable');
             try {
                 const report = buildReport(arm?.includeText === true);
+                const frameTask = collectFrameReports(arm?.includeText === true);
+                if (frameTask) attachFrameReports(report, await frameTask);
                 report.autoSubmission = { triggeredBy: 'explicit-reload-click',
                     reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed,
                     readyState: document.readyState, quietMs: Date.now() - lastChange };
