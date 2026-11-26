@@ -245,6 +245,9 @@ test('archive.is report UI retains its initial shrink-to-fit compensation and do
         h.window.visualViewport.scale = 0.4;
         h.window.visualViewport.width = 900;
         h.window.visualViewport.height = 1500;
+        h.document.documentElement.clientWidth = 900;
+        h.window.innerWidth = 900;
+        h.window.innerHeight = 1500;
     });
     const host = h.document.getElementById('tm-webdiag-host');
     const toggle = h.document.getElementById('tm-webdiag-toggle');
@@ -259,6 +262,7 @@ test('archive.is report UI retains its initial shrink-to-fit compensation and do
     assert.notEqual(result.dataset.visible, 'true');
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
+    h.window.visualViewport.width = 360;
     h.dispatchVisualViewportEvent('resize');
     assert.equal(host.style.getPropertyValue('display'), 'block');
     assert.equal(host.style.getPropertyValue('position'), 'absolute');
@@ -270,6 +274,7 @@ test('archive.is report UI retains its initial shrink-to-fit compensation and do
     assert.equal(host.style.getPropertyValue('top'), anchoredTop);
     assert.equal(host.style.getPropertyValue('left'), anchoredLeft);
     h.window.visualViewport.scale = 0.4;
+    h.window.visualViewport.width = 900;
     h.window.visualViewport.offsetLeft = 0;
     h.dispatchVisualViewportEvent('resize');
     assert.equal(host.style.getPropertyValue('display'), 'block');
@@ -359,6 +364,7 @@ test('manual pinch zoom anchors report UI and its open panel to the document', (
     toggle.click();
     assert.equal(panel.hidden, false);
     h.window.visualViewport.scale = 2;
+    h.window.visualViewport.width = 640;
     h.dispatchVisualViewportEvent('resize');
     assert.equal(host.style.getPropertyValue('display'), 'block');
     assert.equal(host.style.getPropertyValue('position'), 'absolute');
@@ -374,4 +380,34 @@ test('manual pinch zoom anchors report UI and its open panel to the document', (
     assert.equal(panel.style.getPropertyValue('position'), 'fixed');
     assert.equal(panel.hidden, false);
     assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 0);
+});
+
+test('initial provisional shrink-to-fit layout is not mistaken for manual pinch after responsive layout arrives', () => {
+    const { h } = run('https://example.org/', h => {
+        h.document.documentElement.clientWidth = 980;
+        Object.assign(h.window.visualViewport, { width: 980, height: 1600, scale: 0.36 });
+    });
+    const host = h.document.getElementById('tm-webdiag-host');
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    assert.match(toggle.style.getPropertyValue('transform'), /^scale/);
+    h.document.documentElement.clientWidth = 360;
+    h.window.innerWidth = 360;
+    Object.assign(h.window.visualViewport, { width: 360, height: 640, scale: 1 });
+    h.dispatchVisualViewportEvent('resize');
+    assert.equal(host.dataset.pinched, 'false');
+    assert.equal(host.style.getPropertyValue('position'), 'fixed');
+    assert.equal(toggle.style.getPropertyValue('transform'), 'none');
+    assert.equal(host.style.getPropertyValue('bottom'), '10px');
+});
+
+test('toolbar resize does not override native fixed bottom during or after scrolling', () => {
+    const { h } = run('https://example.org/');
+    const host = h.document.getElementById('tm-webdiag-host');
+    for (const height of [720, 700, 680, 640, 670, 720]) {
+        h.window.visualViewport.height = height;
+        h.dispatchVisualViewportEvent('resize');
+        h.dispatchWindowEvent('scroll');
+        assert.equal(host.style.getPropertyValue('position'), 'fixed');
+        assert.equal(host.style.getPropertyValue('bottom'), '10px');
+    }
 });

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-27_1.2.9
+// @version      2026-11-27_1.2.10
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -20,7 +20,7 @@
     if (!/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-26_1.2.7';
+    const VERSION = '2026-11-27_1.2.10';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const FRAME_CHANNEL = 'tm-webdiag-frame-v1';
@@ -447,7 +447,9 @@
         };
     }
 
-    let diagnosticNormalScale = Math.min(1, window.visualViewport?.scale || 1);
+    let diagnosticNormalScale = 1;
+    let diagnosticLayoutWidth = 0;
+    let diagnosticNormalVisualWidth = 0;
     let diagnosticOrientation = window.screen?.orientation?.type;
     let diagnosticAnchor = null;
     // Compensate only the report UI for Edge's shrink-to-fit on desktop-width pages.
@@ -460,12 +462,25 @@
         const vv = window.visualViewport;
         const scale = Number.isFinite(vv?.scale) && vv.scale > 0 ? vv.scale : 1;
         const orientation = window.screen?.orientation?.type;
-        if (orientation !== diagnosticOrientation) {
+        const layoutWidth = document.documentElement.clientWidth || window.innerWidth;
+        const visualWidth = vv?.width || layoutWidth;
+        // A provisional desktop-width layout can be replaced by a responsive
+        // viewport during first navigation. Do not carry its scale into the
+        // new layout. A real pinch contracts the visual width at fixed layout width.
+        const layoutChanged = !diagnosticLayoutWidth ||
+            Math.abs(layoutWidth - diagnosticLayoutWidth) > 2 ||
+            orientation !== diagnosticOrientation;
+        const scaleWithoutPinch = scale > diagnosticNormalScale * 1.05 &&
+            visualWidth >= diagnosticNormalVisualWidth * 0.95;
+        if (layoutChanged || scaleWithoutPinch || scale <= diagnosticNormalScale * 1.05) {
             diagnosticOrientation = orientation;
-            diagnosticNormalScale = 1;
+            diagnosticLayoutWidth = layoutWidth;
+            diagnosticNormalScale = Math.min(1, scale);
+            diagnosticNormalVisualWidth = visualWidth;
+            if (layoutChanged || scaleWithoutPinch) diagnosticAnchor = null;
         }
-        diagnosticNormalScale = Math.min(diagnosticNormalScale, scale);
-        const pinched = scale > diagnosticNormalScale * 1.05;
+        const pinched = scale > diagnosticNormalScale * 1.05 &&
+            visualWidth < diagnosticNormalVisualWidth * 0.95;
         host.dataset.pinched = String(pinched);
         const set = (el, prop, value) => {
             if (el.style.getPropertyValue(prop) !== value)
@@ -492,7 +507,15 @@
         const width = Math.max(1, Math.min(370, vw / zoom - 16));
         const height = Math.max(1, Math.min(320, vh / zoom - 64));
         const left = x + 8 * zoom;
-        const bottom = window.innerHeight - y - vh + 10 * zoom;
+        // Native fixed positioning follows browser toolbar animation on the
+        // compositor. Applying a JS height delta on every toolbar scroll can
+        // double-compensate a stale visualViewport value. Only compensate an
+        // occluding keyboard (or a panned visual viewport).
+        const occlusion = Math.max(0, window.innerHeight - y - vh);
+        const keyboardOrPan = y > 1 ||
+            (isActiveTextEditor() && occlusion * scale > 100);
+        const bottomInset = keyboardOrPan ? occlusion : 0;
+        const bottom = bottomInset + 10 * zoom;
         set(host, 'position', 'fixed');
         set(host, 'top', 'auto');
         set(host, 'left', left + 'px');
@@ -504,13 +527,14 @@
         set(panel, 'transform-origin', 'bottom left');
         set(panel, 'left', (x + 8 * zoom) + 'px');
         set(panel, 'top', 'auto');
-        set(panel, 'bottom', (window.innerHeight - y - vh + 48 * zoom) + 'px');
+        set(panel, 'bottom', (bottomInset + 48 * zoom) + 'px');
         set(panel, 'width', width + 'px');
         set(panel, 'height', 'auto');
         set(panel, 'max-height', height + 'px');
+        const anchorRect = host.getBoundingClientRect();
         diagnosticAnchor = {
-            host, x: (window.scrollX || 0) + left,
-            y: (window.scrollY || 0) + window.innerHeight - bottom - (host.offsetHeight || 0),
+            host, x: (window.scrollX || 0) + anchorRect.left,
+            y: (window.scrollY || 0) + anchorRect.top,
             gap: 38 * zoom
         };
     }
@@ -527,7 +551,7 @@
         if (host.querySelector('#tm-webdiag-toggle')) { fitDiagnosticViewport(); return; }
         const css = document.createElement('style');
         css.textContent = [
-            '#tm-webdiag-host{all:initial!important;position:fixed!important;bottom:10px!important;left:8px!important;max-width:calc(100vw - 16px)!important;z-index:2147483647!important;pointer-events:none!important}',
+            '#tm-webdiag-host{all:initial!important;position:fixed!important;bottom:10px!important;left:8px!important;max-width:calc(100vw - 16px)!important;z-index:2147483647!important;pointer-events:none!important;-webkit-text-size-adjust:none!important;text-size-adjust:none!important}',
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
             '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:5px 8px!important;margin:0!important;cursor:pointer!important}',
@@ -802,6 +826,9 @@
     window.addEventListener('scroll', fitDiagnosticViewport, { passive: true });
     window.addEventListener('resize', fitDiagnosticViewport);
     window.addEventListener('orientationchange', fitDiagnosticViewport);
+    window.addEventListener('touchstart', fitDiagnosticViewport, { passive: true });
+    window.addEventListener('focusin', fitDiagnosticViewport, { passive: true });
+    window.addEventListener('focusout', fitDiagnosticViewport, { passive: true });
     recordSnapshot('document-start');
     if (GM_getValue(START_KEY, false)) {
         GM_setValue(START_KEY, false);
