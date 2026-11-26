@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-27_1.5.49
+// @version      2026-11-27_1.5.50
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -40,7 +40,7 @@
     const readerReplayRawLimit = 12 * 1024 * 1024;
     const readerReplayPackedLimit = 8 * 1024 * 1024;
     const readerReplayChunkSize = 192 * 1024;
-    const readerReplayVersion = '2026-11-27_1.5.49';
+    const readerReplayVersion = '2026-11-27_1.5.50';
 
     // Cross-frame GM updates can arrive after a window message on mobile.
     async function readerWaitValue(key, accept, attempts = 8) {
@@ -122,7 +122,8 @@
     }
     function readerScrollTarget(value, savedNodes) {
         if (!readerValidTarget(value)) return false;
-        const element = savedNodes?.[Number(value)] || document.querySelectorAll(readerReturnSelector)[Number(value)];
+        const saved = savedNodes?.[Number(value)];
+        const element = saved?.isConnected ? saved : document.querySelectorAll(readerReturnSelector)[Number(value)];
         if (!element?.isConnected) return false;
         element.scrollIntoView({ block: 'center', inline: 'nearest' });
         return true;
@@ -131,8 +132,9 @@
     // The source tab listens only for its own private handoff ID. A real
     // browser tab focus is requested through Tampermonkey's window.focus grant,
     // not by navigating a new tab or transferring the source document.
+    const readerReturnRegistrations = new Map();
     function readerRegisterReturn(id, frame, frameOrigin) {
-        if (typeof GM_addValueChangeListener !== 'function') return;
+        if (typeof GM_addValueChangeListener !== 'function' || readerReturnRegistrations.has(id)) return;
         const sourceUrl = location.href;
         const frameAddress = readerFrameAddress(frame.getAttribute('src'));
         const key = readerReturnKey + id;
@@ -144,11 +146,12 @@
             if (readerValidTarget(request.target)) {
                 frame.scrollIntoView({ block: 'center', inline: 'nearest' });
                 frame.contentWindow?.postMessage({ channel: readerBridgeChannel,
-                    type: 'return-target', id, target: request.target }, frameOrigin);
+                    type: 'return-target', id, target: request.target, reopened: true }, frameOrigin);
             }
             try { window.focus(); } catch (_) {}
             GM_setValue(key, { state: 'ack', nonce: request.nonce, expires: request.expires });
         });
+        readerReturnRegistrations.set(id, listener);
         if (typeof GM_getTab === 'function' && typeof GM_saveTab === 'function') {
             GM_getTab(tab => {
                 tab = tab || {};
@@ -191,9 +194,9 @@
                 }
                 // The original tab has gone away. Open the source once and
                 // pass a private, short-lived target request to the new tab.
-                if (request.target !== null && record.live?.url) {
+                if (record.live?.url) {
                     await Promise.resolve(GM_setValue(readerReturnKey + 'reopen:' + originalUrl, {
-                        ...request, frameAddress: readerFrameAddress(record.live.url),
+                        ...request, id, frameAddress: readerFrameAddress(record.live.url),
                         expires: Date.now() + 60000
                     }));
                 }
@@ -614,6 +617,10 @@
                 continue;
             }
             readerCleanAttributes(target, location.href);
+            if (source.getAttribute('role') === 'button' || source.getAttribute('role') === 'slider') {
+                const position = readerTargetIndex(targetNodes, source);
+                if (position !== null) target.setAttribute('data-tm-reader-target', position);
+            }
             const declarations = [];
             for (const property of readerStyleProperties) {
                 const value = computed.getPropertyValue(property);
@@ -849,14 +856,25 @@
             if (data.type === 'ready' && Number(data.textLength) >= 100) {
                 addButton(frame);
                 const address = readerFrameAddress(frame.getAttribute('src'));
+                if (typeof GM_getTab === 'function') {
+                    GM_getTab(tab => {
+                        for (const entry of tab?.tmIframeReturn || []) {
+                            if (entry.sourceUrl === location.href && entry.frameAddress === address &&
+                                typeof entry.id === 'string') readerRegisterReturn(entry.id, frame, event.origin);
+                        }
+                    });
+                }
                 const reopenKey = readerReturnKey + 'reopen:' + location.href;
                 const pending = GM_getValue(reopenKey, null);
                 if (pending?.sourceUrl === location.href && pending.frameAddress === address &&
-                    readerValidTarget(pending.target) && Date.now() <= pending.expires) {
+                    (pending.target === null || readerValidTarget(pending.target)) && Date.now() <= pending.expires) {
                     GM_deleteValue(reopenKey);
-                    frame.scrollIntoView({ block: 'center', inline: 'nearest' });
-                    frame.contentWindow.postMessage({ channel: readerBridgeChannel, type: 'return-target',
-                        id: 'reopened', target: pending.target, reopened: true }, event.origin);
+                    if (readerValidTarget(pending.target)) {
+                        frame.scrollIntoView({ block: 'center', inline: 'nearest' });
+                        frame.contentWindow.postMessage({ channel: readerBridgeChannel, type: 'return-target',
+                            id: 'reopened', target: pending.target, reopened: true }, event.origin);
+                    }
+                    if (typeof pending.id === 'string') readerRegisterReturn(pending.id, frame, event.origin);
                 }
                 return;
             }
