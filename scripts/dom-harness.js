@@ -735,6 +735,10 @@ function createHarness(options) {
             }
             windowEventListeners.get(type).push(listener);
         },
+        removeEventListener(type, listener) {
+            const listeners = windowEventListeners.get(type) || [];
+            windowEventListeners.set(type, listeners.filter(entry => entry !== listener));
+        },
         dispatchEvent(event) {
             const listeners = windowEventListeners.get(event.type) || [];
             listeners.forEach((listener) => listener.call(windowObject, event));
