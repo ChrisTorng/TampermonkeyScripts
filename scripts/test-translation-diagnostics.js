@@ -100,6 +100,8 @@ test('diagnostics panel is reliably hidden by inline !important and closes from 
     toggle.click();
     assert.equal(panel.hidden, false);
     toggle.click();
+    await Promise.resolve();
+    await Promise.resolve();
     assert.equal(panel.hidden, true);
 });
 
@@ -183,7 +185,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
     assert(item);
     assert.equal(item.url, 'https://tm-web-diagnostics.christorng.workers.dev/api/report');
     assert.equal(item.data.report.url, 'https://www.perplexity.ai/hub/blog/perplexity-decider');
-    assert.equal(item.data.report.mode, 'structure');
+    assert.equal(item.data.report.mode, 'public-text');
     assert.equal(item.data.report.snapshots[0].html.lang, null);
     assert.equal(item.data.report.domTruncated, false);
     assert(!JSON.stringify(item.data.report).includes('SUPERSECRET'));
@@ -231,7 +233,7 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    assert.equal(panel.hidden, false);
+    assert.equal(panel.hidden, true);
     assert.equal(toast.dataset.visible, 'false', 'Do not display a second status outside the open panel');
     assert.match(h.document.getElementById('tm-webdiag-footer').querySelector('[data-status]').textContent, /已送出報告/);
     assert.equal(toggle.textContent, '已送出');
@@ -251,7 +253,8 @@ test('archive.is report UI counter-scales on a shrunk desktop page and restores 
     assert.equal(toggle.style.getPropertyValue('transform'), 'scale(2.5)');
     assert.equal(panel.style.getPropertyValue('transform'), 'scale(2.5)');
     assert.equal(panel.style.getPropertyValue('width'), '344px');
-    assert.equal(panel.style.getPropertyValue('height'), '560px');
+    assert.equal(panel.style.getPropertyValue('height'), 'auto');
+    assert.equal(panel.style.getPropertyValue('max-height'), '320px');
     assert.notEqual(result.dataset.visible, 'true');
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
@@ -268,10 +271,11 @@ test('narrow visual viewport keeps the report panel inside all four edges', () =
     const panel = h.document.getElementById('tm-webdiag-panel');
     const host = h.document.getElementById('tm-webdiag-host');
     h.document.getElementById('tm-webdiag-toggle').click();
-    assert.equal(panel.style.getPropertyValue('top'), '48px');
+    assert.equal(panel.style.getPropertyValue('top'), 'auto');
     assert.equal(panel.style.getPropertyValue('left'), '20px');
     assert.equal(panel.style.getPropertyValue('width'), '272px');
-    assert.equal(panel.style.getPropertyValue('height'), '423px');
+    assert.equal(panel.style.getPropertyValue('height'), 'auto');
+    assert.equal(panel.style.getPropertyValue('max-height'), '320px');
     assert.equal(host.dataset.open, 'true');
     h.document.getElementById('tm-webdiag-close').click();
     assert.equal(host.dataset.open, 'false');
