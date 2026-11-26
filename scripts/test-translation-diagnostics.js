@@ -9,7 +9,7 @@ const script = fs.readFileSync(path.join(__dirname, '../src/TranslationDiagnosti
 
 function run(url, setup = () => {}, seededValues = null) {
     const h = createHarness({ url });
-    const values = new Map(seededValues || []);
+    const values = seededValues instanceof Map ? seededValues : new Map(seededValues || []);
     const clock = { now: Date.now() };
     h.context.Date = class extends Date { static now() { return clock.now; } };
     const calls = [];
@@ -31,6 +31,7 @@ function run(url, setup = () => {}, seededValues = null) {
     });
     h.context.GM_getValue = (key, fallback) => values.has(key) ? values.get(key) : fallback;
     h.context.GM_setValue = (key, value) => values.set(key, value);
+    h.context.GM_deleteValue = key => values.delete(key);
     h.context.GM_xmlhttpRequest = options => {
         calls.push({ url: options.url, method: options.method, data: JSON.parse(options.data) });
         let response = { ok: true };
@@ -279,4 +280,62 @@ test('narrow visual viewport keeps the report panel inside all four edges', () =
     assert.equal(host.dataset.open, 'true');
     h.document.getElementById('tm-webdiag-close').click();
     assert.equal(host.dataset.open, 'false');
+});
+
+
+test('explicit report requests a child frame and includes its private GM response', async () => {
+    const shared = new Map();
+    const parentWindow = { postMessage() {} };
+    const child = run('https://embed.example.org/artifact?token=private', h => {
+        h.window.top = parentWindow;
+        h.window.parent = parentWindow;
+    }, shared);
+    assert.equal(child.h.document.getElementById('tm-webdiag-toggle'), null);
+    assert.equal(child.calls.length, 0);
+    const parent = run('https://example.org/story', h => {
+        const frame = h.document.createElement('iframe');
+        frame.setAttribute('src', 'https://embed.example.org/artifact?token=private');
+        frame.setAttribute('sandbox', 'allow-scripts');
+        frame.contentWindow = { postMessage(data) {
+            child.h.window.dispatchEvent({ type: 'message', source: parentWindow,
+                origin: 'https://example.org', data });
+        }};
+        h.appendToBody(frame);
+    }, shared);
+    assert.equal([...shared.keys()].some(k => k.startsWith('tm-webdiag-frame-once:')), false);
+    const toggle = parent.h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    await Promise.resolve();
+    toggle.click();
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    const report = parent.calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.embeddedFrames.total, 1);
+    const frame = report.embeddedFrames.frames[0];
+    assert.equal(frame.status, 'captured');
+    assert.equal(frame.url, 'https://embed.example.org/artifact');
+    assert.equal(frame.sandbox, 'allow-scripts');
+    assert.match(frame.dom.domHtml, /content is sanitized/);
+    assert.equal(frame.inventory.inlineScripts, 0);
+    assert.equal(child.calls.length, 0);
+    assert.equal([...shared.keys()].some(k => k.startsWith('tm-webdiag-frame-once:')), false);
+});
+
+test('unapproved and wrong-origin frame requests cannot extract content', () => {
+    const shared = new Map();
+    const parentWindow = {};
+    const child = run('https://embed.example.org/artifact', h => {
+        h.window.top = parentWindow;
+        h.window.parent = parentWindow;
+    }, shared);
+    const id = 'unapproved-12345', key = 'tm-webdiag-frame-once:' + id;
+    const event = { type: 'message', source: parentWindow,
+        origin: 'https://evil.example', data: { channel: 'tm-webdiag-frame-v1', id } };
+    child.h.window.dispatchEvent(event);
+    assert.equal(shared.has(key), false);
+    shared.set(key, { state: 'request', parentOrigin: 'https://example.org',
+        frameUrl: 'https://embed.example.org/artifact', includeText: true,
+        expires: Date.now() + 5000 });
+    child.h.window.dispatchEvent(event);
+    assert.equal(shared.get(key).state, 'request');
+    assert.equal(child.calls.length, 0);
 });
