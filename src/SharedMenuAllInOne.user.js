@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-27_1.0.11
+// @version      2026-11-27_1.0.12
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -3581,6 +3581,78 @@
     'use strict';
 
 
+
+    // BEGIN EARLY MISSING LANGUAGE
+    // Dynamic pages can discard their initial HTML before native language
+    // detection. Use independent, strongly English head metadata only when
+    // the author has not declared a language. Never rewrite translated DOM.
+    function inferEarlyEnglishLanguage(doc) {
+        const html = doc.documentElement;
+        if (!html || (html.getAttribute('lang') || '').trim()) return false;
+        const head = doc.head;
+        if (!head) return false;
+        const locale = head.querySelector('meta[property="og:locale"]');
+        const contentLanguage = head.querySelector('meta[http-equiv="content-language" i]');
+        if ([locale, contentLanguage].some(meta => {
+            const value = (meta?.getAttribute('content') || '').trim();
+            return value && !/^en(?:[-_]|$)/i.test(value);
+        })) return false;
+        const title = (head.querySelector('title')?.textContent || '').trim().slice(0, 250);
+        const description = (head.querySelector('meta[name="description" i]')?.getAttribute('content') || '').trim().slice(0, 1000);
+        const english = /\b(?:the|and|of|to|in|is|for|that|with|on|as|are|by|from|this|which|have|will|can|their|you|your|our|a|an|it|its)\b/gi;
+        const evidence = text => {
+            const words = (text.match(english) || []).map(word => word.toLowerCase());
+            const letters = text.match(/\p{L}/gu) || [];
+            return { words: words.length, unique: new Set(words).size,
+                latin: (text.match(/[A-Za-z]/g) || []).length,
+                other: letters.filter(letter => !/[A-Za-z]/.test(letter)).length };
+        };
+        const t = evidence(title), d = evidence(description);
+        if (t.latin < 18 || t.words < 2 || d.latin < 70 || d.words < 7 || d.unique < 5
+            || t.other * 10 > t.latin || d.other * 10 > d.latin) return false;
+        html.setAttribute('lang', 'en');
+        return true;
+    }
+
+    function watchEarlyMissingLanguage() {
+        if (window !== window.top) return;
+        let observer, timeout, watched;
+        const stop = () => {
+            observer?.disconnect();
+            clearTimeout(timeout);
+            document.removeEventListener('DOMContentLoaded', finish);
+        };
+        const check = () => {
+            if ((document.documentElement?.getAttribute('lang') || '').trim()
+                || inferEarlyEnglishLanguage(document)) {
+                stop();
+                return;
+            }
+            // Observe only the head once it exists, never dynamic app content.
+            const target = document.head || document;
+            if (watched !== target && observer) {
+                observer.disconnect();
+                observer.observe(target, { childList: true, subtree: true,
+                    characterData: true, attributes: true, attributeFilter: ['content'] });
+                watched = target;
+            }
+        };
+        const finish = () => {
+            check();
+            stop();
+        };
+        if (document.readyState !== 'loading') {
+            inferEarlyEnglishLanguage(document);
+            return;
+        }
+        observer = new MutationObserver(check);
+        timeout = setTimeout(stop, 3000);
+        document.addEventListener('DOMContentLoaded', finish, { once: true });
+        check();
+    }
+    watchEarlyMissingLanguage();
+    // END EARLY MISSING LANGUAGE
+
     // BEGIN EMBEDDED READER BRIDGE
     // Runs in both top-level pages and their accessible iframes. A frame must
     // actively report readable content before any control is displayed.
@@ -6493,7 +6565,7 @@
     // A single small official-main metadata check on each top-level page load.
     // Never reload the document, and never fetch unmerged PR branches.
     if (window === window.top && typeof GM_xmlhttpRequest === 'function') {
-        const installedVersion = "2026-11-27_1.0.11";
+        const installedVersion = "2026-11-27_1.0.12";
         const installUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js";
         const metaUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js";
         function isNewer(next, installed) {
