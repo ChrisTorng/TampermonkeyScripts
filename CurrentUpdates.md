@@ -1,3 +1,9 @@
+## Iframe replay handoff reliability — 2026-11-27
+
+- [Install Shared Floating Menu — All in One 2026-11-27_1.0.10](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.48](src/TranslatePreformattedText.user.js), not both.
+- Retry delayed cross-frame storage synchronization; transfer compressed replay in 192 KiB chunks with an 8 MiB encoded limit instead of 3 MiB. Record version, capture stage, sizes, and handoff outcome in reader diagnostics without reporting source code.
+- **Test:** [Claude Artifact](https://claude.ai/artifact/CtQyX8qfYAF822bgHJHHE3) — reload source, use 譯↗ to create a fresh reader, verify interaction and report once if unavailable.
+
 ## Document-anchored report controls during pinch zoom — 2026-11-27
 
 - [Install Translation Diagnostics 2026-11-27_1.2.9](src/TranslationDiagnostics.user.js) — preserve report control and panel document coordinates and their original CSS scale during pinch zoom; restore normal docking at the original page scale.

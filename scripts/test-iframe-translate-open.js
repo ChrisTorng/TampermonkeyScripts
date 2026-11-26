@@ -128,6 +128,7 @@ describe('generic iframe translation reader', () => {
         frameMessage(h, frame, { type: 'ready', textLength: 300 });
         const button = h.document.querySelector('.tm-iframe-translate-open');
         button.click();
+        await settle();
         const request = messages.find(m => m.type === 'capture');
         assert(request?.id);
         assert.equal(opened.length, 0);
@@ -157,6 +158,7 @@ describe('generic iframe translation reader', () => {
         });
         frameMessage(h, frame, { type: 'ready', textLength: 300 });
         h.document.querySelector('.tm-iframe-translate-open').click();
+        await settle();
         const { id } = messages.find(m => m.type === 'capture');
         const key = 'tm-embedded-replay:' + id;
         const authorization = store.get(key);
@@ -185,6 +187,7 @@ describe('generic iframe translation reader', () => {
         });
         frameMessage(h, frame, { type: 'ready', textLength: 300 });
         h.document.querySelector('.tm-iframe-translate-open').click();
+        await settle();
         const { id } = messages.find(m => m.type === 'capture');
         frameMessage(h, frame, { type: 'captured', id, html: '<p>Static fallback</p>',
             metrics: { textLength: 300, graphics: 1, controls: 1 },
@@ -192,6 +195,42 @@ describe('generic iframe translation reader', () => {
         await settle();
         assert.equal(store.get('tm-embedded-reader:' + id).replay, undefined);
         assert.equal(store.has('tm-embedded-replay:' + id), false);
+    });
+
+    test('chunked replay crosses the private store without copying source into the parent record', async () => {
+        let frame;
+        const messages = [];
+        const { h, store, opened } = boot('https://example.org/story', h => {
+            frame = embed(h, 'embed.example.com');
+            frame.contentWindow.postMessage = m => messages.push(m);
+        });
+        frameMessage(h, frame, { type: 'ready', textLength: 300 });
+        h.document.querySelector('.tm-iframe-translate-open').click();
+        await settle();
+        const { id } = messages.find(m => m.type === 'capture');
+        const key = 'tm-embedded-replay:' + id;
+        const raw = '<html><body><script>' + '/*' + 'a'.repeat(200000) + '*/' + '</script></body></html>';
+        const size = 192 * 1024, expires = Date.now() + 600000;
+        const manifest = { encoding: 'plain', method: 'dom', bytes: Buffer.byteLength(raw),
+            length: raw.length, chunks: Math.ceil(raw.length / size) };
+        for (let i = 0; i < manifest.chunks; i++)
+            store.set(key + ':' + i, { expires, data: raw.slice(i * size, (i + 1) * size) });
+        store.set(key, { state: 'response', expires, manifest });
+        frameMessage(h, frame, { type: 'captured', id, html: '<p>Static fallback</p>',
+            metrics: { textLength: 300, graphics: 1, controls: 1, height: 500 },
+            replayTrace: { version: '2026-11-27_1.5.48', capture: 'chunks-written' } });
+        for (let i = 0; i < 30; i++) await Promise.resolve();
+        assert.equal(opened.length, 1);
+        const record = store.get('tm-embedded-reader:' + id);
+        assert.equal(record.replay, undefined);
+        assert.equal(record.replayManifest.chunks, 2);
+        assert.equal(record.replayTrace.handoff, 'manifest-received');
+        const reader = makeReader(id, store);
+        for (let i = 0; i < 50; i++) await Promise.resolve();
+        const cached = JSON.parse(reader.h.sessionStorage.getItem('tm-iframe-viewer:' + id));
+        assert.equal(cached.replay.data, raw);
+        assert.equal(store.has(key + ':0'), false);
+        assert.equal(store.has(key + ':1'), false);
     });
 
     function makeReader(id, store, seed = {}, setup = () => {}) {
