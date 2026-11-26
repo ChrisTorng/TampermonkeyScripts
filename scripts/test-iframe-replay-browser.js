@@ -20,7 +20,16 @@ test('production replay helpers preserve a large interactive document in an opaq
             const out = document.getElementById('result');
             const check = (ok, why) => { if (!ok) throw Error(why); };
             try {
-                const data = 'abcdefghijklmnopqrstuvwxyz0123456789'.repeat(153600).slice(0, 5529565);
+                // The original artifact has 5.53M characters of structured data,
+                // not an artificially tiny compressed repetitive string.
+                const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+                let seed = 0x83a21f7d;
+                const chars = new Array(5529565);
+                for (let i = 0; i < chars.length; i++) {
+                    seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+                    chars[i] = alphabet[seed & 63];
+                }
+                const data = chars.join('');
                 const source = '<!doctype html><html lang="en"><head><style>:root{--ink:#3987e5}svg path{stroke:var(--ink);fill:none}</style></head><body><div id="app"></div><script>const DATA=' +
                     JSON.stringify(data) + ';</' + 'script><script>(' + (function () {
                         const app = document.getElementById('app');
@@ -42,7 +51,20 @@ test('production replay helpers preserve a large interactive document in an opaq
                     }).toString() + ')();</' + 'script></body></html>';
                 const packed = await readerPackReplay(source, 'response');
                 check(readerValidReplay(packed) && packed.encoding === 'gzip-base64', 'compression');
-                check(await readerUnpackReplay(packed) === source, 'lossless unpacking');
+                check(packed.data.length > 3 * 1024 * 1024, 'realistic compressed payload');
+                const store = new Map();
+                globalThis.GM_setValue = (k, v) => {
+                    if (v.data?.length > 192 * 1024) throw Error('single value quota');
+                    store.set(k, v);
+                };
+                globalThis.GM_getValue = (k, fallback) => store.get(k) ?? fallback;
+                globalThis.GM_deleteValue = k => store.delete(k);
+                const manifest = await readerSaveChunks('fixture', packed);
+                check(manifest.chunks > 16, 'chunk count');
+                const restored = await readerLoadChunks('fixture', manifest);
+                check(restored && await readerUnpackReplay(restored) === source, 'chunk round trip');
+                await readerDeleteChunks('fixture', manifest);
+                check(store.size === 0, 'chunk cleanup');
                 const frame = document.createElement('iframe');
                 frame.setAttribute('sandbox', 'allow-scripts');
                 const token = 'fixture-replay-token';
@@ -57,7 +79,7 @@ test('production replay helpers preserve a large interactive document in an opaq
                     });
                     setTimeout(() => reject(Error('replay timeout')), 12000);
                 });
-                frame.srcdoc = readerReplayDocument(source, token);
+                frame.srcdoc = readerReplayDocument(await readerUnpackReplay(restored), token);
                 document.body.appendChild(frame);
                 const result = await observed;
                 check(result.isolated && result.blocked, 'sandbox/CSP');
