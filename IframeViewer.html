@@ -25,6 +25,20 @@
     #iframe-viewer-content img { height: auto; }
     #iframe-viewer-content pre { max-width: 100%; overflow-x: auto; }
     #iframe-viewer-content a { overflow-wrap: anywhere; }
+    /* Captured inline display values lack the original flex/grid track rules.
+       Use normal document flow on phones, including older session snapshots. */
+    @media (max-width: 760px) {
+      #iframe-viewer-content { padding: 12px; overflow-wrap: break-word; }
+      #iframe-viewer-content :is(div,section,article,main,header,footer,nav,ul,ol) {
+        min-width: 0 !important; max-width: 100% !important;
+        box-sizing: border-box !important; word-break: normal !important;
+      }
+      #iframe-viewer-content :is([style*="display:flex"],[style*="display: flex"],[style*="display:grid"],[style*="display: grid"]) {
+        display: block !important; width: auto !important;
+      }
+      #iframe-viewer-content :is(h1,h2,h3,p,li) { overflow-wrap: break-word !important; word-break: normal !important; }
+      #iframe-viewer-content table { display: block; overflow-x: auto; }
+    }
     #iframe-viewer-status { font: 16px/1.5 system-ui,sans-serif; padding: 16px 20px; }
   </style>
 </head>

@@ -1,3 +1,8 @@
+## Compact diagnostic reporting and mobile iframe reader — 2026-11-26
+
+- [Install Translation Diagnostics 2026-11-26_1.2.5](src/TranslationDiagnostics.user.js) — tap Report twice at the same location to submit; public text is checked by default, success closes the panel, failures stay visible.
+- [Test Claude Artifact](https://claude.ai/artifact/CtQyX8qfYAF822bgHJHHE3) — open the standalone reader and reload it; mobile flex/grid snapshots use normal document flow. Android Edge verification required.
+
 ## Mastodon early language detection — 2026-11-24
 
 - [Install Shared Floating Menu — All in One 2026-11-24_1.0.6](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-24_1.5.42](src/TranslatePreformattedText.user.js), not both. Use verified post-specific Open Graph locale before asynchronous content hydration; retain the existing post-body fallback.
