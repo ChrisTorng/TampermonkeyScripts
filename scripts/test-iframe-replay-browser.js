@@ -30,7 +30,7 @@ test('production replay helpers preserve a large interactive document in an opaq
                     chars[i] = alphabet[seed & 63];
                 }
                 const data = chars.join('');
-                const source = '<!doctype html><html lang="en"><head><style>:root{--ink:#3987e5}svg path{stroke:var(--ink);fill:none}</style></head><body><div id="app"></div><script>const DATA=' +
+                const source = '<!doctype html><html lang="en"><head><!-- frame-runtime --><script>window.wrapperRan=true;</'+'script><!-- /frame-runtime --><style>:root{--ink:#3987e5}svg path{stroke:var(--ink);fill:none}</style></head><body><div id="app"></div><script>const DATA=' +
                     JSON.stringify(data) + ';</' + 'script><script>(' + (function () {
                         const app = document.getElementById('app');
                         app.innerHTML = '<p>Proof progress</p><svg viewBox="0 0 100 50"><path d="M0 45L90 5" stroke-width="3"/></svg><button>Details</button><output></output>';
@@ -44,7 +44,7 @@ test('production replay helpers preserve a large interactive document in an opaq
                             let isolated = false, blocked = false;
                             try { void parent.document.body; } catch (_) { isolated = true; }
                             try { await fetch('data:text/plain,blocked'); } catch (_) { blocked = true; }
-                            parent.postMessage({ test: true, isolated, blocked,
+                            parent.postMessage({ test: true, isolated, blocked, wrapperRan: !!window.wrapperRan,
                                 paint: getComputedStyle(app.querySelector('path')).stroke,
                                 text: app.querySelector('output').textContent, hash: location.hash }, '*');
                         });
@@ -83,6 +83,7 @@ test('production replay helpers preserve a large interactive document in an opaq
                 document.body.appendChild(frame);
                 const result = await observed;
                 check(result.isolated && result.blocked, 'sandbox/CSP');
+                check(!result.wrapperRan, 'host runtime removed');
                 check(result.paint === 'rgb(57, 135, 229)', 'CSS color');
                 check(result.text === '5529565' && result.hash === '#detail', 'click/hash/data');
                 frame.remove();

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-27_1.0.10
+// @version      2026-11-27_1.0.11
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -16,6 +16,12 @@
 // @grant        GM_setValue
 // @grant        GM_listValues
 // @grant        GM_deleteValue
+// @grant        GM_addValueChangeListener
+// @grant        GM_removeValueChangeListener
+// @grant        GM_getTab
+// @grant        GM_saveTab
+// @grant        GM_getTabs
+// @grant        window.focus
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
@@ -3587,7 +3593,7 @@
     const readerReplayRawLimit = 12 * 1024 * 1024;
     const readerReplayPackedLimit = 8 * 1024 * 1024;
     const readerReplayChunkSize = 192 * 1024;
-    const readerReplayVersion = '2026-11-27_1.5.48';
+    const readerReplayVersion = '2026-11-27_1.5.50';
 
     // Cross-frame GM updates can arrive after a window message on mobile.
     async function readerWaitValue(key, accept, attempts = 8) {
@@ -3646,6 +3652,137 @@
         return readerValidReplay(replay) ? replay : null;
     }
     const readerReplayChannel = 'tm-embedded-replay-v1';
+    const readerReturnKey = 'tm-embedded-return:';
+    const readerReturnSelector = 'svg,canvas,video,audio,button,input,select,textarea,[role="button"],[role="slider"]';
+    function readerValidTarget(value) {
+        return typeof value === 'string' && /^(?:[0-9]{1,5})$/.test(value);
+    }
+    function readerTargetIndex(nodes, node) {
+        const index = nodes.indexOf(node);
+        return index >= 0 ? String(index) : null;
+    }
+    function readerTabCall(fn) {
+        return new Promise(resolve => {
+            let done = false;
+            const finish = value => { if (!done) { done = true; clearTimeout(timer); resolve(value); } };
+            const timer = setTimeout(() => finish(null), 1200);
+            try { fn(finish); } catch (_) { finish(null); }
+        });
+    }
+    function readerFrameAddress(value) {
+        try { const u = new URL(value, location.href); return u.origin + u.pathname; }
+        catch (_) { return ''; }
+    }
+    function readerScrollTarget(value, savedNodes) {
+        if (!readerValidTarget(value)) return false;
+        const saved = savedNodes?.[Number(value)];
+        const element = saved?.isConnected ? saved : document.querySelectorAll(readerReturnSelector)[Number(value)];
+        if (!element?.isConnected) return false;
+        element.scrollIntoView({ block: 'center', inline: 'nearest' });
+        return true;
+    }
+
+    // The source tab listens only for its own private handoff ID. A real
+    // browser tab focus is requested through Tampermonkey's window.focus grant,
+    // not by navigating a new tab or transferring the source document.
+    const readerReturnRegistrations = new Map();
+    function readerRegisterReturn(id, frame, frameOrigin) {
+        if (typeof GM_addValueChangeListener !== 'function' || readerReturnRegistrations.has(id)) return;
+        const sourceUrl = location.href;
+        const frameAddress = readerFrameAddress(frame.getAttribute('src'));
+        const key = readerReturnKey + id;
+        const listener = GM_addValueChangeListener(key, (_key, _old, request, remote) => {
+            if (!remote || !request || request.sourceUrl !== sourceUrl ||
+                request.state !== 'request' || Date.now() > request.expires ||
+                location.href !== sourceUrl || !frame.isConnected ||
+                readerFrameAddress(frame.getAttribute('src')) !== frameAddress) return;
+            if (readerValidTarget(request.target)) {
+                frame.scrollIntoView({ block: 'center', inline: 'nearest' });
+                frame.contentWindow?.postMessage({ channel: readerBridgeChannel,
+                    type: 'return-target', id, target: request.target, reopened: true }, frameOrigin);
+            }
+            try { window.focus(); } catch (_) {}
+            GM_setValue(key, { state: 'ack', nonce: request.nonce, expires: request.expires });
+        });
+        readerReturnRegistrations.set(id, listener);
+        if (typeof GM_getTab === 'function' && typeof GM_saveTab === 'function') {
+            GM_getTab(tab => {
+                tab = tab || {};
+                const entries = (tab.tmIframeReturn || []).filter(x => x.id !== id).slice(-15);
+                entries.push({ id, sourceUrl, frameAddress });
+                tab.tmIframeReturn = entries;
+                GM_saveTab(tab);
+            });
+        }
+        window.addEventListener('pagehide', event => {
+            if (!event.persisted && typeof GM_removeValueChangeListener === 'function')
+                GM_removeValueChangeListener(listener);
+        }, { once: true });
+    }
+    function readerAttachReturn(link, target, originalUrl, id, record) {
+        if (!link || !originalUrl) return;
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        let busy = false;
+        async function go(value) {
+            if (busy) return;
+            busy = true;
+            const key = readerReturnKey + id;
+            const nonce = Date.now().toString(36) + Math.random().toString(36).slice(2);
+            const request = { state: 'request', nonce, sourceUrl: originalUrl,
+                target: readerValidTarget(value) ? value : null, expires: Date.now() + 4000 };
+            try {
+                await Promise.resolve(GM_setValue(key, request));
+                const result = await readerWaitValue(key, v => v?.state === 'ack' && v.nonce === nonce, 24);
+                if (result?.state === 'ack' && result.nonce === nonce) return;
+                const tabs = typeof GM_getTabs === 'function' ?
+                    await readerTabCall(done => GM_getTabs(done)) : null;
+                const known = tabs && Object.values(tabs).some(tab =>
+                    tab?.tmIframeReturn?.some(entry => entry.id === id && entry.sourceUrl === originalUrl));
+                if (known || tabs === null) {
+                    const status = document.getElementById('iframe-viewer-mode');
+                    if (status) status.textContent = known ?
+                        '來源頁仍開啟，請切回該頁籤' : '無法確認來源頁，長按標題可另開';
+                    return;
+                }
+                // The original tab has gone away. Open the source once and
+                // pass a private, short-lived target request to the new tab.
+                if (record.live?.url) {
+                    await Promise.resolve(GM_setValue(readerReturnKey + 'reopen:' + originalUrl, {
+                        ...request, id, frameAddress: readerFrameAddress(record.live.url),
+                        expires: Date.now() + 60000
+                    }));
+                }
+                GM_openInTab(originalUrl, { active: true });
+            } finally {
+                try { await Promise.resolve(GM_deleteValue(key)); } catch (_) {}
+                busy = false;
+            }
+        }
+        link.addEventListener('click', event => {
+            if (event.button > 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            void go(null);
+        });
+        for (const element of target.querySelectorAll('[data-tm-reader-target]')) {
+            const value = element.getAttribute('data-tm-reader-target');
+            if (!readerValidTarget(value)) continue;
+            element.setAttribute('role', 'link');
+            element.setAttribute('tabindex', '0');
+            element.setAttribute('title', '靜態快照，點選返回原始互動項目');
+            element.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                void go(value);
+            });
+            element.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    void go(value);
+                }
+            });
+        }
+    }
 
     // Capture self-contained documents only. No server upload, cookies, GM grants,
     // privileged requests or external dependencies are transferred into the replay.
@@ -3772,12 +3909,18 @@
     // Executed only in an opaque-origin sandbox. Report rendered content and
     // resize; no privileged bridge, code evaluation request or application data.
     function readerReplayMonitor(token, channel) {
+        const errors = Object.create(null);
+        const note = key => { errors[key] = Math.min(999, (errors[key] || 0) + 1); };
+        addEventListener('error', event => note(event.error?.name || 'error'));
+        addEventListener('unhandledrejection', event => note(event.reason?.name || 'rejection'));
+        addEventListener('securitypolicyviolation', event => note('csp:' + event.effectiveDirective));
+        parent.postMessage({ channel, token, type: 'replay-boot' }, '*');
         function report() {
             if (!document.body || document.readyState === 'loading') return;
             const body = document.body;
             const bounds = body.getBoundingClientRect();
             parent.postMessage({
-                channel, token, type: 'replay-ready',
+                channel, token, type: 'replay-ready', errors,
                 textLength: (body.innerText || '').trim().length,
                 graphics: body.querySelectorAll('svg,canvas,video').length,
                 controls: body.querySelectorAll('button,input,select,textarea,[role="button"],[role="slider"]').length,
@@ -3796,6 +3939,26 @@
         const doc = new DOMParser().parseFromString(html, 'text/html');
         if (!readerReplayCandidate(doc)) throw new Error('Not a self-contained document');
         for (const element of doc.querySelectorAll('base,meta[http-equiv="refresh" i]')) element.remove();
+        // Host-injected runtime is not the artifact application. Remove only
+        // explicitly delimited wrapper blocks, never arbitrary application code.
+        const walker = doc.createTreeWalker(doc, 128 /* SHOW_COMMENT */);
+        const starts = [];
+        let comment;
+        while ((comment = walker.nextNode())) {
+            if (comment.nodeValue.trim() === 'frame-runtime') starts.push(comment);
+        }
+        for (const first of starts) {
+            let last = first.nextSibling;
+            const nodes = [];
+            while (last && !(last.nodeType === 8 && last.nodeValue.trim() === '/frame-runtime')) {
+                if (last.nodeType === 1 && last.localName !== 'script') break;
+                nodes.push(last);
+                last = last.nextSibling;
+            }
+            if (last?.nodeType === 8 && last.nodeValue.trim() === '/frame-runtime') {
+                for (const node of [first, ...nodes, last]) node.remove();
+            }
+        }
         const policy = doc.createElement('meta');
         policy.httpEquiv = 'Content-Security-Policy';
         policy.content = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; " +
@@ -3935,6 +4098,7 @@
         for (const attr of Array.from(element.attributes || [])) {
             const name = attr.name.toLowerCase();
             if (!['href', 'src', 'alt', 'title', 'colspan', 'rowspan'].includes(name)
+                && !(allowStyle && name === 'data-tm-reader-target' && readerValidTarget(attr.value))
                 && !(allowStyle && name === 'style')) {
                 element.removeAttribute(attr.name);
                 continue;
@@ -3960,7 +4124,7 @@
         return (document.body && (document.body.innerText || document.body.textContent) || '').trim();
     }
 
-    function readerCapture() {
+    function readerCapture(targetNodes = Array.from(document.querySelectorAll(readerReturnSelector))) {
         const text = readerText();
         if (text.length < 100 || !document.body) throw new Error('No readable article content');
         if (document.body.querySelector('input[type="password"]')) throw new Error('Login form excluded');
@@ -3983,19 +4147,33 @@
             if (tag === 'SVG' || tag === 'CANVAS') {
                 let image = null;
                 try { image = readerGraphicSnapshot(source, computed); } catch (_) { /* Fallback below. */ }
-                if (image) target.replaceWith(image);
-                else {
-                    const note = document.createElement('span');
-                    note.textContent = '[Graphic unavailable — see original page]';
-                    target.replaceWith(note);
+                const bounds = source.getBoundingClientRect();
+                const position = readerTargetIndex(targetNodes, source);
+                const replacement = image || document.createElement('span');
+                if (!image) replacement.textContent = '圖形快照不可用';
+                if (position !== null && (bounds.width >= 32 || bounds.height >= 32 || tag === 'CANVAS')) {
+                    replacement.setAttribute('data-tm-reader-target', position);
                 }
+                target.replaceWith(replacement);
                 continue;
             }
             if (readerForbiddenTags.has(tag)) {
-                target.remove();
+                const position = readerTargetIndex(targetNodes, source);
+                if (position !== null && ['BUTTON','INPUT','SELECT','TEXTAREA','VIDEO','AUDIO'].includes(tag)) {
+                    const note = document.createElement('span');
+                    // Never copy input values or current editable contents.
+                    note.textContent = (tag === 'BUTTON' ? source.textContent.trim().slice(0, 120) : '') ||
+                        source.getAttribute('aria-label') || source.getAttribute('title') || '互動元件';
+                    note.setAttribute('data-tm-reader-target', position);
+                    target.replaceWith(note);
+                } else target.remove();
                 continue;
             }
             readerCleanAttributes(target, location.href);
+            if (source.getAttribute('role') === 'button' || source.getAttribute('role') === 'slider') {
+                const position = readerTargetIndex(targetNodes, source);
+                if (position !== null) target.setAttribute('data-tm-reader-target', position);
+            }
             const declarations = [];
             for (const property of readerStyleProperties) {
                 const value = computed.getPropertyValue(property);
@@ -4016,6 +4194,7 @@
 
     function startReaderInFrame() {
         if (window === window.parent) return;
+        const capturedTargets = new Map();
         function announce() {
             if (!document.body || document.body.querySelector('input[type="password"]')) return;
             const text = readerText();
@@ -4030,6 +4209,11 @@
             const data = event.data;
             if (!data || data.channel !== readerBridgeChannel) return;
             if (data.type === 'probe') announce();
+            if (data.type === 'return-target' && readerValidTarget(data.target)) {
+                const saved = capturedTargets.get(data.id);
+                if (saved || data.reopened === true) readerScrollTarget(data.target, saved);
+                return;
+            }
             if (data.type === 'live-probe' && event.origin === 'https://christorng.idv.tw' &&
                 /^[a-z0-9-]{8,80}$/i.test(data.id || '') && document.readyState === 'complete' &&
                 document.body && !document.body.querySelector('input[type="password"]')) {
@@ -4041,7 +4225,10 @@
             }
             if (data.type !== 'capture' || !/^[a-z0-9-]{8,80}$/i.test(data.id || '')) return;
             try {
-                const result = readerCapture();
+                const targets = Array.from(document.querySelectorAll(readerReturnSelector));
+                const result = readerCapture(targets);
+                capturedTargets.set(data.id, targets);
+                if (capturedTargets.size > 16) capturedTargets.delete(capturedTargets.keys().next().value);
                 const key = readerReplayKey + data.id;
                 const trace = { version: readerReplayVersion, capture: 'no-authorization' };
                 // Keep source bytes in private GM storage; only status crosses postMessage.
@@ -4221,6 +4408,27 @@
             if (!data || data.channel !== readerBridgeChannel) return;
             if (data.type === 'ready' && Number(data.textLength) >= 100) {
                 addButton(frame);
+                const address = readerFrameAddress(frame.getAttribute('src'));
+                if (typeof GM_getTab === 'function') {
+                    GM_getTab(tab => {
+                        for (const entry of tab?.tmIframeReturn || []) {
+                            if (entry.sourceUrl === location.href && entry.frameAddress === address &&
+                                typeof entry.id === 'string') readerRegisterReturn(entry.id, frame, event.origin);
+                        }
+                    });
+                }
+                const reopenKey = readerReturnKey + 'reopen:' + location.href;
+                const pending = GM_getValue(reopenKey, null);
+                if (pending?.sourceUrl === location.href && pending.frameAddress === address &&
+                    (pending.target === null || readerValidTarget(pending.target)) && Date.now() <= pending.expires) {
+                    GM_deleteValue(reopenKey);
+                    if (readerValidTarget(pending.target)) {
+                        frame.scrollIntoView({ block: 'center', inline: 'nearest' });
+                        frame.contentWindow.postMessage({ channel: readerBridgeChannel, type: 'return-target',
+                            id: 'reopened', target: pending.target, reopened: true }, event.origin);
+                    }
+                    if (typeof pending.id === 'string') readerRegisterReturn(pending.id, frame, event.origin);
+                }
                 return;
             }
             const info = known.get(frame);
@@ -4288,6 +4496,7 @@
                     title: document.title || String(data.title || ''),
                     url: location.href
                 });
+                readerRegisterReturn(id, frame, event.origin);
                 GM_openInTab(readerBridgeUrl + '?' + query.toString(), { active: true });
                 void readerPruneHandoffs();
                 info.button.textContent = '譯↗';
@@ -4366,6 +4575,12 @@
         if (!host || !status || !toggle) return;
         let frame, probeTimer, deadline, ready = false, visible = false;
         let lastAck = 0, stopped = false, replaying = false, replayToken = '', generation = 0;
+        const diagnostic = document.getElementById('iframe-viewer-replay-diagnostic');
+        function replayNote(values) {
+            if (!diagnostic) return;
+            try { diagnostic.textContent = JSON.stringify({ ...JSON.parse(diagnostic.textContent), ...values }); }
+            catch (_) {}
+        }
         function mode(show) {
             visible = show;
             host.classList.toggle('is-active', show);
@@ -4404,7 +4619,17 @@
             if (event.source !== frame?.contentWindow) return;
             if (replaying) {
                 if (event.origin !== 'null' || data?.channel !== readerReplayChannel ||
-                    data.type !== 'replay-ready' || data.token !== replayToken) return;
+                    data.token !== replayToken) return;
+                if (data.type === 'replay-boot') { replayNote({ replayBoot: true }); return; }
+                if (data.type !== 'replay-ready') return;
+                const safeErrors = {};
+                for (const [key, value] of Object.entries(data.errors || {}).slice(0, 12)) {
+                    if (/^(?:[A-Za-z]+Error|error|rejection|csp:[a-z-]+)$/.test(key) && Number.isInteger(value))
+                        safeErrors[key] = Math.min(999, Math.max(0, value));
+                }
+                replayNote({ replayBoot: true, replayText: Number(data.textLength) || 0,
+                    replayGraphics: Number(data.graphics) || 0, replayControls: Number(data.controls) || 0,
+                    replayErrors: safeErrors });
             } else if (event.origin !== url.origin || data?.channel !== readerBridgeChannel ||
                 data.type !== 'live-ready' || data.id !== id) return;
             const textOK = Number.isFinite(data.textLength) &&
@@ -4439,6 +4664,7 @@
                 replayToken = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
                     ? crypto.randomUUID() : String(Date.now()) + Math.random();
                 const srcdoc = readerReplayDocument(html, replayToken);
+                replayNote({ replayStage: 'srcdoc-created', replayBoot: false });
                 frame = document.createElement('iframe');
                 frame.title = 'Independent interactive replay';
                 frame.setAttribute('sandbox', 'allow-scripts');
@@ -4448,11 +4674,14 @@
                     if (run === generation) stop('本機重播失敗，顯示靜態快照');
                 });
                 window.addEventListener('message', onMessage);
+                frame.addEventListener('load', () => {
+                    if (run === generation) replayNote({ replayFrameLoaded: true });
+                });
                 frame.srcdoc = srcdoc;
                 host.appendChild(frame);
                 deadline = setTimeout(() => {
                     if (run === generation && !ready) stop('本機重播未完成，顯示靜態快照');
-                }, 10000);
+                }, 20000);
             } catch (_) {
                 if (run === generation) stop('本機重播失敗，顯示靜態快照');
             }
@@ -4507,7 +4736,7 @@
                 if (originalUrl) link.href = originalUrl;
                 else link.removeAttribute('href');
             }
-            if (sourceAddress) sourceAddress.textContent = originalUrl || '';
+            if (sourceAddress) { sourceAddress.textContent = ''; sourceAddress.hidden = true; }
             document.title = originalTitle;
             document.documentElement.lang = 'en';
         }
@@ -4553,6 +4782,7 @@
                         }
                     }
                     target.replaceChildren(template.content);
+                    readerAttachReturn(document.getElementById('iframe-viewer-source-link'), target, originalUrl, id, record);
                     if (readerValidManifest(record.replayManifest) && !readerValidReplay(record.replay)) {
                         try { record.replay = await readerLoadChunks(readerReplayKey + id, record.replayManifest); }
                         catch (_) { record.replay = null; }
@@ -6263,7 +6493,7 @@
     // A single small official-main metadata check on each top-level page load.
     // Never reload the document, and never fetch unmerged PR branches.
     if (window === window.top && typeof GM_xmlhttpRequest === 'function') {
-        const installedVersion = "2026-11-27_1.0.10";
+        const installedVersion = "2026-11-27_1.0.11";
         const installUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js";
         const metaUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js";
         function isNewer(next, installed) {

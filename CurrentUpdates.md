@@ -1,3 +1,10 @@
+## Compact iframe reader and return to original interaction — 2026-11-27
+
+- [Install Shared Floating Menu — All in One 2026-11-27_1.0.11](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.50](src/TranslatePreformattedText.user.js), not both. New Tampermonkey tab/focus grants may require approval.
+- Remove redundant URL row; title retains original link and requests source-tab focus. Outlined static charts and controls request scroll to the original element. Open a new source tab only when the tab registry cannot find the original; if tab status is unavailable, keep the current tab and offer the normal link.
+- Actual report confirmed full HTML transfer. Replay removes explicitly marked host runtime and records boot, content metrics and error categories while preserving the opaque sandbox/CSP.
+- **Test:** [Claude Artifact](https://claude.ai/artifact/CtQyX8qfYAF822bgHJHHE3) — reload, open a fresh reader with 譯↗; test title return and click outlined chart. Android Edge focus and actual Artifact replay require verification.
+
 ## Iframe replay handoff reliability — 2026-11-27
 
 - [Install Shared Floating Menu — All in One 2026-11-27_1.0.10](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.48](src/TranslatePreformattedText.user.js), not both.

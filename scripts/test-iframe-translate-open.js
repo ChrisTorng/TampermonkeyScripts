@@ -277,6 +277,67 @@ describe('generic iframe translation reader', () => {
         for (let i = 0; i < 9; i++) await Promise.resolve();
     }
 
+    test('return requests focus the original source tab and forward the snapshot target', async () => {
+        let frame, listener, registeredTab, focused = 0, scrolled = 0;
+        const messages = [];
+        const sourceUrl = 'https://example.org/story';
+        const { h, store, opened } = boot(sourceUrl, h => {
+            frame = embed(h, 'embed.example.com');
+            frame.contentWindow.postMessage = m => messages.push(m);
+            frame.scrollIntoView = () => scrolled++;
+            h.window.focus = () => focused++;
+            h.context.GM_addValueChangeListener = (key, cb) => {
+                listener = cb;
+                return 1;
+            };
+            h.context.GM_getTab = cb => cb({});
+            h.context.GM_saveTab = tab => { registeredTab = tab; };
+        });
+        frameMessage(h, frame, { type: 'ready', textLength: 300 });
+        h.document.querySelector('.tm-iframe-translate-open').click();
+        await settle();
+        const { id } = messages.find(m => m.type === 'capture');
+        frameMessage(h, frame, { type: 'captured', id, html: '<p>Static fallback</p>',
+            metrics: { textLength: 300, graphics: 1, controls: 1 } });
+        for (let i = 0; i < 25; i++) await Promise.resolve();
+        assert.equal(opened.length, 1);
+        assert.equal(registeredTab.tmIframeReturn[0].id, id);
+        listener('key', null, { state: 'request', sourceUrl, nonce: 'n',
+            expires: Date.now() + 4000, target: '7' }, true);
+        assert.equal(focused, 1);
+        assert.equal(scrolled, 1);
+        assert.equal(messages.find(m => m.type === 'return-target').target, '7');
+        assert.equal(store.get('tm-embedded-return:' + id).state, 'ack');
+        assert.equal(opened.length, 1);
+        listener('key', null, { state: 'request', sourceUrl: 'https://other.example/',
+            nonce: 'wrong', expires: Date.now() + 4000 }, true);
+        assert.equal(focused, 1);
+    });
+
+    test('viewer title routes to the acknowledged source tab instead of opening a duplicate', async () => {
+        const id = 'capture-return-12345';
+        const store = new Map([['tm-embedded-reader:' + id,
+            { html: '<p>Snapshot fallback</p>', createdAt: Date.now() }]]);
+        let requested;
+        const reader = makeReader(id, store, {}, h => {
+            const set = h.context.GM_setValue;
+            h.context.GM_setValue = (key, value) => {
+                set(key, value);
+                if (key === 'tm-embedded-return:' + id && value.state === 'request') {
+                    requested = value;
+                    set(key, { state: 'ack', nonce: value.nonce });
+                }
+            };
+        });
+        await settle();
+        reader.anchor.click();
+        for (let i = 0; i < 25; i++) await Promise.resolve();
+        assert.equal(requested.sourceUrl, reader.url);
+        assert.equal(requested.target, null);
+        assert.equal(reader.opened.length, 0);
+        assert.equal(store.has('tm-embedded-return:' + id), false);
+    });
+
     test('viewer retains full source title and hyperlink from query, and imports into session cache', async () => {
         const id = 'capture-abcdef12345';
         const html = '<div lang="en"><h1>Independent content A</h1></div>';
@@ -286,7 +347,8 @@ describe('generic iframe translation reader', () => {
         await settle();
         assert.equal(first.anchor.textContent, first.title);
         assert.equal(first.anchor.href, first.url);
-        assert.equal(first.address.textContent, first.url);
+        assert.equal(first.address.textContent, '');
+        assert.equal(first.address.hidden, true);
         assert.equal(first.h.document.title, first.title);
         assert(first.target.imported, 'HTML should have been imported into the main reader area');
         const saved = first.h.sessionStorage.getItem('tm-iframe-viewer:' + id);
