@@ -1,3 +1,9 @@
+## Early language hints for dynamic English pages — 2026-11-27
+
+- [Install All in One 2026-11-27_1.0.12](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.51](src/TranslatePreformattedText.user.js), not both.
+- Device reports show no initial language, English at 2 seconds and Chinese only after manual translation. Declare's static English content is removed before dynamic rendering. Infer an early English hint from strongly English title and description only when root language is absent. Preserve explicit language and conflicting locale metadata; do not modify body content or translation opt-outs.
+- **Test:** [Declare](https://davidtemkin.github.io/declarelang/) — reopen or reload without pressing Translate. Native Edge automatic translation remains to be verified.
+
 ## Compact iframe reader and return to original interaction — 2026-11-27
 
 - [Install Shared Floating Menu — All in One 2026-11-27_1.0.11](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.50](src/TranslatePreformattedText.user.js), not both. New Tampermonkey tab/focus grants may require approval.
