@@ -1,3 +1,8 @@
+## Native Android Edge keyboard viewport — 2026-11-26
+
+- [Install Native Keyboard Viewport 2026-11-26_1.0.0](src/NativeKeyboardViewport.user.js). Enables Chromium `interactive-widget=resizes-content` on Discord channels and Clipboard Viewer, preserving other viewport directives. Other sites are opt-in via the Tampermonkey menu; the same menu disables the change and reloads. Only Android Edge, top-level documents, existing viewport tags. No CSS height or transform hacks.
+- [Static reference fixture](tests/KeyboardViewportLab/resizes-content.html) was accepted on real Android Edge; dynamic userscript injection and production sites still need device validation.
+
 ## Cross-origin iframe diagnostics — 2026-11-26
 
 - [Install Translation Diagnostics 2026-11-26_1.2.7](src/TranslationDiagnostics.user.js) — explicit reports include accessible direct child iframe DOM, SVG geometry and computed paint, script/style inventory and capture status. Frame responses stay in short-lived private GM storage; no iframe UI or unsolicited uploads. Script bodies, inputs and URL queries remain excluded.
