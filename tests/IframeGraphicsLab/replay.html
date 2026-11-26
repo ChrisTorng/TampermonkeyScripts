@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Large self-contained iframe replay lab</title>
+<style>
+  :root{color-scheme:dark}body{background:#0e1116;color:#e8ebf0;font:15px/1.5 system-ui;margin:16px auto;padding:0 12px;max-width:640px}h1{font-size:21px}h2{font-size:17px}iframe{display:block;width:100%;height:310px;border:1px solid #414b5a;border-radius:8px}button{font:inherit;padding:6px 10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#161a21;padding:10px;border-radius:6px} [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<h1>Large self-contained iframe replay lab</h1>
+<p>Automatic test of a 5.53 million character inline data payload, CSS variables, SVG charts, independent JavaScript execution and isolated origin. All data is synthetic and local.</p>
+<pre id="result" role="status">Starting…</pre>
+<section id="original-section"><h2>Original document</h2><div id="original"></div></section>
+<section><h2>Independent replay</h2><div id="replay"></div></section>
+<p>The Blob fetch is local. It does not test the original site's HTTP permissions or Tampermonkey's storage implementation.</p>
+<script>
+(async function () {
+  'use strict';
+  const size=5529565, output=document.getElementById('result'), results=[];
+  const add=(name,value)=>{results.push(name+': '+value);output.textContent=results.join('\n')};
+  const check=(name,ok)=>{add(name,ok?'PASS':'FAIL');if(!ok)throw new Error(name)};
+  const policy='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; connect-src \'none\'; form-action \'none\'; base-uri \'none\'">';
+  const data=('0123456789abcdef'.repeat(Math.ceil(size/16))).slice(0,size);
+  function fixture(){
+    'use strict';
+    const app=document.getElementById('app');
+    app.innerHTML='<h3>Proof progress fixture</h3><p>Proof issues filed and closed</p><svg viewBox="0 0 260 178"><path d="M30 160H90V100H150V55H220V20" stroke="var(--blue)" fill="none" stroke-width="4"/><path d="M30 160L90 130L150 90L220 25" stroke="var(--green)" fill="none" stroke-width="4"/><text x="40" y="30">Proof issues</text></svg><button id="detail">Show detail</button> <output id="state"></output>';
+    const state=document.getElementById('state'), chart=app.querySelector('svg'), detail=document.getElementById('detail');
+    detail.addEventListener('click',()=>{location.hash='detail';state.textContent=DATA.length.toLocaleString('en-US')+' data characters'});
+    chart.addEventListener('click',()=>{state.textContent='Chart clicked'});
+    function isolated(){try{void parent.document.body;return false}catch(_){return true}}
+    function report(kind){parent.postMessage({channel:'tm-large-replay-lab',kind,chars:DATA.length,paint:[...app.querySelectorAll('path')].map(e=>getComputedStyle(e).stroke),isolated:isolated(),state:state.textContent,hash:location.hash},'*')}
+    addEventListener('message',e=>{if(e.source!==parent||e.data?.channel!=='tm-large-replay-lab'||e.data.kind!=='exercise')return;chart.dispatchEvent(new MouseEvent('click',{bubbles:true}));report('chart');detail.click();report('detail')});
+    report('ready');
+  }
+  const source='<!doctype html><html lang="en"><head><meta charset="utf-8"><style>:root{--bg:#0e1116;--ink:#e8ebf0;--blue:#3987e5;--green:#2ea043}body{background:var(--bg);color:var(--ink);font:15px system-ui;margin:8px}h3,p{margin:5px 0}svg{display:block;width:100%;max-width:300px;height:178px}svg text{fill:var(--ink)}button{font:inherit;padding:4px}</style></head><body><div id="app"></div><script>const DATA='+JSON.stringify(data)+';<'+'/script><script>('+fixture.toString()+')();<'+'/script></body></html>';
+  function mount(host,html){
+    const frame=document.createElement('iframe');frame.title=host+' interactive document';frame.setAttribute('sandbox','allow-scripts');frame.referrerPolicy='no-referrer';
+    const reports=new Map(), waiters=new Map();
+    let listener;
+    const api={frame,wait(kind){if(reports.has(kind))return Promise.resolve(reports.get(kind));return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{waiters.delete(kind);reject(new Error(host+' '+kind+' timeout'))},8000);waiters.set(kind,d=>{clearTimeout(timer);resolve(d)})})},remove(){removeEventListener('message',listener);frame.remove()}};
+    listener=e=>{if(e.source!==frame.contentWindow||e.origin!=='null'||e.data?.channel!=='tm-large-replay-lab')return;reports.set(e.data.kind,e.data);const cb=waiters.get(e.data.kind);if(cb){waiters.delete(e.data.kind);cb(e.data)}};
+    addEventListener('message',listener);
+    frame.srcdoc=html.replace('<head>','<head>'+policy);document.getElementById(host).appendChild(frame);return api;
+  }
+  try{
+    add('Source characters',source.length.toLocaleString('en-US'));
+    const url=URL.createObjectURL(new Blob([source],{type:'text/html'}));let raw;
+    try{raw=await(await fetch(url)).text()}finally{URL.revokeObjectURL(url)}
+    check('Local source retrieval',raw===source);
+    const original=mount('original',raw), before=await original.wait('ready');
+    check('Original data intact',before.chars===size);
+    const packed=await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+    add('Gzip bytes (synthetic repeated data)',packed.size.toLocaleString('en-US'));
+    const restored=await new Response(packed.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    check('Lossless transfer',restored===source);
+    const replay=mount('replay',restored), after=await replay.wait('ready');
+    check('Replay data intact',after.chars===size);
+    check('SVG CSS colors',JSON.stringify(after.paint)===JSON.stringify(['rgb(57, 135, 229)','rgb(46, 160, 67)'])&&JSON.stringify(before.paint)===JSON.stringify(after.paint));
+    check('Opaque origin',after.isolated);
+    original.remove();document.getElementById('original-section').hidden=true;
+    replay.frame.contentWindow.postMessage({channel:'tm-large-replay-lab',kind:'exercise'},'*');
+    check('Chart click after source removed',(await replay.wait('chart')).state==='Chart clicked');
+    const detail=await replay.wait('detail');
+    check('Button, hash and embedded data',detail.hash==='#detail'&&detail.state==='5,529,565 data characters');
+    output.dataset.result='pass';add('Overall','PASS');
+  }catch(error){output.dataset.result='fail';add('Overall','FAIL — '+error.message)}
+})();
+</script>
+</body></html>
