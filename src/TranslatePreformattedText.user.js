@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-26_1.5.45
+// @version      2026-11-26_1.5.46
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -30,6 +30,160 @@
     const readerBridgeUrl = 'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html';
     const readerBridgeKey = 'tm-embedded-reader:';
     const readerHandoffLifetime = 10 * 60 * 1000; // GM storage is only a short handoff.
+    const readerReplayKey = 'tm-embedded-replay:';
+    const readerReplayRawLimit = 12 * 1024 * 1024;
+    const readerReplayPackedLimit = 3 * 1024 * 1024;
+    const readerReplayChannel = 'tm-embedded-replay-v1';
+
+    // Capture self-contained documents only. No server upload, cookies, GM grants,
+    // privileged requests or external dependencies are transferred into the replay.
+    function readerReplayCandidate(doc) {
+        if (!doc?.documentElement || !doc.body ||
+            doc.querySelector('input[type="password"],iframe,object,embed')) return false;
+        const scripts = Array.from(doc.querySelectorAll('script'));
+        return scripts.some(node => !node.hasAttribute('src') && (node.textContent || '').trim()) &&
+            !scripts.some(node => node.hasAttribute('src'));
+    }
+
+    async function readerReadBounded(stream, limit) {
+        const reader = stream.getReader();
+        const parts = [];
+        let length = 0;
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                length += value.byteLength;
+                if (length > limit) throw new Error('Replay size limit');
+                parts.push(value);
+            }
+        } catch (error) {
+            try { await reader.cancel(); } catch (_) {}
+            throw error;
+        } finally { reader.releaseLock(); }
+        return new Blob(parts);
+    }
+
+    async function readerPackReplay(html, method) {
+        if (typeof html !== 'string' || html.length > readerReplayRawLimit) return null;
+        const raw = new Blob([html], { type: 'text/html;charset=utf-8' });
+        if (raw.size > readerReplayRawLimit) return null;
+        if (typeof CompressionStream !== 'function') {
+            return raw.size <= readerReplayPackedLimit ?
+                { encoding: 'plain', data: html, bytes: raw.size, method } : null;
+        }
+        const packed = await readerReadBounded(raw.stream().pipeThrough(new CompressionStream('gzip')),
+            Math.floor(readerReplayPackedLimit * .75));
+        const bytes = new Uint8Array(await packed.arrayBuffer());
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 0x4000) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + 0x4000));
+        }
+        return { encoding: 'gzip-base64', data: btoa(binary), bytes: raw.size, method };
+    }
+
+    function readerValidReplay(value) {
+        return !!value && ['plain', 'gzip-base64'].includes(value.encoding) &&
+            ['response', 'dom'].includes(value.method) && typeof value.data === 'string' &&
+            value.data.length > 0 && value.data.length <= readerReplayPackedLimit &&
+            Number.isInteger(value.bytes) && value.bytes > 0 && value.bytes <= readerReplayRawLimit;
+    }
+
+    async function readerUnpackReplay(value) {
+        if (!readerValidReplay(value)) throw new Error('Invalid replay record');
+        let blob;
+        if (value.encoding === 'plain') blob = new Blob([value.data]);
+        else {
+            const binary = atob(value.data);
+            const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+            blob = await readerReadBounded(new Blob([bytes]).stream()
+                .pipeThrough(new DecompressionStream('gzip')), readerReplayRawLimit);
+        }
+        if (blob.size !== value.bytes) throw new Error('Incomplete replay record');
+        return blob.text();
+    }
+
+    async function readerCaptureReplay() {
+        if (!readerReplayCandidate(document)) return null;
+        // Prefer the original response instead of replaying scripts over an
+        // already-rendered tree. Only re-read this document, with no redirects.
+        let html, method;
+        const url = new URL(location.href);
+        url.hash = '';
+        if (/^https?:$/.test(url.protocol)) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4200);
+            try {
+                const response = await fetch(url.href, {
+                    credentials: 'same-origin', redirect: 'error', signal: controller.signal,
+                    cache: 'default'
+                });
+                if (response.ok && /^text\/html\b/i.test(response.headers.get('content-type') || '') &&
+                    response.body) {
+                    const raw = await readerReadBounded(response.body, readerReplayRawLimit);
+                    const text = await raw.text();
+                    // Parse in the source document's context; never execute this copy here.
+                    const parsed = new DOMParser().parseFromString(text, 'text/html');
+                    if (readerReplayCandidate(parsed)) { html = text; method = 'response'; }
+                }
+            } catch (_) { /* Reconstruct from the accessible rendered DOM below. */ }
+            finally { clearTimeout(timeout); }
+        }
+        if (!html) {
+            const clone = document.documentElement.cloneNode(true);
+            // Exclude this project's injected UI/styles and current editable values.
+            for (const node of clone.querySelectorAll('[id^="tm-"],.tm-iframe-translate-open')) node.remove();
+            for (const node of clone.querySelectorAll('input,textarea,select,[contenteditable]')) {
+                node.removeAttribute('value');
+                node.removeAttribute('checked');
+                node.removeAttribute('selected');
+                if (node.tagName === 'TEXTAREA' || node.hasAttribute('contenteditable')) node.textContent = '';
+            }
+            html = '<!doctype html>\n' + clone.outerHTML;
+            method = 'dom';
+        }
+        return readerPackReplay(html, method);
+    }
+
+    // Executed only in an opaque-origin sandbox. Report rendered content and
+    // resize; no privileged bridge, code evaluation request or application data.
+    function readerReplayMonitor(token, channel) {
+        function report() {
+            if (!document.body) return;
+            const body = document.body;
+            const bounds = body.getBoundingClientRect();
+            parent.postMessage({
+                channel, token, type: 'replay-ready',
+                textLength: (body.innerText || '').trim().length,
+                graphics: body.querySelectorAll('svg,canvas,video').length,
+                controls: body.querySelectorAll('button,input,select,textarea,[role="button"],[role="slider"]').length,
+                height: Math.max(body.scrollHeight, Math.ceil(bounds.height + Math.max(0, bounds.top)))
+            }, '*');
+        }
+        addEventListener('DOMContentLoaded', report);
+        addEventListener('load', report);
+        addEventListener('hashchange', () => setTimeout(report, 0));
+        setInterval(report, 900);
+    }
+
+    function readerReplayDocument(html, token) {
+        // Insert the policy BEFORE any source script. Keep source meta policies
+        // too; they may further restrict execution. No same-origin permission.
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        if (!readerReplayCandidate(doc)) throw new Error('Not a self-contained document');
+        for (const element of doc.querySelectorAll('base,meta[http-equiv="refresh" i]')) element.remove();
+        const policy = doc.createElement('meta');
+        policy.httpEquiv = 'Content-Security-Policy';
+        policy.content = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; " +
+            "img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; " +
+            "form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'";
+        const monitor = doc.createElement('script');
+        monitor.textContent = '(' + readerReplayMonitor.toString() + ')(' +
+            JSON.stringify(token) + ',' + JSON.stringify(readerReplayChannel) + ');';
+        doc.head.prepend(monitor);
+        doc.head.prepend(policy);
+        return '<!doctype html>\n' + doc.documentElement.outerHTML;
+    }
     const isReaderDocument = location.origin === 'https://christorng.idv.tw'
         && location.pathname === '/TampermonkeyScripts/IframeViewer.html';
     const isOwnerSite = /(^|\.)christorng\.idv\.tw$/i.test(location.hostname);
@@ -247,7 +401,7 @@
                 }, '*');
             }
         }
-        window.addEventListener('message', (event) => {
+        window.addEventListener('message', async (event) => {
             if (event.source !== window.parent) return;
             const data = event.data;
             if (!data || data.channel !== readerBridgeChannel) return;
@@ -264,6 +418,26 @@
             if (data.type !== 'capture' || !/^[a-z0-9-]{8,80}$/i.test(data.id || '')) return;
             try {
                 const result = readerCapture();
+                const key = readerReplayKey + data.id;
+                const request = GM_getValue(key, null);
+                // Full source never crosses the public page's postMessage bridge.
+                // Only the parent userscript's short-lived GM authorization can
+                // request the local private replay record.
+                if (request?.state === 'request' && request.parentOrigin === event.origin &&
+                    request.frameOrigin === location.origin && Date.now() <= request.expires &&
+                    request.expires - Date.now() <= 15000 &&
+                    (result.metrics.graphics || result.metrics.controls)) {
+                    let replay = null;
+                    try { replay = await readerCaptureReplay(); } catch (_) {}
+                    const pending = GM_getValue(key, null);
+                    if (pending?.state === 'request' && pending.expires === request.expires &&
+                        Date.now() <= pending.expires) {
+                        try {
+                            GM_setValue(key, { state: 'response', expires: request.expires,
+                                replay: readerValidReplay(replay) ? replay : null });
+                        } catch (_) { /* Static capture remains available. */ }
+                    }
+                }
                 window.parent.postMessage({
                     channel: readerBridgeChannel, type: 'captured', id: data.id,
                     html: result.html, title: result.title, metrics: result.metrics
@@ -383,15 +557,21 @@
                 info.pending = id;
                 button.disabled = true;
                 button.textContent = '擷取中';
+                const frameUrl = new URL(frame.getAttribute('src'), document.baseURI || location.href);
+                try {
+                    GM_setValue(readerReplayKey + id, { state: 'request', parentOrigin: location.origin,
+                        frameOrigin: frameUrl.origin, expires: Date.now() + 14000 });
+                } catch (_) {}
                 frame.contentWindow.postMessage({
                     channel: readerBridgeChannel, type: 'capture', id
                 }, '*');
                 setTimeout(() => {
                     if (info.pending !== id) return;
+                    try { GM_deleteValue(readerReplayKey + id); } catch (_) {}
                     info.pending = null;
                     button.disabled = false;
                     button.textContent = '重試↗';
-                }, 12000);
+                }, 15000);
             });
             document.body.appendChild(button);
             const info = { button, pending: null };
@@ -410,6 +590,7 @@
             const info = known.get(frame);
             if (!info || !info.pending || info.pending !== data.id) return;
             if (data.type === 'failed') {
+                try { GM_deleteValue(readerReplayKey + data.id); } catch (_) {}
                 info.pending = null;
                 info.button.disabled = false;
                 info.button.textContent = '重試↗';
@@ -431,9 +612,22 @@
                         graphics: count(metrics.graphics), controls: count(metrics.controls),
                         height: count(metrics.height)
                     } : null;
-                await Promise.resolve(GM_setValue(readerBridgeKey + id, {
-                    html: data.html, createdAt: Date.now(), ...(live ? { live } : {})
-                }));
+                let replay = null;
+                try {
+                    const saved = GM_getValue(readerReplayKey + id, null);
+                    if (live && saved?.state === 'response' && Date.now() <= saved.expires &&
+                        readerValidReplay(saved.replay)) replay = saved.replay;
+                    GM_deleteValue(readerReplayKey + id);
+                } catch (_) {}
+                const record = { html: data.html, createdAt: Date.now(), ...(live ? { live } : {}) };
+                // Storage quotas must never prevent opening the static reader.
+                try {
+                    await Promise.resolve(GM_setValue(readerBridgeKey + id,
+                        replay ? { ...record, replay } : record));
+                } catch (error) {
+                    if (!replay) throw error;
+                    await Promise.resolve(GM_setValue(readerBridgeKey + id, record));
+                }
                 // Every opener receives a distinct ID; source metadata stays in
                 // the URL even if the HTML session cache is later unavailable.
                 const query = new URLSearchParams({
@@ -474,8 +668,13 @@
     // That copy survives refresh and expires when the tab is closed.
     async function readerPruneHandoffs() {
         try {
-            const keys = (await Promise.resolve(GM_listValues()))
-                .filter((key) => key.startsWith(readerBridgeKey));
+            const allKeys = await Promise.resolve(GM_listValues());
+            for (const key of allKeys.filter(key => key.startsWith(readerReplayKey))) {
+                const value = await Promise.resolve(GM_getValue(key, null));
+                if (!value || !Number.isFinite(value.expires) || Date.now() > value.expires)
+                    await Promise.resolve(GM_deleteValue(key));
+            }
+            const keys = allKeys.filter((key) => key.startsWith(readerBridgeKey));
             const valid = [];
             for (const key of keys) {
                 const entry = await Promise.resolve(GM_getValue(key, null));
@@ -513,16 +712,18 @@
         const toggle = document.getElementById('iframe-viewer-mode-toggle');
         if (!host || !status || !toggle) return;
         let frame, probeTimer, deadline, ready = false, visible = false;
-        let lastAck = 0, stopped = false;
+        let lastAck = 0, stopped = false, replaying = false, replayToken = '', generation = 0;
         function mode(show) {
             visible = show;
             host.classList.toggle('is-active', show);
             target.hidden = show;
             toggle.textContent = show ? '翻譯閱讀' : '互動模式';
-            status.textContent = show ? '原始互動內容' : '靜態翻譯閱讀';
+            status.textContent = show ? (replaying ? '本機互動重播' : '原始互動內容') : '靜態翻譯閱讀';
         }
         function stop(message) {
+            const tryReplay = !replaying && readerValidReplay(record.replay);
             stopped = true;
+            ++generation;
             clearInterval(probeTimer);
             clearTimeout(deadline);
             window.removeEventListener('message', onMessage);
@@ -532,9 +733,10 @@
             status.textContent = message;
             toggle.hidden = false;
             toggle.textContent = '重試互動';
+            if (tryReplay) void startReplay();
         }
         function probe() {
-            if (stopped) return;
+            if (stopped || replaying) return;
             if (ready && Date.now() - lastAck > 12000) {
                 stop('互動內容已中斷，顯示靜態快照');
                 return;
@@ -545,15 +747,19 @@
         }
         function onMessage(event) {
             const data = event.data;
-            if (event.source !== frame?.contentWindow || event.origin !== url.origin ||
-                data?.channel !== readerBridgeChannel || data.type !== 'live-ready' || data.id !== id) return;
+            if (event.source !== frame?.contentWindow) return;
+            if (replaying) {
+                if (event.origin !== 'null' || data?.channel !== readerReplayChannel ||
+                    data.type !== 'replay-ready' || data.token !== replayToken) return;
+            } else if (event.origin !== url.origin || data?.channel !== readerBridgeChannel ||
+                data.type !== 'live-ready' || data.id !== id) return;
             const textOK = Number.isFinite(data.textLength) &&
                 data.textLength >= Math.max(100, info.textLength * .25);
             const graphicsOK = !info.graphics || (Number.isFinite(data.graphics) &&
                 data.graphics >= Math.max(1, info.graphics * .6));
             const controlsOK = !info.controls || (Number.isFinite(data.controls) && data.controls >= 1);
             if (!ready && (!textOK || !graphicsOK || !controlsOK)) return;
-            if (ready && (!Number.isFinite(data.textLength) || data.textLength < 100)) return;
+            if (ready && !replaying && (!Number.isFinite(data.textLength) || data.textLength < 100)) return;
             lastAck = Date.now();
             if (Number.isFinite(data.height) && data.height > 0) {
                 frame.style.height = Math.min(100000, Math.max(320, Math.ceil(data.height))) + 'px';
@@ -565,7 +771,40 @@
                 mode(true);
             }
         }
+        async function startReplay() {
+            const run = ++generation;
+            replaying = true;
+            stopped = false;
+            ready = false;
+            mode(false);
+            toggle.hidden = true;
+            status.textContent = '正在載入本機互動重播…';
+            try {
+                const html = await readerUnpackReplay(record.replay);
+                if (run !== generation) return;
+                replayToken = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+                    ? crypto.randomUUID() : String(Date.now()) + Math.random();
+                const srcdoc = readerReplayDocument(html, replayToken);
+                frame = document.createElement('iframe');
+                frame.title = 'Independent interactive replay';
+                frame.setAttribute('sandbox', 'allow-scripts');
+                frame.setAttribute('referrerpolicy', 'no-referrer');
+                frame.style.height = Math.min(100000, Math.max(420, Number(info.height) || 600)) + 'px';
+                frame.addEventListener('error', () => {
+                    if (run === generation) stop('本機重播失敗，顯示靜態快照');
+                });
+                window.addEventListener('message', onMessage);
+                frame.srcdoc = srcdoc;
+                host.appendChild(frame);
+                deadline = setTimeout(() => {
+                    if (run === generation && !ready) stop('本機重播未完成，顯示靜態快照');
+                }, 10000);
+            } catch (_) {
+                if (run === generation) stop('本機重播失敗，顯示靜態快照');
+            }
+        }
         function start() {
+            replaying = false;
             stopped = false;
             ready = false;
             lastAck = 0;
@@ -586,7 +825,7 @@
             probeTimer = setInterval(probe, 1000);
             deadline = setTimeout(() => {
                 if (!ready) stop('未能確認互動內容載入，顯示靜態快照');
-            }, 15000);
+            }, readerValidReplay(record.replay) ? 5000 : 15000);
         }
         toggle.addEventListener('click', () => {
             if (ready) mode(!visible);
