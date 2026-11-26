@@ -10,7 +10,7 @@ test('production replay helpers preserve a large interactive document in an opaq
     skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to Chromium'
 }, async () => {
     const source = fs.readFileSync(path.join(__dirname, '../src/TranslatePreformattedText.user.js'), 'utf8');
-    const start = source.indexOf('    const readerReplayKey =');
+    const start = source.indexOf('    const readerHandoffLifetime =');
     const end = source.indexOf('    const isReaderDocument =', start);
     assert(start >= 0 && end > start);
     const helpers = source.slice(start, end);
