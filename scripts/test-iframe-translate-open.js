@@ -152,7 +152,7 @@ describe('generic iframe translation reader', () => {
         const url = 'https://example.org/articles/42?topic=accessibility#section';
         const query = new URLSearchParams({ id, title, url });
         const readerUrl = 'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html?' + query;
-        let anchor, address, target;
+        let anchor, address, target, liveHost, modeStatus, modeToggle;
         const result = boot(readerUrl, (h) => {
             anchor = h.document.createElement('a');
             anchor.id = 'iframe-viewer-source-link';
@@ -164,14 +164,26 @@ describe('generic iframe translation reader', () => {
             target.id = 'iframe-viewer-content';
             target.replaceChildren = (fragment) => { target.imported = fragment; };
             h.appendToBody(target);
+            liveHost = h.document.createElement('div');
+            liveHost.id = 'iframe-viewer-live';
+            h.appendToBody(liveHost);
+            modeStatus = h.document.createElement('span');
+            modeStatus.id = 'iframe-viewer-mode';
+            h.appendToBody(modeStatus);
+            modeToggle = h.document.createElement('button');
+            modeToggle.id = 'iframe-viewer-mode-toggle';
+            h.appendToBody(modeToggle);
             // Mock only the DOM fragment receiver: the real sanitizer and
             // source-link initialization still run in the userscript.
             const createElement = h.document.createElement.bind(h.document);
-            h.document.createElement = (tag) => tag === 'template'
-                ? { content: { querySelectorAll: () => [] }, innerHTML: '' }
-                : createElement(tag);
+            h.document.createElement = (tag) => {
+                if (tag === 'template') return { content: { querySelectorAll: () => [] }, innerHTML: '' };
+                const element = createElement(tag);
+                if (tag === 'iframe') element.contentWindow = { postMessage() {} };
+                return element;
+            };
         }, store, seed);
-        return { ...result, anchor, address, target, title, url, readerUrl };
+        return { ...result, anchor, address, target, title, url, readerUrl, liveHost, modeStatus, modeToggle };
     }
 
     async function settle() {
@@ -220,6 +232,59 @@ describe('generic iframe translation reader', () => {
         assert.equal(cacheOne.html, '<p>One article</p>');
         assert.equal(cacheTwo.html, '<p>Two article</p>');
         assert.equal(store.size, 0);
+    });
+
+    test('live reader stays on static content until verified content acknowledgement', async () => {
+        const id = 'capture-live-12345';
+        const store = new Map([['tm-embedded-reader:' + id, {
+            html: '<p>Snapshot fallback</p>', createdAt: Date.now(),
+            live: { url: 'https://embed.example.org/chart', textLength: 400, graphics: 2, controls: 1, height: 800 }
+        }]]);
+        const reader = makeReader(id, store);
+        await settle();
+        const frame = reader.liveHost.querySelector('iframe');
+        assert(frame);
+        assert.equal(frame.src, 'https://embed.example.org/chart');
+        assert.equal(frame.getAttribute('sandbox'), 'allow-scripts allow-same-origin');
+        assert.equal(reader.target.hidden, false);
+        const data = { channel, type: 'live-ready', id, textLength: 400, graphics: 2, controls: 1, height: 1200 };
+        reader.h.window.dispatchEvent({ type: 'message', source: frame.contentWindow, origin: 'https://wrong.example', data });
+        assert.equal(reader.target.hidden, false);
+        reader.h.window.dispatchEvent({ type: 'message', source: frame.contentWindow, origin: 'https://embed.example.org', data: { ...data, graphics: 0 } });
+        assert.equal(reader.target.hidden, false);
+        reader.h.window.dispatchEvent({ type: 'message', source: frame.contentWindow, origin: 'https://embed.example.org', data });
+        assert.equal(reader.target.hidden, true);
+        assert.equal(reader.liveHost.classList.contains('is-active'), true);
+        assert.equal(frame.style.height, '1200px');
+        reader.modeToggle.click();
+        assert.equal(reader.target.hidden, false);
+        reader.modeToggle.click();
+        assert.equal(reader.target.hidden, true);
+    });
+
+    test('unacknowledged live frame times out without hiding the snapshot', async () => {
+        const id = 'capture-timeout-12345';
+        const reader = makeReader(id, new Map([['tm-embedded-reader:' + id, {
+            html: '<p>Snapshot fallback</p>', createdAt: Date.now(),
+            live: { url: 'https://embed.example.org/chart', textLength: 400, graphics: 1 }
+        }]]));
+        await settle();
+        assert(reader.liveHost.querySelector('iframe'));
+        reader.h.runAllTimeouts();
+        assert.equal(reader.target.hidden, false);
+        assert.equal(reader.liveHost.querySelector('iframe'), null);
+        assert.equal(reader.modeToggle.textContent, '重試互動');
+    });
+
+    test('same-owner URLs are never executed as a live iframe', async () => {
+        const id = 'capture-owner-12345';
+        const reader = makeReader(id, new Map([['tm-embedded-reader:' + id, {
+            html: '<p>Snapshot fallback</p>', createdAt: Date.now(),
+            live: { url: 'https://christorng.idv.tw/TampermonkeyScripts/IframeViewer.html', textLength: 400, graphics: 1 }
+        }]]));
+        await settle();
+        assert.equal(reader.liveHost.querySelector('iframe'), null);
+        assert.equal(reader.target.hidden, false);
     });
 
     test('missing reader content replaces current tab with source, without opening another tab', async () => {
