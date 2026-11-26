@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-26_1.5.46
+// @version      2026-11-26_1.5.47
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -41,8 +41,12 @@
         if (!doc?.documentElement || !doc.body ||
             doc.querySelector('input[type="password"],iframe,object,embed')) return false;
         const scripts = Array.from(doc.querySelectorAll('script'));
-        return scripts.some(node => !node.hasAttribute('src') && (node.textContent || '').trim()) &&
-            !scripts.some(node => node.hasAttribute('src'));
+        return scripts.some(node => {
+            const type = (node.getAttribute('type') || '').trim().toLowerCase();
+            return !node.hasAttribute('src') && (!type || type === 'module' ||
+                /^(?:text|application)\/(?:java|ecma)script$/.test(type)) &&
+                (node.textContent || '').trim();
+        }) && !scripts.some(node => node.hasAttribute('src'));
     }
 
     async function readerReadBounded(stream, limit) {
@@ -149,7 +153,7 @@
     // resize; no privileged bridge, code evaluation request or application data.
     function readerReplayMonitor(token, channel) {
         function report() {
-            if (!document.body) return;
+            if (!document.body || document.readyState === 'loading') return;
             const body = document.body;
             const bounds = body.getBoundingClientRect();
             parent.postMessage({
@@ -718,7 +722,8 @@
             host.classList.toggle('is-active', show);
             target.hidden = show;
             toggle.textContent = show ? '翻譯閱讀' : '互動模式';
-            status.textContent = show ? (replaying ? '本機互動重播' : '原始互動內容') : '靜態翻譯閱讀';
+            status.textContent = show ? (replaying ? '本機互動重播（' +
+                (record.replay.method === 'response' ? '原始 HTML' : 'DOM') + '）' : '原始互動內容') : '靜態翻譯閱讀';
         }
         function stop(message) {
             const tryReplay = !replaying && readerValidReplay(record.replay);
@@ -804,6 +809,7 @@
             }
         }
         function start() {
+            const run = ++generation;
             replaying = false;
             stopped = false;
             ready = false;
@@ -818,13 +824,15 @@
             frame.setAttribute('referrerpolicy', 'no-referrer');
             frame.style.height = Math.min(100000, Math.max(420, Number(info.height) || 600)) + 'px';
             frame.addEventListener('load', probe);
-            frame.addEventListener('error', () => stop('互動載入失敗，顯示靜態快照'));
+            frame.addEventListener('error', () => {
+                if (run === generation) stop('互動載入失敗，顯示靜態快照');
+            });
             window.addEventListener('message', onMessage);
             frame.src = url.href;
             host.appendChild(frame);
             probeTimer = setInterval(probe, 1000);
             deadline = setTimeout(() => {
-                if (!ready) stop('未能確認互動內容載入，顯示靜態快照');
+                if (run === generation && !ready) stop('未能確認互動內容載入，顯示靜態快照');
             }, readerValidReplay(record.replay) ? 5000 : 15000);
         }
         toggle.addEventListener('click', () => {
