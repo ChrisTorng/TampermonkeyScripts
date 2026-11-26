@@ -240,7 +240,7 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     assert.equal(toggle.textContent, '已送出');
 });
 
-test('archive.is report UI counter-scales on a shrunk desktop page and restores at scale one', () => {
+test('archive.is report UI counter-scales at its initial shrink-to-fit scale and hides when zoomed in', () => {
     const { h } = run('https://archive.is/R5XUn', h => {
         h.window.visualViewport.scale = 0.4;
         h.window.visualViewport.width = 900;
@@ -260,9 +260,15 @@ test('archive.is report UI counter-scales on a shrunk desktop page and restores 
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
     h.dispatchVisualViewportEvent('resize');
-    assert.equal(toggle.style.getPropertyValue('transform'), 'none');
-    assert.equal(panel.style.getPropertyValue('transform'), 'none');
-    assert.equal(panel.style.getPropertyValue('width'), '370px');
+    assert.equal(host.style.getPropertyValue('display'), 'none');
+    h.window.visualViewport.offsetLeft = 120;
+    h.dispatchVisualViewportEvent('scroll');
+    assert.equal(host.style.getPropertyValue('display'), 'none');
+    h.window.visualViewport.scale = 0.4;
+    h.window.visualViewport.offsetLeft = 0;
+    h.dispatchVisualViewportEvent('resize');
+    assert.equal(host.style.getPropertyValue('display'), 'block');
+    assert.equal(toggle.style.getPropertyValue('transform'), 'scale(2.5)');
 });
 
 test('narrow visual viewport keeps the report panel inside all four edges', () => {
@@ -338,4 +344,24 @@ test('unapproved and wrong-origin frame requests cannot extract content', () => 
     child.h.window.dispatchEvent(event);
     assert.equal(shared.get(key).state, 'request');
     assert.equal(child.calls.length, 0);
+});
+
+test('manual pinch zoom hides the report UI and preserves its open panel on return', () => {
+    const { h, calls } = run('https://micjm.com/');
+    const host = h.document.getElementById('tm-webdiag-host');
+    const panel = h.document.getElementById('tm-webdiag-panel');
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    assert.equal(panel.hidden, false);
+    h.window.visualViewport.scale = 2;
+    h.dispatchVisualViewportEvent('resize');
+    assert.equal(host.style.getPropertyValue('display'), 'none');
+    assert.equal(host.style.getPropertyPriority('display'), 'important');
+    assert.equal(host.dataset.pinched, 'true');
+    h.window.visualViewport.scale = 1;
+    h.dispatchVisualViewportEvent('resize');
+    assert.equal(host.style.getPropertyValue('display'), 'block');
+    assert.equal(host.dataset.pinched, 'false');
+    assert.equal(panel.hidden, false);
+    assert.equal(calls.filter(c => c.url.endsWith('/api/report')).length, 0);
 });

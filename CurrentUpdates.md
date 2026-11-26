@@ -1,3 +1,8 @@
+## Report controls during pinch zoom — 2026-11-27
+
+- [Install Translation Diagnostics 2026-11-27_1.2.8](src/TranslationDiagnostics.user.js) — hide report button and panel during manual zoom; restore at the original scale without changing page layout or report state.
+- **Test:** [micjm](https://micjm.com/) — reload, pinch zoom and pan; the report button should disappear until returning to the original scale. Android Edge device verification required.
+
 ## Independent iframe interactive replay — 2026-11-26
 
 - [Install Shared Floating Menu — All in One 2026-11-26_1.0.9](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-26_1.5.47](src/TranslatePreformattedText.user.js), not both.

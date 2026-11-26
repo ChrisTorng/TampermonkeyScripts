@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-26_1.2.7
+// @version      2026-11-27_1.2.8
 // @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -447,6 +447,8 @@
         };
     }
 
+    let diagnosticNormalScale = Math.min(1, window.visualViewport?.scale || 1);
+    let diagnosticOrientation = window.screen?.orientation?.type;
     // Compensate only the report UI for Edge's shrink-to-fit on desktop-width pages.
     // Never alter the webpage or its viewport.
     function fitDiagnosticViewport() {
@@ -456,6 +458,18 @@
         if (!toggle || !panel) return;
         const vv = window.visualViewport;
         const scale = Number.isFinite(vv?.scale) && vv.scale > 0 ? vv.scale : 1;
+        const orientation = window.screen?.orientation?.type;
+        if (orientation !== diagnosticOrientation) {
+            diagnosticOrientation = orientation;
+            diagnosticNormalScale = 1;
+        }
+        diagnosticNormalScale = Math.min(diagnosticNormalScale, scale);
+        const pinched = scale > diagnosticNormalScale * 1.05;
+        host.dataset.pinched = String(pinched);
+        const display = pinched ? 'none' : 'block';
+        if (host.style.getPropertyValue('display') !== display)
+            host.style.setProperty('display', display, 'important');
+        if (pinched) return;
         const zoom = scale < 0.9 ? Math.min(3.5, 1 / scale) : 1;
         const vw = vv?.width || window.innerWidth;
         const vh = vv?.height || window.innerHeight;
@@ -518,7 +532,7 @@
             '#tm-webdiag-body{order:0!important;flex:0 1 auto!important}',
             '#tm-webdiag-actions{order:1!important;padding:4px 8px!important}',
             '#tm-webdiag-actions button:last-child{display:none!important}',
-            'html:has(#tm-webdiag-host[data-open="true"]) #tm-shared-floating-menu{visibility:hidden!important}',
+            'html:has(#tm-webdiag-host[data-open="true"]:not([data-pinched="true"])) #tm-shared-floating-menu{visibility:hidden!important}',
             '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
         ].join('\n');
