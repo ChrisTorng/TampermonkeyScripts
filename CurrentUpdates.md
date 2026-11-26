@@ -1,3 +1,9 @@
+## Live iframe reader and graphic snapshots — 2026-11-26
+
+- [Install Shared Floating Menu — All in One 2026-11-26_1.0.8](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-26_1.5.45](src/TranslatePreformattedText.user.js), not both.
+- Graphics and interactive frames load as the original remote iframe by default after origin-checked readiness. SVG and Canvas become in-place static image backups; blocked or unverified frames retain the translation snapshot. The reader can switch back to translated prose. No remote scripts execute in the viewer's own document.
+- **Test:** [Claude Artifact](https://claude.ai/artifact/CtQyX8qfYAF822bgHJHHE3) — reload the original page, open a new reader with 譯↗, check the mode and interact with the charts. Native Android Edge and actual Artifact embedding remain to be verified.
+
 ## Compact diagnostic reporting and mobile iframe reader — 2026-11-26
 
 - [Install Translation Diagnostics 2026-11-26_1.2.5](src/TranslationDiagnostics.user.js) — tap Report twice at the same location to submit; public text is checked by default, success closes the panel, failures stay visible.
