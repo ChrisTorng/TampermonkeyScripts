@@ -2,13 +2,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { spawnSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
 test('production replay helpers preserve a large interactive document in an opaque-origin iframe', {
     skip: !process.env.CONTROL_BROWSER_BIN && 'Set CONTROL_BROWSER_BIN to Chromium'
-}, () => {
+}, async () => {
     const source = fs.readFileSync(path.join(__dirname, '../src/TranslatePreformattedText.user.js'), 'utf8');
     const start = source.indexOf('    const readerReplayKey =');
     const end = source.indexOf('    const isReaderDocument =', start);
@@ -75,15 +75,66 @@ test('production replay helpers preserve a large interactive document in an opaq
             (helpers + '\n(' + fixture.toString() + ')();').replace(/<\/script/gi, '<\\/script') + '</script>';
         const file = path.join(directory, 'replay.html');
         fs.writeFileSync(file, html);
-        const run = spawnSync(process.env.CONTROL_BROWSER_BIN, [
+        // Virtual-time dump-dom can finish before CompressionStream's worker
+        // returns. Use Chrome's debugging pipe and wait for the real result.
+        const chrome = spawn(process.env.CONTROL_BROWSER_BIN, [
             '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
             '--no-sandbox', '--disable-dev-shm-usage', '--user-data-dir=' + path.join(directory, 'profile'),
-            '--virtual-time-budget=20000', '--dump-dom', pathToFileURL(file).href,
-        ], { encoding: 'utf8', timeout: 45000, maxBuffer: 24 * 1024 * 1024 });
-        assert.ifError(run.error);
-        assert.equal(run.status, 0, run.stderr);
-        const report = run.stdout.match(/<output id="result"[^>]*>[\s\S]*?<\/output>/)?.[0];
-        assert.match(report || 'Missing browser report', /data-status="passed"/, report);
+            '--remote-debugging-pipe', 'about:blank'
+        ], { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] });
+        let stderr = '', buffer = '', sequence = 0;
+        const pending = new Map();
+        chrome.stderr.on('data', chunk => { stderr = (stderr + chunk.toString()).slice(-12000); });
+        chrome.stdio[4].on('data', chunk => {
+            buffer += chunk.toString();
+            let index;
+            while ((index = buffer.indexOf('\0')) >= 0) {
+                const raw = buffer.slice(0, index);
+                buffer = buffer.slice(index + 1);
+                if (!raw) continue;
+                const message = JSON.parse(raw);
+                const waiter = pending.get(message.id);
+                if (!waiter) continue;
+                pending.delete(message.id);
+                clearTimeout(waiter.timer);
+                if (message.error) waiter.reject(Error(JSON.stringify(message.error)));
+                else waiter.resolve(message.result);
+            }
+        });
+        function command(method, params = {}, sessionId) {
+            const id = ++sequence;
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    pending.delete(id);
+                    reject(Error('Chrome command timeout: ' + method + '\n' + stderr));
+                }, 8000);
+                pending.set(id, { resolve, reject, timer });
+                chrome.stdio[3].write(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }) + '\0');
+            });
+        }
+        try {
+            const { targetId } = await command('Target.createTarget', { url: 'about:blank' });
+            const { sessionId } = await command('Target.attachToTarget', { targetId, flatten: true });
+            await command('Page.enable', {}, sessionId);
+            await command('Page.navigate', { url: pathToFileURL(file).href }, sessionId);
+            let report;
+            const deadline = Date.now() + 20000;
+            while (Date.now() < deadline) {
+                const reply = await command('Runtime.evaluate', {
+                    expression: 'document.getElementById("result")?.outerHTML || ""',
+                    returnByValue: true
+                }, sessionId);
+                report = reply.result?.value;
+                if (report && /data-status="(?:passed|failed)"/.test(report)) break;
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            assert.match(report || 'Missing browser report', /data-status="passed"/, (report || '') + '\n' + stderr);
+        } finally {
+            const closed = new Promise(resolve => chrome.once('close', resolve));
+            chrome.kill('SIGTERM');
+            await closed;
+            for (const waiter of pending.values()) clearTimeout(waiter.timer);
+        }
     } finally {
         fs.rmSync(directory, { recursive: true, force: true });
     }
