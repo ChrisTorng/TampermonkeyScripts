@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-26_1.5.47
+// @version      2026-11-27_1.5.48
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -32,7 +32,66 @@
     const readerHandoffLifetime = 10 * 60 * 1000; // GM storage is only a short handoff.
     const readerReplayKey = 'tm-embedded-replay:';
     const readerReplayRawLimit = 12 * 1024 * 1024;
-    const readerReplayPackedLimit = 3 * 1024 * 1024;
+    const readerReplayPackedLimit = 8 * 1024 * 1024;
+    const readerReplayChunkSize = 192 * 1024;
+    const readerReplayVersion = '2026-11-27_1.5.48';
+
+    // Cross-frame GM updates can arrive after a window message on mobile.
+    async function readerWaitValue(key, accept, attempts = 8) {
+        let value;
+        for (let i = 0; i < attempts; i++) {
+            value = await Promise.resolve(GM_getValue(key, null));
+            if (accept(value)) return value;
+            if (i + 1 < attempts) await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return value;
+    }
+
+    function readerValidManifest(value) {
+        return !!value && ['plain', 'gzip-base64'].includes(value.encoding) &&
+            ['response', 'dom'].includes(value.method) &&
+            Number.isInteger(value.bytes) && value.bytes > 0 && value.bytes <= readerReplayRawLimit &&
+            Number.isInteger(value.length) && value.length > 0 && value.length <= readerReplayPackedLimit &&
+            value.chunks === Math.ceil(value.length / readerReplayChunkSize);
+    }
+
+    async function readerSaveChunks(key, replay) {
+        const manifest = { encoding: replay.encoding, method: replay.method, bytes: replay.bytes,
+            length: replay.data.length, chunks: Math.ceil(replay.data.length / readerReplayChunkSize) };
+        const expires = Date.now() + readerHandoffLifetime;
+        try {
+            for (let i = 0; i < manifest.chunks; i++) {
+                await Promise.resolve(GM_setValue(key + ':' + i, { expires,
+                    data: replay.data.slice(i * readerReplayChunkSize, (i + 1) * readerReplayChunkSize) }));
+            }
+            return manifest;
+        } catch (error) {
+            await readerDeleteChunks(key, manifest);
+            throw error;
+        }
+    }
+
+    async function readerDeleteChunks(key, manifest) {
+        if (!readerValidManifest(manifest)) return;
+        for (let i = 0; i < manifest.chunks; i++) {
+            try { await Promise.resolve(GM_deleteValue(key + ':' + i)); } catch (_) {}
+        }
+    }
+
+    async function readerLoadChunks(key, manifest) {
+        if (!readerValidManifest(manifest)) return null;
+        const parts = [];
+        for (let i = 0; i < manifest.chunks; i++) {
+            const part = await readerWaitValue(key + ':' + i, v => typeof v?.data === 'string', 4);
+            const expected = Math.min(readerReplayChunkSize, manifest.length - i * readerReplayChunkSize);
+            if (typeof part?.data !== 'string' || part.data.length !== expected ||
+                !Number.isFinite(part.expires) || part.expires < Date.now()) return null;
+            parts.push(part.data);
+        }
+        const replay = { encoding: manifest.encoding, method: manifest.method,
+            bytes: manifest.bytes, data: parts.join('') };
+        return readerValidReplay(replay) ? replay : null;
+    }
     const readerReplayChannel = 'tm-embedded-replay-v1';
 
     // Capture self-contained documents only. No server upload, cookies, GM grants,
@@ -107,8 +166,9 @@
         return blob.text();
     }
 
-    async function readerCaptureReplay() {
-        if (!readerReplayCandidate(document)) return null;
+    async function readerCaptureReplay(trace = {}) {
+        if (!readerReplayCandidate(document)) { trace.capture = 'not-self-contained'; return null; }
+        trace.capture = 'fetching';
         // Prefer the original response instead of replaying scripts over an
         // already-rendered tree. Only re-read this document, with no redirects.
         let html, method;
@@ -129,8 +189,9 @@
                     // Parse in the source document's context; never execute this copy here.
                     const parsed = new DOMParser().parseFromString(text, 'text/html');
                     if (readerReplayCandidate(parsed)) { html = text; method = 'response'; }
+                    else trace.fetch = 'not-self-contained';
                 }
-            } catch (_) { /* Reconstruct from the accessible rendered DOM below. */ }
+            } catch (error) { trace.fetch = error?.name === 'AbortError' ? 'timeout' : 'failed'; }
             finally { clearTimeout(timeout); }
         }
         if (!html) {
@@ -146,7 +207,13 @@
             html = '<!doctype html>\n' + clone.outerHTML;
             method = 'dom';
         }
-        return readerPackReplay(html, method);
+        trace.method = method;
+        trace.sourceCharacters = html.length;
+        trace.capture = 'packing';
+        const replay = await readerPackReplay(html, method);
+        trace.capture = replay ? 'packed' : 'size-limit';
+        if (replay) { trace.bytes = replay.bytes; trace.packedCharacters = replay.data.length; }
+        return replay;
     }
 
     // Executed only in an opaque-origin sandbox. Report rendered content and
@@ -423,28 +490,40 @@
             try {
                 const result = readerCapture();
                 const key = readerReplayKey + data.id;
-                const request = GM_getValue(key, null);
-                // Full source never crosses the public page's postMessage bridge.
-                // Only the parent userscript's short-lived GM authorization can
-                // request the local private replay record.
+                const trace = { version: readerReplayVersion, capture: 'no-authorization' };
+                // Keep source bytes in private GM storage; only status crosses postMessage.
+                const request = await readerWaitValue(key, v => v?.state === 'request');
                 if (request?.state === 'request' && request.parentOrigin === event.origin &&
                     request.frameOrigin === location.origin && Date.now() <= request.expires &&
-                    request.expires - Date.now() <= 15000 &&
+                    request.expires - Date.now() <= 30000 &&
                     (result.metrics.graphics || result.metrics.controls)) {
-                    let replay = null;
-                    try { replay = await readerCaptureReplay(); } catch (_) {}
-                    const pending = GM_getValue(key, null);
+                    let replay = null, manifest = null;
+                    try {
+                        replay = await readerCaptureReplay(trace);
+                        if (readerValidReplay(replay)) {
+                            trace.capture = 'writing-chunks';
+                            manifest = await readerSaveChunks(key, replay);
+                            trace.capture = 'chunks-written';
+                        }
+                    } catch (error) {
+                        trace.capture = trace.capture === 'packing' ? 'pack-failed' :
+                            trace.capture === 'writing-chunks' ? 'storage-write-failed' : 'capture-failed';
+                    }
+                    const pending = await Promise.resolve(GM_getValue(key, null));
                     if (pending?.state === 'request' && pending.expires === request.expires &&
                         Date.now() <= pending.expires) {
                         try {
-                            GM_setValue(key, { state: 'response', expires: request.expires,
-                                replay: readerValidReplay(replay) ? replay : null });
-                        } catch (_) { /* Static capture remains available. */ }
+                            await Promise.resolve(GM_setValue(key, { state: 'response',
+                                expires: Date.now() + readerHandoffLifetime, manifest, trace }));
+                        } catch (_) { trace.capture = 'manifest-write-failed'; }
+                    } else {
+                        trace.capture = 'authorization-expired';
+                        await readerDeleteChunks(key, manifest);
                     }
-                }
+                } else if (request?.state === 'request') trace.capture = 'authorization-mismatch';
                 window.parent.postMessage({
                     channel: readerBridgeChannel, type: 'captured', id: data.id,
-                    html: result.html, title: result.title, metrics: result.metrics
+                    html: result.html, title: result.title, metrics: result.metrics, replayTrace: trace
                 }, '*');
             } catch (error) {
                 window.parent.postMessage({
@@ -553,7 +632,7 @@
                     event.stopImmediatePropagation?.();
                 }
             }, true);
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async () => {
                 const info = known.get(frame);
                 if (!info || info.pending) return;
                 const id = Date.now().toString(36) + '-' + (++sequence).toString(36)
@@ -563,8 +642,8 @@
                 button.textContent = '擷取中';
                 const frameUrl = new URL(frame.getAttribute('src'), document.baseURI || location.href);
                 try {
-                    GM_setValue(readerReplayKey + id, { state: 'request', parentOrigin: location.origin,
-                        frameOrigin: frameUrl.origin, expires: Date.now() + 14000 });
+                    await Promise.resolve(GM_setValue(readerReplayKey + id, { state: 'request', parentOrigin: location.origin,
+                        frameOrigin: frameUrl.origin, expires: Date.now() + 28000 }));
                 } catch (_) {}
                 frame.contentWindow.postMessage({
                     channel: readerBridgeChannel, type: 'capture', id
@@ -575,7 +654,7 @@
                     info.pending = null;
                     button.disabled = false;
                     button.textContent = '重試↗';
-                }, 15000);
+                }, 30000);
             });
             document.body.appendChild(button);
             const info = { button, pending: null };
@@ -616,15 +695,32 @@
                         graphics: count(metrics.graphics), controls: count(metrics.controls),
                         height: count(metrics.height)
                     } : null;
-                let replay = null;
+                let replay = null, manifest = null;
+                const replayKey = readerReplayKey + id;
+                const trace = { parentVersion: readerReplayVersion,
+                    childVersion: data.replayTrace?.version === readerReplayVersion ? readerReplayVersion : 'unknown',
+                    childCapture: ['no-authorization','authorization-mismatch','authorization-expired','not-self-contained',
+                        'fetching','packing','size-limit','pack-failed','capture-failed','storage-write-failed',
+                        'manifest-write-failed','chunks-written'].includes(data.replayTrace?.capture)
+                        ? data.replayTrace.capture : 'unknown' };
+                for (const key of ['sourceCharacters','bytes','packedCharacters']) {
+                    const n = data.replayTrace?.[key];
+                    if (Number.isInteger(n) && n >= 0 && n <= readerReplayRawLimit) trace[key] = n;
+                }
                 try {
-                    const saved = GM_getValue(readerReplayKey + id, null);
-                    if (live && saved?.state === 'response' && Date.now() <= saved.expires &&
-                        readerValidReplay(saved.replay)) replay = saved.replay;
-                    GM_deleteValue(readerReplayKey + id);
-                } catch (_) {}
-                const record = { html: data.html, createdAt: Date.now(), ...(live ? { live } : {}) };
-                // Storage quotas must never prevent opening the static reader.
+                    const saved = data.replayTrace?.capture === 'chunks-written' ?
+                        await readerWaitValue(replayKey, v => v?.state === 'response') :
+                        GM_getValue(replayKey, null);
+                    if (live && saved?.state === 'response' && Date.now() <= saved.expires) {
+                        if (readerValidManifest(saved.manifest)) manifest = saved.manifest;
+                        else if (readerValidReplay(saved.replay)) replay = saved.replay;
+                    }
+                    trace.handoff = manifest ? 'manifest-received' : replay ? 'legacy-received' :
+                        (saved?.state === 'response' ? 'no-replay' : 'no-response');
+                    await Promise.resolve(GM_deleteValue(replayKey));
+                } catch (_) { trace.handoff = 'storage-read-failed'; }
+                const record = { html: data.html, createdAt: Date.now(), ...(live ? { live } : {}),
+                    replayTrace: trace, ...(manifest ? { replayManifest: manifest } : {}) };
                 try {
                     await Promise.resolve(GM_setValue(readerBridgeKey + id,
                         replay ? { ...record, replay } : record));
@@ -904,6 +1000,22 @@
                         }
                     }
                     target.replaceChildren(template.content);
+                    if (readerValidManifest(record.replayManifest) && !readerValidReplay(record.replay)) {
+                        try { record.replay = await readerLoadChunks(readerReplayKey + id, record.replayManifest); }
+                        catch (_) { record.replay = null; }
+                    }
+                    const diagnostic = document.createElement('div');
+                    diagnostic.id = 'iframe-viewer-replay-diagnostic';
+                    diagnostic.hidden = true;
+                    diagnostic.textContent = JSON.stringify({
+                        viewerVersion: readerReplayVersion,
+                        ...record.replayTrace,
+                        manifest: readerValidManifest(record.replayManifest),
+                        viewerReplay: readerValidReplay(record.replay) ? 'available' : 'missing',
+                        ...(readerValidReplay(record.replay) ? { method: record.replay.method,
+                            packedCharacters: record.replay.data.length } : {})
+                    });
+                    target.parentElement?.appendChild(diagnostic);
                     readerStartLive(target, record, id);
                     if (transferred) {
                         let saved = false;
@@ -911,7 +1023,11 @@
                             sessionStorage.setItem(sessionKey, JSON.stringify(record));
                             saved = true;
                         } catch (_) { /* Retain GM copy if session cache is not available. */ }
-                        if (saved) await Promise.resolve(GM_deleteValue(handoffKey));
+                        if (saved) {
+                            await Promise.resolve(GM_deleteValue(handoffKey));
+                            if (readerValidReplay(record.replay))
+                                await readerDeleteChunks(readerReplayKey + id, record.replayManifest);
+                        }
                     }
                     completed = true;
                     clearInterval(interval);
