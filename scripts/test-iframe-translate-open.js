@@ -14,6 +14,7 @@ function boot(url = 'https://example.org/article', prepare = () => {},
     sharedStore = new Map(), sessionStorageSeed = {}) {
     const h = createHarness({ url, sessionStorageSeed });
     const opened = [];
+    h.context.Blob = Blob;
     h.context.GM_setValue = (k, v) => sharedStore.set(k, v);
     h.context.GM_getValue = (k, fallback) => sharedStore.get(k) ?? fallback;
     h.context.GM_listValues = () => Array.from(sharedStore.keys());
@@ -147,7 +148,53 @@ describe('generic iframe translation reader', () => {
     });
 
 
-    function makeReader(id, store, seed = {}) {
+    test('full source is accepted only from the private GM handoff, not page messages', async () => {
+        let frame;
+        const messages = [];
+        const { h, opened, store } = boot('https://example.org/story', h => {
+            frame = embed(h, 'embed.example.com');
+            frame.contentWindow.postMessage = m => messages.push(m);
+        });
+        frameMessage(h, frame, { type: 'ready', textLength: 300 });
+        h.document.querySelector('.tm-iframe-translate-open').click();
+        const { id } = messages.find(m => m.type === 'capture');
+        const key = 'tm-embedded-replay:' + id;
+        const authorization = store.get(key);
+        assert.equal(authorization.state, 'request');
+        assert.equal(authorization.frameOrigin, 'https://embed.example.com');
+        assert.equal(authorization.parentOrigin, 'https://example.org');
+        const raw = '<html><body><script>document.body.textContent="interactive";</script></body></html>';
+        const replay = { encoding: 'plain', method: 'response', data: raw, bytes: Buffer.byteLength(raw) };
+        store.set(key, { state: 'response', expires: authorization.expires, replay });
+        frameMessage(h, frame, { type: 'captured', id, html: '<p>Static fallback</p>',
+            metrics: { textLength: 300, graphics: 1, controls: 1, height: 500 },
+            replay: { ...replay, data: 'injected from page message' } });
+        await settle();
+        assert.equal(opened.length, 1);
+        assert.equal(store.has(key), false);
+        assert.equal(store.get('tm-embedded-reader:' + id).replay.data, raw);
+        assert(!opened[0].url.includes('interactive'));
+    });
+
+    test('a page message cannot supply a replay without a private GM response', async () => {
+        let frame;
+        const messages = [];
+        const { h, store } = boot('https://example.org/story', h => {
+            frame = embed(h, 'embed.example.com');
+            frame.contentWindow.postMessage = m => messages.push(m);
+        });
+        frameMessage(h, frame, { type: 'ready', textLength: 300 });
+        h.document.querySelector('.tm-iframe-translate-open').click();
+        const { id } = messages.find(m => m.type === 'capture');
+        frameMessage(h, frame, { type: 'captured', id, html: '<p>Static fallback</p>',
+            metrics: { textLength: 300, graphics: 1, controls: 1 },
+            replay: { encoding: 'plain', method: 'response', data: 'forged', bytes: 6 } });
+        await settle();
+        assert.equal(store.get('tm-embedded-reader:' + id).replay, undefined);
+        assert.equal(store.has('tm-embedded-replay:' + id), false);
+    });
+
+    function makeReader(id, store, seed = {}, setup = () => {}) {
         const title = 'Full source article title, not iframe title';
         const url = 'https://example.org/articles/42?topic=accessibility#section';
         const query = new URLSearchParams({ id, title, url });
@@ -182,6 +229,7 @@ describe('generic iframe translation reader', () => {
                 if (tag === 'iframe') element.contentWindow = { postMessage() {} };
                 return element;
             };
+            setup(h);
         }, store, seed);
         return { ...result, anchor, address, target, title, url, readerUrl, liveHost, modeStatus, modeToggle };
     }
@@ -274,6 +322,29 @@ describe('generic iframe translation reader', () => {
         assert.equal(reader.target.hidden, false);
         assert.equal(reader.liveHost.querySelector('iframe'), null);
         assert.equal(reader.modeToggle.textContent, '重試互動');
+    });
+
+    test('failed live mode tries local replay, then keeps static fallback if reconstruction fails', async () => {
+        const id = 'capture-replay-12345';
+        const raw = '<html><body><script>42;</script></body></html>';
+        const record = {
+            html: '<p>Snapshot fallback</p>', createdAt: Date.now(),
+            live: { url: 'https://embed.example.org/chart', textLength: 400, graphics: 1 },
+            replay: { encoding: 'plain', method: 'response', data: raw, bytes: Buffer.byteLength(raw) }
+        };
+        const reader = makeReader(id, new Map([['tm-embedded-reader:' + id, record]]), {}, h => {
+            // Fail reconstruction deterministically; full HTML parsing is tested in Chromium.
+            h.context.DOMParser = class { parseFromString() { throw Error('parse failed'); } };
+        });
+        await settle();
+        assert(reader.liveHost.querySelector('iframe'));
+        reader.h.runAllTimeouts();
+        assert.match(reader.modeStatus.textContent, /本機互動重播/);
+        await new Promise(resolve => setImmediate(resolve));
+        await settle();
+        assert.equal(reader.target.hidden, false);
+        assert.equal(reader.liveHost.querySelector('iframe'), null);
+        assert.match(reader.modeStatus.textContent, /本機重播失敗/);
     });
 
     test('same-owner URLs are never executed as a live iframe', async () => {
