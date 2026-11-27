@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-28_1.2.11
+// @version      2026-11-28_1.2.12
 // @description  Universal opt-in web diagnostics: sanitized DOM, CSS, layout, viewport reconstruction, translation flags and console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -21,7 +21,7 @@
     if (!/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-28_1.2.11';
+    const VERSION = '2026-11-28_1.2.12';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const REPORT_BUDGET = 4_650_000;
@@ -212,7 +212,7 @@
         GM_setValue('tm-webdiag-device-secret', secret);
     }
 
-    function post(path, data) {
+    function post(path, data, onProgress) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'POST',
@@ -220,6 +220,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 data: JSON.stringify(data),
                 timeout: 30000,
+                upload: { onprogress: event => { if (event.lengthComputable && onProgress) onProgress(Math.round(100 * event.loaded / event.total)); } },
                 onload: (response) => {
                     let value;
                     try { value = JSON.parse(response.responseText || '{}'); }
@@ -519,6 +520,13 @@
             report.screenshot = { status: 'password-form-excluded', kind }; return null;
         }
         if (file) return captureAttachedScreenshot(file);
+        // Large documents make html2canvas traverse and clone the entire page
+        // even when only a viewport is requested. Preserve immediate reports.
+        if ((document.documentElement.scrollHeight || 0) > 18000 ||
+            document.querySelectorAll('*').length > 2500) {
+            report.screenshot = { status: 'skipped-large-document', kind };
+            return null;
+        }
         const render = typeof html2canvas === 'function' ? html2canvas : globalThis.html2canvas;
         if (typeof render !== 'function') { report.screenshot = { status: 'renderer-unavailable', kind }; return null; }
         const vv = window.visualViewport;
@@ -535,7 +543,7 @@
                 useCORS: true, allowTaint: false, imageTimeout: 2200, logging: false,
                 ignoreElements: el => !!el.matches?.('#tm-webdiag-host, input, textarea, select, [contenteditable], iframe, video')
             })).then(canvas => encodeScreenshot(canvas, kind)),
-            new Promise(resolve => { timer = setTimeout(() => resolve({ status: 'capture-timeout', kind }), 8000); })
+            new Promise(resolve => { timer = setTimeout(() => resolve({ status: 'capture-timeout', kind }), 3500); })
         ]).catch(() => ({ status: 'capture-error', kind })).finally(() => clearTimeout(timer));
     }
 
@@ -689,7 +697,7 @@
         const x = vv?.offsetLeft || 0;
         const y = vv?.offsetTop || 0;
         const width = Math.max(1, Math.min(370, vw / zoom - 16));
-        const height = Math.max(1, Math.min(320, vh / zoom - 64));
+        const height = Math.max(1, Math.min(420, vh / zoom - 20));
         const left = x + 8 * zoom;
         // Native fixed positioning follows browser toolbar animation on the
         // compositor. Applying a JS height delta on every toolbar scroll can
@@ -711,7 +719,7 @@
         set(panel, 'transform-origin', 'bottom left');
         set(panel, 'left', (x + 8 * zoom) + 'px');
         set(panel, 'top', 'auto');
-        set(panel, 'bottom', (bottomInset + 48 * zoom) + 'px');
+        set(panel, 'bottom', bottom + 'px');
         set(panel, 'width', width + 'px');
         set(panel, 'height', 'auto');
         set(panel, 'max-height', height + 'px');
@@ -719,7 +727,7 @@
         diagnosticAnchor = {
             host, x: (window.scrollX || 0) + anchorRect.left,
             y: (window.scrollY || 0) + anchorRect.top,
-            gap: 38 * zoom
+            gap: 0
         };
     }
 
@@ -739,7 +747,7 @@
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
             '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:5px 8px!important;margin:0!important;cursor:pointer!important}',
-            '#tm-webdiag-panel{position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 16px))!important;height:min(72dvh,560px)!important;max-height:calc(100dvh - 90px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
+            '#tm-webdiag-panel{position:fixed!important;bottom:10px!important;left:max(8px,env(safe-area-inset-left,0px))!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 16px))!important;height:min(72dvh,560px)!important;max-height:calc(100dvh - 90px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
             '#tm-webdiag-panel[hidden]{display:none!important}',
             '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:relative!important;top:0!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
             '#tm-webdiag-close{margin:0!important;padding:4px 9px!important;white-space:nowrap!important}',
@@ -759,7 +767,7 @@
             '#tm-webdiag-panel [data-status]{order:-1!important;margin:4px 8px!important}',
             '#tm-webdiag-body{order:0!important;flex:0 1 auto!important}',
             '#tm-webdiag-actions{order:1!important;padding:4px 8px!important}',
-            '#tm-webdiag-actions button:last-child{display:none!important}',
+            '#tm-webdiag-host[data-open="true"] #tm-webdiag-toggle{visibility:hidden!important;pointer-events:none!important}',
             'html:has(#tm-webdiag-host[data-open="true"]:not([data-pinched="true"])) #tm-shared-floating-menu{visibility:hidden!important}',
             '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
@@ -912,7 +920,7 @@
             toggle.setAttribute('aria-expanded', String(open));
             host.dataset.open = String(open);
             result.dataset.visible = 'false';
-            if (open) { toggle.textContent = '立即送出'; fitDiagnosticViewport(); }
+            if (open) { toggle.textContent = '回報'; fitDiagnosticViewport(); }
             else toggle.textContent = latestResult.startsWith('已送出') ? '已送出' : '回報';
         };
         toggle.setAttribute('aria-controls', 'tm-webdiag-panel');
@@ -954,22 +962,28 @@
         async function sendReport(event) {
             if (event?.isTrusted === false || submit.disabled) return;
             submit.disabled = true;
-            setStatus('正在擷取並送出…');
+            setStatus('1/3 正在擷取 DOM、CSS 與位置…');
+            submit.textContent = '擷取中…';
+            next.disabled = true;
             try {
-                setPanelOpen(false);
-                toggle.textContent = '擷取中';
                 const report = buildReport(include.checked);
+                setStatus('2/3 正在處理畫面與內嵌頁面…');
                 const screenshotTask = captureScreenshot(report, include.checked, imageFile.files?.[0]);
                 const frameTask = collectFrameReports(include.checked);
                 if (frameTask) attachFrameReports(report, await frameTask);
                 if (screenshotTask) report.screenshot = await screenshotTask;
                 fitReportBudget(report);
-                const response = await post('/api/report', { deviceId, secret, report });
-                showResult('已送出報告 ' + response.reportId + '（7 天後自動刪除）'
+                setStatus('3/3 正在上傳至 Cloudflare…');
+                submit.textContent = '上傳中…';
+                const response = await post('/api/report', { deviceId, secret, report }, percent => {
+                    setStatus('3/3 正在上傳至 Cloudflare… ' + percent + '%');
+                });
+                imageFile.value = '';
+                showResult('已送出報告 ' + response.reportId + '（' + (response.retentionDays || 1) + ' 天後自動刪除）'
                     + (report.screenshot?.status === 'captured' ? '；附畫面' : '；畫面：' + report.screenshot?.status));
             } catch (e) {
                 showResult('送出失敗：' + e.message + '。資料尚未上傳。');
-            } finally { submit.disabled = false; }
+            } finally { submit.disabled = false; next.disabled = false; submit.textContent = '立即送出'; }
         }
         submit.addEventListener('click', sendReport);
         close.addEventListener('click', () => { setPanelOpen(false); });
@@ -1012,7 +1026,7 @@
                 fitReportBudget(report);
                 const response = await post('/api/report', { deviceId, secret, report });
                 showResult('已送出重新整理後的報告 ' + response.reportId
-                    + (timeout ? '（頁面尚未確認穩定）' : '') + '（7 天後自動刪除）');
+                    + (timeout ? '（頁面尚未確認穩定）' : '') + '（' + (response.retentionDays || 1) + ' 天後自動刪除）');
             } catch (e) {
                 showResult('自動回報失敗：' + e.message + '；未自動重試，可手動送出。');
             }

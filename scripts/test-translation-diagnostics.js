@@ -258,7 +258,7 @@ test('archive.is report UI retains its initial shrink-to-fit compensation and do
     assert.equal(panel.style.getPropertyValue('transform'), 'scale(2.5)');
     assert.equal(panel.style.getPropertyValue('width'), '344px');
     assert.equal(panel.style.getPropertyValue('height'), 'auto');
-    assert.equal(panel.style.getPropertyValue('max-height'), '320px');
+    assert.equal(panel.style.getPropertyValue('max-height'), '420px');
     assert.notEqual(result.dataset.visible, 'true');
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
@@ -292,7 +292,7 @@ test('narrow visual viewport keeps the report panel inside all four edges', () =
     assert.equal(panel.style.getPropertyValue('left'), '20px');
     assert.equal(panel.style.getPropertyValue('width'), '272px');
     assert.equal(panel.style.getPropertyValue('height'), 'auto');
-    assert.equal(panel.style.getPropertyValue('max-height'), '320px');
+    assert.equal(panel.style.getPropertyValue('max-height'), '420px');
     assert.equal(host.dataset.open, 'true');
     h.document.getElementById('tm-webdiag-close').click();
     assert.equal(host.dataset.open, 'false');
@@ -370,7 +370,7 @@ test('manual pinch zoom anchors report UI and its open panel to the document', (
     assert.equal(host.style.getPropertyValue('position'), 'absolute');
     assert.equal(panel.style.getPropertyValue('position'), 'absolute');
     assert.equal(panel.style.getPropertyValue('left'), '0px');
-    assert.equal(panel.style.getPropertyValue('bottom'), '38px');
+    assert.equal(panel.style.getPropertyValue('bottom'), '0px');
     assert.equal(host.dataset.pinched, 'true');
     h.window.visualViewport.scale = 1;
     h.dispatchVisualViewportEvent('resize');
@@ -471,5 +471,20 @@ test('structure-only report does not collect CSS rules or reconstruct the viewpo
     assert.equal(report.mode, 'structure');
     assert.equal(report.stylesheets, undefined);
     assert.equal(report.screenshot.status, 'not-opted-in');
+    assert.equal(renders, 0);
+});
+
+
+test('large documents skip expensive viewport reconstruction but still submit CSS and DOM', async () => {
+    let renders = 0;
+    const { h, calls } = run('https://example.org/', h => {
+        h.document.documentElement.scrollHeight = 56000;
+        h.context.html2canvas = () => { renders++; throw Error('should not render'); };
+    });
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-actions').children[1].click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    assert.equal(calls.find(c => c.url.endsWith('/api/report')).data.report.screenshot.status, 'skipped-large-document');
     assert.equal(renders, 0);
 });

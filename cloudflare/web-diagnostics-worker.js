@@ -9,7 +9,7 @@ const JSON_HEADERS = {
   "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff"
 };
-const RETENTION_SECONDS = 7 * 24 * 3600;
+const RETENTION_SECONDS = 24 * 3600;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
@@ -47,7 +47,7 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: JSON_HEADERS });
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, service: "tm-web-diagnostics", retentionDays: 7, maxUploadBytes: MAX_UPLOAD_BYTES,
+      return json({ ok: true, service: "tm-web-diagnostics", retentionDays: 1, maxUploadBytes: MAX_UPLOAD_BYTES,
         pairingRequired: true, privateReports: true });
     }
     if (request.method !== "POST") return json({ error: "not found" }, 404);
@@ -95,7 +95,7 @@ export default {
         { expirationTtl: RETENTION_SECONDS,
           metadata: { receivedAt: saved.receivedAt, deviceId: data.deviceId, page,
             mode: String(report.mode || "").slice(0, 24) } });
-      return json({ ok: true, reportId: id, retentionDays: 7 });
+      return json({ ok: true, reportId: id, retentionDays: 1 });
     }
     if (url.pathname === "/api/delete") {
       let data;
