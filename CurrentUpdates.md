@@ -1,3 +1,9 @@
+## Legacy WordPress mobile readability and dark colors — 2026-11-28
+
+- [Install All in One 2026-11-28_1.0.15](src/SharedMenuAllInOne.user.js), or update [Force Mobile View 2026-11-28_2.1.23](src/ForceMobileView.user.js) and [Force Dark Mode 2026-11-28_2.0.21](src/ForceDarkMode.user.js). Do not enable both distributions.
+- Captured CSS confirms the fixed 760px layout, 200px header and repeated light JPEG. Use a bounded early mobile viewport for this verified site; remove the decorative page background in dark mode while preserving the header.
+- **Test:** [Scott Aaronson article](https://scottaaronson.blog/?p=10379) — reload, check readable body, no overlapping header, dark background and manual toggles. Android Edge verification required.
+
 ## Rendered web diagnostics — 2026-11-28
 
 - [Install Translation Diagnostics 2026-11-28_1.2.12](src/TranslationDiagnostics.user.js).
