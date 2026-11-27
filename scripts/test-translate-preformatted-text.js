@@ -944,7 +944,7 @@ describe('Translate Preformatted Text', () => {
         harness.document.dispatchEvent({ type: 'mousemove', clientX: 1170, clientY: 180, preventDefault });
         harness.document.dispatchEvent({ type: 'mouseup' });
         toggle.dispatchEvent({ type: 'click', preventDefault });
-        assert.equal(menu.style.left, '1142px');
+        assert.equal(menu.style.left, '1135px');
         assert.equal(menu.style.top, '170px');
         assert.equal(harness.document.querySelectorAll('pre').length, 1);
     });

@@ -117,23 +117,40 @@ describe('shared floating menu', () => {
         const harness = run(['dark']);
         const menu = harness.document.getElementById('tm-shared-floating-menu');
         assert.equal(menu.style.position, 'fixed');
-        assert.equal(menu.style.left, '1242px');
+        assert.equal(menu.style.left, '1235px');
         for (const offset of [0, 300, 600, 120, 0]) {
             harness.window.scrollX = offset;
             harness.dispatchWindowEvent('scroll');
-            assert.equal(menu.style.left, '1242px');
+            assert.equal(menu.style.left, '1235px');
             assert.equal(menu.style.position, 'fixed');
         }
         harness.window.visualViewport.offsetLeft = 150;
         harness.window.visualViewport.width = 550;
         harness.dispatchVisualViewportEvent('scroll');
-        assert.equal(menu.style.left, '662px');
+        assert.equal(menu.style.left, '655px');
         harness.window.visualViewport.offsetLeft = 0;
         harness.window.visualViewport.width = 400;
         harness.window.innerWidth = 400;
         harness.document.documentElement.clientWidth = 400;
         harness.dispatchVisualViewportEvent('resize');
-        assert.equal(menu.style.left, '362px');
+        assert.equal(menu.style.left, '355px');
+    });
+
+    test('default gap scales with auto-fit, but dragging can reach the right edge', () => {
+        const harness = run(['dark'], { scale: 0.4 });
+        const menu = harness.document.getElementById('tm-shared-floating-menu');
+        const toggle = menu.querySelector('[data-floating-toggle]');
+        assert.equal(menu.style.left, '1224.5px');
+        let prevented = false;
+        toggle.dispatchEvent({ type: 'mousedown', clientX: 1260, clientY: 80, preventDefault() { prevented = true; } });
+        harness.document.dispatchEvent({ type: 'mousemove', clientX: 1280, clientY: 80, preventDefault() {} });
+        harness.document.dispatchEvent({ type: 'mouseup' });
+        assert.equal(prevented, true);
+        assert.equal(menu.style.left, '1242px');
+        assert.equal(JSON.parse(harness.window.localStorage.getItem(key)).x, 1242);
+        const css = harness.document.getElementById('tm-shared-floating-menu-style').textContent;
+        assert(css.includes('outline: none !important;'));
+        assert(css.includes('button:focus-visible { box-shadow: inset'));
     });
 
     test('previously saved X is clamped to the visible viewport when horizontal scrolling', () => {
@@ -163,7 +180,7 @@ describe('shared floating menu', () => {
         assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { disabledPaths: ['/unrelated/'] });
         assert.equal(harness.location.reloadCallCount, 0);
         assert.equal(harness.document.querySelector('[data-floating-toggle]').getAttribute('aria-expanded'), 'false');
-        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.left, '1242px');
+        assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.left, '1235px');
         assert.equal(harness.document.getElementById('tm-shared-floating-menu').style.top, '70px');
     });
 
@@ -174,10 +191,10 @@ describe('shared floating menu', () => {
         first.document.dispatchEvent({ type: 'mousemove', clientX: 1070, clientY: 180, preventDefault() {} });
         first.document.dispatchEvent({ type: 'mouseup' });
         const saved = first.window.localStorage.getItem(key);
-        assert.deepEqual(JSON.parse(saved), { x: 1042, y: 170 });
+        assert.deepEqual(JSON.parse(saved), { x: 1035, y: 170 });
         const next = run(['mobile'], { localStorageSeed: { [key]: saved } });
         const menu = next.document.getElementById('tm-shared-floating-menu');
-        assert.equal(menu.style.left, '1042px');
+        assert.equal(menu.style.left, '1035px');
         assert.equal(menu.style.top, '170px');
     });
 
@@ -323,13 +340,13 @@ describe('shared floating menu', () => {
         const menu = harness.document.getElementById('tm-shared-floating-menu');
         const oldWidth = harness.document.documentElement.scrollWidth || 1280;
         assert.equal(menu.style.position, 'absolute');
-        assert.equal(menu.style.left, '1242px');
+        assert.equal(menu.style.left, '1224.5px');
         harness.window.visualViewport.width = 320;
         for (const offset of [0, 180, 440, 920, 2500]) {
             harness.window.scrollX = offset;
             harness.dispatchWindowEvent('scroll');
             assert.equal(menu.style.left,
-                `${Math.min(offset + 282, Math.max(1280, oldWidth) - 38)}px`);
+                `${Math.min(offset + 264.5, Math.max(1280, oldWidth) - 38)}px`);
             assert.equal(menu.style.position, 'absolute');
         }
     });
@@ -407,7 +424,7 @@ describe('shared floating menu', () => {
         harness.document.dispatchEvent({ type: 'mouseup' });
         const menu = harness.document.getElementById('tm-shared-floating-menu');
         assert.equal(menu.style.top, '170px');
-        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { x: 1042, y: 70 });
+        assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(key)), { x: 1035, y: 70 });
         for (const [scroll, viewportTop] of [[420, 150], [500, 70], [570, 0], [800, 0], [400, 0], [20, 50], [0, 70]]) {
             harness.window.scrollY = scroll;
             harness.dispatchWindowEvent('scroll');
@@ -524,7 +541,7 @@ describe('shared floating menu', () => {
         assert.equal(article.isConnected, true);
         assert.equal(article.querySelector('h1').textContent, 'AI is becoming an information gateway');
         const menu = harness.document.getElementById('tm-shared-floating-menu');
-        assert.equal(menu.style.left, '1242px');
+        assert.equal(menu.style.left, '1235px');
         assert.equal(menu.style.top, '0px');
         assert.deepEqual(JSON.parse(harness.window.localStorage.getItem(storageKey)), {});
     });
