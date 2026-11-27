@@ -1,6 +1,6 @@
 ## Fullscreen page-layer isolation — 2026-11-27
 
-- [Install Fullscreen Game View 2026-11-27_1.3.4](src/FullscreenGameView.user.js).
+- [Install Fullscreen Game View 2026-11-27_1.3.5](src/FullscreenGameView.user.js).
 - A device report confirms the Nitter .is alias entered the generic CSS fallback; reuse the native-video/modal route for both aliases. Hide unrelated page branches in CSS fallback without changing their layout.
 - **Test:** [Nitter video](https://nitter.tiekoetter.is/cocktailpeanut/status/2124539480925167982) — reload, enter fullscreen, verify only video and native controls, then Escape or Back; verify the original page is restored. Actual Edge device verification required.
 

@@ -252,7 +252,7 @@ test('Nitter clipped gallery: poster and video share a visible media-anchored fu
             + 'check(btn.parentElement===tweet,"After playing, button must remain outside clipping");'
             + 'r=btn.getBoundingClientRect();c=clip.getBoundingClientRect();'
             + 'check(document.elementFromPoint(r.left+20,r.top+16)===btn,"Video button must remain clickable");'
-            + 'const overlay=document.createElement("div");overlay.style.cssText="position:fixed;inset:0;z-index:2147483647";document.body.appendChild(overlay);'
+            + 'const overlay=document.createElement("div");overlay.style.cssText="position:fixed;inset:0;z-index:2147483647";document.documentElement.appendChild(overlay);'
             + 'video.requestFullscreen=()=>Promise.reject(Error("Native unavailable"));btn.click();await wait();'
             + 'const dialog=document.getElementById("tm-fullscreen-video-dialog");'
             + 'check(dialog&&dialog.open&&video.parentElement===dialog,"Only original video belongs in modal");'

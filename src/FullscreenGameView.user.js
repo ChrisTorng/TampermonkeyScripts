@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-27_1.3.4
+// @version      2026-11-27_1.3.5
 // @description  Show visible fullscreen controls on embedded videos, rotate landscape media, and preserve Nitter poster and Back behavior.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -266,9 +266,8 @@ html.tm-fullscreen-game-view-active body {
 /* CSS fallback must isolate unrelated branches without changing layout.
    Opacity on the branch also suppresses descendants with their own visibility
    or z-index. Never hide the target, its descendants, or its ancestors. */
-html.tm-fullscreen-game-view-active body:has(.${FALLBACK_CLASS}) > :not(.${FALLBACK_CLASS}, :has(.${FALLBACK_CLASS})),
-html.tm-fullscreen-game-view-active body :has(.${FALLBACK_CLASS}) > :not(.${FALLBACK_CLASS}, :has(.${FALLBACK_CLASS})),
-html.tm-fullscreen-game-view-active body:has(> #${VIDEO_DIALOG_ID}[open]) > :not(#${VIDEO_DIALOG_ID}) {
+html.tm-fullscreen-game-view-active:has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open])) > :not(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]), :has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]))),
+html.tm-fullscreen-game-view-active :has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open])) > :not(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]), :has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]))) {
     opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
