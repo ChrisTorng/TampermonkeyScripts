@@ -581,7 +581,7 @@ describe('Fullscreen Game View on ARC Prize tasks', () => {
 describe('Nitter video fullscreen migration', () => {
     function setupNitter(width, height, options = {}) {
         const harness = createHarness({
-            url: 'https://nitter.tiekoetter.com/cocktailpeanut/status/2117295340697047214'
+            url: `https://${options.hostname || 'nitter.tiekoetter.com'}/cocktailpeanut/status/2117295340697047214`
         });
         harness.window.navigator = { userAgent: 'Mozilla/5.0 (Linux; Android 16) EdgA/157.0' };
         harness.window.innerWidth = 390;
@@ -684,6 +684,32 @@ describe('Nitter video fullscreen migration', () => {
         assert.equal(h.button.disabled, false);
         assert.equal(h.getUnlocks(), 0);
         assert.equal(h.document.querySelectorAll('.tm-fullscreen-game-view-button').length, 1);
+    });
+
+    test('Nitter .is alias uses the original video and modal fallback on repeated entry', async () => {
+        const h = setupNitter(1920, 1080, { hostname: 'nitter.tiekoetter.is' });
+        const overlay = h.document.createElement('div');
+        overlay.className = 'timeline-item';
+        h.document.body.appendChild(overlay);
+        let calls = 0;
+        h.video.requestFullscreen = () => {
+            calls++;
+            return Promise.reject(new Error('NotAllowedError'));
+        };
+        for (let i = 0; i < 2; i++) {
+            h.button.click();
+            await new Promise(resolve => setImmediate(resolve));
+            const dialog = h.document.getElementById('tm-fullscreen-video-dialog');
+            assert(dialog?.open);
+            assert.equal(h.video.parentNode, dialog);
+            assert.equal(overlay.parentNode, h.document.body);
+            assert(!h.media.classList.contains('tm-fullscreen-game-view-fallback'));
+            h.dispatchWindowEvent('popstate');
+            assert.equal(h.video.parentNode, h.media);
+            assert.equal(h.document.getElementById('tm-fullscreen-video-dialog'), null);
+            assert(!h.document.documentElement.classList.contains('tm-fullscreen-game-view-active'));
+        }
+        assert.equal(calls, 2);
     });
 
     test('landscape video without loaded intrinsic metadata keeps its original orientation after dialog reparenting', async () => {
