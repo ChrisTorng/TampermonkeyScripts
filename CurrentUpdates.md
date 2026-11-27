@@ -1,3 +1,9 @@
+## Shared menu right inset and focus isolation — 2026-11-27
+
+- [Install All in One 2026-11-27_1.0.14](src/SharedMenuAllInOne.user.js), or update all five standalone scripts together: [AllGoInternetArchive 2026-11-27_1.3.20](src/AllGoInternetArchive.user.js), [InternetArchive 2026-11-27_1.5.20](src/InternetArchive.user.js), [ForceMobileView 2026-11-27_2.1.22](src/ForceMobileView.user.js), [ForceDarkMode 2026-11-27_2.0.20](src/ForceDarkMode.user.js), [TranslatePreformattedText 2026-11-27_1.5.53](src/TranslatePreformattedText.user.js). Do not enable both distributions.
+- Reserve 7 apparent px at the default right edge only; preserve saved drag positions. Isolate the menu from site focus outlines and tap highlights; keyboard focus uses a subtle inset indicator.
+- **Tests:** [OpenAI](https://openai.com/news/) — reload or reset the menu position; no yellow outline, scrollbar visible. [OpenSSH](https://www.openssh.org/releasenotes.html) — verify auto-fit and drag to the right edge.
+
 ## Iframe replay readiness: ignore decorative icons — 2026-11-27
 
 - [Install Shared Floating Menu — All in One 2026-11-27_1.0.13](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.52](src/TranslatePreformattedText.user.js), not both.

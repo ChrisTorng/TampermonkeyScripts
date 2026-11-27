@@ -1,6 +1,7 @@
     // Shared floating menu source. Run `node scripts/sync-floating-menu.js` after editing.
     const FLOATING_MENU_ID = 'tm-shared-floating-menu';
     const FLOATING_MENU_STORAGE = 'tm-floating-menu-v1:' + window.location.hostname.toLowerCase();
+    const FLOATING_MENU_DEFAULT_RIGHT_GAP = 7; // Scroll indicator width (6px) + right inset (1px).
     const FLOATING_MENU_ORDER = ['archive', 'mobile', 'dark', 'translate'];
 
     function floatingMenuSettings() {
@@ -110,11 +111,12 @@
         const style = document.createElement('style');
         style.id = FLOATING_MENU_ID + '-style';
         style.textContent = `
-            #${FLOATING_MENU_ID} { position: absolute !important; top: 70px !important; right: 0 !important; left: auto !important; z-index: 2147483647 !important; width: 38px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; margin: 0 !important; padding: 0 !important; }
+            #${FLOATING_MENU_ID} { position: absolute !important; top: 70px !important; right: ${FLOATING_MENU_DEFAULT_RIGHT_GAP}px !important; left: auto !important; z-index: 2147483647 !important; width: 38px !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; margin: 0 !important; padding: 0 !important; }
             #${FLOATING_MENU_ID}[hidden], #${FLOATING_MENU_ID} button[hidden], #${FLOATING_MENU_ID} [data-floating-dialog][hidden] { display: none !important; }
             #${FLOATING_MENU_ID} button { appearance: none !important; display: block !important; box-sizing: border-box !important; width: 38px !important; min-width: 38px !important; max-width: 38px !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 5px !important; box-shadow: 0 2px 6px rgba(0,0,0,.25) !important; background: rgba(0,0,0,.55) !important; color: #f0f0f0 !important; font: 600 15px/32px system-ui,sans-serif !important; text-align: center !important; cursor: pointer !important; opacity: 1 !important; user-select: none !important; touch-action: none !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"] { background: rgba(34,139,34,.85) !important; color: white !important; }
-            #${FLOATING_MENU_ID} button, #${FLOATING_MENU_ID} button:hover, #${FLOATING_MENU_ID} button:focus, #${FLOATING_MENU_ID} button:active { text-decoration: none !important; }
+            #${FLOATING_MENU_ID} button, #${FLOATING_MENU_ID} button:hover, #${FLOATING_MENU_ID} button:focus, #${FLOATING_MENU_ID} button:active { text-decoration: none !important; outline: none !important; outline-offset: 0 !important; -webkit-tap-highlight-color: transparent !important; }
+            #${FLOATING_MENU_ID} button:focus-visible { box-shadow: inset 0 0 0 1px rgba(240,240,240,.8), 0 2px 6px rgba(0,0,0,.25) !important; }
             #${FLOATING_MENU_ID} button:hover { background: rgba(0,0,0,.75) !important; }
             #${FLOATING_MENU_ID} button[aria-pressed="true"]:hover { background: rgba(34,139,34,1) !important; }
             #${FLOATING_MENU_ID} [data-floating-close] { position: absolute !important; top: -36px !important; right: 0 !important; }
@@ -190,6 +192,10 @@
                 width: Math.max(menuWidth, viewport ? viewport.width : layoutWidth()),
             };
         };
+        // Reserve the same apparent width as the scroll marker even on auto-fit pages.
+        // Only the default uses this gap; saved/dragged positions still use clampX.
+        const defaultX = (viewport) => viewport.width - menuWidth
+            - FLOATING_MENU_DEFAULT_RIGHT_GAP / floatingMenuViewportScale();
         const clampX = (x) => {
             const viewport = visualBounds();
             // A transformed menu grows left from its right edge; keep the
@@ -228,7 +234,7 @@
         };
         const dockX = () => {
             const viewport = visualBounds();
-            const relativeX = anchorX === null ? viewport.width - menuWidth : anchorX;
+            const relativeX = anchorX === null ? defaultX(viewport) : anchorX;
             return Math.max(0, Math.min(
                 pageLeft() + Math.max(0, Math.min(relativeX, viewport.width - menuWidth)),
                 unzoomedDocumentWidth - menuWidth));
@@ -311,7 +317,7 @@
             if (currentScrollY >= Math.max(documentY, anchorY)) documentY = anchorY;
             previousScrollY = currentScrollY;
             const viewport = visualBounds();
-            const x = anchorX === null ? viewport.width - menuWidth : anchorX;
+            const x = anchorX === null ? defaultX(viewport) : anchorX;
             // CSS position:fixed uses the layout viewport's top. Adding
             // visualViewport.offsetTop here double-counts mobile viewport
             // panning on desktop-width pages, leaving the handle far below
@@ -335,7 +341,7 @@
         if (documentDock) {
             place(dockX(), Math.max(anchorY, pageTop()), false);
         } else {
-            place(clampX(viewport.left + (anchorX === null ? viewport.width - menuWidth : anchorX)),
+            place(clampX(viewport.left + (anchorX === null ? defaultX(viewport) : anchorX)),
                 Math.max(anchorY - scrollY(), 0), true);
         }
         window.addEventListener('scroll', position, { passive: true });
@@ -388,6 +394,8 @@
         const onStart = (event) => {
             if (event.touches && event.touches.length !== 1) return;
             if (zoomed() || pinchGestureArmed) return;
+            // Mouse/touch-generated mousedown should not steal keyboard focus.
+            if (event.type === 'mousedown') event.preventDefault?.();
             const point = pointer(event);
             dragging = true;
             moved = false;
