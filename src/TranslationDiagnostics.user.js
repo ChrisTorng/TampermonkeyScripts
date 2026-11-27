@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-28_1.2.13
+// @version      2026-11-28_1.2.14
 // @description  Universal opt-in web diagnostics: sanitized DOM, CSS, layout, viewport reconstruction, translation flags and console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -21,7 +21,7 @@
     if (!/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-28_1.2.13';
+    const VERSION = '2026-11-28_1.2.14';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const REPORT_BUDGET = 4_650_000;
@@ -229,8 +229,10 @@
                         reject(new Error(value.error || 'HTTP ' + response.status));
                     } else resolve(value);
                 },
-                onerror: () => reject(new Error('Cloudflare connection failed')),
-                ontimeout: () => reject(new Error('Cloudflare request timed out'))
+                onerror: response => reject(new Error('Cloudflare connection failed (HTTP ' +
+                    (Number.isFinite(response?.status) ? response.status : 'unknown') + ')')),
+                ontimeout: () => reject(new Error('Cloudflare request timed out')),
+                onabort: () => reject(new Error('Cloudflare request aborted'))
             });
         });
     }
@@ -355,7 +357,14 @@
     function captureDom(includeText, limit = HTML_LIMIT) {
         const clone = document.documentElement.cloneNode(true);
         for (const element of Array.from(clone.querySelectorAll('*'))) {
-            if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(element.tagName)) {
+            // Do not write any string to script text/src sinks, even in a detached
+            // clone: Trusted Types enforcement applies there too. Template contents
+            // are not traversed by querySelectorAll, so remove them as well.
+            if (['script', 'template'].includes(String(element.localName || element.tagName).toLowerCase())) {
+                element.remove();
+                continue;
+            }
+            if (['STYLE', 'NOSCRIPT'].includes(element.tagName)) {
                 element.textContent = '[source omitted]';
             }
             if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(element.tagName)
@@ -567,7 +576,7 @@
             report.domTruncated = true;
         }
         if (size() > REPORT_BUDGET && report.stylesheets) {
-            for (const sheet of report.stylesheets.sheets.slice().reverse()) {
+            for (const sheet of (report.stylesheets.sheets || []).slice().reverse()) {
                 if (size() <= REPORT_BUDGET) break;
                 delete sheet.rules; sheet.truncated = true;
             }
@@ -615,7 +624,13 @@
     function buildReport(includeText) {
         measureReportInteraction('build-report');
         recordSnapshot('report');
-        const dom = captureDom(includeText);
+        let dom;
+        try { dom = captureDom(includeText); }
+        catch (error) {
+            // Fail closed: never fall back to the unsanitized original document.
+            dom = { domHtml: '', domTruncated: true, originalDomCharacters: 0,
+                domStatus: 'capture-error', domErrorType: String(error?.name || 'Error').slice(0, 60) };
+        }
         let renderedLayout, stylesheets;
         try { renderedLayout = captureRenderedLayout(); }
         catch (_) { renderedLayout = { status: 'capture-error' }; }
@@ -974,10 +989,17 @@
             try {
                 const report = buildReport(include.checked);
                 setStatus('2/3 正在處理畫面與內嵌頁面…');
-                const screenshotTask = captureScreenshot(report, include.checked, imageFile.files?.[0]);
-                const frameTask = collectFrameReports(include.checked);
-                if (frameTask) attachFrameReports(report, await frameTask);
-                if (screenshotTask) report.screenshot = await screenshotTask;
+                let screenshotTask;
+                try { screenshotTask = captureScreenshot(report, include.checked, imageFile.files?.[0]); }
+                catch (_) { report.screenshot = { status: 'capture-error' }; }
+                try {
+                    const frameTask = collectFrameReports(include.checked);
+                    if (frameTask) attachFrameReports(report, await frameTask);
+                } catch (_) { report.embeddedFrames = { status: 'capture-error', frames: [] }; }
+                if (screenshotTask) {
+                    try { report.screenshot = await screenshotTask; }
+                    catch (_) { report.screenshot = { status: 'capture-error' }; }
+                }
                 fitReportBudget(report);
                 setStatus('3/3 正在上傳至 Cloudflare…');
                 submit.textContent = '上傳中…';
@@ -988,7 +1010,7 @@
                 showResult('已送出報告 ' + response.reportId + '（' + (response.retentionDays || 1) + ' 天後自動刪除）'
                     + (report.screenshot?.status === 'captured' ? '；附畫面' : '；畫面：' + report.screenshot?.status));
             } catch (e) {
-                showResult('送出失敗：' + e.message + '。資料尚未上傳。');
+                showResult('送出失敗：' + e.message + '。未收到伺服器成功確認，可再手動送出。');
             } finally { submit.disabled = false; next.disabled = false; submit.textContent = '立即送出'; }
         }
         submit.addEventListener('click', sendReport);
@@ -1022,10 +1044,17 @@
             recordSnapshot(timeout ? 'auto-timeout' : 'auto-page-stable');
             try {
                 const report = buildReport(arm?.includeText === true);
-                const screenshotTask = captureScreenshot(report, arm?.includeText === true);
-                const frameTask = collectFrameReports(arm?.includeText === true);
-                if (frameTask) attachFrameReports(report, await frameTask);
-                if (screenshotTask) report.screenshot = await screenshotTask;
+                let screenshotTask;
+                try { screenshotTask = captureScreenshot(report, arm?.includeText === true); }
+                catch (_) { report.screenshot = { status: 'capture-error' }; }
+                try {
+                    const frameTask = collectFrameReports(arm?.includeText === true);
+                    if (frameTask) attachFrameReports(report, await frameTask);
+                } catch (_) { report.embeddedFrames = { status: 'capture-error', frames: [] }; }
+                if (screenshotTask) {
+                    try { report.screenshot = await screenshotTask; }
+                    catch (_) { report.screenshot = { status: 'capture-error' }; }
+                }
                 report.autoSubmission = { triggeredBy: 'explicit-reload-click',
                     reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed,
                     readyState: document.readyState, quietMs: Date.now() - lastChange };
