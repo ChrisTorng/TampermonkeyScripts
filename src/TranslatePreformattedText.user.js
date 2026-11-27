@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translate Preformatted Text
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-27_1.5.51
+// @version      2026-11-27_1.5.52
 // @description  Translate formatted prose without losing layout, unblock readable articles with root or meta translation opt-outs, and correct misleading English language labels.
 // @author       Chris Torng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -112,7 +112,7 @@
     const readerReplayRawLimit = 12 * 1024 * 1024;
     const readerReplayPackedLimit = 8 * 1024 * 1024;
     const readerReplayChunkSize = 192 * 1024;
-    const readerReplayVersion = '2026-11-27_1.5.50';
+    const readerReplayVersion = '2026-11-27_1.5.52';
 
     // Cross-frame GM updates can arrive after a window message on mobile.
     async function readerWaitValue(key, accept, attempts = 8) {
@@ -427,7 +427,28 @@
 
     // Executed only in an opaque-origin sandbox. Report rendered content and
     // resize; no privileged bridge, code evaluation request or application data.
-    function readerReplayMonitor(token, channel) {
+    // Compare rendered charts/media rather than decorative SVG icons. The
+    // original and replay can have different icon counts or responsive layouts.
+    function readerMeaningfulGraphics(root) {
+        let count = 0;
+        for (const element of root.querySelectorAll('svg,canvas,video')) {
+            const bounds = element.getBoundingClientRect();
+            if (bounds.width >= 32 && bounds.height >= 32) count++;
+        }
+        return count;
+    }
+
+    function readerGraphicsReady(expected, actual) {
+        if (Number.isInteger(expected.meaningfulGraphics) && expected.meaningfulGraphics >= 0 &&
+            Number.isInteger(actual.meaningfulGraphics) && actual.meaningfulGraphics >= 0) {
+            return actual.meaningfulGraphics >= Math.ceil(expected.meaningfulGraphics * .6);
+        }
+        // Compatibility for older captures/acknowledgements.
+        return !expected.graphics || (Number.isFinite(actual.graphics) &&
+            actual.graphics >= Math.max(1, expected.graphics * .6));
+    }
+
+    function readerReplayMonitor(token, channel, measureGraphics) {
         const errors = Object.create(null);
         const note = key => { errors[key] = Math.min(999, (errors[key] || 0) + 1); };
         addEventListener('error', event => note(event.error?.name || 'error'));
@@ -442,6 +463,7 @@
                 channel, token, type: 'replay-ready', errors,
                 textLength: (body.innerText || '').trim().length,
                 graphics: body.querySelectorAll('svg,canvas,video').length,
+                meaningfulGraphics: measureGraphics(body),
                 controls: body.querySelectorAll('button,input,select,textarea,[role="button"],[role="slider"]').length,
                 height: Math.max(body.scrollHeight, Math.ceil(bounds.height + Math.max(0, bounds.top)))
             }, '*');
@@ -485,7 +507,8 @@
             "form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'";
         const monitor = doc.createElement('script');
         monitor.textContent = '(' + readerReplayMonitor.toString() + ')(' +
-            JSON.stringify(token) + ',' + JSON.stringify(readerReplayChannel) + ');';
+            JSON.stringify(token) + ',' + JSON.stringify(readerReplayChannel) + ',(' +
+            readerMeaningfulGraphics.toString() + '));';
         doc.head.prepend(monitor);
         doc.head.prepend(policy);
         return '<!doctype html>\n' + doc.documentElement.outerHTML;
@@ -595,10 +618,11 @@
 
     function readerFrameMetrics() {
         const body = document.body;
-        if (!body) return { textLength: 0, graphics: 0, controls: 0, height: 0 };
+        if (!body) return { textLength: 0, graphics: 0, meaningfulGraphics: 0, controls: 0, height: 0 };
         return {
             textLength: readerText().length,
             graphics: body.querySelectorAll('svg,canvas,video').length,
+            meaningfulGraphics: readerMeaningfulGraphics(body),
             controls: body.querySelectorAll('button,input,select,textarea,[role="button"],[role="slider"]').length,
             height: Math.max(body.scrollHeight || 0, document.documentElement.scrollHeight || 0)
         };
@@ -972,7 +996,10 @@
                     count(metrics.textLength) >= 100 &&
                     (count(metrics.graphics) || count(metrics.controls)) ? {
                         url: liveUrl.href, textLength: count(metrics.textLength),
-                        graphics: count(metrics.graphics), controls: count(metrics.controls),
+                        graphics: count(metrics.graphics),
+                        ...(Number.isInteger(metrics.meaningfulGraphics) && metrics.meaningfulGraphics >= 0 ?
+                            { meaningfulGraphics: count(metrics.meaningfulGraphics) } : {}),
+                        controls: count(metrics.controls),
                         height: count(metrics.height)
                     } : null;
                 let replay = null, manifest = null;
@@ -1148,13 +1175,14 @@
                 }
                 replayNote({ replayBoot: true, replayText: Number(data.textLength) || 0,
                     replayGraphics: Number(data.graphics) || 0, replayControls: Number(data.controls) || 0,
+                    sourceMeaningfulGraphics: info.meaningfulGraphics,
+                    replayMeaningfulGraphics: data.meaningfulGraphics,
                     replayErrors: safeErrors });
             } else if (event.origin !== url.origin || data?.channel !== readerBridgeChannel ||
                 data.type !== 'live-ready' || data.id !== id) return;
             const textOK = Number.isFinite(data.textLength) &&
                 data.textLength >= Math.max(100, info.textLength * .25);
-            const graphicsOK = !info.graphics || (Number.isFinite(data.graphics) &&
-                data.graphics >= Math.max(1, info.graphics * .6));
+            const graphicsOK = readerGraphicsReady(info, data);
             const controlsOK = !info.controls || (Number.isFinite(data.controls) && data.controls >= 1);
             if (!ready && (!textOK || !graphicsOK || !controlsOK)) return;
             if (ready && !replaying && (!Number.isFinite(data.textLength) || data.textLength < 100)) return;

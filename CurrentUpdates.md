@@ -1,3 +1,9 @@
+## Iframe replay readiness: ignore decorative icons — 2026-11-27
+
+- [Install Shared Floating Menu — All in One 2026-11-27_1.0.13](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.52](src/TranslatePreformattedText.user.js), not both.
+- The actual report shows replay boot/load succeeded with 11,735 text characters, five controls and no reported errors, but the original contained 170 SVGs (167 tiny icons) versus 89 replay SVGs. Compare rendered substantive graphics instead of all SVG counts. Keep the static fallback and source-element return.
+- Chromium regression reproduces the 170-to-89 count difference with two substantive charts; no further manual fixture testing is needed. Actual Artifact interaction remains unverified.
+
 ## Early language hints for dynamic English pages — 2026-11-27
 
 - [Install All in One 2026-11-27_1.0.12](src/SharedMenuAllInOne.user.js) or [Translate Preformatted Text 2026-11-27_1.5.51](src/TranslatePreformattedText.user.js), not both.

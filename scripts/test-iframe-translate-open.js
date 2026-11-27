@@ -411,6 +411,28 @@ describe('generic iframe translation reader', () => {
         assert.equal(reader.target.hidden, true);
     });
 
+    test('fewer decorative icons do not suppress otherwise ready interactive content', async () => {
+        const id = 'capture-meaningful-graphics';
+        const reader = makeReader(id, new Map([['tm-embedded-reader:' + id, {
+            html: '<p>Snapshot fallback</p>', createdAt: Date.now(),
+            live: { url: 'https://embed.example.org/chart', textLength: 13000,
+                graphics: 170, meaningfulGraphics: 2, controls: 5 }
+        }]]));
+        await settle();
+        const frame = reader.liveHost.querySelector('iframe');
+        assert(frame);
+        const data = { channel, type: 'live-ready', id, textLength: 11735,
+            graphics: 89, meaningfulGraphics: 2, controls: 5, height: 1200 };
+        reader.h.window.dispatchEvent({ type: 'message', source: frame.contentWindow,
+            origin: 'https://embed.example.org', data: { ...data, meaningfulGraphics: 1 } });
+        assert.equal(reader.target.hidden, false);
+        reader.h.window.dispatchEvent({ type: 'message', source: frame.contentWindow,
+            origin: 'https://embed.example.org', data });
+        assert.equal(reader.target.hidden, true);
+        reader.modeToggle.click();
+        assert.equal(reader.target.hidden, false);
+    });
+
     test('unacknowledged live frame times out without hiding the snapshot', async () => {
         const id = 'capture-timeout-12345';
         const reader = makeReader(id, new Map([['tm-embedded-reader:' + id, {
