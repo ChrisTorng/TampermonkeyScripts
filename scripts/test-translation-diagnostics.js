@@ -500,3 +500,46 @@ test('report submit is the first footer action and HN overlay is hidden while op
     h.document.getElementById('tm-webdiag-toggle').click();
     assert.equal(h.document.getElementById('tm-webdiag-panel').style.getPropertyValue('bottom'), h.document.getElementById('tm-webdiag-host').style.getPropertyValue('bottom'));
 });
+
+
+test('Trusted Types strict script sinks do not prevent sanitized report submission', async () => {
+    let removed = false, templateRemoved = false;
+    const scriptNode = {
+        localName: 'script', tagName: 'SCRIPT',
+        set textContent(value) { throw new TypeError('TrustedScript required'); },
+        setAttribute() { throw new TypeError('TrustedScriptURL required'); },
+        remove() { removed = true; }
+    };
+    const templateNode = { localName: 'template', remove() { templateRemoved = true; } };
+    const { h, calls } = run('https://remotedesktop.google.com/access/', h => {
+        h.document.documentElement.cloneNode = () => ({
+            querySelectorAll: () => [scriptNode, templateNode],
+            get outerHTML() { return removed && templateRemoved
+                ? '<html><body>safe text</body></html>' : '<html>SECRET</html>'; }
+        });
+    });
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(removed, true);
+    assert.equal(templateRemoved, true);
+    assert.match(report.domHtml, /safe text/);
+    assert(!report.domHtml.includes('SECRET'));
+});
+
+test('DOM capture failure still uploads other diagnostics without raw source', async () => {
+    const { h, calls } = run('https://remotedesktop.google.com/access/', h => {
+        h.document.documentElement.cloneNode = () => { throw new TypeError('TrustedScript required'); };
+    });
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.domStatus, 'capture-error');
+    assert.equal(report.domHtml, '');
+    assert(Array.isArray(report.snapshots));
+    assert(report.renderedLayout);
+});
