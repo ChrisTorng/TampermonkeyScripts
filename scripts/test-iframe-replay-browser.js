@@ -33,7 +33,7 @@ test('production replay helpers preserve a large interactive document in an opaq
                 const source = '<!doctype html><html lang="en"><head><!-- frame-runtime --><script>window.wrapperRan=true;</'+'script><!-- /frame-runtime --><style>:root{--ink:#3987e5}svg path{stroke:var(--ink);fill:none}</style></head><body><div id="app"></div><script>const DATA=' +
                     JSON.stringify(data) + ';</' + 'script><script>(' + (function () {
                         const app = document.getElementById('app');
-                        app.innerHTML = '<p>Proof progress</p><svg viewBox="0 0 100 50"><path d="M0 45L90 5" stroke-width="3"/></svg><button>Details</button><output></output>';
+                        app.innerHTML = '<p>Proof progress</p><svg width="260" height="178" viewBox="0 0 100 50"><path d="M0 45L90 5" stroke-width="3"/></svg><svg width="320" height="240"></svg><button>Details</button><output></output>' + '<svg width="13" height="13"></svg>'.repeat(87);
                         app.querySelector('button').onclick = () => {
                             location.hash = 'detail';
                             app.querySelector('output').textContent = DATA.length;
@@ -49,6 +49,17 @@ test('production replay helpers preserve a large interactive document in an opaq
                                 text: app.querySelector('output').textContent, hash: location.hash }, '*');
                         });
                     }).toString() + ')();</' + 'script></body></html>';
+                // Exact observed mismatch: 170 SVGs originally, 89 after replay.
+                const original = document.createElement('div');
+                original.innerHTML = '<svg width="260" height="178"></svg><svg width="320" height="240"></svg>' +
+                    '<svg width="13" height="13"></svg>'.repeat(167) + '<svg width="30" height="10"></svg>';
+                document.body.appendChild(original);
+                const expected = { graphics: original.querySelectorAll('svg').length,
+                    meaningfulGraphics: readerMeaningfulGraphics(original) };
+                original.remove();
+                check(expected.graphics === 170 && expected.meaningfulGraphics === 2, 'source metrics');
+                check(!readerGraphicsReady(expected, { graphics: 89, meaningfulGraphics: 0 }), 'missing charts rejected');
+                check(!readerGraphicsReady(expected, { graphics: 170, meaningfulGraphics: 1 }), 'missing major chart rejected');
                 const packed = await readerPackReplay(source, 'response');
                 check(readerValidReplay(packed) && packed.encoding === 'gzip-base64', 'compression');
                 check(packed.data.length > 3 * 1024 * 1024, 'realistic compressed payload');
@@ -72,7 +83,8 @@ test('production replay helpers preserve a large interactive document in an opaq
                     addEventListener('message', e => {
                         if (e.source !== frame.contentWindow || e.origin !== 'null') return;
                         if (e.data?.channel === readerReplayChannel && e.data.token === token &&
-                            e.data.graphics === 1 && e.data.controls === 1) {
+                            e.data.graphics === 89 && e.data.meaningfulGraphics === 2 &&
+                            readerGraphicsReady(expected, e.data) && e.data.controls === 1) {
                             frame.contentWindow.postMessage('exercise', '*');
                         }
                         if (e.data?.test === true) resolve(e.data);
