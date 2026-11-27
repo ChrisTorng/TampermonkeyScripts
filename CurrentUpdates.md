@@ -1,3 +1,9 @@
+## Fullscreen page-layer isolation — 2026-11-27
+
+- [Install Fullscreen Game View 2026-11-27_1.3.5](src/FullscreenGameView.user.js).
+- A device report confirms the Nitter .is alias entered the generic CSS fallback; reuse the native-video/modal route for both aliases. Hide unrelated page branches in CSS fallback without changing their layout.
+- **Test:** [Nitter video](https://nitter.tiekoetter.is/cocktailpeanut/status/2124539480925167982) — reload, enter fullscreen, verify only video and native controls, then Escape or Back; verify the original page is restored. Actual Edge device verification required.
+
 ## Shared menu right inset and focus isolation — 2026-11-27
 
 - [Install All in One 2026-11-27_1.0.14](src/SharedMenuAllInOne.user.js), or update all five standalone scripts together: [AllGoInternetArchive 2026-11-27_1.3.20](src/AllGoInternetArchive.user.js), [InternetArchive 2026-11-27_1.5.20](src/InternetArchive.user.js), [ForceMobileView 2026-11-27_2.1.22](src/ForceMobileView.user.js), [ForceDarkMode 2026-11-27_2.0.20](src/ForceDarkMode.user.js), [TranslatePreformattedText 2026-11-27_1.5.53](src/TranslatePreformattedText.user.js). Do not enable both distributions.

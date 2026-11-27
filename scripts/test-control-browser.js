@@ -141,9 +141,17 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     scroller.scrollLeft = 175;
                     await frame();
                     const originalScroll = { x: window.scrollX, y: window.scrollY, code: scroller.scrollLeft };
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;pointer-events:none';
+                    overlay.textContent = 'Unrelated page overlay';
+                    document.body.appendChild(overlay);
+                    assert(getComputedStyle(overlay).opacity === '1', 'Overlay starts visible');
                     fullscreen.click();
                     await frame();
                     assert(getComputedStyle(fullscreen).display === 'none', 'Entry button should disappear during fallback');
+                    assert(getComputedStyle(overlay).opacity === '0', 'Unrelated maximum-z-index overlay must be invisible');
+                    assert(getComputedStyle(menu).visibility === 'hidden', 'Page menu must be invisible during fallback');
+                    assert(getComputedStyle(document.getElementById('test-game')).visibility === 'visible', 'Game remains visible');
                     assert(!document.getElementById('tm-fullscreen-game-view-exit-button'),
                         'History Back replaces the fallback × overlay.');
                     window.dispatchEvent(new Event('resize'));
@@ -156,6 +164,8 @@ test('real browser keeps translation inside its horizontal scrollport and render
                         'Back should restore the entry button without any close icon');
                     assert(window.scrollX === originalScroll.x && window.scrollY === originalScroll.y, 'Exit must restore the pre-entry page scroll position');
                     assert(scroller.scrollLeft === originalScroll.code, 'Other page scrollers must stay unchanged');
+                    assert(getComputedStyle(overlay).opacity === '1', 'Overlay must be restored on exit');
+                    assert(getComputedStyle(menu).visibility === 'visible', 'Page menu must be restored on exit');
                     fullscreen.click();
                     await frame();
                     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -200,7 +210,7 @@ test('Nitter clipped gallery: poster and video share a visible media-anchored fu
         // The file:// fixture must emulate the Nitter hostname to exercise
         // the exact Nitter-specific branch; all remaining code is unchanged.
         const source = fs.readFileSync(path.join(root, 'src', 'FullscreenGameView.user.js'), 'utf8');
-        const flag = "const isNitter = window.location.hostname === 'nitter.tiekoetter.com';";
+        const flag = "const isNitter = ['nitter.tiekoetter.com', 'nitter.tiekoetter.is'].includes(window.location.hostname);";
         assert(source.includes(flag));
         const nitterScript = source.replace(flag, 'const isNitter = true;')
             .replace(/<\/script/gi, '<\\/script');
@@ -242,7 +252,16 @@ test('Nitter clipped gallery: poster and video share a visible media-anchored fu
             + 'check(btn.parentElement===tweet,"After playing, button must remain outside clipping");'
             + 'r=btn.getBoundingClientRect();c=clip.getBoundingClientRect();'
             + 'check(document.elementFromPoint(r.left+20,r.top+16)===btn,"Video button must remain clickable");'
-            + 'out.dataset.testStatus="passed";out.textContent="Nitter poster, video, clipping and scroll passed";'
+            + 'const overlay=document.createElement("div");overlay.style.cssText="position:fixed;inset:0;z-index:2147483647";document.documentElement.appendChild(overlay);'
+            + 'video.requestFullscreen=()=>Promise.reject(Error("Native unavailable"));btn.click();await wait();'
+            + 'const dialog=document.getElementById("tm-fullscreen-video-dialog");'
+            + 'check(dialog&&dialog.open&&video.parentElement===dialog,"Only original video belongs in modal");'
+            + 'check(getComputedStyle(overlay).opacity==="0","Unrelated overlay must be hidden");'
+            + 'check(document.elementFromPoint(innerWidth/2,innerHeight/2)===video,"Video must win hit testing");'
+            + 'window.dispatchEvent(new PopStateEvent("popstate"));await wait();'
+            + 'check(video.parentElement===clip&&!dialog.isConnected,"Back restores original video");'
+            + 'check(getComputedStyle(overlay).opacity==="1","Overlay visibility restored");'
+            + 'out.dataset.testStatus="passed";out.textContent="Nitter poster, video, clipping, isolated fullscreen and scroll passed";'
             + '}catch(e){out.dataset.testStatus="failed";out.textContent=e.message}'
             + '})();</script></body></html>';
         const file = path.join(directory, 'nitter-clipping.html');

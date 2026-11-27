@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fullscreen Game View
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-23_1.3.3
+// @version      2026-11-27_1.3.5
 // @description  Show visible fullscreen controls on embedded videos, rotate landscape media, and preserve Nitter poster and Back behavior.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -22,7 +22,7 @@
     // the browser scrolls the glyph and media in the same rendering frame.
     const FULLSCREEN_WIDTH = 38;
     const FULLSCREEN_HEIGHT = 32;
-    const isNitter = window.location.hostname === 'nitter.tiekoetter.com';
+    const isNitter = ['nitter.tiekoetter.com', 'nitter.tiekoetter.is'].includes(window.location.hostname);
     const isYouTubeDocument = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com']
         .includes(window.location.hostname);
     if (isYouTubeDocument) return; // Managed exclusively by YouTube Tools.
@@ -263,6 +263,16 @@ html.tm-fullscreen-game-view-active body {
     z-index: 2147483646 !important;
 }
 
+/* CSS fallback must isolate unrelated branches without changing layout.
+   Opacity on the branch also suppresses descendants with their own visibility
+   or z-index. Never hide the target, its descendants, or its ancestors. */
+html.tm-fullscreen-game-view-active:has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open])) > :not(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]), :has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]))),
+html.tm-fullscreen-game-view-active :has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open])) > :not(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]), :has(:is(.${FALLBACK_CLASS}, #${VIDEO_DIALOG_ID}[open]))) {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 /* Nitter can disable its native video control and reject the Fullscreen API.
    A modal dialog keeps only the original video above site stacking contexts. */
 #${VIDEO_DIALOG_ID}[open] {
@@ -432,7 +442,7 @@ body:has(#task-detail-root) {
     // The original Full Screen PR used the actual Nitter <video> rather than
     // its tweet wrapper. This remains Nitter-specific to preserve other sites.
     function nitterVideo(target) {
-        if (window.location.hostname !== 'nitter.tiekoetter.com' || !target) return null;
+        if (!isNitter || !target) return null;
         return target.matches?.('video') ? target : target.querySelector?.('video') || null;
     }
 
