@@ -100,7 +100,7 @@ test('diagnostics panel is reliably hidden by inline !important and closes from 
 
     toggle.click();
     assert.equal(panel.hidden, false);
-    toggle.click();
+    h.document.getElementById('tm-webdiag-submit').click();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(panel.hidden, true);
@@ -177,7 +177,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
     h.document.getElementById('tm-webdiag-toggle').click();
     assert.equal(panel.hidden, false);
     await Promise.resolve();
-    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
+    const submit = h.document.getElementById('tm-webdiag-submit');
     assert(submit);
     submit.click();
     await Promise.resolve();
@@ -229,7 +229,7 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     toggle.click();
     await Promise.resolve();
     await Promise.resolve();
-    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
+    const submit = h.document.getElementById('tm-webdiag-submit');
     submit.click();
     await Promise.resolve();
     await Promise.resolve();
@@ -258,7 +258,7 @@ test('archive.is report UI retains its initial shrink-to-fit compensation and do
     assert.equal(panel.style.getPropertyValue('transform'), 'scale(2.5)');
     assert.equal(panel.style.getPropertyValue('width'), '344px');
     assert.equal(panel.style.getPropertyValue('height'), 'auto');
-    assert.equal(panel.style.getPropertyValue('max-height'), '320px');
+    assert.equal(panel.style.getPropertyValue('max-height'), '420px');
     assert.notEqual(result.dataset.visible, 'true');
     assert.equal(h.document.querySelector('meta[name="viewport"]'), null);
     h.window.visualViewport.scale = 1;
@@ -292,7 +292,7 @@ test('narrow visual viewport keeps the report panel inside all four edges', () =
     assert.equal(panel.style.getPropertyValue('left'), '20px');
     assert.equal(panel.style.getPropertyValue('width'), '272px');
     assert.equal(panel.style.getPropertyValue('height'), 'auto');
-    assert.equal(panel.style.getPropertyValue('max-height'), '320px');
+    assert.equal(panel.style.getPropertyValue('max-height'), '419px');
     assert.equal(host.dataset.open, 'true');
     h.document.getElementById('tm-webdiag-close').click();
     assert.equal(host.dataset.open, 'false');
@@ -322,7 +322,7 @@ test('explicit report requests a child frame and includes its private GM respons
     const toggle = parent.h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    toggle.click();
+    parent.h.document.getElementById('tm-webdiag-submit').click();
     for (let i = 0; i < 8; i++) await Promise.resolve();
     const report = parent.calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.embeddedFrames.total, 1);
@@ -370,7 +370,7 @@ test('manual pinch zoom anchors report UI and its open panel to the document', (
     assert.equal(host.style.getPropertyValue('position'), 'absolute');
     assert.equal(panel.style.getPropertyValue('position'), 'absolute');
     assert.equal(panel.style.getPropertyValue('left'), '0px');
-    assert.equal(panel.style.getPropertyValue('bottom'), '38px');
+    assert.equal(panel.style.getPropertyValue('bottom'), '0px');
     assert.equal(host.dataset.pinched, 'true');
     h.window.visualViewport.scale = 1;
     h.dispatchVisualViewportEvent('resize');
@@ -410,4 +410,136 @@ test('toolbar resize does not override native fixed bottom during or after scrol
         assert.equal(host.style.getPropertyValue('position'), 'fixed');
         assert.equal(host.style.getPropertyValue('bottom'), '10px');
     }
+});
+
+
+test('public diagnostic captures readable CSSOM and reports blocked CSS without query tokens', async () => {
+    const { h, calls } = run('https://example.org/story?secret=PRIVATE', h => {
+        h.document.styleSheets = [
+            { href: 'https://example.org/theme.css?secret=PRIVATE',
+                cssRules: [{ cssText: '#page { background-image: url("https://example.org/page.png?secret=PRIVATE"); }' }] },
+            { href: 'https://other.example/style.css', get cssRules() { throw new Error('SecurityError'); } }
+        ];
+    });
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.match(report.stylesheets.sheets[0].rules, /https:\/\/example\.org\/page\.png/);
+    assert.equal(report.stylesheets.sheets[1].status, 'cssom-inaccessible');
+    assert.ok(!JSON.stringify(report).includes('PRIVATE'));
+    assert.equal(report.screenshot.status, 'renderer-unavailable');
+});
+
+test('explicit public report includes a bounded reconstructed viewport image', async () => {
+    let options;
+    const { h, calls } = run('https://example.org/', h => {
+        h.context.html2canvas = async (element, value) => {
+            options = value;
+            return { width: 360, height: 640,
+                toDataURL: () => 'data:image/jpeg;base64,YWJj' };
+        };
+    });
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.screenshot.status, 'captured');
+    assert.equal(report.screenshot.kind, 'dom-reconstruction-not-native-screenshot');
+    assert.match(report.screenshot.dataUrl, /^data:image\/jpeg;base64,/);
+    assert.equal(options.allowTaint, false);
+    assert.ok(options.scale <= 1.5);
+});
+
+test('structure-only report does not collect CSS rules or reconstruct the viewport', async () => {
+    let renders = 0;
+    const { h, calls } = run('https://example.org/', h => {
+        h.context.html2canvas = () => { renders++; throw new Error('unexpected render'); };
+    });
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    const label = h.document.getElementById('tm-webdiag-body').children.find(x => x.tagName === 'LABEL');
+    label.children[0].checked = false;
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.mode, 'structure');
+    assert.equal(report.stylesheets, undefined);
+    assert.equal(report.screenshot.status, 'not-opted-in');
+    assert.equal(renders, 0);
+});
+
+
+test('large documents skip expensive viewport reconstruction but still submit CSS and DOM', async () => {
+    let renders = 0;
+    const { h, calls } = run('https://example.org/', h => {
+        h.document.documentElement.scrollHeight = 56000;
+        h.context.html2canvas = () => { renders++; throw Error('should not render'); };
+    });
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    assert.equal(calls.find(c => c.url.endsWith('/api/report')).data.report.screenshot.status, 'skipped-large-document');
+    assert.equal(renders, 0);
+});
+
+
+test('report submit is the first footer action and HN overlay is hidden while open', () => {
+    const { h } = run('https://example.org/');
+    const actions = h.document.getElementById('tm-webdiag-actions');
+    assert.equal(actions.children[0].id, 'tm-webdiag-submit');
+    assert.equal(actions.children[1].id, 'tm-webdiag-next');
+    const css = h.document.getElementById('tm-webdiag-host').children.find(x => x.tagName === 'STYLE').textContent;
+    assert.match(css, /data-open="true".*#tm-hacker-news-comments/);
+    h.document.getElementById('tm-webdiag-toggle').click();
+    assert.equal(h.document.getElementById('tm-webdiag-panel').style.getPropertyValue('bottom'), h.document.getElementById('tm-webdiag-host').style.getPropertyValue('bottom'));
+});
+
+
+test('Trusted Types strict script sinks do not prevent sanitized report submission', async () => {
+    let removed = false, templateRemoved = false;
+    const scriptNode = {
+        localName: 'script', tagName: 'SCRIPT',
+        set textContent(value) { throw new TypeError('TrustedScript required'); },
+        setAttribute() { throw new TypeError('TrustedScriptURL required'); },
+        remove() { removed = true; }
+    };
+    const templateNode = { localName: 'template', remove() { templateRemoved = true; } };
+    const { h, calls } = run('https://remotedesktop.google.com/access/', h => {
+        h.document.documentElement.cloneNode = () => ({
+            querySelectorAll: () => [scriptNode, templateNode],
+            get outerHTML() { return removed && templateRemoved
+                ? '<html><body>safe text</body></html>' : '<html>SECRET</html>'; }
+        });
+    });
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(removed, true);
+    assert.equal(templateRemoved, true);
+    assert.match(report.domHtml, /safe text/);
+    assert(!report.domHtml.includes('SECRET'));
+});
+
+test('DOM capture failure still uploads other diagnostics without raw source', async () => {
+    const { h, calls } = run('https://remotedesktop.google.com/access/', h => {
+        h.document.documentElement.cloneNode = () => { throw new TypeError('TrustedScript required'); };
+    });
+    h.document.getElementById('tm-webdiag-toggle').click();
+    await Promise.resolve();
+    h.document.getElementById('tm-webdiag-submit').click();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.domStatus, 'capture-error');
+    assert.equal(report.domHtml, '');
+    assert(Array.isArray(report.snapshots));
+    assert(report.renderedLayout);
 });

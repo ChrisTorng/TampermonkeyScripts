@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-27_1.0.14
+// @version      2026-11-28_1.0.16
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -2010,6 +2010,7 @@
     const AUTO_FAILURE = 'tm-force-mobile-failed:' + location.pathname + location.search;
 
     const AUTO_FAILURE_V2 = 'tm-force-mobile-failed-v2:' + location.pathname + location.search;
+    const isScottBlog = /^(?:www\.)?scottaaronson\.blog$/i.test(location.hostname);
     const isDataExplorer = location.hostname.toLowerCase() === 'data.stackexchange.com';
     // Archive snapshots contain an independent toolbar and captured-site document.
     // Auto-enlarge only their #CONTENT, keeping the archive toolbar unchanged.
@@ -2041,14 +2042,93 @@
         try {
             if (localStorage.getItem(AUTO_STORAGE) === 'off'
                 || sessionStorage.getItem(AUTO_FAILURE_V2) === 'failed') return false;
-            return isDataExplorer || isPlainTextUrl || simplePreReloadRequested();
+            return isScottBlog || isDataExplorer || isPlainTextUrl || simplePreReloadRequested();
         } catch (_) {
-            return isDataExplorer || isPlainTextUrl;
+            return isScottBlog || isDataExplorer || isPlainTextUrl;
         }
     }
 
     function installEarlyReflow() {
         if (!document.head) return false;
+        if (isScottBlog) {
+            // The captured legacy theme has a 760px page, a 200px image
+            // header and no viewport. Reflow before first layout, only on
+            // this verified host; do not enable the generic font multiplier.
+            const authored = document.querySelector('meta[name="viewport"]');
+            if (authored && !authored.hasAttribute('data-tm-force-mobile-auto')) return true;
+            if (!authored) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('name', 'viewport');
+                meta.setAttribute('content', 'width=device-width, initial-scale=1');
+                meta.setAttribute('data-tm-force-mobile-auto', 'true');
+                document.head.appendChild(meta);
+            }
+            if (!document.getElementById(AUTO_STYLE_ID)) {
+                const style = document.createElement('style');
+                style.id = AUTO_STYLE_ID;
+                style.textContent = `
+                    html, body { max-width: 100% !important; min-width: 0 !important;
+                        -webkit-text-size-adjust: 100% !important; text-size-adjust: 100% !important; }
+                    body { margin: 0 !important; font-size: 16px !important; line-height: 1.5 !important; }
+                    body #page { box-sizing: border-box !important; width: 100% !important;
+                        max-width: 100% !important; margin: 0 auto !important;
+                        background-image: none !important; background-color: #fff; }
+                    body #header, body #headerimg { box-sizing: border-box !important;
+                        width: 100% !important; height: auto !important; margin: 0 !important;
+                        min-height: 0 !important; background-size: cover !important; }
+                    body #headerimg { padding: 16px 8px !important; }
+                    body #headerimg h1 { margin: 0 0 6px !important; padding: 0 !important;
+                        font-size: 25px !important; line-height: 1.2 !important; overflow-wrap: anywhere !important; }
+                    body #headerimg .description { font-size: 12px !important;
+                        line-height: 1.4 !important; overflow-wrap: anywhere !important; }
+                    body #headerimg .description font { font-size: inherit !important; line-height: inherit !important; }
+                    body #content, body .widecolumn, body .narrowcolumn, body #sidebar, body #footer {
+                        box-sizing: border-box !important; width: 100% !important; max-width: 100% !important;
+                        min-width: 0 !important; margin: 0 !important; padding: 10px 12px !important;
+                        float: none !important; clear: both !important; }
+                    /* Each column is at most one viewport. Allow the document
+                       to scroll horizontally instead of compressing or overlaying columns. */
+                    html, body { overflow-x: auto !important; }
+                    body #page:has(> #sidebar) {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 100vw)) !important;
+                        grid-template-rows: auto auto auto auto !important;
+                        align-items: start !important;
+                        width: 200vw !important; max-width: none !important;
+                    }
+                    body #page:has(> #sidebar) > #header { grid-column: 1 / -1; grid-row: 1; width: 100vw !important; }
+                    body #page:has(> #sidebar) > hr { display: none !important; }
+                    body #page:has(> #sidebar) > #content { grid-column: 1; grid-row: 2; }
+                    body #page:has(> #sidebar) > #sidebar {
+                        grid-column: 2; grid-row: 2; position: static !important;
+                        inset: auto !important; width: 100% !important;
+                        max-width: 100vw !important; padding: 10px 12px !important;
+                        overflow-wrap: anywhere !important; font-size: 16px !important;
+                    }
+                    body #page:has(> #sidebar) > #footer { grid-column: 1 / -1; grid-row: 3; width: 100vw !important; }
+                    body #sidebar img, body #sidebar iframe, body #sidebar input,
+                    body #sidebar select { box-sizing: border-box !important; max-width: 100% !important; }
+                    body #content { font-size: 16px !important; line-height: 1.5 !important; }
+                    body #content h2 { font-size: 23px !important; line-height: 1.3 !important; }
+                    body #content .entry p, body #content .commentlist p { font-size: 16px !important;
+                        line-height: 1.55 !important; overflow-wrap: anywhere !important; }
+                    body #content img, body #content video, body #content iframe { max-width: 100% !important; }
+                    body #content img { height: auto !important; }
+                    body #content pre, body #content mjx-container[display="true"] {
+                        max-width: 100% !important; overflow-x: auto !important; }
+                    body #content .navigation { display: flow-root !important; overflow-wrap: anywhere !important; }
+                    body #content .alignleft, body #content .alignright { max-width: 48% !important; }
+                    body #content .commentlist { padding-left: 16px !important; overflow-wrap: anywhere !important; }
+                    body #content .commentlist ul, body #content .commentlist ol { padding-left: 12px !important; }
+                    body #content textarea { box-sizing: border-box !important; max-width: 100% !important; }
+                `;
+                document.head.appendChild(style);
+            }
+            earlyReflow = true;
+            autoMode = true;
+            isEnabled = true;
+            return true;
+        }
         if ((isPlainTextUrl || simplePreReloadRequested()) && !isDataExplorer) {
             // Set the viewport before the browser's first text-inflation pass.
             // Do not rewrite the PRE or body: the translation userscript owns
@@ -2273,6 +2353,9 @@
 
     function validateAutomaticReadability(before = { legacy: false, text: { ratio: 0 } }) {
         if (!autoMode) return;
+        // This verified theme uses explicit bounded geometry, not text sampling.
+        // Never enter an automatic reload loop on long comment threads.
+        if (isScottBlog && earlyReflow) return;
         // CodeMirror caches text and line geometry; refresh only when its API is available.
         for (const element of document.querySelectorAll('.CodeMirror')) {
             if (element.CodeMirror && typeof element.CodeMirror.refresh === 'function') {
@@ -2508,7 +2591,7 @@
     function toggleForceWidth() {
         if (isEnabled) {
             disableForceWidth();
-         } else if ((isDataExplorer || isPlainTextUrl || simplePreReloadRequested()) && isAndroidBrowser()) {
+         } else if ((isScottBlog || isDataExplorer || isPlainTextUrl || simplePreReloadRequested()) && isAndroidBrowser()) {
             // Restore the early mobile viewport instead of running the destructive legacy CSS.
             setAutomaticPreference(false);
             try { sessionStorage.removeItem(AUTO_FAILURE_V2); } catch (_) { /* Optional. */ }
@@ -2586,6 +2669,9 @@
     }
 
     function refreshMinimumFontSize() {
+        // The explicit column layout already sets readable fonts and padding.
+        // Do not apply legacy inline overrides to its columns or floating UI.
+        if (isScottBlog && earlyReflow) return;
         if (!shouldEnforceMinFontSize()) {
             if (currentMinFontSizePx !== null) {
                 clearMinimumFontSize();
@@ -3427,6 +3513,7 @@
     if (window !== window.top || floatingMenuDisabled()) return;
 
     const STYLE_ID = 'tm-force-dark-mode-style';
+    const isScottBlog = /^(?:www\.)?scottaaronson\.blog$/i.test(location.hostname);
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
@@ -3481,7 +3568,17 @@
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.type = 'text/css';
-        style.textContent = buildStyleContent();
+        style.textContent = buildStyleContent() + (isScottBlog ? `
+            /* The captured Kubrick theme paints the white article using a
+               repeated JPEG; preserve the separate decorative header image. */
+            html body, html body #page { background-color: #121212 !important; }
+            html body #page { background-image: none !important; }
+            html body #headerimg, html body #headerimg h1,
+            html body #headerimg h1 a, html body #headerimg .description {
+                color: #fff !important;
+            }
+            html body #headerimg .description font { color: inherit !important; }
+        ` : '');
 
         const target = document.head || document.documentElement;
         target.appendChild(style);
@@ -3595,7 +3692,7 @@
 
     onDocumentReady(createFloatingToggleButton);
 
-    if (shouldAutoEnableForUrl()) {
+    if (shouldAutoEnableForUrl() || (isScottBlog && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         enableForceDarkMode();
     }
 })();
@@ -6633,7 +6730,7 @@
     // A single small official-main metadata check on each top-level page load.
     // Never reload the document, and never fetch unmerged PR branches.
     if (window === window.top && typeof GM_xmlhttpRequest === 'function') {
-        const installedVersion = "2026-11-27_1.0.14";
+        const installedVersion = "2026-11-28_1.0.16";
         const installUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js";
         const metaUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js";
         function isNewer(next, installed) {

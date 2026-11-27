@@ -5,7 +5,7 @@
 - Source: `cloudflare/web-diagnostics-worker.js`
 - Tampermonkey script: `src/TranslationDiagnostics.user.js`
 - No public report read/list endpoint. Reports are accessible only via the authorized Cloudflare management API.
-- Reports expire after seven days; pending pairing requests after one hour.
+- Reports expire after one day; pending pairing requests after one hour.
 - Structure-only mode is the default. Public-page text requires explicit opt-in. Inputs, scripts, hydration data and secrets are excluded.
 - DOM capture is capped at four million characters, total upload at five MiB. Reports indicate truncation.
 
@@ -28,7 +28,7 @@ Do not quote private page content in public GitHub PRs. Compare translation opt-
 - `GET /health`: public non-sensitive status.
 - `POST /api/pair`: `{deviceId,secret}` creates a one-hour pairing code.
 - `POST /api/status`: `{deviceId,secret}` checks authorization.
-- `POST /api/report`: `{deviceId,secret,report}` stores a seven-day report and returns an ID.
+- `POST /api/report`: `{deviceId,secret,report}` stores a one-day report and returns an ID.
 - `POST /api/delete`: `{deviceId,secret,reportId}` removes an owned report.
 
 The secret is 256-bit device-generated random data kept in Tampermonkey storage; KV holds only the SHA-256 digest. All requests use HTTPS. CORS is not authentication. The public pairing endpoint has a basic IP-based rate limiter; add a Cloudflare WAF rule if abused.

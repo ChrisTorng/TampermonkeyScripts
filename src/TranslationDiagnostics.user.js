@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-27_1.2.10
-// @description  Universal opt-in web diagnostics: sanitized DOM, translation flags, errors and recent console logs, with paired Cloudflare reporting.
+// @version      2026-11-28_1.2.14
+// @description  Universal opt-in web diagnostics: sanitized DOM, CSS, layout, viewport reconstruction, translation flags and console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
 // @run-at       document-start
@@ -10,6 +10,7 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
+// @require      https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js
 // @connect      tm-web-diagnostics.christorng.workers.dev
 // @updateURL    https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js
 // @downloadURL  https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js
@@ -20,9 +21,12 @@
     if (!/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-27_1.2.10';
+    const VERSION = '2026-11-28_1.2.14';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
+    const REPORT_BUDGET = 4_650_000;
+    const CSS_LIMIT = 550_000;
+    const IMAGE_LIMIT = 700_000;
     const FRAME_CHANNEL = 'tm-webdiag-frame-v1';
     const FRAME_KEY = 'tm-webdiag-frame-once:';
     const FRAME_LIMIT = 550000;
@@ -208,7 +212,7 @@
         GM_setValue('tm-webdiag-device-secret', secret);
     }
 
-    function post(path, data) {
+    function post(path, data, onProgress) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'POST',
@@ -216,6 +220,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 data: JSON.stringify(data),
                 timeout: 30000,
+                upload: { onprogress: event => { if (event.lengthComputable && onProgress) onProgress(Math.round(100 * event.loaded / event.total)); } },
                 onload: (response) => {
                     let value;
                     try { value = JSON.parse(response.responseText || '{}'); }
@@ -224,8 +229,10 @@
                         reject(new Error(value.error || 'HTTP ' + response.status));
                     } else resolve(value);
                 },
-                onerror: () => reject(new Error('Cloudflare connection failed')),
-                ontimeout: () => reject(new Error('Cloudflare request timed out'))
+                onerror: response => reject(new Error('Cloudflare connection failed (HTTP ' +
+                    (Number.isFinite(response?.status) ? response.status : 'unknown') + ')')),
+                ontimeout: () => reject(new Error('Cloudflare request timed out')),
+                onabort: () => reject(new Error('Cloudflare request aborted'))
             });
         });
     }
@@ -350,7 +357,14 @@
     function captureDom(includeText, limit = HTML_LIMIT) {
         const clone = document.documentElement.cloneNode(true);
         for (const element of Array.from(clone.querySelectorAll('*'))) {
-            if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'].includes(element.tagName)) {
+            // Do not write any string to script text/src sinks, even in a detached
+            // clone: Trusted Types enforcement applies there too. Template contents
+            // are not traversed by querySelectorAll, so remove them as well.
+            if (['script', 'template'].includes(String(element.localName || element.tagName).toLowerCase())) {
+                element.remove();
+                continue;
+            }
+            if (['STYLE', 'NOSCRIPT'].includes(element.tagName)) {
                 element.textContent = '[source omitted]';
             }
             if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(element.tagName)
@@ -364,7 +378,10 @@
                         'cx', 'cy', 'r', 'rx', 'ry', 'points', 'transform', 'fill', 'stroke',
                         'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity'].includes(name) &&
                     !/url\s*\(/i.test(attribute.value) && attribute.value.length <= 24000;
-                const keep = svgGeometry || ['id', 'class', 'role', 'lang', 'dir', 'translate', 'contenteditable',
+                const safeMeta = element.tagName === 'META' &&
+                    ['viewport', 'color-scheme', 'theme-color'].includes((element.getAttribute('name') || '').toLowerCase()) &&
+                    ['name', 'content'].includes(name);
+                const keep = safeMeta || svgGeometry || ['width', 'height', 'rel', 'media', 'id', 'class', 'role', 'lang', 'dir', 'translate', 'contenteditable',
                     'aria-hidden', 'aria-expanded', 'data-testid', 'type', 'style'].includes(name);
                 if (name === 'href' || name === 'src') {
                     try {
@@ -396,6 +413,183 @@
         return { domHtml: raw.length <= limit ? raw : raw.slice(0, limit),
             domTruncated: raw.length > limit,
             originalDomCharacters: raw.length };
+    }
+
+    // CSSOM snapshots are taken only on an explicit report, not while browsing.
+    function safeCss(value, base = location.href) {
+        return String(value || '').replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (_, quote, url) => {
+            const safe = safeFrameUrl(url, base);
+            return safe ? 'url("' + safe.replace(/"/g, '%22') + '")' : 'url([redacted])';
+        }).replace(/(@import\s+)(['"])(.*?)\2/gi, (_, prefix, quote, url) =>
+            prefix + '"' + (safeFrameUrl(url, base) || '[redacted]') + '"');
+    }
+
+    function captureStyles() {
+        const sheets = [];
+        let remaining = CSS_LIMIT;
+        for (const sheet of Array.from(document.styleSheets || []).slice(0, 150)) {
+            const entry = {
+                url: sheet.href ? safeFrameUrl(sheet.href) : null,
+                id: String(sheet.ownerNode?.id || '').slice(0, 128),
+                disabled: Boolean(sheet.disabled), media: String(sheet.media?.mediaText || '').slice(0, 250)
+            };
+            try {
+                const rules = sheet.cssRules;
+                entry.rules = '';
+                entry.ruleCount = rules.length;
+                for (const rule of Array.from(rules)) {
+                    const value = safeCss(rule.cssText, sheet.href || location.href) + '\n';
+                    if (value.length > remaining) {
+                        entry.truncated = true;
+                        break;
+                    }
+                    entry.rules += value;
+                    remaining -= value.length;
+                }
+            } catch (_) { entry.status = 'cssom-inaccessible'; }
+            sheets.push(entry);
+        }
+        return { sheets, truncated: remaining < 1 || sheets.some(s => s.truncated) ||
+            (document.styleSheets?.length || 0) > 150 };
+    }
+
+    function captureRenderedLayout() {
+        const vv = window.visualViewport;
+        const left = vv?.offsetLeft || 0, top = vv?.offsetTop || 0;
+        const width = vv?.width || window.innerWidth, height = vv?.height || window.innerHeight;
+        const properties = ['display', 'position', 'width', 'height', 'min-width', 'max-width',
+            'min-height', 'max-height', 'box-sizing', 'margin', 'padding', 'float', 'overflow',
+            'overflow-x', 'overflow-y', 'color', 'background-color', 'background-image',
+            'background-size', 'background-position', 'background-repeat', 'font-size',
+            'font-family', 'font-weight', 'line-height', 'text-size-adjust', '-webkit-text-size-adjust',
+            'white-space', 'word-break', 'overflow-wrap', 'transform', 'zoom', 'opacity', 'z-index',
+            'filter', 'color-scheme', 'visibility'];
+        const elements = [];
+        const nodes = Array.from(document.querySelectorAll('*'));
+        const priority = [document.documentElement, document.body,
+            ...Array.from(document.querySelectorAll('header, main, article, #page, #content, #header, #headerimg, .entry, .post, .widecolumn')).slice(0, 60)];
+        const candidates = [...new Set([...priority, ...nodes.slice(0, 4500)])];
+        for (const node of candidates) {
+            if (!node || elements.length >= 180 || node.closest?.('#tm-webdiag-host, script, style, input, textarea, select, [contenteditable]')) continue;
+            const rect = node.getBoundingClientRect();
+            if (!priority.includes(node) && !(rect.width > 0 && rect.height > 0 &&
+                rect.right > left && rect.bottom > top && rect.left < left + width && rect.top < top + height)) continue;
+            const css = getComputedStyle(node);
+            const computed = {};
+            for (const key of properties) {
+                const value = css.getPropertyValue?.(key);
+                if (value) computed[key] = safeCss(value).slice(0, 900);
+            }
+            elements.push({ tag: node.localName || node.tagName,
+                id: String(node.id || '').slice(0, 128), className: String(node.getAttribute('class') || '').slice(0, 250),
+                rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+                scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight, computed });
+        }
+        return { visualViewport: { left, top, width, height, scale: vv?.scale || 1,
+                pageLeft: vv?.pageLeft ?? window.scrollX ?? 0, pageTop: vv?.pageTop ?? window.scrollY ?? 0 },
+            documentWidth: document.documentElement.scrollWidth, documentHeight: document.documentElement.scrollHeight,
+            viewportMeta: document.querySelector('meta[name="viewport"]')?.getAttribute('content') || null,
+            inspected: candidates.length, truncated: nodes.length > 4500 || elements.length >= 180, elements };
+    }
+
+    function encodeScreenshot(canvas, kind) {
+        const width = canvas.width, height = canvas.height;
+        for (const quality of [0.82, 0.65, 0.45, 0.28]) {
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            if (dataUrl.startsWith('data:image/jpeg;base64,') && dataUrl.length <= IMAGE_LIMIT) {
+                return { status: 'captured', kind, width, height, dataUrl };
+            }
+        }
+        return { status: 'image-size-limit', kind };
+    }
+
+    async function captureAttachedScreenshot(file) {
+        const kind = 'user-attached-screen-image';
+        if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 15_000_000)
+            return { status: 'unsupported-image-or-size', kind };
+        const url = URL.createObjectURL(file);
+        try {
+            const img = new Image();
+            img.src = url;
+            await img.decode();
+            const scale = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            return encodeScreenshot(canvas, kind);
+        } catch (_) { return { status: 'capture-error', kind }; }
+        finally { URL.revokeObjectURL(url); }
+    }
+
+    function captureScreenshot(report, includeText, file) {
+        const kind = 'dom-reconstruction-not-native-screenshot';
+        if (!includeText) { report.screenshot = { status: 'not-opted-in', kind }; return null; }
+        if (document.querySelector('input[type="password"]')) {
+            report.screenshot = { status: 'password-form-excluded', kind }; return null;
+        }
+        if (file) return captureAttachedScreenshot(file);
+        // Large documents make html2canvas traverse and clone the entire page
+        // even when only a viewport is requested. Preserve immediate reports.
+        if ((document.documentElement.scrollHeight || 0) > 18000 ||
+            document.querySelectorAll('*').length > 2500) {
+            report.screenshot = { status: 'skipped-large-document', kind };
+            return null;
+        }
+        const render = typeof html2canvas === 'function' ? html2canvas : globalThis.html2canvas;
+        if (typeof render !== 'function') { report.screenshot = { status: 'renderer-unavailable', kind }; return null; }
+        const vv = window.visualViewport;
+        const width = Math.max(1, Math.ceil(vv?.width || window.innerWidth));
+        const height = Math.max(1, Math.ceil(vv?.height || window.innerHeight));
+        const x = vv?.pageLeft ?? window.scrollX ?? 0;
+        const y = vv?.pageTop ?? window.scrollY ?? 0;
+        let timer;
+        return Promise.race([
+            Promise.resolve().then(() => render(document.documentElement, {
+                x, y, width, height, scale: Math.min(1.5, 1200 / Math.max(width, height)),
+                scrollX: window.scrollX || 0, scrollY: window.scrollY || 0,
+                windowWidth: window.innerWidth, windowHeight: window.innerHeight,
+                useCORS: true, allowTaint: false, imageTimeout: 2200, logging: false,
+                ignoreElements: el => !!el.matches?.('#tm-webdiag-host, input, textarea, select, [contenteditable], iframe, video')
+            })).then(canvas => encodeScreenshot(canvas, kind)),
+            new Promise(resolve => { timer = setTimeout(() => resolve({ status: 'capture-timeout', kind }), 3500); })
+        ]).catch(() => ({ status: 'capture-error', kind })).finally(() => clearTimeout(timer));
+    }
+
+    // Keep the existing collector and its private seven-day storage. Never let
+    // multibyte text or an image exceed the collector's 5 MiB request limit.
+    function fitReportBudget(report) {
+        const size = () => typeof TextEncoder === 'function'
+            ? new TextEncoder().encode(JSON.stringify(report)).length
+            : JSON.stringify(report).length * 3;
+        if (size() <= REPORT_BUDGET) return;
+        for (const frame of (report.embeddedFrames?.frames || []).slice().reverse()) {
+            if (size() <= REPORT_BUDGET) break;
+            if (frame.dom) {
+                frame.dom = { originalDomCharacters: frame.dom.originalDomCharacters,
+                    domHtml: '', domTruncated: true };
+                frame.status = 'inventory-only-size-limit';
+            }
+        }
+        while (size() > REPORT_BUDGET && report.domHtml.length > 10000) {
+            report.domHtml = report.domHtml.slice(0, Math.floor(report.domHtml.length * 0.7));
+            report.domTruncated = true;
+        }
+        if (size() > REPORT_BUDGET && report.stylesheets) {
+            for (const sheet of (report.stylesheets.sheets || []).slice().reverse()) {
+                if (size() <= REPORT_BUDGET) break;
+                delete sheet.rules; sheet.truncated = true;
+            }
+            report.stylesheets.truncated = true;
+        }
+        if (size() > REPORT_BUDGET && report.screenshot?.dataUrl) {
+            delete report.screenshot.dataUrl;
+            report.screenshot.status = 'report-size-limit';
+        }
+        if (size() > REPORT_BUDGET && report.renderedLayout) {
+            report.renderedLayout.elements = [];
+            report.renderedLayout.truncated = true;
+        }
     }
 
     // Geometry only: never read the editor's contents, selector, name, or value.
@@ -430,7 +624,20 @@
     function buildReport(includeText) {
         measureReportInteraction('build-report');
         recordSnapshot('report');
-        const dom = captureDom(includeText);
+        let dom;
+        try { dom = captureDom(includeText); }
+        catch (error) {
+            // Fail closed: never fall back to the unsanitized original document.
+            dom = { domHtml: '', domTruncated: true, originalDomCharacters: 0,
+                domStatus: 'capture-error', domErrorType: String(error?.name || 'Error').slice(0, 60) };
+        }
+        let renderedLayout, stylesheets;
+        try { renderedLayout = captureRenderedLayout(); }
+        catch (_) { renderedLayout = { status: 'capture-error' }; }
+        if (includeText) {
+            try { stylesheets = captureStyles(); }
+            catch (_) { stylesheets = { status: 'capture-error' }; }
+        }
         return {
             format: 2, diagnosticVersion: VERSION,
             url: location.origin + location.pathname,
@@ -443,7 +650,7 @@
             snapshots: snapshots.slice(),
             events: events.slice(),
             reportInteractionGeometry: reportInteractionGeometry.slice(),
-            ...dom
+            ...dom, renderedLayout, stylesheets
         };
     }
 
@@ -505,7 +712,7 @@
         const x = vv?.offsetLeft || 0;
         const y = vv?.offsetTop || 0;
         const width = Math.max(1, Math.min(370, vw / zoom - 16));
-        const height = Math.max(1, Math.min(320, vh / zoom - 64));
+        const height = Math.max(1, Math.min(420, vh / zoom - 20));
         const left = x + 8 * zoom;
         // Native fixed positioning follows browser toolbar animation on the
         // compositor. Applying a JS height delta on every toolbar scroll can
@@ -527,7 +734,7 @@
         set(panel, 'transform-origin', 'bottom left');
         set(panel, 'left', (x + 8 * zoom) + 'px');
         set(panel, 'top', 'auto');
-        set(panel, 'bottom', (bottomInset + 48 * zoom) + 'px');
+        set(panel, 'bottom', bottom + 'px');
         set(panel, 'width', width + 'px');
         set(panel, 'height', 'auto');
         set(panel, 'max-height', height + 'px');
@@ -535,7 +742,7 @@
         diagnosticAnchor = {
             host, x: (window.scrollX || 0) + anchorRect.left,
             y: (window.scrollY || 0) + anchorRect.top,
-            gap: 38 * zoom
+            gap: 0
         };
     }
 
@@ -555,7 +762,7 @@
             '#tm-webdiag-host *{box-sizing:border-box!important;font:14px/1.4 system-ui,sans-serif!important}',
             '#tm-webdiag-host button,#tm-webdiag-host input{pointer-events:auto!important}',
             '#tm-webdiag-host button{background:#363636!important;color:#fff!important;border:1px solid #777!important;border-radius:7px!important;padding:5px 8px!important;margin:0!important;cursor:pointer!important}',
-            '#tm-webdiag-panel{position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 16px))!important;height:min(72dvh,560px)!important;max-height:calc(100dvh - 90px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
+            '#tm-webdiag-panel{position:fixed!important;bottom:10px!important;left:max(8px,env(safe-area-inset-left,0px))!important;background:#202020!important;color:#fff!important;border:1px solid #666!important;border-radius:9px!important;width:min(370px,calc(100vw - 16px))!important;height:min(72dvh,560px)!important;max-height:calc(100dvh - 90px)!important;overflow:hidden!important;overscroll-behavior:contain!important;pointer-events:auto!important;flex-direction:column!important}',
             '#tm-webdiag-panel[hidden]{display:none!important}',
             '#tm-webdiag-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;position:relative!important;top:0!important;background:#202020!important;padding:6px 0!important;z-index:1!important}',
             '#tm-webdiag-close{margin:0!important;padding:4px 9px!important;white-space:nowrap!important}',
@@ -574,8 +781,11 @@
             '#tm-webdiag-panel-header{order:-2!important}',
             '#tm-webdiag-panel [data-status]{order:-1!important;margin:4px 8px!important}',
             '#tm-webdiag-body{order:0!important;flex:0 1 auto!important}',
-            '#tm-webdiag-actions{order:1!important;padding:4px 8px!important}',
-            '#tm-webdiag-actions button:last-child{display:none!important}',
+            '#tm-webdiag-actions{order:1!important;padding:0!important;flex-wrap:nowrap!important;align-items:stretch!important}',
+            '#tm-webdiag-actions #tm-webdiag-submit{flex:0 0 auto!important;min-width:85px!important;min-height:32px!important;background:#126a4f!important;white-space:nowrap!important}',
+            '#tm-webdiag-actions #tm-webdiag-next{flex:1 1 auto!important;min-width:0!important}',
+            '#tm-webdiag-host[data-open="true"] #tm-webdiag-toggle{visibility:hidden!important;pointer-events:none!important}',
+            'html:has(#tm-webdiag-host[data-open="true"]) #tm-hacker-news-comments{visibility:hidden!important;pointer-events:none!important}',
             'html:has(#tm-webdiag-host[data-open="true"]:not([data-pinched="true"])) #tm-shared-floating-menu{visibility:hidden!important}',
             '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
@@ -634,6 +844,7 @@
         monitor.type = 'button';
         monitor.textContent = recording ? '已開始記錄' : '開始記錄 Console';
         const next = document.createElement('button');
+        next.id = 'tm-webdiag-next';
         next.type = 'button';
         next.textContent = '重新整理並自動回報';
         const reloadHelp = document.createElement('p');
@@ -643,18 +854,27 @@
         include.type = 'checkbox';
         include.checked = true;
         label.appendChild(include);
-        label.appendChild(document.createTextNode(' 包含公開頁面文字'));
+        label.appendChild(document.createTextNode(' 包含公開頁面文字、CSS 及畫面重繪'));
+        const imageLabel = document.createElement('label');
+        imageLabel.textContent = '選附原生截圖（選填，請先確認無敏感資訊）';
+        const imageFile = document.createElement('input');
+        imageFile.type = 'file';
+        imageFile.accept = 'image/png,image/jpeg,image/webp';
+        imageFile.id = 'tm-webdiag-screenshot-file';
+        imageLabel.appendChild(imageFile);
         const submit = document.createElement('button');
+        submit.id = 'tm-webdiag-submit';
         submit.type = 'button';
-        submit.textContent = '立即送出報告';
+        submit.textContent = '立即送出';
         for (const element of [pair, check, info]) pairing.appendChild(element);
-        for (const element of [monitor, label]) body.appendChild(element);
+        for (const element of [monitor, label, imageLabel]) body.appendChild(element);
         const footer = document.createElement('div');
         footer.id = 'tm-webdiag-footer';
         const actions = document.createElement('div');
         actions.id = 'tm-webdiag-actions';
-        actions.appendChild(next);
+        // The lower-left submit occupies the closed report button's hit area.
         actions.appendChild(submit);
+        actions.appendChild(next);
         footer.appendChild(actions);
         footer.appendChild(status);
         panel.appendChild(footer);
@@ -721,13 +941,14 @@
             toggle.setAttribute('aria-expanded', String(open));
             host.dataset.open = String(open);
             result.dataset.visible = 'false';
-            if (open) { toggle.textContent = '立即送出'; fitDiagnosticViewport(); }
+            if (open) { toggle.textContent = '回報'; fitDiagnosticViewport(); }
             else toggle.textContent = latestResult.startsWith('已送出') ? '已送出' : '回報';
         };
         toggle.setAttribute('aria-controls', 'tm-webdiag-panel');
         setPanelOpen(false);
         if (latestResult) onResult(latestResult);
-        toggle.addEventListener('click', () => {
+        toggle.addEventListener('click', event => {
+            if (event.isTrusted === false || submit.disabled) return;
             if (panel.hidden) { setPanelOpen(true); void refreshPairing(); }
             else if (!submit.disabled) void sendReport();
         });
@@ -759,19 +980,38 @@
             setStatus('正在重新整理，頁面穩定後將自動送出一次。');
             window.location.reload();
         });
-        async function sendReport() {
-            if (submit.disabled) return;
+        async function sendReport(event) {
+            if (event?.isTrusted === false || submit.disabled) return;
             submit.disabled = true;
-            setStatus('正在擷取並送出…');
+            setStatus('1/3 正在擷取 DOM、CSS 與位置…');
+            submit.textContent = '擷取中…';
+            next.disabled = true;
             try {
                 const report = buildReport(include.checked);
-                const frameTask = collectFrameReports(include.checked);
-                if (frameTask) attachFrameReports(report, await frameTask);
-                const response = await post('/api/report', { deviceId, secret, report });
-                showResult('已送出報告 ' + response.reportId + '（7 天後自動刪除）');
+                setStatus('2/3 正在處理畫面與內嵌頁面…');
+                let screenshotTask;
+                try { screenshotTask = captureScreenshot(report, include.checked, imageFile.files?.[0]); }
+                catch (_) { report.screenshot = { status: 'capture-error' }; }
+                try {
+                    const frameTask = collectFrameReports(include.checked);
+                    if (frameTask) attachFrameReports(report, await frameTask);
+                } catch (_) { report.embeddedFrames = { status: 'capture-error', frames: [] }; }
+                if (screenshotTask) {
+                    try { report.screenshot = await screenshotTask; }
+                    catch (_) { report.screenshot = { status: 'capture-error' }; }
+                }
+                fitReportBudget(report);
+                setStatus('3/3 正在上傳至 Cloudflare…');
+                submit.textContent = '上傳中…';
+                const response = await post('/api/report', { deviceId, secret, report }, percent => {
+                    setStatus('3/3 正在上傳至 Cloudflare… ' + percent + '%');
+                });
+                imageFile.value = '';
+                showResult('已送出報告 ' + response.reportId + '（' + (response.retentionDays || 1) + ' 天後自動刪除）'
+                    + (report.screenshot?.status === 'captured' ? '；附畫面' : '；畫面：' + report.screenshot?.status));
             } catch (e) {
-                setStatus('送出失敗：' + e.message + '。資料尚未上傳。');
-            } finally { submit.disabled = false; }
+                showResult('送出失敗：' + e.message + '。未收到伺服器成功確認，可再手動送出。');
+            } finally { submit.disabled = false; next.disabled = false; submit.textContent = '立即送出'; }
         }
         submit.addEventListener('click', sendReport);
         close.addEventListener('click', () => { setPanelOpen(false); });
@@ -804,14 +1044,24 @@
             recordSnapshot(timeout ? 'auto-timeout' : 'auto-page-stable');
             try {
                 const report = buildReport(arm?.includeText === true);
-                const frameTask = collectFrameReports(arm?.includeText === true);
-                if (frameTask) attachFrameReports(report, await frameTask);
+                let screenshotTask;
+                try { screenshotTask = captureScreenshot(report, arm?.includeText === true); }
+                catch (_) { report.screenshot = { status: 'capture-error' }; }
+                try {
+                    const frameTask = collectFrameReports(arm?.includeText === true);
+                    if (frameTask) attachFrameReports(report, await frameTask);
+                } catch (_) { report.embeddedFrames = { status: 'capture-error', frames: [] }; }
+                if (screenshotTask) {
+                    try { report.screenshot = await screenshotTask; }
+                    catch (_) { report.screenshot = { status: 'capture-error' }; }
+                }
                 report.autoSubmission = { triggeredBy: 'explicit-reload-click',
                     reason: timeout ? 'timeout' : 'page-stable', waitedMs: elapsed,
                     readyState: document.readyState, quietMs: Date.now() - lastChange };
+                fitReportBudget(report);
                 const response = await post('/api/report', { deviceId, secret, report });
                 showResult('已送出重新整理後的報告 ' + response.reportId
-                    + (timeout ? '（頁面尚未確認穩定）' : '') + '（7 天後自動刪除）');
+                    + (timeout ? '（頁面尚未確認穩定）' : '') + '（' + (response.retentionDays || 1) + ' 天後自動刪除）');
             } catch (e) {
                 showResult('自動回報失敗：' + e.message + '；未自動重試，可手動送出。');
             }

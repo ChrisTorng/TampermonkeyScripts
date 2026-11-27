@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Force Dark Mode
 // @namespace    http://tampermonkey.net/
-// @version      2026-11-27_2.0.20
+// @version      2026-11-28_2.0.21
 // @description  Force dark colors with a shared-menu ☽ toggle and URL-based auto-enable.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -606,6 +606,7 @@
     if (window !== window.top || floatingMenuDisabled()) return;
 
     const STYLE_ID = 'tm-force-dark-mode-style';
+    const isScottBlog = /^(?:www\.)?scottaaronson\.blog$/i.test(location.hostname);
     let isEnabled = false;
     let styleObserver;
     let isObserving = false;
@@ -660,7 +661,17 @@
         const style = document.createElement('style');
         style.id = STYLE_ID;
         style.type = 'text/css';
-        style.textContent = buildStyleContent();
+        style.textContent = buildStyleContent() + (isScottBlog ? `
+            /* The captured Kubrick theme paints the white article using a
+               repeated JPEG; preserve the separate decorative header image. */
+            html body, html body #page { background-color: #121212 !important; }
+            html body #page { background-image: none !important; }
+            html body #headerimg, html body #headerimg h1,
+            html body #headerimg h1 a, html body #headerimg .description {
+                color: #fff !important;
+            }
+            html body #headerimg .description font { color: inherit !important; }
+        ` : '');
 
         const target = document.head || document.documentElement;
         target.appendChild(style);
@@ -774,7 +785,7 @@
 
     onDocumentReady(createFloatingToggleButton);
 
-    if (shouldAutoEnableForUrl()) {
+    if (shouldAutoEnableForUrl() || (isScottBlog && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         enableForceDarkMode();
     }
 })();

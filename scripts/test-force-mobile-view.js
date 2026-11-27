@@ -665,3 +665,16 @@ describe('Force Mobile View automatic readability pilot', () => {
     });
 
 });
+
+
+test('Scott blog early layout uses separate viewport-width columns and no generic font override', () => {
+    const { harness, textElement } = executeForceMobileView('https://scottaaronson.blog/?p=10379', {userAgent:'Mozilla/5.0 Android 16'});
+    harness.dispatchDocumentEvent('DOMContentLoaded');
+    harness.dispatchWindowEvent('resize');
+    harness.runAllTimeouts();
+    const style = harness.document.getElementById('tm-force-mobile-auto-style');
+    assert(style);
+    assert.match(style.textContent, /grid-template-columns: repeat\(2, minmax\(0, 100vw\)\)/);
+    assert.match(style.textContent, /position: static !important/);
+    assert.equal(textElement.style.getPropertyValue('font-size'), '');
+});

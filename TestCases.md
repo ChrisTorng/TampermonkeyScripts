@@ -191,3 +191,6 @@ Section note: local DOM tests run the four main userscripts together, exercise t
 # Floating menu physical sizing (without article reflow) — 2026-11-21
 - https://xenaproject.wordpress.com/2026/11/12/and-the-proof-is-checked-in-lean/ [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: LIMITED] (previous auto-reflow remains reverted; shared `≡` and expanded menu alone are inverse-scaled to the normal touch size at the verified Android Edge 0.508 fit; mocked sizing, viewport safety, no layout mutations and no reloads are tested; actual Android Edge still needs visual validation)
 - https://www.openssh.org/releasenotes.html [CONTENT_CLASS: VALID_ARTICLE_CONTENT] [TEST_STATUS: AUTOMATED_WITH_MOCKS] (legacy initial 0.4 fit, pinch, scrolling and physical menu scaling, no article changes)
+
+
+- [Scott Aaronson legacy WordPress article](https://scottaaronson.blog/?p=10379) — Force Mobile View and Force Dark Mode. **Coverage:** captured real DOM/CSS; Android Edge manual regression pending.
