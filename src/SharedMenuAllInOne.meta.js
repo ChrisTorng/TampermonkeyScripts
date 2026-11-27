@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-27_1.0.12
+// @version      2026-11-27_1.0.13
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
