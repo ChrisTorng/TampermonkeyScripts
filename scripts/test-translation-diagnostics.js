@@ -100,7 +100,7 @@ test('diagnostics panel is reliably hidden by inline !important and closes from 
 
     toggle.click();
     assert.equal(panel.hidden, false);
-    h.document.getElementById('tm-webdiag-actions').children[1].click();
+    h.document.getElementById('tm-webdiag-submit').click();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(panel.hidden, true);
@@ -177,7 +177,7 @@ test('a report is sent only to the paired Cloudflare endpoint, without URL searc
     h.document.getElementById('tm-webdiag-toggle').click();
     assert.equal(panel.hidden, false);
     await Promise.resolve();
-    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
+    const submit = h.document.getElementById('tm-webdiag-submit');
     assert(submit);
     submit.click();
     await Promise.resolve();
@@ -229,7 +229,7 @@ test('mobile report panel and success toast are fixed to viewport and never dupl
     toggle.click();
     await Promise.resolve();
     await Promise.resolve();
-    const submit = h.document.getElementById('tm-webdiag-actions').children[1];
+    const submit = h.document.getElementById('tm-webdiag-submit');
     submit.click();
     await Promise.resolve();
     await Promise.resolve();
@@ -322,7 +322,7 @@ test('explicit report requests a child frame and includes its private GM respons
     const toggle = parent.h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    parent.h.document.getElementById('tm-webdiag-actions').children[1].click();
+    parent.h.document.getElementById('tm-webdiag-submit').click();
     for (let i = 0; i < 8; i++) await Promise.resolve();
     const report = parent.calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.embeddedFrames.total, 1);
@@ -424,7 +424,7 @@ test('public diagnostic captures readable CSSOM and reports blocked CSS without 
     const toggle = h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    h.document.getElementById('tm-webdiag-actions').children[1].click();
+    h.document.getElementById('tm-webdiag-submit').click();
     for (let i = 0; i < 10; i++) await Promise.resolve();
     const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.match(report.stylesheets.sheets[0].rules, /https:\/\/example\.org\/page\.png/);
@@ -445,7 +445,7 @@ test('explicit public report includes a bounded reconstructed viewport image', a
     const toggle = h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    h.document.getElementById('tm-webdiag-actions').children[1].click();
+    h.document.getElementById('tm-webdiag-submit').click();
     for (let i = 0; i < 30; i++) await Promise.resolve();
     const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.screenshot.status, 'captured');
@@ -465,7 +465,7 @@ test('structure-only report does not collect CSS rules or reconstruct the viewpo
     const label = h.document.getElementById('tm-webdiag-body').children.find(x => x.tagName === 'LABEL');
     label.children[0].checked = false;
     await Promise.resolve();
-    h.document.getElementById('tm-webdiag-actions').children[1].click();
+    h.document.getElementById('tm-webdiag-submit').click();
     for (let i = 0; i < 10; i++) await Promise.resolve();
     const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.mode, 'structure');
@@ -483,8 +483,20 @@ test('large documents skip expensive viewport reconstruction but still submit CS
     });
     h.document.getElementById('tm-webdiag-toggle').click();
     await Promise.resolve();
-    h.document.getElementById('tm-webdiag-actions').children[1].click();
+    h.document.getElementById('tm-webdiag-submit').click();
     for (let i = 0; i < 10; i++) await Promise.resolve();
     assert.equal(calls.find(c => c.url.endsWith('/api/report')).data.report.screenshot.status, 'skipped-large-document');
     assert.equal(renders, 0);
+});
+
+
+test('report submit is the first footer action and HN overlay is hidden while open', () => {
+    const { h } = run('https://example.org/');
+    const actions = h.document.getElementById('tm-webdiag-actions');
+    assert.equal(actions.children[0].id, 'tm-webdiag-submit');
+    assert.equal(actions.children[1].id, 'tm-webdiag-next');
+    const css = h.document.getElementById('tm-webdiag-host').children.find(x => x.tagName === 'STYLE').textContent;
+    assert.match(css, /data-open="true".*#tm-hacker-news-comments/);
+    h.document.getElementById('tm-webdiag-toggle').click();
+    assert.equal(h.document.getElementById('tm-webdiag-panel').style.getPropertyValue('bottom'), h.document.getElementById('tm-webdiag-host').style.getPropertyValue('bottom'));
 });

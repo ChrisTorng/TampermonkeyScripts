@@ -1,3 +1,9 @@
+## Keep report target and separate desktop columns — 2026-11-28
+
+- [Translation Diagnostics 2026-11-28_1.2.13](src/TranslationDiagnostics.user.js): submit at the same lower-left touch target within the panel; suppress Hacker News overlay while open.
+- [All in One 2026-11-28_1.0.16](src/SharedMenuAllInOne.user.js), or [Force Mobile View 2026-11-28_2.1.24](src/ForceMobileView.user.js): side-by-side viewport-width columns, horizontally scrollable, reset absolute sidebar positioning; avoid generic font/spacing overrides for the captured theme.
+- Test [Scott Aaronson blog](https://scottaaronson.blog/?p=10379): reload; scroll horizontally between article and sidebar; tap the report target twice without moving your finger.
+
 ## Legacy WordPress mobile readability and dark colors — 2026-11-28
 
 - [Install All in One 2026-11-28_1.0.15](src/SharedMenuAllInOne.user.js), or update [Force Mobile View 2026-11-28_2.1.23](src/ForceMobileView.user.js) and [Force Dark Mode 2026-11-28_2.0.21](src/ForceDarkMode.user.js). Do not enable both distributions.

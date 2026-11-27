@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Shared Floating Menu — All in One
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts/all-in-one
-// @version      2026-11-28_1.0.15
+// @version      2026-11-28_1.0.16
 // @description  Bundle five shared floating-menu scripts in one install, with immediate main-version notices.
 // @author       ChrisTorng
 // @homepage     https://github.com/ChrisTorng/TampermonkeyScripts/
@@ -2086,6 +2086,28 @@
                         box-sizing: border-box !important; width: 100% !important; max-width: 100% !important;
                         min-width: 0 !important; margin: 0 !important; padding: 10px 12px !important;
                         float: none !important; clear: both !important; }
+                    /* Each column is at most one viewport. Allow the document
+                       to scroll horizontally instead of compressing or overlaying columns. */
+                    html, body { overflow-x: auto !important; }
+                    body #page:has(> #sidebar) {
+                        display: grid !important;
+                        grid-template-columns: repeat(2, minmax(0, 100vw)) !important;
+                        grid-template-rows: auto auto auto auto !important;
+                        align-items: start !important;
+                        width: 200vw !important; max-width: none !important;
+                    }
+                    body #page:has(> #sidebar) > #header { grid-column: 1 / -1; grid-row: 1; width: 100vw !important; }
+                    body #page:has(> #sidebar) > hr { display: none !important; }
+                    body #page:has(> #sidebar) > #content { grid-column: 1; grid-row: 2; }
+                    body #page:has(> #sidebar) > #sidebar {
+                        grid-column: 2; grid-row: 2; position: static !important;
+                        inset: auto !important; width: 100% !important;
+                        max-width: 100vw !important; padding: 10px 12px !important;
+                        overflow-wrap: anywhere !important; font-size: 16px !important;
+                    }
+                    body #page:has(> #sidebar) > #footer { grid-column: 1 / -1; grid-row: 3; width: 100vw !important; }
+                    body #sidebar img, body #sidebar iframe, body #sidebar input,
+                    body #sidebar select { box-sizing: border-box !important; max-width: 100% !important; }
                     body #content { font-size: 16px !important; line-height: 1.5 !important; }
                     body #content h2 { font-size: 23px !important; line-height: 1.3 !important; }
                     body #content .entry p, body #content .commentlist p { font-size: 16px !important;
@@ -2647,6 +2669,9 @@
     }
 
     function refreshMinimumFontSize() {
+        // The explicit column layout already sets readable fonts and padding.
+        // Do not apply legacy inline overrides to its columns or floating UI.
+        if (isScottBlog && earlyReflow) return;
         if (!shouldEnforceMinFontSize()) {
             if (currentMinFontSizePx !== null) {
                 clearMinimumFontSize();
@@ -6705,7 +6730,7 @@
     // A single small official-main metadata check on each top-level page load.
     // Never reload the document, and never fetch unmerged PR branches.
     if (window === window.top && typeof GM_xmlhttpRequest === 'function') {
-        const installedVersion = "2026-11-28_1.0.15";
+        const installedVersion = "2026-11-28_1.0.16";
         const installUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.user.js";
         const metaUrl = "https://raw.githubusercontent.com/ChrisTorng/TampermonkeyScripts/main/src/SharedMenuAllInOne.meta.js";
         function isNewer(next, installed) {

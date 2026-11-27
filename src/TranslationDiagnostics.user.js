@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Translation Diagnostics
 // @namespace    https://github.com/ChrisTorng/TampermonkeyScripts
-// @version      2026-11-28_1.2.12
+// @version      2026-11-28_1.2.13
 // @description  Universal opt-in web diagnostics: sanitized DOM, CSS, layout, viewport reconstruction, translation flags and console logs, with paired Cloudflare reporting.
 // @author       Chris Torng
 // @match        *://*/*
@@ -21,7 +21,7 @@
     if (!/^https?:$/.test(location.protocol)) return;
 
     const ENDPOINT = 'https://tm-web-diagnostics.christorng.workers.dev';
-    const VERSION = '2026-11-28_1.2.12';
+    const VERSION = '2026-11-28_1.2.13';
     const HISTORY_LIMIT = 40;
     const HTML_LIMIT = 4_000_000;
     const REPORT_BUDGET = 4_650_000;
@@ -766,8 +766,11 @@
             '#tm-webdiag-panel-header{order:-2!important}',
             '#tm-webdiag-panel [data-status]{order:-1!important;margin:4px 8px!important}',
             '#tm-webdiag-body{order:0!important;flex:0 1 auto!important}',
-            '#tm-webdiag-actions{order:1!important;padding:4px 8px!important}',
+            '#tm-webdiag-actions{order:1!important;padding:0!important;flex-wrap:nowrap!important;align-items:stretch!important}',
+            '#tm-webdiag-actions #tm-webdiag-submit{flex:0 0 auto!important;min-width:85px!important;min-height:32px!important;background:#126a4f!important;white-space:nowrap!important}',
+            '#tm-webdiag-actions #tm-webdiag-next{flex:1 1 auto!important;min-width:0!important}',
             '#tm-webdiag-host[data-open="true"] #tm-webdiag-toggle{visibility:hidden!important;pointer-events:none!important}',
+            'html:has(#tm-webdiag-host[data-open="true"]) #tm-hacker-news-comments{visibility:hidden!important;pointer-events:none!important}',
             'html:has(#tm-webdiag-host[data-open="true"]:not([data-pinched="true"])) #tm-shared-floating-menu{visibility:hidden!important}',
             '#tm-webdiag-result{display:none!important;position:fixed!important;bottom:calc(60px + env(safe-area-inset-bottom,0px))!important;left:max(8px,env(safe-area-inset-left,0px))!important;right:auto!important;width:min(310px,calc(100vw - 16px))!important;max-width:calc(100vw - 16px)!important;pointer-events:none!important;background:#202020!important;color:#fff!important;padding:6px 9px!important;border-radius:6px!important;overflow-wrap:anywhere!important;margin:0!important;box-shadow:0 2px 9px #0007!important}',
             '#tm-webdiag-result[data-visible="true"]{display:block!important}'
@@ -826,6 +829,7 @@
         monitor.type = 'button';
         monitor.textContent = recording ? '已開始記錄' : '開始記錄 Console';
         const next = document.createElement('button');
+        next.id = 'tm-webdiag-next';
         next.type = 'button';
         next.textContent = '重新整理並自動回報';
         const reloadHelp = document.createElement('p');
@@ -844,16 +848,18 @@
         imageFile.id = 'tm-webdiag-screenshot-file';
         imageLabel.appendChild(imageFile);
         const submit = document.createElement('button');
+        submit.id = 'tm-webdiag-submit';
         submit.type = 'button';
-        submit.textContent = '立即送出報告';
+        submit.textContent = '立即送出';
         for (const element of [pair, check, info]) pairing.appendChild(element);
         for (const element of [monitor, label, imageLabel]) body.appendChild(element);
         const footer = document.createElement('div');
         footer.id = 'tm-webdiag-footer';
         const actions = document.createElement('div');
         actions.id = 'tm-webdiag-actions';
-        actions.appendChild(next);
+        // The lower-left submit occupies the closed report button's hit area.
         actions.appendChild(submit);
+        actions.appendChild(next);
         footer.appendChild(actions);
         footer.appendChild(status);
         panel.appendChild(footer);
