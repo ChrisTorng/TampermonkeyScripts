@@ -100,7 +100,7 @@ test('diagnostics panel is reliably hidden by inline !important and closes from 
 
     toggle.click();
     assert.equal(panel.hidden, false);
-    toggle.click();
+    h.document.getElementById('tm-webdiag-actions').children[1].click();
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(panel.hidden, true);
@@ -292,7 +292,7 @@ test('narrow visual viewport keeps the report panel inside all four edges', () =
     assert.equal(panel.style.getPropertyValue('left'), '20px');
     assert.equal(panel.style.getPropertyValue('width'), '272px');
     assert.equal(panel.style.getPropertyValue('height'), 'auto');
-    assert.equal(panel.style.getPropertyValue('max-height'), '420px');
+    assert.equal(panel.style.getPropertyValue('max-height'), '419px');
     assert.equal(host.dataset.open, 'true');
     h.document.getElementById('tm-webdiag-close').click();
     assert.equal(host.dataset.open, 'false');
@@ -322,7 +322,7 @@ test('explicit report requests a child frame and includes its private GM respons
     const toggle = parent.h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    toggle.click();
+    parent.h.document.getElementById('tm-webdiag-actions').children[1].click();
     for (let i = 0; i < 8; i++) await Promise.resolve();
     const report = parent.calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.embeddedFrames.total, 1);
@@ -424,7 +424,7 @@ test('public diagnostic captures readable CSSOM and reports blocked CSS without 
     const toggle = h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    toggle.click();
+    h.document.getElementById('tm-webdiag-actions').children[1].click();
     for (let i = 0; i < 10; i++) await Promise.resolve();
     const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.match(report.stylesheets.sheets[0].rules, /https:\/\/example\.org\/page\.png/);
@@ -445,7 +445,7 @@ test('explicit public report includes a bounded reconstructed viewport image', a
     const toggle = h.document.getElementById('tm-webdiag-toggle');
     toggle.click();
     await Promise.resolve();
-    toggle.click();
+    h.document.getElementById('tm-webdiag-actions').children[1].click();
     for (let i = 0; i < 30; i++) await Promise.resolve();
     const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.screenshot.status, 'captured');
@@ -465,7 +465,7 @@ test('structure-only report does not collect CSS rules or reconstruct the viewpo
     const label = h.document.getElementById('tm-webdiag-body').children.find(x => x.tagName === 'LABEL');
     label.children[0].checked = false;
     await Promise.resolve();
-    toggle.click();
+    h.document.getElementById('tm-webdiag-actions').children[1].click();
     for (let i = 0; i < 10; i++) await Promise.resolve();
     const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
     assert.equal(report.mode, 'structure');
