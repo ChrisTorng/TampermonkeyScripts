@@ -64,6 +64,15 @@ test('real browser keeps translation inside its horizontal scrollport and render
                     // A fixed menu follows horizontal scrolling without contributing to scrollWidth.
                     const menu = document.getElementById('tm-shared-floating-menu');
                     assert(menu && !menu.hidden, 'Floating menu should be available with translation controls');
+                    const focusStyle = document.createElement('style');
+                    focusStyle.textContent = 'button:focus { outline: 5px solid yellow !important; outline-offset: 3px !important; }';
+                    document.head.appendChild(focusStyle);
+                    const menuToggle = menu.querySelector('[data-floating-toggle]');
+                    menuToggle.focus({ preventScroll: true });
+                    assert(getComputedStyle(menuToggle).outlineStyle === 'none',
+                        'Site focus outline must not enlarge the shared menu');
+                    menuToggle.blur();
+                    focusStyle.remove();
                     document.body.style.minWidth = '1800px';
                     await frame();
                     const initialPageWidth = document.documentElement.scrollWidth;
@@ -77,8 +86,9 @@ test('real browser keeps translation inside its horizontal scrollport and render
                             : window.innerWidth;
                         assert(getComputedStyle(menu).position === 'fixed',
                             'Menu should use fixed layout while unzoomed');
-                        assert(Math.abs(menuRect.right - visibleRight) < 2,
-                            'Menu must stay at the visible right edge after horizontal scroll: ' + menuRect.right);
+                        const gap = 7 / (window.visualViewport?.scale || 1);
+                        assert(Math.abs(menuRect.right - (visibleRight - gap)) < 2,
+                            'Menu must reserve the scrollbar clearance after horizontal scroll: ' + menuRect.right);
                         assert(document.documentElement.scrollWidth === initialPageWidth,
                             'Menu must not grow page scrollWidth while tracking horizontal scroll');
                     }
