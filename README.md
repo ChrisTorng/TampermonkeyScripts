@@ -60,7 +60,7 @@ Update each script below separately as needed.
 
 ### [Translation Diagnostics User Script](https://github.com/ChrisTorng/TampermonkeyScripts/raw/main/src/TranslationDiagnostics.user.js)
 
-Universal opt-in web problem reporting with sanitized DOM, translation diagnostics, and new console/error logs; paired Cloudflare submission with seven-day retention.
+Universal opt-in web diagnostics with sanitized DOM, CSS, rendered geometry, viewport reconstruction or an attached screenshot, translation diagnostics and console/error logs; private paired Cloudflare reporting with seven-day retention.
 
 
 

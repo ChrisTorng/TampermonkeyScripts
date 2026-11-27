@@ -1,3 +1,9 @@
+## Rendered web diagnostics — 2026-11-28
+
+- [Install Translation Diagnostics 2026-11-28_1.2.11](src/TranslationDiagnostics.user.js).
+- Public-text reports include readable CSSOM rules, computed element styles and visible viewport reconstruction, or an optionally attached native screenshot. Existing pairing and seven-day retention remain unchanged. DOM reconstruction is not native screen capture; inaccessible styles and missing images are reported or may be absent.
+- **Test:** [Scott Aaronson blog](https://scottaaronson.blog/?p=10379) — reload after updating, report the current page before and after toggling mobile/dark mode.
+
 ## Fullscreen page-layer isolation — 2026-11-27
 
 - [Install Fullscreen Game View 2026-11-27_1.3.5](src/FullscreenGameView.user.js).

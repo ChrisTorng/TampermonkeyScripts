@@ -411,3 +411,65 @@ test('toolbar resize does not override native fixed bottom during or after scrol
         assert.equal(host.style.getPropertyValue('bottom'), '10px');
     }
 });
+
+
+test('public diagnostic captures readable CSSOM and reports blocked CSS without query tokens', async () => {
+    const { h, calls } = run('https://example.org/story?secret=PRIVATE', h => {
+        h.document.styleSheets = [
+            { href: 'https://example.org/theme.css?secret=PRIVATE',
+                cssRules: [{ cssText: '#page { background-image: url("https://example.org/page.png?secret=PRIVATE"); }' }] },
+            { href: 'https://other.example/style.css', get cssRules() { throw new Error('SecurityError'); } }
+        ];
+    });
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    await Promise.resolve();
+    toggle.click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.match(report.stylesheets.sheets[0].rules, /https:\/\/example\.org\/page\.png/);
+    assert.equal(report.stylesheets.sheets[1].status, 'cssom-inaccessible');
+    assert.ok(!JSON.stringify(report).includes('PRIVATE'));
+    assert.equal(report.screenshot.status, 'renderer-unavailable');
+});
+
+test('explicit public report includes a bounded reconstructed viewport image', async () => {
+    let options;
+    const { h, calls } = run('https://example.org/', h => {
+        h.context.html2canvas = async (element, value) => {
+            options = value;
+            return { width: 360, height: 640,
+                toDataURL: () => 'data:image/jpeg;base64,YWJj' };
+        };
+    });
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    await Promise.resolve();
+    toggle.click();
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.screenshot.status, 'captured');
+    assert.equal(report.screenshot.kind, 'dom-reconstruction-not-native-screenshot');
+    assert.match(report.screenshot.dataUrl, /^data:image\/jpeg;base64,/);
+    assert.equal(options.allowTaint, false);
+    assert.ok(options.scale <= 1.5);
+});
+
+test('structure-only report does not collect CSS rules or reconstruct the viewport', async () => {
+    let renders = 0;
+    const { h, calls } = run('https://example.org/', h => {
+        h.context.html2canvas = () => { renders++; throw new Error('unexpected render'); };
+    });
+    const toggle = h.document.getElementById('tm-webdiag-toggle');
+    toggle.click();
+    const label = h.document.getElementById('tm-webdiag-body').children.find(x => x.tagName === 'LABEL');
+    label.children[0].checked = false;
+    await Promise.resolve();
+    toggle.click();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    const report = calls.find(c => c.url.endsWith('/api/report')).data.report;
+    assert.equal(report.mode, 'structure');
+    assert.equal(report.stylesheets, undefined);
+    assert.equal(report.screenshot.status, 'not-opted-in');
+    assert.equal(renders, 0);
+});
